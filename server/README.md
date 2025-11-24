@@ -1,0 +1,173 @@
+# NestJS 11 后台框架
+
+基于 NestJS 11 的完整后台开发框架，包含 IOC、ORM、日志、异常处理、JWT 授权、路由、ViewModel、数据验证、Redis 等完整功能。
+
+## 技术栈
+
+- **NestJS 11**: 基于 TypeScript 的 Node.js 框架
+- **PostgreSQL**: 关系型数据库
+- **TypeORM**: ORM 框架
+- **Redis**: 内存数据库（使用 node-redis）
+- **Pino**: 高性能日志库
+- **JWT**: 认证授权
+- **Docker**: 容器化部署
+
+## 功能特性
+
+✅ IOC 容器：NestJS 内置依赖注入  
+✅ ORM：TypeORM + PostgreSQL  
+✅ NoSQL：Redis 缓存和会话管理  
+✅ 日志系统：Pino 高性能日志记录  
+✅ 异常处理：全局异常过滤器  
+✅ JWT 授权：完整的认证授权机制  
+✅ 路由管理：RESTful API 路由设计  
+✅ ViewModel：统一的响应格式  
+✅ 数据验证：DTO 验证机制  
+✅ 跨域和静态文件：CORS 配置和静态资源服务  
+✅ Repository 模式：自定义仓储封装复杂查询逻辑  
+✅ Docker 部署：Docker Compose 一键部署
+
+## 快速开始
+
+### 环境要求
+
+- Node.js >= 18
+- PostgreSQL >= 12
+- Redis >= 6
+- Docker & Docker Compose（可选）
+
+### 安装依赖
+
+```bash
+npm install --legacy-peer-deps
+```
+
+### 配置环境变量
+
+复制 `.env.example` 为 `.env` 并修改配置：
+
+```bash
+cp .env.example .env
+```
+
+### 启动数据库和 Redis
+
+使用 Docker Compose：
+
+```bash
+docker-compose up -d postgres redis
+```
+
+或手动启动 PostgreSQL 和 Redis 服务。
+
+### 运行数据库迁移
+
+```bash
+npm run migration:run
+```
+
+### 启动开发服务器
+
+```bash
+npm run start:dev
+```
+
+应用将在 `http://localhost:3000` 启动。
+
+API 文档地址：`http://localhost:3000/api/docs`
+
+## 项目结构
+
+```
+server/
+├── src/
+│   ├── common/          # 公共模块（装饰器、过滤器、守卫、拦截器、管道等）
+│   ├── config/          # 配置模块
+│   ├── database/        # 数据库模块
+│   ├── redis/           # Redis 模块
+│   ├── logger/          # 日志模块
+│   ├── auth/            # 认证授权模块
+│   ├── users/           # 用户模块（示例）
+│   ├── health/          # 健康检查模块
+│   ├── app.module.ts    # 根模块
+│   └── main.ts          # 应用入口
+├── test/                # 测试文件
+├── docker-compose.yml   # Docker Compose 配置
+└── Dockerfile           # Docker 镜像构建文件
+```
+
+## API 路由
+
+### 认证相关
+
+- `POST /api/v1/auth/register` - 用户注册
+- `POST /api/v1/auth/login` - 用户登录
+- `POST /api/v1/auth/refresh` - 刷新令牌
+- `POST /api/v1/auth/logout` - 用户登出
+
+### 用户管理
+
+- `GET /api/v1/users` - 获取用户列表（分页）
+- `GET /api/v1/users/:id` - 获取用户详情
+- `POST /api/v1/users` - 创建用户（需要 admin 权限）
+- `PATCH /api/v1/users/:id` - 更新用户（需要 admin 权限）
+- `DELETE /api/v1/users/:id` - 删除用户（需要 admin 权限）
+
+### 健康检查
+
+- `GET /api/v1/health` - 健康检查
+
+## Docker 部署
+
+### 构建和启动
+
+```bash
+# 构建镜像
+docker-compose build
+
+# 启动所有服务
+docker-compose up -d
+
+# 运行数据库迁移
+docker-compose exec app npm run migration:run
+
+# 查看日志
+docker-compose logs -f
+```
+
+### 停止服务
+
+```bash
+docker-compose down
+```
+
+## 开发命令
+
+```bash
+# 开发模式
+npm run start:dev
+
+# 生产构建
+npm run build
+
+# 生产启动
+npm run start:prod
+
+# 运行测试
+npm run test
+
+# 代码格式化
+npm run format
+
+# 代码检查
+npm run lint
+```
+
+## 详细文档
+
+更多详细信息请参考 [FRAMEWORK.md](./FRAMEWORK.md)
+
+## License
+
+MIT
+

@@ -1,0 +1,124 @@
+// 清除浮动
+.clearfix() {
+  &::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+}
+
+// 文本省略
+.text-ellipsis(@lines: 1) {
+  & when (@lines = 1) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  & when (@lines > 1) {
+    display: -webkit-box;
+    -webkit-line-clamp: @lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+// 居中
+.center(@position: absolute) {
+  position: @position;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+// Flex布局
+.flex(@direction: row, @justify: flex-start, @align: flex-start, @wrap: nowrap) {
+  display: flex;
+  flex-direction: @direction;
+  justify-content: @justify;
+  align-items: @align;
+  flex-wrap: @wrap;
+}
+
+// 按钮样式
+.button(@bg-color: @primary-color, @text-color: @text-color-inverse, @border-radius: @border-radius-sm) {
+  background-color: @bg-color;
+  color: @text-color;
+  border: none;
+  border-radius: @border-radius;
+  padding: @spacing-sm @spacing-md;
+  font-size: @font-size-base;
+  line-height: @line-height-base;
+  cursor: pointer;
+  transition: all @transition-duration @transition-timing;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// 卡片样式
+.card(@padding: @spacing-md, @border-radius: @border-radius-md, @shadow: @box-shadow-sm) {
+  background-color: @bg-color-light;
+  border-radius: @border-radius;
+  box-shadow: @shadow;
+  padding: @padding;
+}
+
+// 输入框样式
+.input(@border-color: @border-color, @border-radius: @border-radius-sm) {
+  border: 1px solid @border-color;
+  border-radius: @border-radius;
+  padding: @spacing-sm @spacing-md;
+  font-size: @font-size-base;
+  line-height: @line-height-base;
+  background-color: @bg-color-light;
+  transition: border-color @transition-duration @transition-timing;
+  
+  &:focus {
+    border-color: @primary-color;
+    outline: none;
+  }
+  
+  &:disabled {
+    background-color: @bg-color;
+    cursor: not-allowed;
+  }
+}
+
+// 响应式断点
+.respond-to(@breakpoint) {
+  & when (@breakpoint = xs) {
+    @media (max-width: @breakpoint-xs) { 
+      @content(); 
+    }
+  }
+  & when (@breakpoint = sm) {
+    @media (min-width: @breakpoint-sm) { 
+      @content(); 
+    }
+  }
+  & when (@breakpoint = md) {
+    @media (min-width: @breakpoint-md) { 
+      @content(); 
+    }
+  }
+  & when (@breakpoint = lg) {
+    @media (min-width: @breakpoint-lg) { 
+      @content(); 
+    }
+  }
+  & when (@breakpoint = xl) {
+    @media (min-width: @breakpoint-xl) { 
+      @content(); 
+    }
+  }
+}

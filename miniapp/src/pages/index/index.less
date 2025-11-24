@@ -1,0 +1,83 @@
+@import '@/styles/variables.less';
+@import '@/styles/mixins.less';
+
+.index-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: @spacing-lg;
+  
+  &__header {
+    text-align: center;
+    margin-bottom: @spacing-xl;
+  }
+  
+  &__title {
+    display: block;
+    font-size: @font-size-xxl;
+    font-weight: bold;
+    color: @text-color-inverse;
+    margin-bottom: @spacing-sm;
+  }
+  
+  &__welcome {
+    display: block;
+    font-size: @font-size-lg;
+    color: rgba(255, 255, 255, 0.8);
+  }
+  
+  &__content {
+    .flex(column, flex-start, stretch);
+    gap: @spacing-lg;
+  }
+  
+  &__card {
+    .card(@spacing-xl, @border-radius-lg, @box-shadow-md);
+    text-align: center;
+  }
+  
+  &__card-title {
+    display: block;
+    font-size: @font-size-xl;
+    font-weight: bold;
+    color: @text-color;
+    margin-bottom: @spacing-sm;
+  }
+  
+  &__card-desc {
+    display: block;
+    font-size: @font-size-base;
+    color: @text-color-secondary;
+    line-height: @line-height-lg;
+    margin-bottom: @spacing-lg;
+  }
+  
+  &__button {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+  
+  &__features {
+    .flex(column, flex-start, stretch);
+    gap: @spacing-md;
+  }
+  
+  &__feature {
+    .card(@spacing-lg, @border-radius-md, @box-shadow-sm);
+    .flex(row, flex-start, flex-start);
+    gap: @spacing-md;
+  }
+  
+  &__feature-title {
+    font-size: @font-size-lg;
+    font-weight: 600;
+    color: @text-color;
+    margin-bottom: @spacing-xs;
+  }
+  
+  &__feature-desc {
+    font-size: @font-size-sm;
+    color: @text-color-secondary;
+    line-height: @line-height-base;
+  }
+}

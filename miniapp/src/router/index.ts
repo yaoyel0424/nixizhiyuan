@@ -1,0 +1,117 @@
+import Taro from '@tarojs/taro'
+
+// 路由配置
+export const routes = {
+  // 主要页面
+  INDEX: '/pages/index/index',
+  USER: '/pages/user/index',
+  LOGIN: '/pages/login/index',
+  
+  // 用户相关
+  REGISTER: '/pages/register/index',
+  FORGOT_PASSWORD: '/pages/forgot-password/index',
+  PROFILE: '/pages/profile/index',
+  
+  // 其他页面
+  SETTINGS: '/pages/settings/index',
+  ABOUT: '/pages/about/index'
+} as const
+
+// 路由工具函数
+export const navigateTo = (url: string, params?: Record<string, any>) => {
+  const query = params ? '?' + Object.keys(params)
+    .map(key => `${key}=${encodeURIComponent(params[key])}`)
+    .join('&') : ''
+  
+  return Taro.navigateTo({
+    url: url + query
+  })
+}
+
+export const redirectTo = (url: string, params?: Record<string, any>) => {
+  const query = params ? '?' + Object.keys(params)
+    .map(key => `${key}=${encodeURIComponent(params[key])}`)
+    .join('&') : ''
+  
+  return Taro.redirectTo({
+    url: url + query
+  })
+}
+
+export const switchTab = (url: string) => {
+  return Taro.switchTab({
+    url
+  })
+}
+
+export const reLaunch = (url: string, params?: Record<string, any>) => {
+  const query = params ? '?' + Object.keys(params)
+    .map(key => `${key}=${encodeURIComponent(params[key])}`)
+    .join('&') : ''
+  
+  return Taro.reLaunch({
+    url: url + query
+  })
+}
+
+export const navigateBack = (delta: number = 1) => {
+  return Taro.navigateBack({ delta })
+}
+
+// 路由守卫
+export const routeGuard = {
+  // 需要登录的页面
+  requireAuth: [
+    routes.USER,
+    routes.PROFILE,
+    routes.SETTINGS
+  ],
+  
+  // 检查是否需要登录
+  checkAuth: (url: string) => {
+    return routeGuard.requireAuth.includes(url)
+  },
+  
+  // 路由拦截
+  intercept: (url: string) => {
+    if (routeGuard.checkAuth(url)) {
+      // 检查是否已登录
+      const token = Taro.getStorageSync('token')
+      if (!token) {
+        Taro.showModal({
+          title: '提示',
+          content: '请先登录',
+          success: (res) => {
+            if (res.confirm) {
+              Taro.navigateTo({
+                url: routes.LOGIN
+              })
+            }
+          }
+        })
+        return false
+      }
+    }
+    return true
+  }
+}
+
+// 页面标题配置
+export const pageTitles = {
+  [routes.INDEX]: '首页',
+  [routes.USER]: '我的',
+  [routes.LOGIN]: '登录',
+  [routes.REGISTER]: '注册',
+  [routes.FORGOT_PASSWORD]: '忘记密码',
+  [routes.PROFILE]: '个人资料',
+  [routes.SETTINGS]: '设置',
+  [routes.ABOUT]: '关于我们'
+} as const
+
+// 设置页面标题
+export const setPageTitle = (url: string) => {
+  const title = pageTitles[url as keyof typeof pageTitles]
+  if (title) {
+    Taro.setNavigationBarTitle({ title })
+  }
+}
