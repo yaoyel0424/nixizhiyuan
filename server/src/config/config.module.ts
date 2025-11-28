@@ -4,6 +4,7 @@ import appConfig from './app.config';
 import databaseConfig from './database.config';
 import redisConfig from './redis.config';
 import jwtConfig from './jwt.config';
+import wechatConfig from './wechat.config';
 
 /**
  * 根据环境获取 .env 文件路径
@@ -29,7 +30,7 @@ function getEnvFilePath(): string[] {
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, redisConfig, jwtConfig],
+      load: [appConfig, databaseConfig, redisConfig, jwtConfig, wechatConfig],
       envFilePath: getEnvFilePath(),
       ignoreEnvFile: false,
       // 允许使用环境变量覆盖配置文件中的值
