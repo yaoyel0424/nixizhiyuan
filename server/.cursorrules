@@ -1,0 +1,429 @@
+# NestJS 11 后台框架 - Cursor 项目规则
+
+## 项目概述
+
+这是一个基于 NestJS 11 的完整后台开发框架，使用 TypeScript、PostgreSQL、TypeORM、Redis、Pino 等技术栈。
+
+## 技术栈
+
+- **框架**: NestJS 11, TypeScript
+- **数据库**: PostgreSQL + TypeORM
+- **缓存**: Redis (node-redis)
+- **认证**: JWT (@nestjs/jwt, passport-jwt)
+- **验证**: class-validator, class-transformer
+- **日志**: Pino (nestjs-pino)
+- **部署**: Docker, Docker Compose
+
+## 代码风格规范
+
+### 缩进和格式
+- 使用 **2 个空格**进行缩进（不使用 Tab）
+- 使用 **单引号**（'）而不是双引号
+- 行尾使用分号
+- 最大行长度：100 字符
+- 使用 Prettier 进行代码格式化
+
+### 命名规范
+- **文件命名**: 使用 kebab-case（如：`user-profile.service.ts`）
+- **组件/类命名**: 使用 PascalCase（如：`UserService`, `UserController`）
+- **变量/函数命名**: 使用 camelCase（如：`getUserById`, `userName`）
+- **常量命名**: 使用 UPPER_SNAKE_CASE（如：`MAX_RETRY_COUNT`）
+- **接口命名**: 使用 PascalCase，可以加 `I` 前缀或后缀（如：`IUser` 或 `UserInterface`）
+- **类型命名**: 使用 PascalCase（如：`UserResponse`）
+
+### 文件组织
+- 每个模块独立文件夹，包含：`*.module.ts`, `*.controller.ts`, `*.service.ts`
+- DTO 放在 `dto/` 子文件夹
+- Entity 放在 `entities/` 子文件夹（或统一的 `src/entities/` 文件夹）
+- Repository 放在 `repositories/` 子文件夹（可选）
+- 测试文件使用 `*.spec.ts` 命名
+
+## 架构模式
+
+### 模块化设计
+- 每个功能模块独立封装（如：`users/`, `auth/`, `products/`）
+- 模块间通过 `exports` 和 `imports` 管理依赖
+- 使用 NestJS IOC 容器进行依赖注入
+- 服务类必须使用 `@Injectable()` 装饰器
+
+### 分层架构
+```
+Controller (控制器层)
+  ↓
+Service (业务逻辑层)
+  ↓
+Repository (数据访问层，可选)
+  ↓
+Entity (实体层)
+```
+
+### Repository 模式
+- 简单查询直接在 Service 中使用 TypeORM Repository
+- 复杂查询（多表关联、复杂条件）封装到自定义 Repository
+- Repository 文件放在 `repositories/` 文件夹
+
+## DTO 和验证规范
+
+### 请求 DTO (Request DTO)
+- **必须**使用 `class-validator` 装饰器进行验证
+- 使用装饰器：`@IsString()`, `@IsEmail()`, `@IsNotEmpty()`, `@MinLength()`, `@MaxLength()`, `@IsOptional()`, `@IsEnum()` 等
+- 示例：
+```typescript
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3)
+  @MaxLength(50)
+  username: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+}
+```
+
+### 响应 DTO (Response DTO)
+- **必须**使用 `class-transformer` 进行序列化
+- 使用 `@Expose()` 明确暴露需要返回的字段
+- 使用 `@Exclude()` 排除敏感信息（如密码）
+- **不要**使用 `class-validator` 装饰器（响应不需要验证）
+- 示例：
+```typescript
+export class UserResponseDto {
+  @Expose()
+  id: number;
+
+  @Expose()
+  username: string;
+
+  @Expose()
+  email: string;
+
+  @Exclude() // 排除密码字段
+  password: string;
+}
+```
+
+## 异常处理规范
+
+### 异常类型
+- 自定义业务异常**必须**继承 `HttpException`
+- 使用 NestJS 内置的 HTTP 状态码（`HttpStatus`）
+- 示例：
+```typescript
+export class BusinessException extends HttpException {
+  constructor(
+    message: string,
+    statusCode: number = HttpStatus.BAD_REQUEST,
+    errorCode?: string,
+  ) {
+    super({ message, errorCode }, statusCode);
+  }
+}
+```
+
+### 异常抛出
+- 在 Service 层抛出异常
+- 使用全局异常过滤器统一处理
+- 返回标准错误响应格式
+
+## 日志规范
+
+### 日志库
+- **必须**使用 Pino 进行日志记录（高性能，适合生产环境）
+- 通过 `nestjs-pino` 集成
+
+### 日志级别
+- `error`: 错误日志（系统错误、异常）
+- `warn`: 警告日志（潜在问题）
+- `info`: 信息日志（重要操作、请求记录）
+- `debug`: 调试日志（开发调试信息）
+- `verbose`: 详细日志（详细执行信息）
+
+### 日志使用
+```typescript
+// 在构造函数中注入 Logger
+constructor(private readonly logger: Logger) {}
+
+// 记录日志
+this.logger.log('用户创建成功', 'UserService');
+this.logger.error('用户创建失败', error.stack, 'UserService');
+```
+
+## 数据库和 ORM 规范
+
+### Entity 定义
+- Entity 文件命名：`*.entity.ts`
+- 使用 TypeORM 装饰器：`@Entity()`, `@Column()`, `@PrimaryGeneratedColumn()` 等
+- 支持软删除：使用 `@DeleteDateColumn()`
+- 自动时间戳：使用 `@CreateDateColumn()`, `@UpdateDateColumn()`
+- Entity 可以放在模块的 `entities/` 文件夹或统一的 `src/entities/` 文件夹
+
+### 数据库查询
+- 使用 TypeORM Repository 进行数据库操作
+- 复杂查询封装到自定义 Repository
+- 使用参数化查询防止 SQL 注入
+- 分页查询使用 `skip()` 和 `take()`
+
+### 数据库迁移
+- 迁移文件命名：`{timestamp}-{Description}.ts`
+- 使用 TypeORM 迁移命令：`npm run migration:generate`, `npm run migration:run`
+
+## API 设计规范
+
+### 路由前缀
+- 所有 API 路由前缀：`/api/v1`
+
+### RESTful 设计
+- `GET /api/v1/users` - 获取列表（支持分页、排序、筛选）
+- `GET /api/v1/users/:id` - 获取详情
+- `POST /api/v1/users` - 创建资源
+- `PATCH /api/v1/users/:id` - 更新资源（部分更新）
+- `PUT /api/v1/users/:id` - 更新资源（完整更新）
+- `DELETE /api/v1/users/:id` - 删除资源
+
+### 响应格式
+- 成功响应：
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "操作成功",
+  "data": {},
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+- 分页响应：
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "查询成功",
+  "data": {
+    "items": [],
+    "meta": {
+      "total": 100,
+      "page": 1,
+      "limit": 10,
+      "totalPages": 10
+    }
+  },
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+- 错误响应：
+```json
+{
+  "success": false,
+  "code": "ERROR_CODE",
+  "message": "错误描述",
+  "errors": [],
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "path": "/api/users"
+}
+```
+
+### Swagger 文档
+- 使用 `@nestjs/swagger` 装饰器标注 API
+- Controller 使用 `@ApiTags()` 分组
+- 方法使用 `@ApiOperation()`, `@ApiResponse()` 等装饰器
+
+## 认证和授权规范
+
+### JWT 认证
+- 使用 `@nestjs/jwt` 和 `passport-jwt`
+- Access Token: 短期有效（如 15 分钟）
+- Refresh Token: 长期有效（如 7 天），存储在 Redis
+
+### 权限控制
+- 使用 `@Roles()` 装饰器定义所需角色
+- 使用 `@Public()` 装饰器标记公开路由
+- 使用 `@CurrentUser()` 装饰器获取当前用户
+
+### 密码加密
+- 使用 `bcrypt` 进行密码加密
+- 密码不存储在明文，查询时使用 `@Column({ select: false })` 排除
+
+## 配置管理规范
+
+### 环境变量
+- 使用 `@nestjs/config` 管理配置
+- 配置文件：`.env`, `.env.local`, `.env.production` 等
+- 配置项通过 `ConfigService` 访问
+- 敏感信息使用环境变量，不硬编码
+
+### 配置模块
+- 配置项使用 `registerAs()` 注册
+- 配置模块放在 `src/config/` 文件夹
+- 每个配置项独立文件（如：`database.config.ts`, `jwt.config.ts`）
+
+## 测试规范
+
+### 测试文件
+- 单元测试：`*.spec.ts`
+- E2E 测试：`test/e2e/`
+- 测试环境使用 `NODE_ENV=test`
+
+### 测试工具
+- Jest: 测试框架
+- Supertest: HTTP 断言库
+
+## 安全规范
+
+### 数据安全
+- SQL 注入防护：使用 TypeORM 参数化查询
+- XSS 防护：数据验证和转义
+- CSRF 防护：JWT Token 机制
+
+### 接口安全
+- 敏感接口必须进行权限验证
+- 请求参数必须验证
+- 使用 Helmet 设置 HTTP 安全头
+
+## 性能优化
+
+### 数据库优化
+- 使用数据库连接池
+- 查询优化（索引、分页）
+- 避免 N+1 查询问题
+
+### 缓存优化
+- 使用 Redis 缓存热点数据
+- 合理设置缓存失效时间
+
+### 代码优化
+- 使用异步处理
+- 请求超时控制
+- 响应压缩（compression）
+
+## 代码注释规范
+
+### 类和方法的注释
+- 所有类和方法**必须**有中文注释
+- 使用 JSDoc 格式注释
+- 示例：
+```typescript
+/**
+ * 用户服务
+ * 处理用户相关的业务逻辑
+ */
+@Injectable()
+export class UserService {
+  /**
+   * 根据 ID 获取用户
+   * @param id 用户 ID
+   * @returns 用户信息
+   */
+  async findById(id: number): Promise<User> {
+    // ...
+  }
+}
+```
+
+### 复杂逻辑注释
+- 复杂业务逻辑必须添加注释说明
+- 使用中文注释
+
+## 错误处理
+
+### 错误信息
+- 错误信息**必须**使用中文描述
+- 提供明确的错误原因
+- 给出可行的解决方案
+
+## 代码生成规则
+
+### 创建新模块时
+1. 创建模块文件夹（如：`products/`）
+2. 创建 `products.module.ts`
+3. 创建 `products.controller.ts`
+4. 创建 `products.service.ts`
+5. 创建 `dto/` 文件夹和相应的 DTO 文件
+6. 创建 `entities/` 文件夹和 Entity 文件（如需要）
+7. 在 `app.module.ts` 中导入新模块
+
+### 创建新 Entity 时
+- 文件命名：`*.entity.ts`
+- 放在模块的 `entities/` 文件夹或统一的 `src/entities/` 文件夹
+- 必须包含中文注释
+- 使用 TypeORM 装饰器
+
+### 创建新 DTO 时
+- 请求 DTO：使用 `class-validator` 验证
+- 响应 DTO：使用 `class-transformer` 序列化
+- 放在模块的 `dto/` 文件夹
+
+## 禁止事项
+
+1. ❌ **不要**在代码中硬编码敏感信息（密码、密钥等）
+2. ❌ **不要**在响应 DTO 中使用 `class-validator` 装饰器
+3. ❌ **不要**在请求 DTO 中使用 `@Expose()` 或 `@Exclude()`
+4. ❌ **不要**直接使用 `console.log`，使用 Logger
+5. ❌ **不要**在 Service 层直接返回 Entity，使用 Response DTO
+6. ❌ **不要**在生产环境启用 `DB_SYNCHRONIZE`
+7. ❌ **不要**提交 `.env` 文件到版本控制
+8. ❌ **不要**使用 `any` 类型，使用明确的类型定义
+
+## 推荐实践
+
+1. ✅ 使用 TypeScript 严格模式
+2. ✅ 使用依赖注入而不是直接实例化
+3. ✅ 使用 Repository 模式封装复杂查询
+4. ✅ 使用拦截器统一处理响应格式
+5. ✅ 使用全局异常过滤器统一处理异常
+6. ✅ 使用 Pino 进行日志记录
+7. ✅ 使用 Swagger 生成 API 文档
+8. ✅ 编写单元测试和 E2E 测试
+
+## 环境配置
+
+### 开发环境
+- `NODE_ENV=development`
+- 使用 `npm run start:dev` 启动
+- 启用详细日志和调试信息
+
+### 生产环境
+- `NODE_ENV=production`
+- 使用 `npm run build` 构建
+- 使用 `npm run start:prod` 启动
+- 禁用 `DB_SYNCHRONIZE`
+- 禁用详细日志
+
+### 测试环境
+- `NODE_ENV=test`
+- 使用独立的测试数据库
+- 使用 `npm test` 运行测试
+
+## 项目特定规则
+
+### 实体文件位置
+- Entity 可以放在模块的 `entities/` 文件夹（如：`src/users/entities/user.entity.ts`）
+- 也可以放在统一的 `src/entities/` 文件夹（如：`src/entities/user.entity.ts`）
+- 两种方式都会被自动发现
+
+### 拦截器命名
+- 使用具体命名，如：`ResponseFormatInterceptor` 而不是 `TransformInterceptor`
+
+### 自定义异常
+- 自定义业务异常必须继承 `HttpException`
+- 便于全局异常过滤器统一捕获和处理
+
+## 代码审查检查清单
+
+在提交代码前，确保：
+- [ ] 代码符合命名规范
+- [ ] 所有类和方法有中文注释
+- [ ] 请求 DTO 使用了验证装饰器
+- [ ] 响应 DTO 使用了序列化装饰器
+- [ ] 异常处理正确
+- [ ] 日志记录适当
+- [ ] 没有硬编码敏感信息
+- [ ] 代码已通过 ESLint 检查
+- [ ] 代码已通过 Prettier 格式化
+- [ ] 测试通过（如有）
+

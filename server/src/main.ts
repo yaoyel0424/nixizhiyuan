@@ -48,10 +48,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-    await app.listen(port);
+    // 监听所有网络接口，允许外部访问
+    await app.listen(port, '0.0.0.0');
 
     const logger = new Logger('Bootstrap');
     logger.log(`应用启动成功: http://localhost:${port}`);
+    logger.log(`应用启动成功: http://0.0.0.0:${port}`);
     logger.log(`API 文档: http://localhost:${port}/api/docs`);
   } catch (error) {
     const logger = new Logger('Bootstrap');

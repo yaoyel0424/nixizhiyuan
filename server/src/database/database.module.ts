@@ -18,6 +18,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         username: configService.get('database.username') || 'postgres',
         password: configService.get('database.password') || 'postgres',
         database: configService.get('database.database') || 'nestjs_db',
+        // 实体文件路径：支持两种组织方式
+        // 1. 统一文件夹：src/entities/*.entity.ts
+        // 2. 按模块组织：src/**/entities/*.entity.ts (如 src/users/entities/user.entity.ts)
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
         synchronize: configService.get('database.synchronize') || false,
