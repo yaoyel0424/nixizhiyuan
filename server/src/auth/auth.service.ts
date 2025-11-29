@@ -24,82 +24,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
-  ) {}
-
-  /**
-   * 用户注册
-   */
-  async register(registerDto: RegisterDto) {
-    try {
-      const user = await this.usersService.create({
-        username: registerDto.username,
-        email: registerDto.email,
-        password: registerDto.password,
-        roles: ['user'],
-      });
-
-      // 生成 Token
-      const tokens = await this.generateTokens(user);
-
-      return {
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          roles: user.roles,
-        },
-        ...tokens,
-      };
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * 用户登录
-   */
-  async login(loginDto: LoginDto) {
-    // 查找用户
-    const user = await this.usersService.findByUsernameOrEmail(
-      loginDto.usernameOrEmail,
-    );
-
-    if (!user) {
-      throw new UnauthorizedException({
-        code: ErrorCode.INVALID_CREDENTIALS,
-        message: '用户名或密码错误',
-      });
-    }
-
-    // 验证密码
-    const isPasswordValid = await HashUtil.comparePassword(
-      loginDto.password,
-      user.password,
-    );
-
-    if (!isPasswordValid) {
-      throw new UnauthorizedException({
-        code: ErrorCode.INVALID_CREDENTIALS,
-        message: '用户名或密码错误',
-      });
-    }
-
-    // 生成 Token
-    const tokens = await this.generateTokens(user);
-
-    return {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        roles: user.roles,
-      },
-      ...tokens,
-    };
-  }
+  ) {} 
 
   /**
    * 刷新令牌
@@ -186,6 +111,96 @@ export class AuthService {
   }
 
   /**
+   * 微信登录 - 查找或创建用户
+   * 由 WechatStrategy 调用，处理用户查找/创建和 Token 生成
+   */
+  async findOrCreateWechatUser(wechatUserInfo: any) {
+    // 先通过 openid 查找用户
+    let user = await this.usersService.findByOpenid(wechatUserInfo.openid);
+
+    if (!user) {
+      // 如果用户不存在，创建新用户
+      user = await this.usersService.create({
+        openid: wechatUserInfo.openid,
+        unionid: wechatUserInfo.unionid,
+        nickname: wechatUserInfo.nickname,
+        avatarUrl: wechatUserInfo.headimgurl,  
+      });
+    } else {
+      // 如果用户已存在，更新用户信息
+      const updateData: any = {
+        nickname: wechatUserInfo.nickname,
+        avatarUrl: wechatUserInfo.headimgurl,
+      };
+      
+      if (wechatUserInfo.unionid) {
+        updateData.unionid = wechatUserInfo.unionid;
+      }
+      
+      if (wechatUserInfo.province) {
+        updateData.province = wechatUserInfo.province;
+      }
+      
+      if (wechatUserInfo.sex !== undefined) {
+        updateData.gender = wechatUserInfo.sex === 1 ? 'male' : wechatUserInfo.sex === 2 ? 'female' : 'unknown';
+      }
+      
+      user = await this.usersService.update(user.id, updateData);
+    }
+
+    // 生成 Token
+    const tokens = await this.generateTokensForWechatUser(user);
+
+    return {
+      user: {
+        id: user.id,
+        openid: (user as any).openid,
+        nickname: (user as any).nickname,
+        avatarUrl: (user as any).avatarUrl,
+      },
+      ...tokens,
+    };
+  }
+
+  /**
+   * 为微信用户生成 Token
+   */
+  private async generateTokensForWechatUser(user: any) {
+    const payload: IJwtPayload = {
+      sub: user.id,
+      username: user.openid, // 使用 openid 作为 username
+      email: user.unionid || user.openid, // 使用 unionid 或 openid 作为 email
+      roles: ['user'],
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('jwt.secret'),
+      expiresIn: this.configService.get<string>('jwt.expiresIn'),
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('jwt.refreshSecret'),
+      expiresIn: this.configService.get<string>('jwt.refreshExpiresIn'),
+    });
+
+    // 将 Refresh Token 存储到 Redis
+    const refreshExpiresIn = this.configService.get<string>(
+      'jwt.refreshExpiresIn',
+    );
+    const expiresInSeconds = this.parseExpiresIn(refreshExpiresIn);
+    await this.redisService.set(
+      `refresh_token:${user.id}`,
+      refreshToken,
+      expiresInSeconds,
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  /**
    * 解析过期时间字符串为秒数
    */
   private parseExpiresIn(expiresIn: string): number {
@@ -202,7 +217,7 @@ export class AuthService {
       case 'd':
         return value * 86400;
       default:
-        return 7 * 86400; // 默认 7 天
+        return 15 * 86400; // 默认 15 天
     }
   }
 }

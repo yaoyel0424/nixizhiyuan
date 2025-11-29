@@ -40,21 +40,7 @@ export class UsersController {
     return plainToInstance(UserResponseDto, user, {
       excludeExtraneousValues: true,
     });
-  }
-
-  @Get()
-  @ApiOperation({ summary: '获取用户列表（分页）' })
-  async findAll(@Query() queryDto: QueryUserDto) {
-    const result = await this.usersService.findAll(queryDto);
-    return {
-      ...result,
-      items: result.items.map((user) =>
-        plainToInstance(UserResponseDto, user, {
-          excludeExtraneousValues: true,
-        }),
-      ),
-    };
-  }
+  } 
 
   @Get(':id')
   @ApiOperation({ summary: '获取用户详情' })

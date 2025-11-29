@@ -44,11 +44,24 @@ npm install --legacy-peer-deps
 
 ### 配置环境变量
 
-复制 `.env.example` 为 `.env` 并修改配置：
+在 `server` 目录下创建 `.env` 文件：
 
-```bash
-cp .env.example .env
+**方法 1：手动创建**
+在 `server` 目录下创建 `.env` 文件，参考 [ENV_SETUP.md](./ENV_SETUP.md) 中的配置模板。
+
+**方法 2：使用命令行（Windows PowerShell）**
+```powershell
+cd server
+# 参考 ENV_SETUP.md 中的 PowerShell 命令创建 .env 文件
 ```
+
+**方法 3：使用命令行（Linux/Mac）**
+```bash
+cd server
+# 参考 ENV_SETUP.md 中的 bash 命令创建 .env 文件
+```
+
+详细配置说明请参考 [ENV_SETUP.md](./ENV_SETUP.md)
 
 ### 启动数据库和 Redis
 

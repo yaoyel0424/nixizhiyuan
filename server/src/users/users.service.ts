@@ -5,10 +5,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User } from '@/entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { QueryUserDto } from './dto/query-user.dto';
 import { UsersRepository } from './repositories/users.repository';
 import { HashUtil } from '../common/utils/hash.util';
 import { ErrorCode } from '../common/constants/error-code.constant';
@@ -26,49 +25,41 @@ export class UsersService {
 
   /**
    * 创建用户
+   * 通过 openid、nickname、avatarUrl、unionid 创建，其他字段默认为 null
    */
   async create(createUserDto: CreateUserDto): Promise<User> {
-    // 检查用户名是否已存在
-    const existingUser = await this.usersRepository.findByUsernameOrEmail(
-      createUserDto.username,
-    );
+    // 检查 openid 是否已存在
+    const existingUser = await this.userRepository.findOne({
+      where: { openid: createUserDto.openid },
+    });
     if (existingUser) {
       throw new ConflictException({
         code: ErrorCode.USER_ALREADY_EXISTS,
-        message: '用户名或邮箱已存在',
+        message: '该微信账号已注册',
       });
     }
 
-    // 检查邮箱是否已存在
-    const existingEmail = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
-    });
-    if (existingEmail) {
-      throw new ConflictException({
-        code: ErrorCode.USER_ALREADY_EXISTS,
-        message: '邮箱已存在',
-      });
-    }
-
-    // 加密密码
-    const hashedPassword = await HashUtil.hashPassword(createUserDto.password);
-
-    // 创建用户
+    // 创建用户，其他字段默认为 null
     const user = this.userRepository.create({
-      ...createUserDto,
-      password: hashedPassword,
-      roles: createUserDto.roles || ['user'],
+      openid: createUserDto.openid,
+      nickname: createUserDto.nickname || null,
+      avatarUrl: createUserDto.avatarUrl || null,
+      unionid: createUserDto.unionid || null,
+      // 其他字段默认为 null
+      province: null,
+      score: null,
+      preferredSubjects: null,
+      secondarySubjects: null,
+      rank: null,
+      enrollType: null,
+      userType: 'child', // 默认值
+      age: null,
+      gender: null,
     });
 
-    return this.userRepository.save(user);
+    return await this.userRepository.save(user);
   }
-
-  /**
-   * 分页查询用户
-   */
-  async findAll(queryDto: QueryUserDto) {
-    return this.usersRepository.findWithPagination(queryDto);
-  }
+ 
 
   /**
    * 根据 ID 查找用户
@@ -108,12 +99,12 @@ export class UsersService {
     const user = await this.findOne(id);
     await this.userRepository.softRemove(user);
   }
-
+ 
   /**
-   * 根据用户名或邮箱查找用户（用于认证）
+   * 根据 openid 查找用户（用于微信登录）
    */
-  async findByUsernameOrEmail(usernameOrEmail: string): Promise<User | null> {
-    return this.usersRepository.findByUsernameOrEmail(usernameOrEmail);
+  async findByOpenid(openid: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { openid } });
   }
 }
 

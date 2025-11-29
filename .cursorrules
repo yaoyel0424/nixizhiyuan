@@ -1,0 +1,68 @@
+# 项目工作区规则
+
+这是一个多项目工作区，包含以下子项目：
+- `server/` - NestJS 11 后台框架
+- `miniapp/` - 小程序前端
+
+## 重要说明
+
+**当在 `server/` 目录下工作时，Cursor 会自动加载 `server/.cursorrules` 中的详细规则。**
+
+如果当前打开的文件在 `server/` 目录下，请遵循 `server/.cursorrules` 中定义的所有规范。
+
+## Server 项目规则（简要）
+
+### 技术栈
+- NestJS 11, TypeScript
+- PostgreSQL + TypeORM
+- Redis (node-redis)
+- JWT 认证
+- Pino 日志
+
+### 代码风格
+- 使用 2 个空格缩进
+- 使用单引号
+- 行尾使用分号
+- 最大行长度：100 字符
+
+### 命名规范
+- 文件命名：kebab-case（如：`user-profile.service.ts`）
+- 类/组件命名：PascalCase（如：`UserService`）
+- 变量/函数命名：camelCase（如：`getUserById`）
+- 常量命名：UPPER_SNAKE_CASE（如：`MAX_RETRY_COUNT`）
+
+### 注释规范
+- 所有代码注释使用中文
+- 类和函数必须有中文文档注释（JSDoc 格式）
+
+### 架构模式
+- 模块化设计：每个功能模块独立封装
+- 分层架构：Controller → Service → Repository → Entity
+- 使用 NestJS IOC 容器进行依赖注入
+
+### DTO 规范
+- 请求 DTO：使用 `class-validator` 装饰器验证
+- 响应 DTO：使用 `class-transformer` 序列化（`@Expose()`, `@Exclude()`）
+
+### 异常处理
+- 自定义异常必须继承 `HttpException`
+- 使用全局异常过滤器统一处理
+
+### 日志规范
+- 使用 Pino 进行日志记录
+- 不要使用 `console.log`
+
+### 禁止事项
+- ❌ 不要硬编码敏感信息
+- ❌ 不要在响应 DTO 中使用 `class-validator`
+- ❌ 不要在请求 DTO 中使用 `@Expose()` 或 `@Exclude()`
+- ❌ 不要使用 `console.log`，使用 Logger
+- ❌ 不要在生产环境启用 `DB_SYNCHRONIZE`
+- ❌ 不要使用 `any` 类型
+
+## 详细规则
+
+完整的 Server 项目规则请查看：`server/.cursorrules`
+
+使用说明请查看：`server/CURSOR_RULES_README.md`
+
