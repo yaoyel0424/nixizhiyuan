@@ -1,174 +1,195 @@
-import React, { useState } from 'react'
-import { View, Text, Image } from '@tarojs/components'
-import { useAppDispatch } from '@/store/hooks'
-import { setUserInfo, setLoginLoading } from '@/store/slices/userSlice'
-import { Button, Input, Loading } from '@/components'
-import { login } from '@/services'
-import { validatePhone } from '@/utils'
-import Taro from '@tarojs/taro'
-import './index.less'
+import React, { useState } from 'react';
+import { View, Text, Image, Button } from '@tarojs/components';
+import { useAppDispatch } from '@/store/hooks';
+import { setUserInfo, setLoginLoading } from '@/store/slices/userSlice';
+import { Loading } from '@/components';
+import { wechatLogin } from '@/services';
+import Taro from '@tarojs/taro';
+import './index.less';
 
 const Login: React.FC = () => {
-  const dispatch = useAppDispatch()
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  })
-  const [loading, setLoading] = useState(false)
+  const dispatch = useAppDispatch();
+  const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-  const handleLogin = async () => {
-    const { username, password } = formData
-
-    if (!username.trim()) {
-      Taro.showToast({
-        title: '请输入用户名',
-        icon: 'none'
-      })
-      return
-    }
-
-    if (!password.trim()) {
-      Taro.showToast({
-        title: '请输入密码',
-        icon: 'none'
-      })
-      return
-    }
-
-    if (username.includes('@')) {
-      if (!validateEmail(username)) {
-        Taro.showToast({
-          title: '请输入正确的邮箱格式',
-          icon: 'none'
-        })
-        return
-      }
-    } else if (validatePhone(username)) {
-      // 手机号验证
-    } else {
-      Taro.showToast({
-        title: '请输入正确的用户名格式',
-        icon: 'none'
-      })
-      return
-    }
-
-    setLoading(true)
-    dispatch(setLoginLoading(true))
+  /**
+   * 处理微信登录
+   */
+  const handleWechatLogin = async () => {
+    setLoading(true);
+    dispatch(setLoginLoading(true));
 
     try {
-      const response = await login({
-        username,
-        password
-      })
+      // 获取微信登录凭证
+      const loginRes = await Taro.login();
 
-      if (response.success) {
-        dispatch(setUserInfo(response.data.userInfo))
-        Taro.setStorageSync('token', response.data.token)
-        
+      if (!loginRes.code) {
         Taro.showToast({
-          title: '登录成功',
-          icon: 'success'
-        })
-
-        setTimeout(() => {
-          Taro.reLaunch({
-            url: '/pages/index/index'
-          })
-        }, 1500)
+          title: '获取微信登录凭证失败',
+          icon: 'none',
+        });
+        return;
       }
-    } catch (error) {
-      console.error('登录失败:', error)
+
+      // // 调用后端接口进行微信登录
+      // const response = await wechatLogin(loginRes.code)
+
+      // // 处理响应数据，适配不同的响应格式
+      // const userInfo = response.user || response.userInfo || response
+      // const token = response.accessToken || response.token
+      // const refreshToken = response.refreshToken
+
+      // if (userInfo) {
+      //   // 转换用户信息格式以适配 store
+      //   const formattedUserInfo = {
+      //     id: userInfo.id,
+      //     nickname: userInfo.nickname || userInfo.nickName,
+      //     avatar: userInfo.avatarUrl || userInfo.avatar,
+      //     phone: userInfo.phone || '',
+      //     email: userInfo.email || '',
+      //     role: userInfo.role || 'user',
+      //     permissions: userInfo.permissions || []
+      //   }
+
+      //   dispatch(setUserInfo(formattedUserInfo))
+
+      //   if (token) {
+      //     Taro.setStorageSync('token', token)
+      //   }
+      //   if (refreshToken) {
+      //     Taro.setStorageSync('refreshToken', refreshToken)
+      //   }
+
+      //   Taro.showToast({
+      //     title: '登录成功',
+      //     icon: 'success'
+      //   })
+
+      //   setTimeout(() => {
+      //     Taro.reLaunch({
+      //       url: '/pages/index/index'
+      //     })
+      //   }, 1500)
+      // } else {
+      //   throw new Error('登录失败：未获取到用户信息')
+      // }
+
       Taro.showToast({
-        title: '登录失败，请检查用户名和密码',
-        icon: 'none'
-      })
+        title: '登录成功',
+        icon: 'success',
+      });
+
+      setTimeout(() => {
+        Taro.reLaunch({
+          url: '/pages/index/index',
+        });
+      }, 1500);
+    } catch (error: any) {
+      console.error('微信登录失败:', error);
+      Taro.showToast({
+        title: error?.message || '登录失败，请稍后重试',
+        icon: 'none',
+      });
     } finally {
-      setLoading(false)
-      dispatch(setLoginLoading(false))
+      setLoading(false);
+      dispatch(setLoginLoading(false));
     }
-  }
-
-  const handleRegister = () => {
-    Taro.navigateTo({
-      url: '/pages/register/index'
-    })
-  }
-
-  const handleForgotPassword = () => {
-    Taro.navigateTo({
-      url: '/pages/forgot-password/index'
-    })
-  }
+  };
 
   return (
     <View className="login-page">
-      <View className="login-page__header">
-        <Image 
-          className="login-page__logo" 
-          src="/assets/images/logo.png" 
-        />
-        <Text className="login-page__title">欢迎回来</Text>
-        <Text className="login-page__subtitle">请登录您的账户</Text>
-      </View>
-
-      <View className="login-page__form">
-        <View className="login-page__input-group">
-          <Input
-            placeholder="请输入用户名/手机号/邮箱"
-            value={formData.username}
-            onChange={(value) => handleInputChange('username', value)}
-          />
+      <View className="login-page__container">
+        {/* Logo 区域 */}
+        <View className="login-page__header">
+          <Image className="login-page__logo" src="/assets/images/logo.png" mode="aspectFit" />
         </View>
 
-        <View className="login-page__input-group">
-          <Input
-            placeholder="请输入密码"
-            value={formData.password}
-            onChange={(value) => handleInputChange('password', value)}
-            password
-          />
+        {/* 标题 */}
+        <View className="login-page__title-section">
+          <Text className="login-page__title">逆袭智愿</Text>
         </View>
 
-        <View className="login-page__forgot">
-          <Text 
-            className="login-page__forgot-link"
-            onClick={handleForgotPassword}
+        {/* 问题列表 */}
+        <View className="login-page__questions">
+          <Text className="login-page__questions-title">你是否在想：</Text>
+          <View className="login-page__questions-list">
+            <View className="login-page__question-item">
+              <Text className="login-page__question-text">
+                我的喜欢是什么？天赋在哪里？哪些专业能让我闪闪发光？如何用分数，创造出最理想的志愿？
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 总结文案 */}
+        <View className="login-page__summary">
+          <Text className="login-page__summary-text">我们来帮你找到答案</Text>
+        </View>
+
+        {/* 登录按钮区域 */}
+        <View className="login-page__actions">
+          {/* 微信一键登录按钮 */}
+          <Button className="login-page__wechat-btn" onClick={handleWechatLogin} disabled={loading}>
+            <Image
+              className="login-page__wechat-icon"
+              src={require('@/assets/images/wechat_logo.png')}
+              mode="aspectFit"
+            />
+            <Text className="login-page__wechat-text">微信一键登录</Text>
+          </Button>
+
+          {/* 微信登录描述 */}
+          <Text className="login-page__wechat-desc">微信一键登录,安全便捷</Text>
+
+          {/* 本地手机号一键登录 */}
+          <View
+            className="login-page__phone-btn"
+            onClick={() => {
+              Taro.showToast({
+                title: '手机号登录功能开发中',
+                icon: 'none',
+              });
+            }}
           >
-            忘记密码？
-          </Text>
+            <Text className="login-page__phone-icon">📱</Text>
+            <Text className="login-page__phone-text">本地手机号一键登录</Text>
+          </View>
         </View>
 
-        <Button
-          type="primary"
-          loading={loading}
-          onClick={handleLogin}
-          className="login-page__login-btn"
-        >
-          登录
-        </Button>
-
-        <View className="login-page__register">
-          <Text className="login-page__register-text">还没有账户？</Text>
-          <Text 
-            className="login-page__register-link"
-            onClick={handleRegister}
-          >
-            立即注册
-          </Text>
+        {/* 底部 Footer */}
+        <View className="login-page__footer">
+          <Text className="login-page__footer-text">专业院校信息全部来自官网权威可靠</Text>
+          <View className="login-page__footer-agreement">
+            <Text className="login-page__footer-text">登录即代表同意</Text>
+            <Text
+              className="login-page__footer-link"
+              onClick={() => {
+                Taro.showToast({
+                  title: '用户协议',
+                  icon: 'none',
+                });
+              }}
+            >
+              《用户协议》
+            </Text>
+            <Text className="login-page__footer-text">和</Text>
+            <Text
+              className="login-page__footer-link"
+              onClick={() => {
+                Taro.showToast({
+                  title: '隐私政策',
+                  icon: 'none',
+                });
+              }}
+            >
+              《隐私政策》
+            </Text>
+          </View>
         </View>
       </View>
 
       {loading && <Loading overlay text="登录中..." />}
     </View>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

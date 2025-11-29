@@ -16,20 +16,20 @@ const TABBAR_PAGES = [
 // 这些字符在小程序中显示清晰，无需额外依赖
 const ICON_MAP: Record<string, { normal: string; active: string }> = {
   home: {
-    normal: '◉',  // 主页图标 - 空心圆点
-    active: '●'   // 激活状态 - 实心圆
+    normal: '🏠',  // 主页图标 - 房屋
+    active: '🏠'   // 激活状态 - 房屋
   },
   clipboard: {
-    normal: '▢',  // 探索成果图标 - 空心方框
-    active: '■'   // 激活状态 - 实心方框
+    normal: '📊',  // 探索成果图标 - 图表
+    active: '📊'   // 激活状态 - 图表
   },
   target: {
-    normal: '△',  // 志愿方案图标 - 空心三角
-    active: '▲'   // 激活状态 - 实心三角
+    normal: '🎯',  // 志愿方案图标 - 靶心
+    active: '🎯'   // 激活状态 - 靶心
   },
   user: {
-    normal: '◇',  // 个人中心图标 - 空心菱形
-    active: '◆'   // 激活状态 - 实心菱形
+    normal: '👤',  // 个人中心图标 - 人形轮廓
+    active: '👤'   // 激活状态 - 人形轮廓
   }
 }
 

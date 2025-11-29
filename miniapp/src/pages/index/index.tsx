@@ -165,7 +165,7 @@ export default function IndexPage() {
                   <Text className="index-page__card-tag">📊 168题</Text>
                   <Text className="index-page__card-tag">📈 全面数据</Text>
                 </View>
-                <Text className="index-page__card-time">约40分钟</Text>
+                <Text className="index-page__card-time">🕒 需时约40分钟</Text>
               </View>
             </View>
             <Text className="index-page__card-desc">
@@ -175,6 +175,11 @@ export default function IndexPage() {
               🎯 开启探索
             </Button>
           </Card>
+        </View>
+        
+        {/* 信任背书 */}
+        <View className="index-page__trust-badge">
+          <Text className="index-page__trust-text">基于 教育部 官方数据</Text>
         </View>
       </View>
 

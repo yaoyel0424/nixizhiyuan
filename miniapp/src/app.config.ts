@@ -1,11 +1,11 @@
 export default {
   pages: [
+    'pages/login/index',
     'pages/index/index',
     'pages/assessment/all-majors/index',
     'pages/majors/index',
     'pages/profile/index',
     'pages/user/index',
-    'pages/login/index',
     'pages/assessment/questionnaire/index',
     'pages/assessment/popular-majors/index',
     'pages/assessment/report/index',
