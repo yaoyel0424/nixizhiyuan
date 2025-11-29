@@ -1,0 +1,43 @@
+// 卡片组件样式
+.card {
+  background: var(--card-bg, #fff);
+  color: var(--card-foreground, #000);
+  display: flex;
+  flex-direction: column;
+  gap: 48rpx;
+  border-radius: 24rpx;
+  border: 2rpx solid var(--border-color, #e5e7eb);
+  padding: 48rpx;
+  box-shadow: 0 2rpx 4rpx 0 rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 16rpx;
+  padding: 0 48rpx;
+  padding-bottom: 48rpx;
+}
+
+.card-title {
+  line-height: 1;
+  font-weight: 600;
+  font-size: 32rpx;
+}
+
+.card-description {
+  color: var(--muted-foreground, #666);
+  font-size: 28rpx;
+}
+
+.card-content {
+  padding: 0 48rpx;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  padding: 0 48rpx;
+  padding-top: 48rpx;
+}
+

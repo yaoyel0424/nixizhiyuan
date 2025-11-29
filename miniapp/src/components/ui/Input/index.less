@@ -1,0 +1,29 @@
+// 输入框组件样式
+.ui-input {
+  height: 72rpx;
+  width: 100%;
+  min-width: 0;
+  border-radius: 12rpx;
+  border: 2rpx solid var(--border-color, #d9d9d9);
+  background: transparent;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+  transition: all 0.2s;
+  outline: none;
+  
+  &::placeholder {
+    color: var(--muted-foreground, #999);
+  }
+  
+  &:focus {
+    border-color: var(--ring, #1890ff);
+    box-shadow: 0 0 0 6rpx rgba(24, 144, 255, 0.1);
+  }
+  
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+

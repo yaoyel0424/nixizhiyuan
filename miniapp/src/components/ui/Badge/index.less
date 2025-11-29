@@ -1,0 +1,45 @@
+// 徽章组件样式
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12rpx;
+  border: 2rpx solid transparent;
+  padding: 4rpx 16rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: all 0.2s;
+  
+  &--default {
+    background: var(--primary, #1890ff);
+    color: var(--primary-foreground, #fff);
+    border-color: transparent;
+  }
+  
+  &--secondary {
+    background: var(--secondary, #f0f0f0);
+    color: var(--secondary-foreground, #000);
+    border-color: transparent;
+  }
+  
+  &--destructive {
+    background: var(--destructive, #ff4d4f);
+    color: #fff;
+    border-color: transparent;
+  }
+  
+  &--outline {
+    background: transparent;
+    color: var(--foreground, #000);
+    border-color: var(--border-color, #d9d9d9);
+  }
+  
+  &__text {
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+  }
+}
+

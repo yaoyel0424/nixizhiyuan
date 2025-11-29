@@ -1,0 +1,116 @@
+// 按钮组件样式
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  white-space: nowrap;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  transition: all 0.2s;
+  outline: none;
+  border: none;
+  cursor: pointer;
+  
+  &--default {
+    background: var(--primary, #1890ff);
+    color: var(--primary-foreground, #fff);
+    
+    &:hover {
+      background: rgba(24, 144, 255, 0.9);
+    }
+  }
+  
+  &--destructive {
+    background: var(--destructive, #ff4d4f);
+    color: #fff;
+    
+    &:hover {
+      background: rgba(255, 77, 79, 0.9);
+    }
+  }
+  
+  &--outline {
+    border: 2rpx solid var(--border-color, #d9d9d9);
+    background: var(--background, #fff);
+    color: var(--foreground, #000);
+    
+    &:hover {
+      background: var(--accent, #f5f5f5);
+      color: var(--accent-foreground, #000);
+    }
+  }
+  
+  &--secondary {
+    background: var(--secondary, #f0f0f0);
+    color: var(--secondary-foreground, #000);
+    
+    &:hover {
+      background: rgba(240, 240, 240, 0.8);
+    }
+  }
+  
+  &--ghost {
+    background: transparent;
+    color: var(--foreground, #000);
+    
+    &:hover {
+      background: var(--accent, #f5f5f5);
+      color: var(--accent-foreground, #000);
+    }
+  }
+  
+  &--link {
+    background: transparent;
+    color: var(--primary, #1890ff);
+    text-decoration: underline;
+    text-underline-offset: 8rpx;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+  
+  &--default {
+    height: 72rpx;
+    padding: 0 32rpx;
+  }
+  
+  &--sm {
+    height: 64rpx;
+    border-radius: 12rpx;
+    gap: 12rpx;
+    padding: 0 24rpx;
+  }
+  
+  &--lg {
+    height: 80rpx;
+    border-radius: 12rpx;
+    padding: 0 48rpx;
+  }
+  
+  &--icon {
+    width: 72rpx;
+    height: 72rpx;
+    padding: 0;
+  }
+  
+  &--icon-sm {
+    width: 64rpx;
+    height: 64rpx;
+    padding: 0;
+  }
+  
+  &--icon-lg {
+    width: 80rpx;
+    height: 80rpx;
+    padding: 0;
+  }
+  
+  &[disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+

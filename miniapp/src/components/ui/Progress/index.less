@@ -1,0 +1,18 @@
+// 进度条组件样式
+.ui-progress {
+  position: relative;
+  height: 16rpx;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999rpx;
+  background: rgba(24, 144, 255, 0.2);
+}
+
+.ui-progress__indicator {
+  background: var(--primary, #1890ff);
+  height: 100%;
+  width: 0;
+  flex: 1;
+  transition: width 0.3s;
+}
+

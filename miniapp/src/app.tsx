@@ -13,7 +13,7 @@ function App({ children }: PropsWithChildren<any>) {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        {children}
+        {children || null}
       </PersistGate>
     </Provider>
   )

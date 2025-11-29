@@ -1,5 +1,13 @@
 import Taro from '@tarojs/taro'
 
+// tabBar 页面列表（使用 reLaunch 跳转）
+const TABBAR_PAGES = [
+  '/pages/index/index',
+  '/pages/assessment/all-majors/index',
+  '/pages/majors/index',
+  '/pages/profile/index',
+]
+
 // 路由配置
 export const routes = {
   // 主要页面
@@ -17,12 +25,21 @@ export const routes = {
   ABOUT: '/pages/about/index'
 } as const
 
-// 路由工具函数
+// 智能路由跳转函数（自动判断是 tabBar 页面还是普通页面）
 export const navigateTo = (url: string, params?: Record<string, any>) => {
+  const [path] = url.split('?')
   const query = params ? '?' + Object.keys(params)
     .map(key => `${key}=${encodeURIComponent(params[key])}`)
     .join('&') : ''
   
+  // 如果是 tabBar 页面，使用 reLaunch 替换整个页面栈
+  if (TABBAR_PAGES.includes(path)) {
+    return Taro.reLaunch({
+      url: path + query
+    })
+  }
+  
+  // 普通页面使用 navigateTo
   return Taro.navigateTo({
     url: url + query
   })

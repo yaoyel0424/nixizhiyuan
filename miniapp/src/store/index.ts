@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { persistStore, persistReducer } from 'redux-persist'
-import storage from 'redux-persist/lib/storage'
+import storage from './storage' // 使用 Taro 存储适配器
 import { combineReducers } from '@reduxjs/toolkit'
 
 // 导入各个模块的reducer

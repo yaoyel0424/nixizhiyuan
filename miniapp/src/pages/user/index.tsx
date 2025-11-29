@@ -38,7 +38,8 @@ const User: React.FC = () => {
   }
 
   const handleEditProfile = () => {
-    Taro.navigateTo({
+    // 使用 reLaunch 跳转到个人中心页面
+    Taro.reLaunch({
       url: '/pages/profile/index'
     })
   }

@@ -1,0 +1,121 @@
+// 对话框组件样式
+.ui-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-dialog__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.2s;
+}
+
+.ui-dialog__content {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 64rpx);
+  max-width: 1024rpx;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.ui-dialog-content {
+  background: var(--background, #fff);
+  border-radius: 16rpx;
+  border: 2rpx solid var(--border-color, #e5e7eb);
+  padding: 48rpx;
+  box-shadow: 0 20rpx 30rpx -6rpx rgba(0, 0, 0, 0.1);
+  animation: zoomIn 0.2s;
+  position: relative;
+}
+
+.ui-dialog-content__close {
+  position: absolute;
+  top: 32rpx;
+  right: 32rpx;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8rpx;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  
+  &:hover {
+    opacity: 1;
+    background: var(--accent, #f5f5f5);
+  }
+  
+  text {
+    font-size: 48rpx;
+    line-height: 1;
+    color: var(--foreground, #000);
+  }
+}
+
+.ui-dialog-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  text-align: center;
+  margin-bottom: 32rpx;
+}
+
+.ui-dialog-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--foreground, #000);
+}
+
+.ui-dialog-description {
+  font-size: 28rpx;
+  color: var(--muted-foreground, #666);
+  line-height: 1.5;
+}
+
+.ui-dialog-footer {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 16rpx;
+  margin-top: 48rpx;
+  
+  @media (min-width: 640px) {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+

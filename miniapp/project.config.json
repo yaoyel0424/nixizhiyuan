@@ -1,11 +1,11 @@
 {
   "miniprogramRoot": "dist/",
   "projectname": "nixi-zhiyuan-client",
-  "description": "逆袭志愿微信小程序客户端",
-  "appid": "your-appid-here",
+  "description": "逆袭智愿微信小程序客户端",
+  "appid": "wx864a14a974e12f21",
   "setting": {
     "urlCheck": false,
-    "es6": false,
+    "es6": true,
     "enhance": true,
     "postcss": true,
     "preloadBackgroundData": false,
@@ -22,7 +22,7 @@
     "uploadWithSourceMap": true,
     "compileHotReLoad": false,
     "lazyloadPlaceholderEnable": false,
-    "useMultiFrameRuntime": true,
+    "useMultiFrameRuntime": false,
     "useApiHook": true,
     "useApiHostProcess": true,
     "babelSetting": {
@@ -31,7 +31,7 @@
       "outputPath": ""
     },
     "enableEngineNative": false,
-    "useIsolateContext": true,
+    "useIsolateContext": false,
     "userConfirmedBundleSwitch": false,
     "packNpmManually": false,
     "packNpmRelationList": [],
@@ -42,6 +42,6 @@
     "useCompilerPlugins": false
   },
   "compileType": "miniprogram",
-  "libVersion": "2.19.4",
+  "libVersion": "2.23.4",
   "condition": {}
 }

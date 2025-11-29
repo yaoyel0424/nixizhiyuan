@@ -79,7 +79,7 @@ const Login: React.FC = () => {
         })
 
         setTimeout(() => {
-          Taro.switchTab({
+          Taro.reLaunch({
             url: '/pages/index/index'
           })
         }, 1500)

@@ -1,0 +1,5306 @@
+[
+  {
+    "major": {
+      "code": "050204",
+      "name": "法语",
+      "displayName": "法语",
+      "developmentPotential": "93",
+      "score": "1.00",
+      "opportunityScore": "85",
+      "academicDevelopmentScore": "21",
+      "careerDevelopmentScore": "22",
+      "growthPotentialScore": "22",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.50",
+      "shanxueScore": "0.50",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "江西科技师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4110929,
+            "schoolMajorId": 9841,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（只招英语或法语考生）（在红角洲校区学习）",
+            "planMajorName": "法语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "4270",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050204",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,省重点",
+        "belong": "省政府",
+        "provinceName": "江西",
+        "cityName": "南昌市",
+        "enrollmentRate": "11.83",
+        "employmentRate": "80.22",
+        "majorGroupId": 426906,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "北京外国语大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4135224,
+            "schoolMajorId": 719,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（国际关系）",
+            "planMajorName": "法语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "6000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "629,14096,2"
+              }
+            ],
+            "majorCode": "050204",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "北京",
+        "cityName": "海淀区",
+        "enrollmentRate": "30.34",
+        "employmentRate": "96.19",
+        "majorGroupId": 425858,
+        "majorGroupName": "（06）"
+      },
+      {
+        "schoolName": "湖南师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": -93.68228212509814,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4151235,
+            "schoolMajorId": 89908,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（英语、俄语、德语、法语、西班牙语、阿拉伯语、日语、朝鲜语）（口）（含世承书院锺书班）",
+            "planMajorName": "法语",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "4000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "591,38210,2"
+              },
+              {
+                "2023": "593,37931,2"
+              }
+            ],
+            "majorCode": "050204",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点,省部共建",
+        "belong": "省政府",
+        "provinceName": "湖南",
+        "cityName": "长沙市",
+        "enrollmentRate": "24.68",
+        "employmentRate": "85.78",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "北京第二外国语学院",
+        "schoolNature": "public",
+        "rankDiffPer": -94.20964260014392,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4384508,
+            "schoolMajorId": 83088,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（人工智能与语言认知）（第一学年在延庆校区学习，第二学年起在朝阳校区孚习）",
+            "planMajorName": "法语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "587,41690,1"
+              },
+              {
+                "2023": "591,39518,1"
+              }
+            ],
+            "majorCode": "050204",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,省重点",
+        "belong": "市政府",
+        "provinceName": "北京",
+        "cityName": "朝阳区",
+        "enrollmentRate": "12.29",
+        "employmentRate": "92.41",
+        "majorGroupId": 430991,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "广东外语外贸大学",
+        "schoolNature": "public",
+        "rankDiffPer": -95.55129646352026,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4239848,
+            "schoolMajorId": 14796,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在白云山校区学习）",
+            "planMajorName": "法语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "6853",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "574,54263,1"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050204",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "广东",
+        "cityName": "广州市",
+        "enrollmentRate": "15.15",
+        "employmentRate": "95.36",
+        "majorGroupId": 427267,
+        "majorGroupName": "（03）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "101008",
+      "name": "听力与言语康复学",
+      "displayName": "听力与言语康复学",
+      "developmentPotential": "95",
+      "score": "1.00",
+      "opportunityScore": "90",
+      "academicDevelopmentScore": "22",
+      "careerDevelopmentScore": "23",
+      "growthPotentialScore": "23",
+      "industryProspectsScore": "22",
+      "lexueScore": "0.50",
+      "shanxueScore": "0.50",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "浙江中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": -95.71400671129024,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4749061,
+            "schoolMajorId": 12750,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（第一、第二学年在富春校区学习，第三学年起学习地点详询院校，报考该专业组有色觉要求，具体请查阅院校招生章程）",
+            "planMajorName": "听力与言语康复学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "572,56323,2"
+              },
+              {
+                "2023": "579,49755,2"
+              }
+            ],
+            "majorCode": "101008",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点,省部共建",
+        "belong": "省政府",
+        "provinceName": "浙江",
+        "cityName": "杭州市",
+        "enrollmentRate": "38.85",
+        "employmentRate": "93.92",
+        "majorGroupId": 427132,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "徐州医科大学",
+        "schoolNature": "public",
+        "rankDiffPer": -97.45100523737118,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4794702,
+            "schoolMajorId": 169502,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（报考该专业组有色觉要求，详询院校）",
+            "planMajorName": "听力与言语康复学",
+            "planNum": 30,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,30"
+              },
+              {
+                "2024": "539,94704,30"
+              },
+              {
+                "2023": "527,100233,30"
+              }
+            ],
+            "majorCode": "101008",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "江苏",
+        "cityName": "徐州市",
+        "enrollmentRate": "30.26",
+        "employmentRate": "74.04",
+        "majorGroupId": 426558,
+        "majorGroupName": "（06）"
+      },
+      {
+        "schoolName": "福建中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": -97.61337459341355,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4551415,
+            "schoolMajorId": 148377,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（福州市闽侯县）（在旗山校区孚习）",
+            "planMajorName": "听力与言语康复学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6760",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "534,101147,2"
+              },
+              {
+                "2023": "526,101268,2"
+              }
+            ],
+            "majorCode": "101008",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "保研,省重点",
+        "belong": "省政府",
+        "provinceName": "福建",
+        "cityName": "福州市",
+        "enrollmentRate": "23.94",
+        "employmentRate": "91.53",
+        "majorGroupId": 428917,
+        "majorGroupName": "（01）"
+      },
+      {
+        "schoolName": "南京特殊教育师范学院",
+        "schoolNature": "public",
+        "rankDiffPer": -97.92748783021541,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4760146,
+            "schoolMajorId": 1800734,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（第一学年在江宁校区学习，第二四学年在校本部学习”报考该专业组部分专业有爸觉要求，具体请查阅院校招生章程）",
+            "planMajorName": "听力与言语康复学",
+            "planNum": 8,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,8"
+              },
+              {
+                "2024": "522,116477,6"
+              },
+              {
+                "2023": "515,112371,12"
+              }
+            ],
+            "majorCode": "101008",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "3.50",
+        "employmentRate": "97.19",
+        "majorGroupId": 429185,
+        "majorGroupName": "（08）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "050232",
+      "name": "葡萄牙语",
+      "displayName": "葡萄牙语",
+      "developmentPotential": "93",
+      "score": "1.00",
+      "opportunityScore": "85",
+      "academicDevelopmentScore": "21",
+      "careerDevelopmentScore": "23",
+      "growthPotentialScore": "21",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.50",
+      "shanxueScore": "0.50",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "北京第二外国语学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4384319,
+            "schoolMajorId": 83111,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（人工智能与语言认知）（第一学年在延庆校区学习，第二学年起在朝阳校区学习）",
+            "planMajorName": "葡萄牙语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050232",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,省重点",
+        "belong": "市政府",
+        "provinceName": "北京",
+        "cityName": "朝阳区",
+        "enrollmentRate": "12.29",
+        "employmentRate": "92.41",
+        "majorGroupId": 430991,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "浙江越秀外国语学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4046935,
+            "schoolMajorId": 158583,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（稽山校区）",
+            "planMajorName": "葡萄牙语",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "32000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,2"
+              }
+            ],
+            "majorCode": "050232",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "浙江",
+        "cityName": "绍兴市",
+        "enrollmentRate": "8.92",
+        "employmentRate": "94.05",
+        "majorGroupId": 430643,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "成都外国语学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 3986550,
+            "schoolMajorId": 80583,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（原四川外国语大学成都学院）（都江堰）（在校本部学习）",
+            "planMajorName": "葡萄牙语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "18000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,1"
+              },
+              {
+                "2023": "-,-,1"
+              }
+            ],
+            "majorCode": "050232",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "四川",
+        "cityName": "成都市",
+        "enrollmentRate": "11.46",
+        "employmentRate": "76.82",
+        "majorGroupId": 430773,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "河北外国语学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4056498,
+            "schoolMajorId": 158077,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "葡萄牙语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "25000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,2"
+              },
+              {
+                "2023": "-,-,1"
+              }
+            ],
+            "majorCode": "050232",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省教育厅",
+        "provinceName": "河北",
+        "cityName": "石家庄",
+        "enrollmentRate": "0.90",
+        "employmentRate": "81.35",
+        "majorGroupId": 428543,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "大连外国语大学",
+        "schoolNature": "public",
+        "rankDiffPer": -97.23104804946033,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 3999282,
+            "schoolMajorId": 11019,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "葡萄牙语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "8000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "545,87181,1"
+              },
+              {
+                "2023": "538,89031,1"
+              }
+            ],
+            "majorCode": "050232",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "保研,省重点",
+        "belong": "省政府",
+        "provinceName": "辽宁",
+        "cityName": "大连市",
+        "enrollmentRate": "13.17",
+        "employmentRate": "86.57",
+        "majorGroupId": 426966,
+        "majorGroupName": "（04）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "050208",
+      "name": "波斯语",
+      "displayName": "波斯语",
+      "developmentPotential": "91",
+      "score": "1.00",
+      "opportunityScore": "81",
+      "academicDevelopmentScore": "20",
+      "careerDevelopmentScore": "21",
+      "growthPotentialScore": "21",
+      "industryProspectsScore": "19",
+      "lexueScore": "0.50",
+      "shanxueScore": "0.50",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "天津外国语大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4052250,
+            "schoolMajorId": 3603,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在马场道校区学习）",
+            "planMajorName": "波斯语",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5400",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050208",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "市政府",
+        "provinceName": "天津",
+        "cityName": "河西区",
+        "enrollmentRate": "21.60",
+        "employmentRate": "86.10",
+        "majorGroupId": 426088,
+        "majorGroupName": "（08）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "083201",
+      "name": "未来机器人",
+      "displayName": "未来机器人",
+      "developmentPotential": "92",
+      "score": "0.92",
+      "opportunityScore": "92",
+      "academicDevelopmentScore": "23",
+      "careerDevelopmentScore": "23",
+      "growthPotentialScore": "23",
+      "industryProspectsScore": "23",
+      "lexueScore": "0.50",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "东南大学",
+        "schoolNature": "public",
+        "rankDiffPer": 12.962096396817968,
+        "group": 2,
+        "historyScores": [
+          {
+            "id": 4569666,
+            "schoolMajorId": 2013125,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（未来技术班）",
+            "planMajorName": "未来机器人",
+            "planNum": 8,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,8"
+              },
+              {
+                "2024": "662,2137,5"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "083201",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,E9",
+        "belong": "教育部",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "50.56",
+        "employmentRate": "94.18",
+        "majorGroupId": 426214,
+        "majorGroupName": "（06）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "080902",
+      "name": "软件工程",
+      "displayName": "软件工程",
+      "developmentPotential": "92",
+      "score": "0.92",
+      "opportunityScore": "91",
+      "academicDevelopmentScore": "22",
+      "careerDevelopmentScore": "23",
+      "growthPotentialScore": "23",
+      "industryProspectsScore": "23",
+      "lexueScore": "0.50",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "浙江大学",
+        "schoolNature": "public",
+        "rankDiffPer": 355.47169811320754,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4540146,
+            "schoolMajorId": 5397,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（计算机科学与技术、信息安全、软件工程、工业设计、光电信息科学与工程、电子科学与技术、微电子科学与工程、信息工程、自动化、生物医学工程）（信息）",
+            "planMajorName": "软件工程",
+            "planNum": 13,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,13"
+              },
+              {
+                "2024": "677,530,18"
+              },
+              {
+                "2023": "676,624,16"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "浙江",
+        "cityName": "杭州市",
+        "enrollmentRate": "22.60",
+        "employmentRate": "93.68",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "南京大学",
+        "schoolNature": "public",
+        "rankDiffPer": 126.24179943767572,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4546366,
+            "schoolMajorId": 5190,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（软件工程+工商管理）（双学士学位培养项目）（软工商业创新班）（（类）中集成电路设计与集成系统、技术科学试验班在鼓楼校区和苏州校区学习，其他专业（类）在鼓楼校区和仙林校区学习）",
+            "planMajorName": "软件工程",
+            "planNum": 15,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6380",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,15"
+              },
+              {
+                "2024": "670,1067,19"
+              },
+              {
+                "2023": "672,947,41"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4546365,
+            "schoolMajorId": 5190,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（软件工程+经济学）（双学士学位培养项目）（软工经济创新班）（（类）中集成电路设计与集成系统、技术科学试验班在鼓楼校区和苏州校区学习，其他专业（类）在鼓楼校区和仙林校区学习）",
+            "planMajorName": "软件工程",
+            "planNum": 15,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6380",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,15"
+              },
+              {
+                "2024": "670,1067,19"
+              },
+              {
+                "2023": "672,947,41"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4546364,
+            "schoolMajorId": 5190,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（（类）中集成电路设计与集成系统、技术科学试验班在鼓楼校区和苏州校区学习，其他专业（类）在鼓楼校区和仙林校区学习）",
+            "planMajorName": "软件工程",
+            "planNum": 69,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6380",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,69"
+              },
+              {
+                "2024": "670,1067,19"
+              },
+              {
+                "2023": "672,947,41"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4546361,
+            "schoolMajorId": 5190,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（至诚班）（（类）中集成电路设计与集成系统、技术科学试验班在鼓楼校区和苏州校区学习，其他专业（类）在鼓楼校区和仙林校区学习）",
+            "planMajorName": "软件工程",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6380",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "670,1067,19"
+              },
+              {
+                "2023": "672,947,41"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "53.34",
+        "employmentRate": "96.77",
+        "majorGroupId": 426319,
+        "majorGroupName": "（07）"
+      },
+      {
+        "schoolName": "山东理工大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4827421,
+            "schoolMajorId": 29470,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "软件工程",
+            "planNum": 4,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6300",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "保研,省重点",
+        "belong": "省政府",
+        "provinceName": "山东",
+        "cityName": "淄博市",
+        "enrollmentRate": "21.13",
+        "employmentRate": "92.11",
+        "majorGroupId": 428216,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "南京理工大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4612931,
+            "schoolMajorId": 5250,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（计算机科学与技术、软件工程、智能科学与技术）（第一学年在江阴校区学习，第二、三、四学年在南京校区学习）",
+            "planMajorName": "软件工程",
+            "planNum": 25,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6380",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,25"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4612930,
+            "schoolMajorId": 5250,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（计算机科学与技术、软件工程、智能科学与技术）（钱学森学院）（在南京校区学习）",
+            "planMajorName": "软件工程",
+            "planNum": 25,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6380",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,25"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4612929,
+            "schoolMajorId": 5250,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（计算机科学与技术、软件工程、智能科学与技术）（志道创新人才班）（在南京校区学习）",
+            "planMajorName": "软件工程",
+            "planNum": 18,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6380",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,18"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院(部),保研,国重点,国防七子",
+        "belong": "工信部",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "0.00",
+        "employmentRate": "93.47",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "哈尔滨工程大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4622722,
+            "schoolMajorId": 6165,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（国家特软创新班）（校本部）（第三、四学年学费为16000元/年）（报考该专业有色觉要求，具体请查阅院校招生章程）",
+            "planMajorName": "软件工程",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "632,12571,4"
+              }
+            ],
+            "majorCode": "080902",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院(部),保研,国重点,国防七子",
+        "belong": "工信部",
+        "provinceName": "黑龙江",
+        "cityName": "哈尔滨市",
+        "enrollmentRate": "52.33",
+        "employmentRate": "92.26",
+        "majorGroupId": 426363,
+        "majorGroupName": "（09）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "040104",
+      "name": "教育技术学",
+      "displayName": "教育技术学",
+      "developmentPotential": "78",
+      "score": "0.78",
+      "opportunityScore": "78",
+      "academicDevelopmentScore": "19",
+      "careerDevelopmentScore": "20",
+      "growthPotentialScore": "19",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "曲阜师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4297869,
+            "schoolMajorId": 111992,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）（在日照校区学习）",
+            "planMajorName": "教育技术学",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5280",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "040104",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "保研,省重点",
+        "belong": "省政府",
+        "provinceName": "山东",
+        "cityName": "济宁市",
+        "enrollmentRate": "26.86",
+        "employmentRate": "92.44",
+        "majorGroupId": 428097,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "南京特殊教育师范学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4234548,
+            "schoolMajorId": 1677923,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）（第一学年在江宁校区学习，第二、四学年在校本部学习。报考该专业组部分专业有色觉要求，具体请查阅院校招生章程）",
+            "planMajorName": "教育技术学",
+            "planNum": 8,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5200",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,8"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "513,114462,18"
+              }
+            ],
+            "majorCode": "040104",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "3.50",
+        "employmentRate": "97.19",
+        "majorGroupId": 429187,
+        "majorGroupName": "（06）"
+      },
+      {
+        "schoolName": "华中师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4069930,
+            "schoolMajorId": 100747,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（信息学科创新实验班、智能教育实验班）（师范）",
+            "planMajorName": "教育技术学",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5850",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "040104",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,101计划,研究生院,保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "20.63",
+        "employmentRate": "86.16",
+        "majorGroupId": 427760,
+        "majorGroupName": "（06）"
+      },
+      {
+        "schoolName": "华东师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": -68.37416481069042,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4594957,
+            "schoolMajorId": 660947,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（教育技术学+计算机科学与技术）（双学士学位培养项目）（普陀校区）",
+            "planMajorName": "教育技术学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "7150",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "641,7633,3"
+              },
+              {
+                "2023": "652,4642,3"
+              }
+            ],
+            "majorCode": "040104",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "普陀区",
+        "enrollmentRate": "33.77",
+        "employmentRate": "94.66",
+        "majorGroupId": 426414,
+        "majorGroupName": "（05）"
+      },
+      {
+        "schoolName": "南京师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": -92.89582107121836,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4075311,
+            "schoolMajorId": 5517,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）",
+            "planMajorName": "教育技术学",
+            "planNum": 9,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5720",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,9"
+              },
+              {
+                "2024": "596,33980,24"
+              },
+              {
+                "2023": "605,28961,24"
+              }
+            ],
+            "majorCode": "040104",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,101计划,研究生院,保研,国重点,省部共建",
+        "belong": "省政府",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "46.13",
+        "employmentRate": "91.75",
+        "majorGroupId": 426292,
+        "majorGroupName": "（26）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "071201",
+      "name": "统计学",
+      "displayName": "统计学",
+      "developmentPotential": "81",
+      "score": "0.78",
+      "opportunityScore": "83",
+      "academicDevelopmentScore": "21",
+      "careerDevelopmentScore": "21",
+      "growthPotentialScore": "20",
+      "industryProspectsScore": "21",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "上海交通大学",
+        "schoolNature": "public",
+        "rankDiffPer": 710.0671140939597,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4541468,
+            "schoolMajorId": 1024383,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（数学与应用数学、统计学）（数学）（含数学与应用数学+人工智能（双学士学位培养项目））",
+            "planMajorName": "统计学",
+            "planNum": 3,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "7000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "682,298,5"
+              },
+              {
+                "2023": "682,272,2"
+              }
+            ],
+            "majorCode": "071201",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "闵行区",
+        "enrollmentRate": "48.40",
+        "employmentRate": "96.29",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "复旦大学",
+        "schoolNature": "public",
+        "rankDiffPer": 622.7544910179641,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4543582,
+            "schoolMajorId": 1230714,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（管理科学与商业智能试验班）（统计学（统计、数据科学）、财务管理（金融与财务）、信息管理与信息系统（商业AI应用、AI系统开发）、会计学、市场营销、工商管理（战略管理、国际经营、人力资源）、管理科学（智能决策、智慧供应链））（含管理科学与商业智能卓研博英班（融通项目）；含财务管理（金融与财务）+人工智能（双学士学位培养项目）、市场营销+人工智能（双学士学位培养项目））",
+            "planMajorName": "统计学",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "681,334,1"
+              },
+              {
+                "2023": "680,375,4"
+              }
+            ],
+            "majorCode": "071201",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "杨浦区",
+        "enrollmentRate": "47.01",
+        "employmentRate": "96.25",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "浙江大学",
+        "schoolNature": "public",
+        "rankDiffPer": 470.6855791962175,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4539434,
+            "schoolMajorId": 5383,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（数学与应用数学、信息与计算科学、统计学、物理学、心理学、信息管理与信息系统）（含商务大数据分析（信息管理与信息系统+统计学）双学士学位培养项目）",
+            "planMajorName": "统计学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5300",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "679,423,2"
+              },
+              {
+                "2023": "-,-,2"
+              }
+            ],
+            "majorCode": "071201",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "浙江",
+        "cityName": "杭州市",
+        "enrollmentRate": "22.60",
+        "employmentRate": "93.68",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "南京大学",
+        "schoolNature": "public",
+        "rankDiffPer": 105.97269624573377,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4546092,
+            "schoolMajorId": 5186,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（数学与应用数学、信息与计算科学、统计学、物理学、应用物理学、声学、关文学、大气科学、应用气象学）（数理科学类）（（类）中集成电路设计与集成系统、技术科学试验班在鼓楼校区和苏州校区学习，其他专业（类）在鼓楼校区和仙林校区学习）",
+            "planMajorName": "统计学",
+            "planNum": 78,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6050",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,78"
+              },
+              {
+                "2024": "669,1172,57"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "071201",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "53.34",
+        "employmentRate": "96.77",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "中国人民大学",
+        "schoolNature": "public",
+        "rankDiffPer": 105.97269624573377,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4570103,
+            "schoolMajorId": 1152,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（北京）（含应用统计学、统计学等4个专业）",
+            "planMajorName": "统计学",
+            "planNum": 8,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,8"
+              },
+              {
+                "2024": "669,1172,6"
+              },
+              {
+                "2023": "671,1048,5"
+              }
+            ],
+            "majorCode": "071201",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4570104,
+            "schoolMajorId": 1152,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（北京）（统计与数科拔尖人才班）",
+            "planMajorName": "统计学",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "071201",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,五院四系",
+        "belong": "教育部",
+        "provinceName": "北京",
+        "cityName": "海淀区",
+        "enrollmentRate": null,
+        "employmentRate": null,
+        "majorGroupId": 425915,
+        "majorGroupName": "（05）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "070504",
+      "name": "地理信息科学",
+      "displayName": "地理信息科学",
+      "developmentPotential": "80",
+      "score": "0.78",
+      "opportunityScore": "81",
+      "academicDevelopmentScore": "20",
+      "careerDevelopmentScore": "20",
+      "growthPotentialScore": "20",
+      "industryProspectsScore": "21",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "北京大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4538015,
+            "schoolMajorId": 97,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（地球物理学、地理信息科学（遥感与地理信息系统）、空间科学与技术）",
+            "planMajorName": "地理信息科学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,2"
+              },
+              {
+                "2023": "-,-,2"
+              }
+            ],
+            "majorCode": "070504",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9,五院四系",
+        "belong": "教育部",
+        "provinceName": "北京",
+        "cityName": "海淀区",
+        "enrollmentRate": "54.11",
+        "employmentRate": "94.90",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "北京师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4573134,
+            "schoolMajorId": 1475,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（自然地理与资源环境、人文地理与城乡规划、地理信息科学、资源环境科学）",
+            "planMajorName": "地理信息科学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "4800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "070504",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "北京",
+        "cityName": "海淀区",
+        "enrollmentRate": "0.00",
+        "employmentRate": "95.38",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "湖南城市学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4728105,
+            "schoolMajorId": 20787,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "地理信息科学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5900",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "070504",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "湖南",
+        "cityName": "益阳市",
+        "enrollmentRate": "10.43",
+        "employmentRate": "88.22",
+        "majorGroupId": 427613,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "兰州大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4615007,
+            "schoolMajorId": 4025,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（自然地理与资源环境、人文地理与城乡规划、地理信息科学）（含基地班）",
+            "planMajorName": "地理信息科学",
+            "planNum": 5,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,5"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "070504",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,1+x证书制度试点",
+        "belong": "教育部",
+        "provinceName": "甘肃",
+        "cityName": "兰州市",
+        "enrollmentRate": "40.09",
+        "employmentRate": "77.43",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "华东师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": -65.26618705035972,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4596195,
+            "schoolMajorId": 90043,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（空间智能）（在闵行校区学习）",
+            "planMajorName": "地理信息科学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "7000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "643,6950,2"
+              },
+              {
+                "2023": "654,4113,2"
+              }
+            ],
+            "majorCode": "070504",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4596194,
+            "schoolMajorId": 90043,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（地理信息科学+软件工程）（双学士学位培养项目）（在闵行校区学习）",
+            "planMajorName": "地理信息科学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "7000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "641,7633,1"
+              },
+              {
+                "2023": "654,4113,2"
+              }
+            ],
+            "majorCode": "070504",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "普陀区",
+        "enrollmentRate": "33.77",
+        "employmentRate": "94.66",
+        "majorGroupId": 426414,
+        "majorGroupName": "（05）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "080801",
+      "name": "自动化",
+      "displayName": "自动化",
+      "developmentPotential": "80",
+      "score": "0.78",
+      "opportunityScore": "82",
+      "academicDevelopmentScore": "20",
+      "careerDevelopmentScore": "20",
+      "growthPotentialScore": "20",
+      "industryProspectsScore": "22",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "清华大学",
+        "schoolNature": "public",
+        "rankDiffPer": 2156.07476635514,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4536454,
+            "schoolMajorId": 7237,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（自动化（含信息管理信息系统））",
+            "planMajorName": "自动化",
+            "planNum": 3,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "692,107,2"
+              },
+              {
+                "2023": "691,116,2"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "北京",
+        "cityName": "海淀区",
+        "enrollmentRate": "65.60",
+        "employmentRate": "96.90",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "上海交通大学",
+        "schoolNature": "public",
+        "rankDiffPer": 1878.688524590164,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4542048,
+            "schoolMajorId": 6198,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（IEEE试点班）（计算机科学与技术、信息工程、信息安全、自动化）（含电子信息类（IEEE试点班）+数学与应用数学（双学士学位培养项目））",
+            "planMajorName": "自动化",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "7000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "688,122,2"
+              },
+              {
+                "2023": "688,116,3"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4542049,
+            "schoolMajorId": 6198,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（信息类）（计算机科学与技术（计算机学院）、信息安全（计算机学院）、软件工程（计算机学院）、微电子科学与工程（集成电路学院）、信息工程（集成电路学院）、电子科学与技术（集成电路学院）、自动化（自动化与感知学院）、智能感知工程（自动化与感知学院）、电气工程及其自动化（电气工程学院））",
+            "planMajorName": "自动化",
+            "planNum": 68,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "7000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,68"
+              },
+              {
+                "2024": "679,423,79"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "闵行区",
+        "enrollmentRate": "48.40",
+        "employmentRate": "96.29",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "浙江大学",
+        "schoolNature": "public",
+        "rankDiffPer": 355.47169811320754,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4540076,
+            "schoolMajorId": 5392,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（计算机科学与技术、信息安全、软件工程、工业设计、光电信息科学与工程、电子科学与技术、微电子科学与工程、信息工程、自动化、生物医学工程）（信息）",
+            "planMajorName": "自动化",
+            "planNum": 13,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,13"
+              },
+              {
+                "2024": "677,530,18"
+              },
+              {
+                "2023": "676,624,16"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4540078,
+            "schoolMajorId": 5392,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（ZJUUIUC联合学院，含机械工程、电子与计算机工程（中外合作办学）、电气工程及其自动化（中外合作办学）、土木工程（中外合作办学）（海宁国际校区）（根据合作方要求，学生在读期间不具有合作方学校所在国的移民身份））（中外合作办学）",
+            "planMajorName": "自动化",
+            "planNum": 24,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "160000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,24"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4540077,
+            "schoolMajorId": 5392,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（电气工程及其自动化（爱迪生班）、电子信息工程（爱迪生班）、电子科学与技术（香农班）、信息工程（香农班）（EE类））",
+            "planMajorName": "自动化",
+            "planNum": 6,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,6"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "浙江",
+        "cityName": "杭州市",
+        "enrollmentRate": "22.60",
+        "employmentRate": "93.68",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "中国科学技术大学",
+        "schoolNature": "public",
+        "rankDiffPer": 232.04951856946354,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4547816,
+            "schoolMajorId": 620062,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（电子信息工程、自动化）（信息科技方向）（含信息科技英才班、王大珩科技英才班）",
+            "planMajorName": "自动化",
+            "planNum": 6,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "4800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,6"
+              },
+              {
+                "2024": "674,727,6"
+              },
+              {
+                "2023": "674,762,9"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4547817,
+            "schoolMajorId": 620062,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（机器人工程、理论与应用力学、机械设计制造及其自动化、测控技术与仪器、能源与动力工程、安全工程）（基础学科拔尖学生培养基地，中国科学院基础和前沿交叉学科贯通培养工程实施基地，含钱学森力学科技英才班）",
+            "planMajorName": "自动化",
+            "planNum": 4,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "4800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,C9",
+        "belong": "中科院",
+        "provinceName": "安徽",
+        "cityName": "合肥市",
+        "enrollmentRate": "61.70",
+        "employmentRate": "85.20",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "西安交通大学",
+        "schoolNature": "public",
+        "rankDiffPer": 105.97269624573377,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4553785,
+            "schoolMajorId": 16725,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（钱学森班）（在兴庆校区学习）",
+            "planMajorName": "自动化",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6600",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "669,1172,2"
+              },
+              {
+                "2023": "667,1547,2"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4553841,
+            "schoolMajorId": 16725,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（电气工程及其自动化、能源互联网工程）（电气类）（在兴庆校区学习）",
+            "planMajorName": "自动化",
+            "planNum": 16,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6600",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,16"
+              },
+              {
+                "2024": "659,2662,17"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4553786,
+            "schoolMajorId": 16725,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（含计算机科学与技术、自动化、电气工程及其自动化、能源互联网工程、电子科学与技术等11个专业）（越杰计划电类专业预选）（在兴庆校区学习）",
+            "planMajorName": "自动化",
+            "planNum": 6,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6600",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,6"
+              },
+              {
+                "2024": "658,2842,15"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4553842,
+            "schoolMajorId": 16725,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在兴庆校区学习）",
+            "planMajorName": "自动化",
+            "planNum": 9,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6600",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,9"
+              },
+              {
+                "2024": "657,3026,9"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          },
+          {
+            "id": 4553843,
+            "schoolMajorId": 16725,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（创新港校区）（中外合作办学）",
+            "planMajorName": "自动化",
+            "planNum": 7,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "150000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,7"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "080801",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "陕西",
+        "cityName": "西安市",
+        "enrollmentRate": "60.40",
+        "employmentRate": "98.50",
+        "majorGroupId": 427373,
+        "majorGroupName": "（03）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "050309",
+      "name": "国际新闻与传播",
+      "displayName": "国际新闻与传播",
+      "developmentPotential": "78",
+      "score": "0.76",
+      "opportunityScore": "80",
+      "academicDevelopmentScore": "21",
+      "careerDevelopmentScore": "20",
+      "growthPotentialScore": "20",
+      "industryProspectsScore": "19",
+      "lexueScore": "0.39",
+      "shanxueScore": "0.50",
+      "yanxueDeduction": "0.13",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "成都外国语学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 3987276,
+            "schoolMajorId": 2011858,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（原四川外国语大学成都学院）（都江堰）（在校本部学习）",
+            "planMajorName": "国际新闻与传播",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "17000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,1"
+              },
+              {
+                "2023": "459,165041,1"
+              }
+            ],
+            "majorCode": "050309",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "四川",
+        "cityName": "成都市",
+        "enrollmentRate": "11.46",
+        "employmentRate": "76.82",
+        "majorGroupId": 430773,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "暨南大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4068224,
+            "schoolMajorId": 2011993,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（广州番禺校区）（全英语教学）",
+            "planMajorName": "国际新闻与传播",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "12000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050309",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点",
+        "belong": "统战部",
+        "provinceName": "广东",
+        "cityName": "广州市",
+        "enrollmentRate": "29.50",
+        "employmentRate": "88.06",
+        "majorGroupId": 426192,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "上海外国语大学",
+        "schoolNature": "public",
+        "rankDiffPer": -89.13640250213761,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4136358,
+            "schoolMajorId": 1797379,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（新闻学（国际新闻）、广播电视学、广告学、网络与新媒体、国际新闻与传播）",
+            "planMajorName": "国际新闻与传播",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "6500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "612,22221,4"
+              },
+              {
+                "2023": "626,15651,5"
+              }
+            ],
+            "majorCode": "050309",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "虹口区",
+        "enrollmentRate": "21.07",
+        "employmentRate": "96.12",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "四川外国语大学",
+        "schoolNature": "public",
+        "rankDiffPer": -97.41630276564774,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 3990597,
+            "schoolMajorId": 1801437,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "国际新闻与传播",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "540,93432,1"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050309",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研",
+        "belong": "市政府",
+        "provinceName": "重庆",
+        "cityName": "沙坪坝区",
+        "enrollmentRate": "15.92",
+        "employmentRate": "82.43",
+        "majorGroupId": 426891,
+        "majorGroupName": "（08）"
+      },
+      {
+        "schoolName": "南京传媒学院",
+        "schoolNature": "private",
+        "rankDiffPer": -98.45626510801029,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4398530,
+            "schoolMajorId": 1590923,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "国际新闻与传播",
+            "planNum": 32,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "27800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,32"
+              },
+              {
+                "2024": "491,156374,10"
+              },
+              {
+                "2023": "462,162620,9"
+              }
+            ],
+            "majorCode": "050309",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "1.78",
+        "employmentRate": "99.01",
+        "majorGroupId": 430889,
+        "majorGroupName": "（03）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "020303",
+      "name": "保险学",
+      "displayName": "保险学",
+      "developmentPotential": "75",
+      "score": "0.75",
+      "opportunityScore": "75",
+      "academicDevelopmentScore": "18",
+      "careerDevelopmentScore": "19",
+      "growthPotentialScore": "18",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.39",
+      "shanxueScore": "0.36",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "河北地质大学华信学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4077301,
+            "schoolMajorId": 54401,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（金融学、保险学、经济与金融、互联网金融）",
+            "planMajorName": "保险学",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "19000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020303",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "河北",
+        "cityName": "石家庄",
+        "enrollmentRate": "2.03",
+        "employmentRate": "94.43",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "天津财经大学珠江学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4933879,
+            "schoolMajorId": 75835,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "保险学",
+            "planNum": 5,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "15000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,5"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020303",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "市教委",
+        "provinceName": "天津",
+        "cityName": "宝坻区",
+        "enrollmentRate": "1.94",
+        "employmentRate": "89.60",
+        "majorGroupId": 430508,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "湖南财政经济学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4194498,
+            "schoolMajorId": 2011844,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（数智保险）",
+            "planMajorName": "保险学",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020303",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "湖南",
+        "cityName": "长沙市",
+        "enrollmentRate": "6.79",
+        "employmentRate": "91.56",
+        "majorGroupId": 430118,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "武汉大学",
+        "schoolNature": "public",
+        "rankDiffPer": -49.39203354297694,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4936205,
+            "schoolMajorId": 2161854,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（经济学（含基地班、能源经济管理试验班）、国际经济与贸易、金融学、保险学（含精算试验班）、财政学、金融工程）",
+            "planMajorName": "保险学",
+            "planNum": 9,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5850",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,9"
+              },
+              {
+                "2024": "650,4770,3"
+              },
+              {
+                "2023": "655,3869,3"
+              }
+            ],
+            "majorCode": "020303",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,五院四系",
+        "belong": "教育部",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "47.59",
+        "employmentRate": "87.10",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "上海财经大学",
+        "schoolNature": "public",
+        "rankDiffPer": -72.50256293427498,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4024100,
+            "schoolMajorId": 2162073,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "保险学（保险精算与数据科学）",
+            "planNum": 3,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "7150",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "638,8779,2"
+              },
+              {
+                "2023": "641,8447,2"
+              }
+            ],
+            "majorCode": "020303",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,101计划,研究生院,保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "杨浦区",
+        "enrollmentRate": "11.85",
+        "employmentRate": "96.31",
+        "majorGroupId": 426410,
+        "majorGroupName": "（03）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "071101",
+      "name": "心理学",
+      "displayName": "心理学",
+      "developmentPotential": "76",
+      "score": "0.75",
+      "opportunityScore": "76",
+      "academicDevelopmentScore": "20",
+      "careerDevelopmentScore": "19",
+      "growthPotentialScore": "18",
+      "industryProspectsScore": "19",
+      "lexueScore": "0.39",
+      "shanxueScore": "0.36",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "浙江大学",
+        "schoolNature": "public",
+        "rankDiffPer": 470.6855791962175,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4539408,
+            "schoolMajorId": 5381,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（数学与应用数学、信息与计算科学、统计学、物理学、心理学、信息管理与信息系统）（含商务大数据分析（信息管理与信息系统+统计学）双学士学位培养项目）",
+            "planMajorName": "心理学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5300",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "679,423,2"
+              },
+              {
+                "2023": "-,-,2"
+              }
+            ],
+            "majorCode": "071101",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "浙江",
+        "cityName": "杭州市",
+        "enrollmentRate": "22.60",
+        "employmentRate": "93.68",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "闽南师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4081499,
+            "schoolMajorId": 151026,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）（江滨校区）",
+            "planMajorName": "心理学",
+            "planNum": 3,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5460",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "071101",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省重点",
+        "belong": "省政府",
+        "provinceName": "福建",
+        "cityName": "漳州市",
+        "enrollmentRate": "14.65",
+        "employmentRate": "93.52",
+        "majorGroupId": 427938,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "山西师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4045241,
+            "schoolMajorId": 13739,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）（报考该专业组部分专业有色觉要求，具体请查阅院校招生章程）",
+            "planMajorName": "心理学",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5100",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "531,96123,1"
+              }
+            ],
+            "majorCode": "071101",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "山西",
+        "cityName": "太原市",
+        "enrollmentRate": "21.07",
+        "employmentRate": "91.20",
+        "majorGroupId": 427202,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "菏泽学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4269422,
+            "schoolMajorId": 52238,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（北校区）",
+            "planMajorName": "心理学",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "071101",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "山东",
+        "cityName": "菏泽市",
+        "enrollmentRate": "9.12",
+        "employmentRate": "81.42",
+        "majorGroupId": 429411,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "北京师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": -39.45322297466767,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4573341,
+            "schoolMajorId": 1451,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（与北京航空航天大学“心理学-人工智能”联合学士学位项目）",
+            "planMajorName": "心理学",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5400",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "653,3987,2"
+              },
+              {
+                "2023": "657,3398,2"
+              }
+            ],
+            "majorCode": "071101",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "北京",
+        "cityName": "海淀区",
+        "enrollmentRate": "0.00",
+        "employmentRate": "95.38",
+        "majorGroupId": 425966,
+        "majorGroupName": "（05）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "100513",
+      "name": "中医骨伤科学",
+      "displayName": "中医骨伤科学",
+      "developmentPotential": "73",
+      "score": "0.72",
+      "opportunityScore": "74",
+      "academicDevelopmentScore": "18",
+      "careerDevelopmentScore": "19",
+      "growthPotentialScore": "18",
+      "industryProspectsScore": "19",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.36",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "贵州中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4034791,
+            "schoolMajorId": 1131153,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（报考该专业有色觉要求，详询院校）（在花溪校区学习）",
+            "planMajorName": "中医骨伤科学",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "5",
+            "tuition": "4500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "100513",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "贵州",
+        "cityName": "贵阳市",
+        "enrollmentRate": "9.90",
+        "employmentRate": "80.01",
+        "majorGroupId": 428118,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "福建中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4856306,
+            "schoolMajorId": 1131110,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（福州市闽侯县）（在旗山校区学习）",
+            "planMajorName": "中医骨伤科学",
+            "planNum": 2,
+            "subjectSelection": "生物",
+            "studyPeriod": "5",
+            "tuition": "6760",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "100513",
+            "pattern": "物理_生物"
+          }
+        ],
+        "schoolFeature": "保研,省重点",
+        "belong": "省政府",
+        "provinceName": "福建",
+        "cityName": "福州市",
+        "enrollmentRate": "23.94",
+        "employmentRate": "91.53",
+        "majorGroupId": 428916,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "北京中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": -87.74245963237534,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4657531,
+            "schoolMajorId": 1499932,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（报考该专业有色觉要求，具体请查阅院校招生章程）（在良乡校区学习）",
+            "planMajorName": "中医骨伤科学",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "5",
+            "tuition": "5800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "615,19694,1"
+              },
+              {
+                "2023": "625,16212,1"
+              }
+            ],
+            "majorCode": "100513",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "211,双一流,101计划,研究生院,保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "北京",
+        "cityName": "朝阳区",
+        "enrollmentRate": "60.56",
+        "employmentRate": "90.71",
+        "majorGroupId": 425899,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "黑龙江中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": -94.45847298103853,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4386538,
+            "schoolMajorId": 1468625,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在校本部学习）",
+            "planMajorName": "中医骨伤科学",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "5",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "585,43562,2"
+              },
+              {
+                "2023": "559,68330,2"
+              }
+            ],
+            "majorCode": "100513",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "101计划,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "黑龙江",
+        "cityName": "哈尔滨市",
+        "enrollmentRate": "34.48",
+        "employmentRate": "84.99",
+        "majorGroupId": 427850,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "江西中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": -94.89392304926285,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4401152,
+            "schoolMajorId": 1131115,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在湾里校区孚习）",
+            "planMajorName": "中医骨伤科学",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "5",
+            "tuition": "5220",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "581,47277,2"
+              },
+              {
+                "2023": "567,60724,2"
+              }
+            ],
+            "majorCode": "100513",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点,省部共建",
+        "belong": "省政府",
+        "provinceName": "江西",
+        "cityName": "南昌市",
+        "enrollmentRate": "31.60",
+        "employmentRate": "80.20",
+        "majorGroupId": 426858,
+        "majorGroupName": "（04）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "101003",
+      "name": "医学影像技术",
+      "displayName": "医学影像技术",
+      "developmentPotential": "70",
+      "score": "0.65",
+      "opportunityScore": "75",
+      "academicDevelopmentScore": "19",
+      "careerDevelopmentScore": "18",
+      "growthPotentialScore": "18",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.13",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "哈尔滨医科大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4686450,
+            "schoolMajorId": 105841,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（报考该专业组部分专业有色觉要求，具体请查阅院校招生章程。以卞专业在大庆校区学习）",
+            "planMajorName": "医学影像技术",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "101003",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "保研,省重点",
+        "belong": "省政府",
+        "provinceName": "黑龙江",
+        "cityName": "哈尔滨市",
+        "enrollmentRate": "62.29",
+        "employmentRate": "74.01",
+        "majorGroupId": 427782,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "济宁医学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4680269,
+            "schoolMajorId": 2157302,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在济宁校区学习）",
+            "planMajorName": "医学影像技术",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6600",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "101003",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "山东",
+        "cityName": "济宁市",
+        "enrollmentRate": "21.46",
+        "employmentRate": "96.41",
+        "majorGroupId": 429354,
+        "majorGroupName": "（01）"
+      },
+      {
+        "schoolName": "南京医科大学",
+        "schoolNature": "public",
+        "rankDiffPer": -93.82766555868064,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4640266,
+            "schoolMajorId": 106708,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "医学影像技术",
+            "planNum": 67,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,67"
+              },
+              {
+                "2024": "589,39110,36"
+              },
+              {
+                "2023": "593,37931,36"
+              }
+            ],
+            "majorCode": "101003",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "双一流,101计划,研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "0.00",
+        "employmentRate": "96.52",
+        "majorGroupId": 426666,
+        "majorGroupName": "（05）"
+      },
+      {
+        "schoolName": "湖北中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": -95.94435670844393,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4845199,
+            "schoolMajorId": 1130560,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "医学影像技术",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "4000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "569,59522,1"
+              },
+              {
+                "2023": "552,75102,2"
+              }
+            ],
+            "majorCode": "101003",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "27.27",
+        "employmentRate": "87.84",
+        "majorGroupId": 427816,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "赣南医科大学",
+        "schoolNature": "public",
+        "rankDiffPer": -96.148691767709,
+        "group": 5,
+        "historyScores": [
+          {
+            "id": 4675878,
+            "schoolMajorId": 10142,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（原赣南医学院）（茬龙南校区学习）",
+            "planMajorName": "医学影像技术",
+            "planNum": 2,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "4790",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "566,62680,2"
+              },
+              {
+                "2023": "518,109392,2"
+              }
+            ],
+            "majorCode": "101003",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省政府",
+        "provinceName": "江西",
+        "cityName": "赣州市",
+        "enrollmentRate": "29.50",
+        "employmentRate": "85.24",
+        "majorGroupId": 426903,
+        "majorGroupName": "（02）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "120601",
+      "name": "物流管理",
+      "displayName": "物流管理",
+      "developmentPotential": "71",
+      "score": "0.65",
+      "opportunityScore": "77",
+      "academicDevelopmentScore": "19",
+      "careerDevelopmentScore": "18",
+      "growthPotentialScore": "19",
+      "industryProspectsScore": "21",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.13",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "江西应用科技学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4172373,
+            "schoolMajorId": 42047,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "物流管理",
+            "planNum": 3,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "23000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120601",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "江西",
+        "cityName": "南昌市",
+        "enrollmentRate": "10.77",
+        "employmentRate": "86.56",
+        "majorGroupId": 428781,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "新疆理工学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4291846,
+            "schoolMajorId": 155165,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "物流管理",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "3200",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "473,153184,2"
+              }
+            ],
+            "majorCode": "120601",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "自治区政府",
+        "provinceName": "新疆",
+        "cityName": "阿克苏地区",
+        "enrollmentRate": "1.40",
+        "employmentRate": "96.30",
+        "majorGroupId": 430755,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "湖南财政经济学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4195402,
+            "schoolMajorId": 67968,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（数智运营）",
+            "planMajorName": "物流管理",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120601",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "湖南",
+        "cityName": "长沙市",
+        "enrollmentRate": "6.79",
+        "employmentRate": "91.56",
+        "majorGroupId": 430118,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "无锡学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4098366,
+            "schoolMajorId": 54683,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "物流管理",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5200",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120601",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省政府",
+        "provinceName": "江苏",
+        "cityName": "无锡市",
+        "enrollmentRate": "12.40",
+        "employmentRate": "97.88",
+        "majorGroupId": 429606,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "福建理工大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4049025,
+            "schoolMajorId": 25445,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（原福建工程学院）（福州市闽侯县）（旗山校区）",
+            "planMajorName": "物流管理",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5460",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120601",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省重点",
+        "belong": "省政府",
+        "provinceName": "福建",
+        "cityName": "福州市",
+        "enrollmentRate": "8.50",
+        "employmentRate": "0.00",
+        "majorGroupId": 427952,
+        "majorGroupName": "（02）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "020304",
+      "name": "投资学",
+      "displayName": "投资学",
+      "developmentPotential": "71",
+      "score": "0.65",
+      "opportunityScore": "77",
+      "academicDevelopmentScore": "19",
+      "careerDevelopmentScore": "19",
+      "growthPotentialScore": "19",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.42",
+      "yanxueDeduction": "0.13",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "湖北文理学院理工学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4277054,
+            "schoolMajorId": 1744589,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "投资学",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "13000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020304",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "湖北",
+        "cityName": "襄阳市",
+        "enrollmentRate": "6.86",
+        "employmentRate": "86.43",
+        "majorGroupId": 430097,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "浙江越秀外国语学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4046283,
+            "schoolMajorId": 161927,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在镜湖校区学习）",
+            "planMajorName": "投资学",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "30000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020304",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "浙江",
+        "cityName": "绍兴市",
+        "enrollmentRate": "8.92",
+        "employmentRate": "94.05",
+        "majorGroupId": 430643,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "厦门工学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4388485,
+            "schoolMajorId": 157449,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "投资学",
+            "planNum": 4,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "34000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020304",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "福建",
+        "cityName": "厦门市",
+        "enrollmentRate": "1.09",
+        "employmentRate": "97.05",
+        "majorGroupId": 430674,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "天津财经大学珠江学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4933935,
+            "schoolMajorId": 2163333,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "投资学",
+            "planNum": 5,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "15000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,5"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020304",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "市教委",
+        "provinceName": "天津",
+        "cityName": "宝坻区",
+        "enrollmentRate": "1.94",
+        "employmentRate": "89.60",
+        "majorGroupId": 430508,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "中南财经政法大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4085440,
+            "schoolMajorId": 21497,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（投资决策数智化卓越人才实验班）",
+            "planMajorName": "投资学",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5850",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "020304",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点,省部共建,五院四系",
+        "belong": "教育部",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "0.00",
+        "employmentRate": "93.80",
+        "majorGroupId": 427714,
+        "majorGroupName": "（03）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "120801",
+      "name": "电子商务",
+      "displayName": "电子商务",
+      "developmentPotential": "68",
+      "score": "0.62",
+      "opportunityScore": "74",
+      "academicDevelopmentScore": "18",
+      "careerDevelopmentScore": "18",
+      "growthPotentialScore": "18",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.39",
+      "shanxueScore": "0.36",
+      "yanxueDeduction": "0.13",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "湖南工程学院应用技术学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4331572,
+            "schoolMajorId": 1688033,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "电子商务",
+            "planNum": 3,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "12700",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120801",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "湖南",
+        "cityName": "湘潭市",
+        "enrollmentRate": "2.42",
+        "employmentRate": "88.73",
+        "majorGroupId": 430733,
+        "majorGroupName": "（01）"
+      },
+      {
+        "schoolName": "岳阳学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4346494,
+            "schoolMajorId": 158795,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（原湖南理工学院南湖学院）",
+            "planMajorName": "电子商务",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "22000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120801",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "湖南",
+        "cityName": "岳阳市",
+        "enrollmentRate": "8.82",
+        "employmentRate": "76.64",
+        "majorGroupId": 430735,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "南昌师范学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4224995,
+            "schoolMajorId": 85501,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在昌北校区学习）",
+            "planMajorName": "电子商务",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "3880",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120801",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "江西",
+        "cityName": "南昌市",
+        "enrollmentRate": "8.50",
+        "employmentRate": "82.44",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "山东财经大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4269113,
+            "schoolMajorId": 29173,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（在章丘校区学习）",
+            "planMajorName": "电子商务",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "6600",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "549,78084,2"
+              }
+            ],
+            "majorCode": "120801",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点,省部共建",
+        "belong": "省政府",
+        "provinceName": "山东",
+        "cityName": "济南市",
+        "enrollmentRate": "15.16",
+        "employmentRate": "91.44",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "海南大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4160904,
+            "schoolMajorId": 2165036,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（观澜湖校区）（外语成绩不低于105分）（中外合作办学）",
+            "planMajorName": "电子商务（中外合作办学）",
+            "planNum": 4,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "80000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120801",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点,省部共建",
+        "belong": "省政府",
+        "provinceName": "海南",
+        "cityName": "海口市",
+        "enrollmentRate": null,
+        "employmentRate": null,
+        "majorGroupId": 428052,
+        "majorGroupName": "（07）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "120202",
+      "name": "市场营销",
+      "displayName": "市场营销",
+      "developmentPotential": "68",
+      "score": "0.62",
+      "opportunityScore": "74",
+      "academicDevelopmentScore": "18",
+      "careerDevelopmentScore": "18",
+      "growthPotentialScore": "18",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.39",
+      "shanxueScore": "0.36",
+      "yanxueDeduction": "0.13",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "复旦大学",
+        "schoolNature": "public",
+        "rankDiffPer": 622.7544910179641,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4544551,
+            "schoolMajorId": 1230713,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（管理科学与商业智能试验班）（统计学（统计、数据科学）、财务管理（金融与财务）、信息管理与信息系统（商业AI应用、AI系统开发）、会计学、市场营销、工商管理（战略管理、国际经营、人力资源）、管理科学（智能决策、智慧供应链））（含管理科学与商业智能卓研博英班（融通项目）；含财务管理（金融与财务）+人工智能（双学士学位培养项目）、市场营销+人工智能（双学士学位培养项目））",
+            "planMajorName": "市场营销",
+            "planNum": 1,
+            "subjectSelection": "化学",
+            "studyPeriod": "4",
+            "tuition": "6500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "681,334,1"
+              },
+              {
+                "2023": "680,375,4"
+              }
+            ],
+            "majorCode": "120202",
+            "pattern": "物理_化学"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,C9",
+        "belong": "教育部",
+        "provinceName": "上海",
+        "cityName": "杨浦区",
+        "enrollmentRate": "47.01",
+        "employmentRate": "96.25",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "东北师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4042143,
+            "schoolMajorId": 7374,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（净月大街校区）（中外合作办学）",
+            "planMajorName": "市场营销",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "60000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120202",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,101计划,研究生院(部),保研,国重点,省部共建",
+        "belong": "教育部",
+        "provinceName": "吉林",
+        "cityName": "长春市",
+        "enrollmentRate": "23.74",
+        "employmentRate": "98.03",
+        "majorGroupId": 426442,
+        "majorGroupName": "（06）"
+      },
+      {
+        "schoolName": "吉林大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4008540,
+            "schoolMajorId": 6008,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（市场营销+数据科学与大数据技术）（双学士学位培养项目）（在前卫南区学习）",
+            "planMajorName": "市场营销",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "8800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120202",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,五院四系",
+        "belong": "教育部",
+        "provinceName": "吉林",
+        "cityName": "长春市",
+        "enrollmentRate": "41.28",
+        "employmentRate": "85.43",
+        "majorGroupId": 426377,
+        "majorGroupName": "（05）"
+      },
+      {
+        "schoolName": "湖北中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4412740,
+            "schoolMajorId": 23272,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "市场营销",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "4000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120202",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "27.27",
+        "employmentRate": "87.84",
+        "majorGroupId": 427817,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "武汉晴川学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4001046,
+            "schoolMajorId": 67772,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "市场营销",
+            "planNum": 3,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "21000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120202",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "13.38",
+        "employmentRate": "87.79",
+        "majorGroupId": 430100,
+        "majorGroupName": "（02）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "050306",
+      "name": "网络与新媒体",
+      "displayName": "网络与新媒体",
+      "developmentPotential": "66",
+      "score": "0.59",
+      "opportunityScore": "72",
+      "academicDevelopmentScore": "17",
+      "careerDevelopmentScore": "18",
+      "growthPotentialScore": "17",
+      "industryProspectsScore": "20",
+      "lexueScore": "0.36",
+      "shanxueScore": "0.36",
+      "yanxueDeduction": "0.13",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "南京特殊教育师范学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4234910,
+            "schoolMajorId": 2163612,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（第一、二学年在江宁校区学习，第三、四学年在校本部学习）",
+            "planMajorName": "网络与新媒体",
+            "planNum": 4,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5200",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050306",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "江苏",
+        "cityName": "南京市",
+        "enrollmentRate": "3.50",
+        "employmentRate": "97.19",
+        "majorGroupId": 429187,
+        "majorGroupName": "（06）"
+      },
+      {
+        "schoolName": "湖北文理学院理工学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4277122,
+            "schoolMajorId": 2164209,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "网络与新媒体",
+            "planNum": 4,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "14300",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050306",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "湖北",
+        "cityName": "襄阳市",
+        "enrollmentRate": "6.86",
+        "employmentRate": "86.43",
+        "majorGroupId": 430097,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "江西服装学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4270703,
+            "schoolMajorId": 1130363,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "网络与新媒体",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "25500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050306",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省教育厅",
+        "provinceName": "江西",
+        "cityName": "南昌市",
+        "enrollmentRate": "17.19",
+        "employmentRate": "80.54",
+        "majorGroupId": 431071,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "沈阳城市学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4079807,
+            "schoolMajorId": 76548,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "网络与新媒体",
+            "planNum": 3,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "31000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,3"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050306",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "辽宁",
+        "cityName": "沈阳市",
+        "enrollmentRate": "1.77",
+        "employmentRate": "94.65",
+        "majorGroupId": 430540,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "河北地质大学华信学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4077466,
+            "schoolMajorId": 2163371,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "网络与新媒体",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "19000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "050306",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "省教育厅",
+        "provinceName": "河北",
+        "cityName": "石家庄",
+        "enrollmentRate": "2.03",
+        "employmentRate": "94.43",
+        "majorGroupId": 429599,
+        "majorGroupName": "（01）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "040102",
+      "name": "科学教育",
+      "displayName": "科学教育",
+      "developmentPotential": "63",
+      "score": "0.59",
+      "opportunityScore": "67",
+      "academicDevelopmentScore": "16",
+      "careerDevelopmentScore": "16",
+      "growthPotentialScore": "17",
+      "industryProspectsScore": "18",
+      "lexueScore": "0.31",
+      "shanxueScore": "0.28",
+      "yanxueDeduction": "0.00",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "桂林师范学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4214125,
+            "schoolMajorId": 2162163,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（原桂林师范高等专科学校）（师范）",
+            "planMajorName": "科学教育",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "4200",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "040102",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "自治区政府",
+        "provinceName": "广西",
+        "cityName": "桂林市",
+        "enrollmentRate": null,
+        "employmentRate": null,
+        "majorGroupId": 429934,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "新疆师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4120433,
+            "schoolMajorId": 2011562,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）（在温泉校区学习）",
+            "planMajorName": "科学教育",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "3500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "040102",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "保研,省重点",
+        "belong": "自治区政府",
+        "provinceName": "新疆",
+        "cityName": "乌鲁木齐市",
+        "enrollmentRate": "0.00",
+        "employmentRate": "89.58",
+        "majorGroupId": 427052,
+        "majorGroupName": "（05）"
+      },
+      {
+        "schoolName": "长春师范大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4116307,
+            "schoolMajorId": 19999,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）",
+            "planMajorName": "科学教育",
+            "planNum": 4,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5280",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "040102",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,省属",
+        "belong": "省政府",
+        "provinceName": "吉林",
+        "cityName": "长春市",
+        "enrollmentRate": "10.77",
+        "employmentRate": "81.79",
+        "majorGroupId": 427591,
+        "majorGroupName": "（04）"
+      },
+      {
+        "schoolName": "湖州师范学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4401913,
+            "schoolMajorId": 12853,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）",
+            "planMajorName": "科学教育",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5500",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "546,80934,2"
+              }
+            ],
+            "majorCode": "040102",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属,1+x证书制度试点",
+        "belong": "省政府",
+        "provinceName": "浙江",
+        "cityName": "湖州市",
+        "enrollmentRate": "14.38",
+        "employmentRate": "95.83",
+        "majorGroupId": 427122,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "浙江外国语学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4049157,
+            "schoolMajorId": 1026255,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（师范）",
+            "planMajorName": "科学教育",
+            "planNum": 4,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "4800",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,4"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "040102",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "浙江",
+        "cityName": "杭州市",
+        "enrollmentRate": "7.59",
+        "employmentRate": "93.94",
+        "majorGroupId": 431005,
+        "majorGroupName": "（03）"
+      }
+    ]
+  },
+  {
+    "major": {
+      "code": "120205",
+      "name": "国际商务",
+      "displayName": "国际商务",
+      "developmentPotential": "63",
+      "score": "0.55",
+      "opportunityScore": "70",
+      "academicDevelopmentScore": "17",
+      "careerDevelopmentScore": "17",
+      "growthPotentialScore": "18",
+      "industryProspectsScore": "18",
+      "lexueScore": "0.25",
+      "shanxueScore": "0.36",
+      "yanxueDeduction": "0.06",
+      "tiaozhanDeduction": "0.00"
+    },
+    "schools": [
+      {
+        "schoolName": "中南财经政法大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4087653,
+            "schoolMajorId": 21544,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（经济学、财政学、税收学、金融学、经济与金融、法学、国际经贸规则、知识产权、国际经济与贸易、财务管理、会计学、国际商务、国际法）",
+            "planMajorName": "国际商务",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "5850",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120205",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点,省部共建,五院四系",
+        "belong": "教育部",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "0.00",
+        "employmentRate": "93.80",
+        "majorGroupId": null,
+        "majorGroupName": null
+      },
+      {
+        "schoolName": "暨南大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4069271,
+            "schoolMajorId": 4872,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "（国际班）（珠海校区）",
+            "planMajorName": "国际商务",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "6060",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120205",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "211,双一流,研究生院,保研,国重点",
+        "belong": "统战部",
+        "provinceName": "广东",
+        "cityName": "广州市",
+        "enrollmentRate": "29.50",
+        "employmentRate": "88.06",
+        "majorGroupId": 426192,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "湖北中医药大学",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4412762,
+            "schoolMajorId": 200147,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "国际商务",
+            "planNum": 1,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "4000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,1"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120205",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "研究生院,保研,省重点",
+        "belong": "省政府",
+        "provinceName": "湖北",
+        "cityName": "武汉市",
+        "enrollmentRate": "27.27",
+        "employmentRate": "87.84",
+        "majorGroupId": 427817,
+        "majorGroupName": "（02）"
+      },
+      {
+        "schoolName": "贵州商学院",
+        "schoolNature": "public",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4299543,
+            "schoolMajorId": 57522,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "国际商务",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "4100",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,-"
+              },
+              {
+                "2023": "-,-,-"
+              }
+            ],
+            "majorCode": "120205",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "省属",
+        "belong": "省政府",
+        "provinceName": "贵州",
+        "cityName": "贵阳市",
+        "enrollmentRate": "0.69",
+        "employmentRate": "83.25",
+        "majorGroupId": 429803,
+        "majorGroupName": "（03）"
+      },
+      {
+        "schoolName": "天津财经大学珠江学院",
+        "schoolNature": "private",
+        "rankDiffPer": 0,
+        "group": 6,
+        "historyScores": [
+          {
+            "id": 4934194,
+            "schoolMajorId": 75844,
+            "province": "江苏",
+            "subjectType": "物理",
+            "batch": "本科批",
+            "remark": "",
+            "planMajorName": "国际商务",
+            "planNum": 2,
+            "subjectSelection": "不限",
+            "studyPeriod": "4",
+            "tuition": "15000",
+            "year": 2025,
+            "createdAt": "2025-07-20T08:13:49.734Z",
+            "historyScore": [
+              {
+                "2025": "-,-,2"
+              },
+              {
+                "2024": "-,-,2"
+              },
+              {
+                "2023": "-,-,2"
+              }
+            ],
+            "majorCode": "120205",
+            "pattern": "物理_不限"
+          }
+        ],
+        "schoolFeature": "",
+        "belong": "市教委",
+        "provinceName": "天津",
+        "cityName": "宝坻区",
+        "enrollmentRate": "1.94",
+        "employmentRate": "89.60",
+        "majorGroupId": 430508,
+        "majorGroupName": "（02）"
+      }
+    ]
+  }
+]
