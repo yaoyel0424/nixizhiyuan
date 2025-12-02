@@ -134,6 +134,7 @@ export class Major {
   @OneToOne(() => MajorDetail, (majorDetail) => majorDetail.major)
   majorDetail: MajorDetail;
 
+
   // ==================== 辅助方法 ====================
 
   /**

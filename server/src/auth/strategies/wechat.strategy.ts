@@ -74,7 +74,8 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
         throw new UnauthorizedException(
           `获取微信 access_token 失败: ${data.errmsg}`,
         );
-      } 
+      }  
+
       return {
         access_token: data.access_token,
         expires_in: data.expires_in,
@@ -82,7 +83,7 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
         openid: data.openid,
         scope: data.scope,
         unionid: data.unionid,
-      };
+      }; 
 
     } catch (error) {
       throw new UnauthorizedException('获取微信 access_token 失败');
@@ -101,7 +102,6 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
     try {
       const response = await fetch(userInfoUrl);
       const data = await response.json();
-      console.log(data,accessToken,openid,"========")
 
       if (data.errcode) {
         throw new UnauthorizedException(

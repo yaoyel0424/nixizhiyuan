@@ -53,25 +53,15 @@ export class AuthController {
     @Res() res: Response,
     @CurrentUser() user?: any,
   ) {
-    // 处理 GET 请求 - 服务器验证或 OAuth 回调
-    if (req.method === 'GET') {
+    // 处理 GET 请求 - 服务器验证或 OAuth 回调 
       // 处理微信服务器验证请求
       if (query.echostr) {
         // 直接返回 echostr 用于微信服务器验证
         return res.send(query.echostr);
       }
-      // 其他 GET 请求（如 OAuth 回调）可以在这里处理
-      // 目前返回空响应
-      return res.send('');
-    }
-
-    // 处理 POST 请求 - 微信登录
-    // Guard 已经处理了 code 并返回了用户信息和 token
-    if (!user) {
-      return res.status(401).json({ message: '微信登录失败' });
-    }
-
-    return res.json(user);
-  }
+      // 其他 GET 请求（如 OAuth 回调）返回用户信息和 Token
+      // user 参数由 WechatStrategy.validate() 返回的 result 注入
+      return res.json(user || {});
+   }
 }
 

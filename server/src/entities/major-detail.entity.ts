@@ -13,6 +13,7 @@ import {
 import { Major } from './major.entity';
 import { SchoolMajor } from './school-major.entity';
 import { MajorElementAnalysis } from './major-analysis.entity';
+import { PopularMajor } from './popular-major.entity';
 
 /**
  * 专业详情实体类 - 存储专业的详细信息
@@ -268,6 +269,13 @@ export class MajorDetail {
    * 关联的专业分析记录列表（一个专业详情对应多个分析记录）
    */
   @OneToMany(() => MajorElementAnalysis, (analysis) => analysis.majorDetail)
-  majorElementAnalyses: MajorElementAnalysis[]; 
+  majorElementAnalyses: MajorElementAnalysis[];
+
+  /**
+   * 关联的热门专业信息（一对一关系）
+   * 每个专业详情可能对应一个热门专业记录
+   */
+  @OneToOne(() => PopularMajor, (popularMajor) => popularMajor.majorDetail)
+  popularMajor: PopularMajor | null;
  
 }
