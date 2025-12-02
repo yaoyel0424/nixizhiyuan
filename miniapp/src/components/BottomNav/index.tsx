@@ -46,14 +46,16 @@ export function BottomNav() {
 
   const handleNavigate = (href: string) => {
     const [path] = href.split('?')
-    // 由于不再使用原生 tabBar，所有页面都使用 reLaunch 或 navigateTo
-    // 如果是 tabBar 页面，使用 reLaunch 替换整个页面栈
-    if (TABBAR_PAGES.includes(path)) {
+    
+    // 只有跳转到首页时才使用 reLaunch（清空页面栈，首页不显示返回箭头）
+    // 其他所有跳转都使用 navigateTo（保留页面栈，显示返回箭头）
+    if (path === '/pages/index/index') {
+      // 跳转到首页时，清空页面栈
       Taro.reLaunch({
         url: path,
       })
     } else {
-      // 非 tabBar 页面使用 navigateTo
+      // 跳转到其他页面时，使用 navigateTo 保留页面栈，显示返回箭头
       Taro.navigateTo({
         url: href,
       })

@@ -2,9 +2,39 @@
 @import '@/styles/variables.less';
 @import '@/styles/mixins.less';
 
+// 自定义系统导航栏样式（模拟微信原生导航栏）
+.system-nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #f7f9ff;
+  // 不添加底部边框，与原生导航栏一致
+}
+
+.system-nav-bar__content {
+  height: 44px;
+  display: flex;
+  align-items: flex-end; // 底部对齐，与原生导航栏一致
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  padding-bottom: 8px; // 底部内边距，与原生导航栏一致
+  box-sizing: border-box;
+}
+
+.system-nav-bar__title {
+  font-size: 28px; // 微信小程序原生导航栏标准字体大小
+  font-weight: 400; // 使用正常字重，与原生导航栏一致
+  color: #000000;
+  text-align: center;
+  line-height: 1.2; // 行高，确保文字底部对齐
+}
+
 .index-page {
   min-height: 100vh;
-  background: #F5F5F5;
+  background: #f7f9ff;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -29,7 +59,7 @@
     left: 0;
     right: 0;
     height: 80rpx;
-    background: #fff;
+    background: #f7f9ff;
     clip-path: ellipse(100% 100% at 50% 100%);
   }
 }
@@ -85,7 +115,7 @@
   margin-right: auto;
   box-sizing: border-box;
   flex: 1;
-  background: #fff;
+  background: #f7f9ff;
 }
 
 .index-page__card {

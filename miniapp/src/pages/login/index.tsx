@@ -114,7 +114,7 @@ const Login: React.FC = () => {
           <View className="login-page__questions-list">
             <View className="login-page__question-item">
               <Text className="login-page__question-text">
-                我的喜欢是什么？天赋在哪里？哪些专业能让我闪闪发光？如何用分数，创造出最理想的志愿？
+                我的喜欢是什么？天赋在哪里？怎样的专业，能让我闪闪发光？如何用分数，创造出最理想的志愿？
               </Text>
             </View>
           </View>
@@ -122,7 +122,7 @@ const Login: React.FC = () => {
 
         {/* 总结文案 */}
         <View className="login-page__summary">
-          <Text className="login-page__summary-text">我们来帮你找到答案</Text>
+          <Text className="login-page__summary-text">让「喜欢」和「天赋」，带你找到答案</Text>
         </View>
 
         {/* 登录按钮区域 */}
@@ -141,7 +141,7 @@ const Login: React.FC = () => {
           <Text className="login-page__wechat-desc">微信一键登录,安全便捷</Text>
 
           {/* 本地手机号一键登录 */}
-          <View
+          {/* <View
             className="login-page__phone-btn"
             onClick={() => {
               Taro.showToast({
@@ -152,7 +152,7 @@ const Login: React.FC = () => {
           >
             <Text className="login-page__phone-icon">📱</Text>
             <Text className="login-page__phone-text">本地手机号一键登录</Text>
-          </View>
+          </View> */}
         </View>
 
         {/* 底部 Footer */}

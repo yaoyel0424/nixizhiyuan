@@ -11,6 +11,35 @@ import { getStorage } from '@/utils/storage'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
+// 自定义系统导航栏组件（用于首页）
+function SystemNavBar() {
+  const [systemInfo, setSystemInfo] = useState<any>(null)
+
+  useEffect(() => {
+    const info = Taro.getSystemInfoSync()
+    setSystemInfo(info)
+  }, [])
+
+  if (!systemInfo) return null
+
+  const statusBarHeight = systemInfo.statusBarHeight || 0
+  const navigationBarHeight = 44 // 微信导航栏标准高度（px）
+
+  return (
+    <View 
+      className="system-nav-bar"
+      style={{ 
+        height: `${statusBarHeight + navigationBarHeight}px`,
+        paddingTop: `${statusBarHeight}px`
+      }}
+    >
+      <View className="system-nav-bar__content">
+        <View className="system-nav-bar__title">首页</View>
+      </View>
+    </View>
+  )
+}
+
 const STORAGE_KEY = "questionnaire_answers"
 
 function loadAnswersFromStorage(): Record<number, number> {
@@ -27,11 +56,16 @@ export default function IndexPage() {
   const [isGuideDialogOpen, setIsGuideDialogOpen] = useState(false)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [isClient, setIsClient] = useState(false)
+  const [systemInfo, setSystemInfo] = useState<any>(null)
 
   useEffect(() => {
     setIsClient(true)
     const storedAnswers = loadAnswersFromStorage()
     setAnswers(storedAnswers)
+    
+    // 获取系统信息，用于计算导航栏高度
+    const info = Taro.getSystemInfoSync()
+    setSystemInfo(info)
   }, [])
 
   // 当对话框打开时，重新读取本地数据
@@ -117,8 +151,14 @@ export default function IndexPage() {
     })
   }
 
+  // 计算顶部间距（系统导航栏高度）
+  const statusBarHeight = systemInfo?.statusBarHeight || 0
+  const navigationBarHeight = 44
+  const topPadding = statusBarHeight + navigationBarHeight
+
   return (
-    <View className="index-page">
+    <View className="index-page" style={{ paddingTop: `${topPadding}px` }}>
+      <SystemNavBar />
       <TopNav />
       
       {/* 头部横幅 */}

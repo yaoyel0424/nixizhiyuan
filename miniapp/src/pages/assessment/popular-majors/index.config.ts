@@ -1,5 +1,5 @@
 export default {
-  navigationBarTitleText: '登录',
+  navigationBarTitleText: '热门专业',
   navigationBarBackgroundColor: '#f7f9ff',
   navigationBarTextStyle: 'black',
   backgroundColor: '#f7f9ff',
