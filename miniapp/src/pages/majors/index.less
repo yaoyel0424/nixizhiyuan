@@ -1,0 +1,113 @@
+// 专业探索页面样式
+.majors-page {
+  flex: 1;
+  min-height: 0;
+  background: #f7f9ff;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.majors-page__header {
+  background: #1A4099;
+  color: #fff;
+  padding: 48rpx 32rpx 64rpx;
+  position: relative;
+}
+
+.majors-page__header-content {
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.majors-page__header-top {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
+}
+
+.majors-page__back-btn {
+  flex-shrink: 0;
+  height: 64rpx;
+  width: 64rpx;
+  padding: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.majors-page__title {
+  font-size: 40rpx;
+  font-weight: bold;
+}
+
+.majors-page__subtitle {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 32rpx;
+}
+
+.majors-page__tabs {
+  display: flex;
+  gap: 8rpx;
+}
+
+.majors-page__tab {
+  flex: 1;
+  padding: 16rpx 32rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  border-radius: 16rpx;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  
+  &--active {
+    background: #FF7F50;
+    color: #fff;
+    box-shadow: 0 8rpx 12rpx -2rpx rgba(0, 0, 0, 0.1);
+  }
+}
+
+.majors-page__tab-text {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.majors-page__wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32rpx;
+  background: var(--background, #fff);
+  clip-path: ellipse(70% 100% at 50% 100%);
+}
+
+.majors-page__content {
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+  padding: 32rpx;
+  flex: 1;
+}
+
+.majors-page__placeholder {
+  display: block;
+  text-align: center;
+  font-size: 32rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+}
+
+.majors-page__placeholder-desc {
+  display: block;
+  text-align: center;
+  font-size: 28rpx;
+  color: #999;
+}

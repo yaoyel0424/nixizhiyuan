@@ -1,0 +1,17 @@
+// 页面容器样式
+.page-container {
+  min-height: 100vh;
+  height: 100vh;
+  background: var(--background, #fff);
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-container__content {
+  max-width: 100%;
+  margin: 0 auto;
+}
+

@@ -1,0 +1,27 @@
+// 文本域组件样式
+.ui-textarea {
+  min-height: 128rpx;
+  width: 100%;
+  border-radius: 12rpx;
+  border: 2rpx solid var(--border-color, #d9d9d9);
+  background: transparent;
+  padding: 16rpx 24rpx;
+  font-size: 28rpx;
+  transition: all 0.2s;
+  outline: none;
+  
+  &::placeholder {
+    color: var(--muted-foreground, #999);
+  }
+  
+  &:focus {
+    border-color: var(--ring, #1890ff);
+    box-shadow: 0 0 0 6rpx rgba(24, 144, 255, 0.1);
+  }
+  
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+

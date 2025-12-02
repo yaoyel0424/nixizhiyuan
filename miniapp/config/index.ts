@@ -1,6 +1,41 @@
 import { defineConfig } from '@tarojs/cli'
 import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin'
 
+// 自定义 webpack 插件：修复 CSS 顺序冲突
+class FixCssOrderPlugin {
+  apply(compiler: any) {
+    // 在编译器初始化时修改插件配置
+    compiler.hooks.initialize.tap('FixCssOrderPlugin', () => {
+      if (compiler.options && compiler.options.plugins) {
+        compiler.options.plugins.forEach((plugin: any) => {
+          if (plugin && plugin.constructor) {
+            const pluginName = plugin.constructor.name
+            if (pluginName === 'MiniCssExtractPlugin' || pluginName.includes('CssExtract')) {
+              plugin.options = plugin.options || {}
+              plugin.options.ignoreOrder = true
+            }
+          }
+        })
+      }
+    })
+    
+    // 也在 compilation 阶段尝试修改
+    compiler.hooks.thisCompilation.tap('FixCssOrderPlugin', (compilation: any) => {
+      if (compiler.options && compiler.options.plugins) {
+        compiler.options.plugins.forEach((plugin: any) => {
+          if (plugin && plugin.constructor) {
+            const pluginName = plugin.constructor.name
+            if (pluginName === 'MiniCssExtractPlugin' || pluginName.includes('CssExtract')) {
+              plugin.options = plugin.options || {}
+              plugin.options.ignoreOrder = true
+            }
+          }
+        })
+      }
+    })
+  }
+}
+
 export default defineConfig(async (merge, { command, mode }) => {
   const baseConfig = {
     projectName: 'nixi-zhiyuan-client',
@@ -62,8 +97,18 @@ export default defineConfig(async (merge, { command, mode }) => {
           enable: false
         }
       },
-      webpackChain(chain) {
+      webpackChain(chain: any) {
         chain.resolve.plugin('tsconfig-paths').use(TsconfigPathsPlugin)
+        
+        // 修复 CSS 模块顺序冲突警告
+        // 使用自定义插件来修改 MiniCssExtractPlugin 配置
+        chain.plugin('fix-css-order').use(FixCssOrderPlugin)
+        
+        // 确保输出格式适合微信小程序环境
+        // 使用安全的 globalObject 配置，确保 wx 对象可用
+        chain.output
+          .libraryTarget('jsonp')
+          .globalObject('(typeof wx !== "undefined" ? wx : globalThis)')
       }
     },
     h5: {
@@ -79,8 +124,16 @@ export default defineConfig(async (merge, { command, mode }) => {
           enable: false
         }
       },
-      webpackChain(chain) {
+      webpackChain(chain: any) {
         chain.resolve.plugin('tsconfig-paths').use(TsconfigPathsPlugin)
+        
+        // 修复 CSS 模块顺序冲突警告
+        chain.stats({
+          warningsFilter: [
+            /Conflicting order between:/,
+            /mini-css-extract-plugin[^]*Conflicting order/
+          ]
+        })
       }
     },
     rn: {

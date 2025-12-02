@@ -1,0 +1,2353 @@
+{
+    "code": 200,
+    "message": "操作成功",
+    "data": {
+        "total": 3,
+        "volunteerCount": 45,
+        "alternatives": [
+            {
+                "id": 471,
+                "majorCode": "040104",
+                "majorName": "教育技术学",
+                "schoolCode": "33",
+                "schoolName": "北京师范大学",
+                "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建",
+                "belong": "教育部",
+                "schoolNature": "public",
+                "group": 6,
+                "historyScore": [
+                    {
+                        "2022": "623,221,2",
+                        "2023": "637,274,2",
+                        "2024": "632,334,3"
+                    }
+                ],
+                "selected": false,
+                "enrollmentRate": 0,
+                "employmentRate": 95.38,
+                "majorGroupId": 0,
+                "majorGroupName": "",
+                "Rankdiff": 10954,
+                "RankdiffPer": 3279.64,
+                "score": "1.00",
+                "developmentPotential": "94",
+                "position": 1757744664,
+                "admissionsSite": "https://admission.bnu.edu.cn/",
+                "admissionsPhone": "010-58807962",
+                "provinceName": "北京",
+                "cityName": "海淀区"
+            },
+            {
+                "id": 472,
+                "majorCode": "050204",
+                "majorName": "法语",
+                "schoolCode": "13",
+                "schoolName": "中国人民大学",
+                "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建,五院四系",
+                "belong": "教育部",
+                "schoolNature": "public",
+                "group": 6,
+                "historyScore": [
+                    {
+                        "2022": "-,-,-",
+                        "2023": "-,-,-",
+                        "2024": "639,191,1"
+                    }
+                ],
+                "selected": false,
+                "enrollmentRate": 0,
+                "employmentRate": 0,
+                "majorGroupId": 0,
+                "majorGroupName": "",
+                "Rankdiff": 11097,
+                "RankdiffPer": 5809.95,
+                "score": "1.00",
+                "developmentPotential": "93",
+                "position": 1757744666,
+                "admissionsSite": "https://rdzs.ruc.edu.cn/cms/",
+                "admissionsPhone": "400-012-3517",
+                "provinceName": "北京",
+                "cityName": "海淀区"
+            },
+            {
+                "id": 473,
+                "majorCode": "050204",
+                "majorName": "法语",
+                "schoolCode": "34",
+                "schoolName": "厦门大学",
+                "schoolFeature": "985,211,双一流,101计划,研究生院(部),保研,国重点,省部共建",
+                "belong": "教育部",
+                "schoolNature": "public",
+                "group": 6,
+                "historyScore": [
+                    {
+                        "2022": "606,692,2",
+                        "2023": "-,-,-",
+                        "2024": "613,1079,3"
+                    },
+                    {
+                        "2022": "609,574,3",
+                        "2023": "-,-,-",
+                        "2024": "-,-,-"
+                    }
+                ],
+                "selected": false,
+                "enrollmentRate": 40.8,
+                "employmentRate": 91.1,
+                "majorGroupId": 0,
+                "majorGroupName": "",
+                "Rankdiff": 10209,
+                "RankdiffPer": 946.15,
+                "score": "1.00",
+                "developmentPotential": "93",
+                "position": 1757744668,
+                "admissionsSite": "https://zs.xmu.edu.cn/",
+                "admissionsPhone": "0592-2188888",
+                "provinceName": "福建",
+                "cityName": "厦门市"
+            }
+        ],
+        "currentPage": 1,
+        "totalPages": 1,
+        "topDevelopmentCount": 2,
+        "topDevelopmentMajors": [
+            {
+                "majorCode": "083201",
+                "majorName": "未来机器人",
+                "developmentPotential": "98"
+            },
+            {
+                "majorCode": "080902",
+                "majorName": "软件工程",
+                "developmentPotential": "98"
+            },
+            {
+                "majorCode": "080706",
+                "majorName": "信息工程",
+                "developmentPotential": "97"
+            },
+            {
+                "majorCode": "070102",
+                "majorName": "信息与计算科学",
+                "developmentPotential": "96"
+            },
+            {
+                "majorCode": "320603",
+                "majorName": "言语听觉治疗技术",
+                "developmentPotential": "96"
+            },
+            {
+                "majorCode": "080801",
+                "majorName": "自动化",
+                "developmentPotential": "96"
+            },
+            {
+                "majorCode": "080201",
+                "majorName": "机械工程",
+                "developmentPotential": "96"
+            },
+            {
+                "majorCode": "080711",
+                "majorName": "医学信息工程",
+                "developmentPotential": "96"
+            },
+            {
+                "majorCode": "220803",
+                "majorName": "资源循环工程",
+                "developmentPotential": "96"
+            },
+            {
+                "majorCode": "082903",
+                "majorName": "职业卫生工程",
+                "developmentPotential": "95"
+            },
+            {
+                "majorCode": "101008",
+                "majorName": "听力与言语康复学",
+                "developmentPotential": "95"
+            },
+            {
+                "majorCode": "081401",
+                "majorName": "地质工程",
+                "developmentPotential": "94"
+            },
+            {
+                "majorCode": "100805",
+                "majorName": "中药制药",
+                "developmentPotential": "94"
+            },
+            {
+                "majorCode": "040104",
+                "majorName": "教育技术学",
+                "developmentPotential": "94"
+            },
+            {
+                "majorCode": "330203",
+                "majorName": "保险",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "081102",
+                "majorName": "水文与水资源工程",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "020303",
+                "majorName": "保险学",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "081903",
+                "majorName": "海洋资源开发技术",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "050204",
+                "majorName": "法语",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "050232",
+                "majorName": "葡萄牙语",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "071101",
+                "majorName": "心理学",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "082503",
+                "majorName": "环境科学",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "100513",
+                "majorName": "中医骨伤科学",
+                "developmentPotential": "93"
+            },
+            {
+                "majorCode": "040102",
+                "majorName": "科学教育",
+                "developmentPotential": "92"
+            },
+            {
+                "majorCode": "040201",
+                "majorName": "体育教育",
+                "developmentPotential": "92"
+            },
+            {
+                "majorCode": "130210",
+                "majorName": "音乐治疗",
+                "developmentPotential": "92"
+            },
+            {
+                "majorCode": "370208",
+                "majorName": "中文国际教育",
+                "developmentPotential": "92"
+            },
+            {
+                "majorCode": "050208",
+                "majorName": "波斯语",
+                "developmentPotential": "91"
+            },
+            {
+                "majorCode": "050230",
+                "majorName": "斯洛伐克语",
+                "developmentPotential": "91"
+            },
+            {
+                "majorCode": "010103",
+                "majorName": "宗教学",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "100503",
+                "majorName": "藏医学",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "101014",
+                "majorName": "医工学",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "260307",
+                "majorName": "工业互联网工程",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "080901",
+                "majorName": "计算机科学与技术",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "080904",
+                "majorName": "信息安全",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "050254",
+                "majorName": "斯洛文尼亚语",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "071204",
+                "majorName": "生物统计学",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "030304",
+                "majorName": "女性学",
+                "developmentPotential": "90"
+            },
+            {
+                "majorCode": "082002",
+                "majorName": "飞行器设计与工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "080213",
+                "majorName": "智能制造工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "080216",
+                "majorName": "新能源汽车工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "080503",
+                "majorName": "新能源科学与工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "080601",
+                "majorName": "电气工程及其自动化",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "020302",
+                "majorName": "金融工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "082601",
+                "majorName": "生物医学工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "080905",
+                "majorName": "物联网工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "082101",
+                "majorName": "武器系统与工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "080207",
+                "majorName": "车辆工程",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "082203",
+                "majorName": "工程物理",
+                "developmentPotential": "89"
+            },
+            {
+                "majorCode": "082005",
+                "majorName": "飞行器环境与生命保障工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "100703",
+                "majorName": "临床药学",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "083001",
+                "majorName": "生物工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "071202",
+                "majorName": "应用统计学",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "380701",
+                "majorName": "数字安防技术",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "260302",
+                "majorName": "电气工程及自动化",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "080703",
+                "majorName": "通信工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "080204",
+                "majorName": "机械电子工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "230101",
+                "majorName": "电力工程及自动化",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "080915",
+                "majorName": "服务科学与工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "120602",
+                "majorName": "物流工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "080906",
+                "majorName": "数字媒体技术",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "210103",
+                "majorName": "智慧农业技术",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "080912",
+                "majorName": "新媒体技术",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "101005",
+                "majorName": "康复治疗学",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "260604",
+                "majorName": "无人机系统应用技术",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "080501",
+                "majorName": "能源与动力工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "040211",
+                "majorName": "智能体育工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "101004",
+                "majorName": "眼视光学",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "240402",
+                "majorName": "建筑电气与智能化工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "080402",
+                "majorName": "材料物理",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "300403",
+                "majorName": "智慧机场运行与管理",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "130509",
+                "majorName": "艺术与科技",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "240401",
+                "majorName": "建筑环境与能源工程",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "071201",
+                "majorName": "统计学",
+                "developmentPotential": "88"
+            },
+            {
+                "majorCode": "120801",
+                "majorName": "电子商务",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "120601",
+                "majorName": "物流管理",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "070202",
+                "majorName": "应用物理学",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "090112",
+                "majorName": "智慧农业",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "080301",
+                "majorName": "测控技术与仪器",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "070504",
+                "majorName": "地理信息科学",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "240105",
+                "majorName": "城市设计数字技术",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "020304",
+                "majorName": "投资学",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "330703",
+                "majorName": "全媒体电商运营",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "250402",
+                "majorName": "水环境工程",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "330603",
+                "majorName": "品牌策划与运营",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "120202",
+                "majorName": "市场营销",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "050306",
+                "majorName": "网络与新媒体",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "240603",
+                "majorName": "给排水工程",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "260202",
+                "majorName": "制冷与空调工程",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "081004",
+                "majorName": "建筑电气与智能化",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "082805",
+                "majorName": "人居环境科学与技术",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "082501",
+                "majorName": "环境科学与工程",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "081202",
+                "majorName": "遥感科学与技术",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "083102",
+                "majorName": "消防工程",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "050110",
+                "majorName": "数字人文",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "080405",
+                "majorName": "金属材料工程",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "080908",
+                "majorName": "空间信息与数字技术",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "082502",
+                "majorName": "环境工程",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "220801",
+                "majorName": "生态环境工程技术",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "130511",
+                "majorName": "新媒体艺术",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "220701",
+                "majorName": "智慧气象技术",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "080715",
+                "majorName": "电信工程及管理",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "080403",
+                "majorName": "材料化学",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "300105",
+                "majorName": "高速铁路运营管理",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "040216",
+                "majorName": "体育康养",
+                "developmentPotential": "87"
+            },
+            {
+                "majorCode": "350403",
+                "majorName": "文化创意产业管理",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "300203",
+                "majorName": "汽车服务工程技术",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "080203",
+                "majorName": "材料成型及控制工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "210203",
+                "majorName": "木业产品智能制造",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "101009",
+                "majorName": "康复物理治疗",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "090505",
+                "majorName": "智慧林业",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "090106",
+                "majorName": "设施农业科学与工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "101101",
+                "majorName": "护理学",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "210201",
+                "majorName": "智慧林业技术",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "050309",
+                "majorName": "国际新闻与传播",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "130502",
+                "majorName": "视觉传达设计",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "130504",
+                "majorName": "产品设计",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "081006",
+                "majorName": "道路桥梁与渡河工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "120205",
+                "majorName": "国际商务",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "080205",
+                "majorName": "工业设计",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "100403",
+                "majorName": "妇幼保健医学",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "120101",
+                "majorName": "管理科学",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "250101",
+                "majorName": "水文与水资源工程技术",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "210104",
+                "majorName": "设施园艺",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "081303",
+                "majorName": "资源循环科学与工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "082709",
+                "majorName": "食品安全与检测",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "101003",
+                "majorName": "医学影像技术",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "081901",
+                "majorName": "船舶与海洋工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "080215",
+                "majorName": "仿生科学与工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "081003",
+                "majorName": "给排水科学与工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "120410",
+                "majorName": "健康服务与管理",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "030206",
+                "majorName": "国际组织与全球治理",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "081802",
+                "majorName": "交通工程",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "300401",
+                "majorName": "民航运输服务与管理",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "100401",
+                "majorName": "预防医学",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "350111",
+                "majorName": "数字影像设计",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "082801",
+                "majorName": "建筑学",
+                "developmentPotential": "86"
+            },
+            {
+                "majorCode": "081702",
+                "majorName": "包装工程",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "101002",
+                "majorName": "医学实验技术",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "082505",
+                "majorName": "环保设备工程",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "300701",
+                "majorName": "邮政快递管理",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "050201",
+                "majorName": "英语",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "082802",
+                "majorName": "城乡规划",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "050113",
+                "majorName": "应用中文",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "090402",
+                "majorName": "动物药学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "380601",
+                "majorName": "智慧司法技术与应用",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "082806",
+                "majorName": "城市设计",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "101102",
+                "majorName": "助产学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "030613",
+                "majorName": "涉外警务",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "070803",
+                "majorName": "防灾减灾科学与工程",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "020403",
+                "majorName": "国际经济发展合作",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "050112",
+                "majorName": "汉学与中国学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "100511",
+                "majorName": "中医养生学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "100405",
+                "majorName": "全球健康学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "130503",
+                "majorName": "环境设计",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "070702",
+                "majorName": "海洋技术",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "081603",
+                "majorName": "非织造材料与工程",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "081402",
+                "majorName": "勘查技术与工程",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "030612",
+                "majorName": "公安管理学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "120420",
+                "majorName": "无障碍管理",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "082405",
+                "majorName": "木结构建筑与材料",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "090301",
+                "majorName": "动物科学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "050261",
+                "majorName": "翻译",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "070601",
+                "majorName": "大气科学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "040205",
+                "majorName": "运动人体科学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "071001",
+                "majorName": "生物科学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "120409",
+                "majorName": "公共关系学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "082301",
+                "majorName": "农业工程",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "050206",
+                "majorName": "阿拉伯语",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "040203",
+                "majorName": "社会体育指导与管理",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "100801",
+                "majorName": "中药学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "071002",
+                "majorName": "生物技术",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "081204",
+                "majorName": "地理国情监测",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "390301",
+                "majorName": "现代家政管理",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "082701",
+                "majorName": "食品科学与工程",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "050207",
+                "majorName": "日语",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "040208",
+                "majorName": "体能训练",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "040115",
+                "majorName": "家庭教育",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "120418",
+                "majorName": "慈善管理",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "071102",
+                "majorName": "应用心理学",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "082303",
+                "majorName": "农业电气化",
+                "developmentPotential": "85"
+            },
+            {
+                "majorCode": "120214",
+                "majorName": "市场营销教育",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "100802",
+                "majorName": "中药资源与开发",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "100502",
+                "majorName": "针灸推拿学",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "040212",
+                "majorName": "体育旅游",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "081404",
+                "majorName": "地下水科学与工程",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "050205",
+                "majorName": "西班牙语",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "120403",
+                "majorName": "劳动与社会保障",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "082306",
+                "majorName": "土地整治工程",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "082404",
+                "majorName": "家具设计与工程",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "020104",
+                "majorName": "资源与环境经济学",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "090111",
+                "majorName": "园艺教育",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "120201",
+                "majorName": "工商管理",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "020107",
+                "majorName": "劳动经济学",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "080707",
+                "majorName": "广播电视工程",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "390103",
+                "majorName": "智慧社区管理",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "120902",
+                "majorName": "酒店管理",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "082304",
+                "majorName": "农业建筑环境与能源工程",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "070502",
+                "majorName": "自然地理与资源环境",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "082713",
+                "majorName": "咖啡科学与工程",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "050304",
+                "majorName": "传播学",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "082708",
+                "majorName": "烹饪与营养教育",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "030204",
+                "majorName": "国际事务与国际关系",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "090114",
+                "majorName": "农药化肥",
+                "developmentPotential": "84"
+            },
+            {
+                "majorCode": "050209",
+                "majorName": "朝鲜语",
+                "developmentPotential": "84"
+            }
+        ],
+        "bottomDevelopmentCount": 0,
+        "bottomDevelopmentMajors": [
+            {
+                "majorCode": "070701",
+                "majorName": "海洋科学",
+                "developmentPotential": "67"
+            },
+            {
+                "majorCode": "010102",
+                "majorName": "逻辑学",
+                "developmentPotential": "67"
+            },
+            {
+                "majorCode": "090702",
+                "majorName": "草坪科学与工程",
+                "developmentPotential": "67"
+            },
+            {
+                "majorCode": "050245",
+                "majorName": "荷兰语",
+                "developmentPotential": "67"
+            },
+            {
+                "majorCode": "130308",
+                "majorName": "录音艺术",
+                "developmentPotential": "67"
+            },
+            {
+                "majorCode": "050294",
+                "majorName": "卢森堡语",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "040108",
+                "majorName": "特殊教育",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "050282",
+                "majorName": "白俄罗斯语",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "070203",
+                "majorName": "核物理",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "090504",
+                "majorName": "经济林",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "050221",
+                "majorName": "乌尔都语",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "130208",
+                "majorName": "航空服务艺术与管理",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "050218",
+                "majorName": "蒙古语",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "090503",
+                "majorName": "森林保护",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "130510",
+                "majorName": "陶瓷艺术设计",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "090304",
+                "majorName": "经济动物学",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "120110",
+                "majorName": "计算金融",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "030401",
+                "majorName": "民族学",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "130406",
+                "majorName": "中国画",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "080710",
+                "majorName": "集成电路设计与集成系统",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "050236",
+                "majorName": "希腊语",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "130315",
+                "majorName": "音乐剧",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "130411",
+                "majorName": "纤维艺术",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "090602",
+                "majorName": "海洋渔业科学与技术",
+                "developmentPotential": "66"
+            },
+            {
+                "majorCode": "270102",
+                "majorName": "合成生物技术",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "082108",
+                "majorName": "智能无人系统技术",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "010104",
+                "majorName": "伦理学",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050293",
+                "majorName": "隆迪语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "080418",
+                "majorName": "光电信息材料与器件",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050286",
+                "majorName": "库尔德语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "083108",
+                "majorName": "网络安全与执法",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050288",
+                "majorName": "达里语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "130213",
+                "majorName": "冰雪舞蹈表演",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050104",
+                "majorName": "中国少数民族语言文学",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050278",
+                "majorName": "科摩罗语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050281",
+                "majorName": "提格雷尼亚语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "130304",
+                "majorName": "戏剧影视文学",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "310214",
+                "majorName": "密码工程技术",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050239",
+                "majorName": "泰米尔语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050298",
+                "majorName": "切瓦语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050290",
+                "majorName": "迪维希语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050105",
+                "majorName": "古典文献学",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050200",
+                "majorName": "桑戈语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050295",
+                "majorName": "卢旺达语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "030502",
+                "majorName": "中国共产党历史",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "130203",
+                "majorName": "作曲与作曲技术理论",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "060103",
+                "majorName": "考古学",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050277",
+                "majorName": "恩德贝莱语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "080713",
+                "majorName": "电波传播与天线",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "030501",
+                "majorName": "科学社会主义",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "130205",
+                "majorName": "舞蹈学",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "130202",
+                "majorName": "音乐学",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "082102",
+                "majorName": "武器发射工程",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "082103",
+                "majorName": "探测制导与控制技术",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050276",
+                "majorName": "茨瓦纳语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "050280",
+                "majorName": "绍纳语",
+                "developmentPotential": "65"
+            },
+            {
+                "majorCode": "081306",
+                "majorName": "化工安全工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "080217",
+                "majorName": "增材制造工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "081707",
+                "majorName": "生物质技术与工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050299",
+                "majorName": "塞苏陀语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "030622",
+                "majorName": "消防政治工作",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130413",
+                "majorName": "美术教育",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "081011",
+                "majorName": "城市水系统工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "090307",
+                "majorName": "智慧牧业科学与工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "260601",
+                "majorName": "航空智能制造技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "040217",
+                "majorName": "航空运动",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "080505",
+                "majorName": "能源服务工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130207",
+                "majorName": "舞蹈教育",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050307",
+                "majorName": "数字出版",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050283",
+                "majorName": "毛利语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130318",
+                "majorName": "智能影像艺术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050284",
+                "majorName": "汤加语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "080218",
+                "majorName": "智能交互设计",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130215",
+                "majorName": "音乐科技",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050291",
+                "majorName": "斐济语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "030307",
+                "majorName": "社会政策",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "040207",
+                "majorName": "休闲体育",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "101015",
+                "majorName": "医疗器械与装备工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "100406",
+                "majorName": "运动与公共健康",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050296",
+                "majorName": "纽埃语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050292",
+                "majorName": "库克群岛毛利语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "120212",
+                "majorName": "体育经济与管理",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "120421",
+                "majorName": "人才发展与管理",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "030605",
+                "majorName": "警犬技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "082010",
+                "majorName": "智能飞行器技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "040117",
+                "majorName": "人工智能教育",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050289",
+                "majorName": "德顿语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130316",
+                "majorName": "数字戏剧",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "090205",
+                "majorName": "土地科学与技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130514",
+                "majorName": "人居设计",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "030107",
+                "majorName": "社区矫正",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130403",
+                "majorName": "雕塑",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "090603",
+                "majorName": "水族科学与技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "050285",
+                "majorName": "萨摩亚语",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130317",
+                "majorName": "数字演艺设计",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "080808",
+                "majorName": "智能工程与创意设计",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "080719",
+                "majorName": "柔性电子学",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130212",
+                "majorName": "音乐教育",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "083203",
+                "majorName": "低空技术与工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "083206",
+                "majorName": "智慧城市与空间规划",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "120803",
+                "majorName": "跨境电子商务",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "080914",
+                "majorName": "保密技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "080805",
+                "majorName": "核电技术与控制工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "020308",
+                "majorName": "精算学",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "260603",
+                "majorName": "航空动力装置维修技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "220501",
+                "majorName": "智能采矿技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "100706",
+                "majorName": "药物化学",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "020305",
+                "majorName": "金融数学",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "082106",
+                "majorName": "装甲车辆工程",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "130204",
+                "majorName": "舞蹈表演",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "260605",
+                "majorName": "航空复合材料智造工程技术",
+                "developmentPotential": "64"
+            },
+            {
+                "majorCode": "300402",
+                "majorName": "航空机电设备维修技术",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "080302",
+                "majorName": "精密仪器",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "120106",
+                "majorName": "保密管理",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "081506",
+                "majorName": "海洋油气工程",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "080416",
+                "majorName": "复合材料成型工程",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "040116",
+                "majorName": "孤独症儿童教育",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "300601",
+                "majorName": "城市轨道交通信号与控制技术",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "300106",
+                "majorName": "高速铁路通信技术",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "300103",
+                "majorName": "高速铁路信号控制技术",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "082202",
+                "majorName": "辐射防护与核安全",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "030108",
+                "majorName": "纪检监察",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "050241",
+                "majorName": "世界语",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "300101",
+                "majorName": "高速铁路工程",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "090108",
+                "majorName": "烟草",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "240303",
+                "majorName": "城市地下工程",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "240301",
+                "majorName": "建筑工程",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "300201",
+                "majorName": "道路与桥梁工程",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "030112",
+                "majorName": "海外利益安全",
+                "developmentPotential": "63"
+            },
+            {
+                "majorCode": "083110",
+                "majorName": "海警舰艇指挥与技术",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "380702",
+                "majorName": "国际安保服务与管理",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "070304",
+                "majorName": "分子科学与工程",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "080708",
+                "majorName": "水声工程",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "083109",
+                "majorName": "核生化消防",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "030111",
+                "majorName": "国家安全学",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "101006",
+                "majorName": "口腔医学技术",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "120109",
+                "majorName": "工程审计",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "120413",
+                "majorName": "医疗保险",
+                "developmentPotential": "62"
+            },
+            {
+                "majorCode": "030608",
+                "majorName": "消防指挥",
+                "developmentPotential": "61"
+            },
+            {
+                "majorCode": "250204",
+                "majorName": "治河与港航工程",
+                "developmentPotential": "61"
+            },
+            {
+                "majorCode": "082702",
+                "majorName": "食品质量与安全",
+                "developmentPotential": "61"
+            },
+            {
+                "majorCode": "030602",
+                "majorName": "侦查学",
+                "developmentPotential": "61"
+            },
+            {
+                "majorCode": "090404",
+                "majorName": "实验动物学",
+                "developmentPotential": "61"
+            },
+            {
+                "majorCode": "030103",
+                "majorName": "监狱学",
+                "developmentPotential": "60"
+            },
+            {
+                "majorCode": "030614",
+                "majorName": "国内安全保卫",
+                "developmentPotential": "60"
+            },
+            {
+                "majorCode": "080404",
+                "majorName": "冶金工程",
+                "developmentPotential": "60"
+            },
+            {
+                "majorCode": "030607",
+                "majorName": "边防指挥",
+                "developmentPotential": "60"
+            },
+            {
+                "majorCode": "030604",
+                "majorName": "禁毒学",
+                "developmentPotential": "60"
+            },
+            {
+                "majorCode": "082804",
+                "majorName": "历史建筑保护工程",
+                "developmentPotential": "59"
+            },
+            {
+                "majorCode": "060105",
+                "majorName": "文物保护技术",
+                "developmentPotential": "58"
+            },
+            {
+                "majorCode": "130409",
+                "majorName": "文物保护与修复",
+                "developmentPotential": "58"
+            },
+            {
+                "majorCode": "070904",
+                "majorName": "古生物学",
+                "developmentPotential": "57"
+            },
+            {
+                "majorCode": "130407",
+                "majorName": "实验艺术",
+                "developmentPotential": "57"
+            },
+            {
+                "majorCode": "130507",
+                "majorName": "工艺美术",
+                "developmentPotential": "57"
+            },
+            {
+                "majorCode": "100508",
+                "majorName": "傣医学",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "050211",
+                "majorName": "梵语巴利语",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "101017",
+                "majorName": "老年医学与健康",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "082905",
+                "majorName": "智慧应急",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "130414",
+                "majorName": "虚拟空间艺术",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "070705",
+                "majorName": "海洋科学与技术",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "101012",
+                "majorName": "生物医药数据科学",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "120216",
+                "majorName": "创业管理",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "080919",
+                "majorName": "工业软件",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "040210",
+                "majorName": "电子竞技运动与管理",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "083204",
+                "majorName": "集成电路科学与工程",
+                "developmentPotential": "56"
+            },
+            {
+                "majorCode": "083205",
+                "majorName": "碳中和科学与工程",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "070603",
+                "majorName": "气象技术与工程",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "130402",
+                "majorName": "绘画",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "081811",
+                "majorName": "智慧交通",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "080722",
+                "majorName": "智能视听工程",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "090115",
+                "majorName": "生物农药科学与工程",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "090306",
+                "majorName": "饲料工程",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "101016",
+                "majorName": "健康与医疗保障",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "090406",
+                "majorName": "兽医公共卫生",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "020306",
+                "majorName": "信用管理",
+                "developmentPotential": "55"
+            },
+            {
+                "majorCode": "081206",
+                "majorName": "时空信息工程",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "030606",
+                "majorName": "经济犯罪侦查",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "081309",
+                "majorName": "智能分子工程",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "130214",
+                "majorName": "舞蹈治疗",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "130515",
+                "majorName": "游戏艺术设计",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "080607",
+                "majorName": "能源互联网工程",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "040113",
+                "majorName": "融合教育",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "120415",
+                "majorName": "海关检验检疫安全",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "081507",
+                "majorName": "智能采矿工程",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "080720",
+                "majorName": "智能测控工程",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "080219",
+                "majorName": "应急装备技术与工程",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "100709",
+                "majorName": "药物经济与管理",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "120417",
+                "majorName": "自然资源登记与管理",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "090604",
+                "majorName": "水生动物医学",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "070306",
+                "majorName": "化学测量学与技术",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "101013",
+                "majorName": "智能影像工程",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "040118",
+                "majorName": "婴幼儿发展与健康管理",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "120905",
+                "majorName": "国际邮轮管理",
+                "developmentPotential": "48"
+            },
+            {
+                "majorCode": "083112",
+                "majorName": "食品药品环境犯罪侦查技术",
+                "developmentPotential": "39"
+            },
+            {
+                "majorCode": "080918",
+                "majorName": "密码科学与技术",
+                "developmentPotential": "39"
+            },
+            {
+                "majorCode": "060108",
+                "majorName": "古文字学",
+                "developmentPotential": "39"
+            },
+            {
+                "majorCode": "030621",
+                "majorName": "反恐警务",
+                "developmentPotential": "39"
+            },
+            {
+                "majorCode": "120416",
+                "majorName": "海外安全管理",
+                "developmentPotential": "39"
+            },
+            {
+                "majorCode": "070206",
+                "majorName": "量子信息科学",
+                "developmentPotential": "39"
+            },
+            {
+                "majorCode": "330704",
+                "majorName": "商务数据分析与管理",
+                "developmentPotential": "8"
+            },
+            {
+                "majorCode": "320803",
+                "majorName": "医养照护与管理",
+                "developmentPotential": "6"
+            },
+            {
+                "majorCode": "300107",
+                "majorName": "高速铁路智能供电技术",
+                "developmentPotential": "6"
+            },
+            {
+                "majorCode": "390303",
+                "majorName": "现代殡葬管理",
+                "developmentPotential": "6"
+            },
+            {
+                "majorCode": "320802",
+                "majorName": "婴幼儿发展与健康管理",
+                "developmentPotential": "-3"
+            },
+            {
+                "majorCode": "390205",
+                "majorName": "婚姻服务与管理",
+                "developmentPotential": "-6"
+            }
+        ],
+        "groupedByDevelopmentPotential": [
+            {
+                "groupId": "1",
+                "description": "发展潜能前20%专业",
+                "count": 3,
+                "alternativeIds": [
+                    471,
+                    472,
+                    473
+                ],
+                "rankDiffSubgroups": [
+                    {
+                        "groupId": "1",
+                        "description": "+30%到+100%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "2",
+                        "description": "+5%到+30%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "3",
+                        "description": "（-10%）到+5%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "4",
+                        "description": "（-30%）到（-10%）位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "5",
+                        "description": "（-100%）到（-30%）位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "6",
+                        "description": "其他位次段",
+                        "count": 3,
+                        "alternativeIds": [
+                            471,
+                            472,
+                            473
+                        ]
+                    }
+                ]
+            },
+            {
+                "groupId": "2",
+                "description": "发展潜能20%-80%专业",
+                "count": 0,
+                "alternativeIds": [],
+                "rankDiffSubgroups": [
+                    {
+                        "groupId": "1",
+                        "description": "+30%到+100%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "2",
+                        "description": "+5%到+30%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "3",
+                        "description": "（-10%）到+5%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "4",
+                        "description": "（-30%）到（-10%）位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "5",
+                        "description": "（-100%）到（-30%）位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "6",
+                        "description": "其他位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    }
+                ]
+            },
+            {
+                "groupId": "3",
+                "description": "发展潜能后20%专业",
+                "count": 0,
+                "alternativeIds": [],
+                "rankDiffSubgroups": [
+                    {
+                        "groupId": "1",
+                        "description": "+30%到+100%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "2",
+                        "description": "+5%到+30%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "3",
+                        "description": "（-10%）到+5%位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "4",
+                        "description": "（-30%）到（-10%）位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "5",
+                        "description": "（-100%）到（-30%）位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    },
+                    {
+                        "groupId": "6",
+                        "description": "其他位次段",
+                        "count": 0,
+                        "alternativeIds": []
+                    }
+                ]
+            }
+        ],
+        "groupedByRankDiffPer": [
+            {
+                "groupId": "1",
+                "description": "+30%到+100%位次段",
+                "count": 0,
+                "alternativeIds": []
+            },
+            {
+                "groupId": "2",
+                "description": "+5%到+30%位次段",
+                "count": 0,
+                "alternativeIds": []
+            },
+            {
+                "groupId": "3",
+                "description": "（-10%）到+5%位次段",
+                "count": 0,
+                "alternativeIds": []
+            },
+            {
+                "groupId": "4",
+                "description": "（-30%）到（-10%）位次段",
+                "count": 0,
+                "alternativeIds": []
+            },
+            {
+                "groupId": "5",
+                "description": "（-100%）到（-30%）位次段",
+                "count": 0,
+                "alternativeIds": []
+            },
+            {
+                "groupId": "6",
+                "description": "其他位次段",
+                "count": 3,
+                "alternativeIds": [
+                    471,
+                    472,
+                    473
+                ]
+            }
+        ]
+    }
+}

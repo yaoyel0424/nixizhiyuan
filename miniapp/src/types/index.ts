@@ -88,3 +88,6 @@ export interface LoadingState {
   page: Record<string, boolean>
   component: Record<string, boolean>
 }
+
+// 导出问卷相关类型
+export * from './questionnaire'

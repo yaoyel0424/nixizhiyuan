@@ -1,0 +1,187 @@
+// 测评完成模态框样式
+.assessment-completion-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #1e40af 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assessment-completion-modal__content {
+  text-align: center;
+  color: #fff;
+  padding: 32rpx;
+  max-width: 896rpx;
+  width: 100%;
+}
+
+.assessment-completion-modal__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48rpx;
+}
+
+.assessment-completion-modal__emoji {
+  font-size: 120rpx;
+  margin-bottom: 48rpx;
+  animation: bounce 1s infinite;
+}
+
+.assessment-completion-modal__emoji-large {
+  font-size: 160rpx;
+  margin-bottom: 48rpx;
+}
+
+.assessment-completion-modal__title {
+  font-size: 60rpx;
+  font-weight: bold;
+  margin-bottom: 32rpx;
+}
+
+.assessment-completion-modal__title-large {
+  font-size: 72rpx;
+  font-weight: bold;
+  margin-bottom: 32rpx;
+}
+
+.assessment-completion-modal__desc {
+  font-size: 36rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.assessment-completion-modal__desc-large {
+  font-size: 40rpx;
+  margin-bottom: 16rpx;
+}
+
+.assessment-completion-modal__dots {
+  display: flex;
+  justify-content: center;
+  gap: 16rpx;
+  margin-top: 64rpx;
+}
+
+.assessment-completion-modal__dot {
+  width: 24rpx;
+  height: 24rpx;
+  background: #fff;
+  border-radius: 50%;
+  animation: bounce 1s infinite;
+  
+  &:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  
+  &:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+.assessment-completion-modal__spinner {
+  position: relative;
+  margin-bottom: 48rpx;
+}
+
+.assessment-completion-modal__spinner-circle {
+  width: 192rpx;
+  height: 192rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(16rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: spin 2s linear infinite;
+}
+
+.assessment-completion-modal__message-box {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16rpx);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+}
+
+.assessment-completion-modal__message {
+  font-size: 36rpx;
+}
+
+.assessment-completion-modal__hint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 48rpx;
+}
+
+.assessment-completion-modal__hint-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.assessment-completion-modal__success-box {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16rpx);
+  border-radius: 24rpx;
+  padding: 48rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+  margin-top: 48rpx;
+}
+
+.assessment-completion-modal__success-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.assessment-completion-modal__success-icon {
+  font-size: 48rpx;
+  color: #ff8c5a;
+}
+
+.assessment-completion-modal__success-text {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.assessment-completion-modal__success-desc {
+  font-size: 32rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.assessment-completion-modal__button {
+  width: 100%;
+  height: 112rpx;
+  font-size: 36rpx;
+  font-weight: 600;
+  margin-top: 48rpx;
+  background: linear-gradient(to right, #ff8c5a, rgba(255, 140, 90, 0.9));
+  color: #fff;
+  box-shadow: 0 20rpx 30rpx -6rpx rgba(0, 0, 0, 0.1);
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20rpx);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
