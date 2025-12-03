@@ -51,7 +51,7 @@ const Tabs: React.FC<TabsProps> = ({
       {React.Children.map(children, (child) => {
         if (React.isValidElement(child)) {
           return React.cloneElement(child as any, {
-            value,
+            activeValue: value,
             onValueChange: handleValueChange,
           })
         }

@@ -13,8 +13,9 @@ page {
   font-size: @font-size-base;
   line-height: @line-height-base;
   color: @text-color;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 // 通用类

@@ -1,0 +1,322 @@
+// 探索成果主页面样式
+@import '@/styles/variables.less';
+@import '@/styles/mixins.less';
+
+.assessment-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
+}
+
+.assessment-page__header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 48rpx 32rpx 84rpx;
+  background: linear-gradient(to bottom, #1A4099, #2563eb, rgba(37, 99, 235, 0.8));
+  min-height: 260rpx;
+}
+
+.assessment-page__header-content {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  padding: 0 32rpx;
+  box-sizing: border-box;
+}
+
+.assessment-page__header-title {
+  font-size: 36rpx;
+  color: rgba(255, 255, 255, 1);
+  font-weight: 600;
+  padding: 0;
+  line-height: 1.2;
+  width: 100%;
+  text-align: center;
+}
+
+.assessment-page__header-subtitle {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 400;
+  padding: 0;
+  text-align: center;
+  line-height: 1.3;
+  margin-top: 0;
+}
+
+.assessment-page__header-wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 104rpx;
+  background: #f5f5f5;
+  clip-path: ellipse(100% 100% at 50% 100%);
+}
+
+.assessment-page__content {
+  flex: 1;
+  padding: 32rpx;
+  position: relative;
+  z-index: 10;
+  background: #f5f5f5;
+}
+
+.assessment-page__progress-card {
+  padding: 24rpx;
+  background: linear-gradient(to right, rgba(26, 64, 153, 0.05), #fff);
+  border: 2rpx solid rgba(26, 64, 153, 0.3);
+  margin-bottom: 32rpx;
+}
+
+.assessment-page__progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.assessment-page__progress-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #000;
+}
+
+.assessment-page__progress-percent {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #FF7F50;
+}
+
+.assessment-page__progress-bar {
+  position: relative;
+  height: 6rpx;
+  margin: 12rpx 0;
+  background: #e5e7eb;
+  border-radius: 999rpx;
+  overflow: hidden;
+}
+
+.assessment-page__progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #FF7F50;
+  transition: width 0.3s;
+  border-radius: 999rpx;
+}
+
+.assessment-page__progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  margin-bottom: 16rpx;
+}
+
+.assessment-page__progress-text {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.assessment-page__continue-button {
+  width: 100%;
+  height: 64rpx;
+  font-size: 28rpx;
+  background: #FF7F50;
+  color: #fff;
+  border: none;
+}
+
+.assessment-page__completed-card {
+  padding: 24rpx;
+  background: linear-gradient(to bottom right, rgba(26, 64, 153, 0.1), rgba(255, 127, 80, 0.1));
+  border: 2rpx solid rgba(26, 64, 153, 0.3);
+  margin-bottom: 32rpx;
+}
+
+.assessment-page__completed-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.assessment-page__completed-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: rgba(255, 127, 80, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 40rpx;
+}
+
+.assessment-page__completed-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #000;
+  margin-bottom: 4rpx;
+  display: block;
+}
+
+.assessment-page__completed-desc {
+  font-size: 24rpx;
+  color: #666;
+  display: block;
+}
+
+.assessment-page__view-button {
+  width: 100%;
+  height: 64rpx;
+  font-size: 28rpx;
+  background: #FF7F50;
+  color: #fff;
+  border: none;
+  margin-top: 12rpx;
+}
+
+.assessment-page__results {
+  margin-bottom: 32rpx;
+}
+
+.assessment-page__results-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 32rpx;
+  padding: 0 8rpx;
+  display: block;
+}
+
+.assessment-page__results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+.assessment-page__result-card {
+  padding: 40rpx;
+  background: #fff;
+  border: 2rpx solid transparent;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+  
+  &:active {
+    border-color: rgba(26, 64, 153, 0.5);
+    box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+  }
+}
+
+.assessment-page__result-card-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 32rpx;
+}
+
+.assessment-page__result-card-icon {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 40rpx;
+  
+  &--blue {
+    background: rgba(26, 64, 153, 0.1);
+  }
+  
+  &--orange {
+    background: rgba(255, 127, 80, 0.1);
+  }
+}
+
+.assessment-page__result-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.assessment-page__result-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.assessment-page__result-card-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+  
+  &--blue {
+    color: #1A4099;
+  }
+  
+  &--orange {
+    color: #FF7F50;
+  }
+}
+
+.assessment-page__result-card-badge {
+  font-size: 24rpx;
+  font-weight: bold;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  
+  &--blue {
+    color: #1A4099;
+    background: rgba(26, 64, 153, 0.1);
+  }
+  
+  &--orange {
+    color: #FF7F50;
+    background: rgba(255, 127, 80, 0.1);
+  }
+}
+
+.assessment-page__result-card-desc {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+.assessment-page__tip-card {
+  padding: 32rpx;
+  background: linear-gradient(to right, rgba(59, 130, 246, 0.05), rgba(255, 127, 80, 0.05));
+  border: 1rpx solid rgba(59, 130, 246, 0.1);
+}
+
+.assessment-page__tip-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.assessment-page__tip-icon {
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+
+.assessment-page__tip-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.5;
+  flex: 1;
+}
+

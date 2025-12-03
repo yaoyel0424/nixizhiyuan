@@ -1,0 +1,846 @@
+// 志愿方案页面样式
+@import '@/styles/variables.less';
+@import '@/styles/mixins.less';
+
+.intended-majors-page {
+  min-height: 100vh;
+  background: #f0f7ff;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
+}
+
+.intended-majors-page__loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #666;
+}
+
+.intended-majors-page__header {
+  background: linear-gradient(to bottom, #1A4099, #2563eb, rgba(37, 99, 235, 0.8));
+  color: #fff;
+  padding: 48rpx 32rpx 64rpx;
+  position: relative;
+}
+
+.intended-majors-page__header-content {
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.intended-majors-page__header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.intended-majors-page__header-title-section {
+  flex: 1;
+}
+
+.intended-majors-page__title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.intended-majors-page__subtitle {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.intended-majors-page__header-actions {
+  display: flex;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.intended-majors-page__action-button {
+  padding: 8rpx 16rpx;
+  font-size: 24rpx;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: none;
+}
+
+.intended-majors-page__wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32rpx;
+  background: #f0f7ff;
+  clip-path: ellipse(70% 100% at 50% 100%);
+}
+
+.intended-majors-page__score-filter {
+  background: #fff;
+  border-bottom: 1rpx solid #e5e7eb;
+  padding: 24rpx 32rpx;
+}
+
+.intended-majors-page__score-filter-content {
+  max-width: 1024rpx;
+  margin: 0 auto;
+}
+
+.intended-majors-page__score-filter-tip {
+  font-size: 24rpx;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 24rpx;
+  display: block;
+}
+
+.intended-majors-page__slider-container {
+  padding: 24rpx 16rpx 8rpx;
+  position: relative;
+}
+
+.intended-majors-page__slider {
+  width: 100%;
+}
+
+.intended-majors-page__slider-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16rpx;
+  font-size: 20rpx;
+}
+
+.intended-majors-page__slider-label {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.intended-majors-page__slider-label-text {
+  color: #999;
+}
+
+.intended-majors-page__slider-label-value {
+  font-weight: 600;
+  color: #1A4099;
+  
+  &--range {
+    color: #FF7F50;
+  }
+}
+
+.intended-majors-page__content {
+  flex: 1;
+  padding: 32rpx;
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.intended-majors-page__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400rpx;
+  gap: 16rpx;
+  padding: 32rpx;
+}
+
+.intended-majors-page__empty-icon {
+  font-size: 96rpx;
+  opacity: 0.5;
+  margin-bottom: 16rpx;
+}
+
+.intended-majors-page__empty-text {
+  font-size: 32rpx;
+  color: #666;
+}
+
+.intended-majors-page__empty-desc {
+  font-size: 28rpx;
+  color: #999;
+  margin-bottom: 32rpx;
+}
+
+.intended-majors-page__empty-button {
+  background: #1A4099;
+  color: #fff;
+}
+
+.intended-majors-page__majors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.intended-majors-page__major-item {
+  padding: 24rpx;
+  background: #fff;
+}
+
+.intended-majors-page__major-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.intended-majors-page__major-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  position: relative;
+  width: 100%;
+  
+  > View:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.intended-majors-page__major-item-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #000;
+}
+
+.intended-majors-page__major-item-code {
+  font-size: 24rpx;
+  color: #666;
+  margin-left: 8rpx;
+}
+
+.intended-majors-page__major-item-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 24rpx;
+  font-weight: 600;
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  margin-left: 8rpx;
+}
+
+.intended-majors-page__major-item-link {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1A4099;
+  min-width: 120rpx;
+  justify-content: flex-end;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin-left: auto;
+  box-shadow: none !important;
+  flex-shrink: 0;
+  align-self: flex-start;
+  
+  &::after {
+    border: none !important;
+    display: none;
+  }
+  
+  &:hover {
+    background: transparent !important;
+  }
+  
+  &:active {
+    background: transparent !important;
+  }
+}
+
+.intended-majors-page__major-item-link-number {
+  text-align: right;
+  display: inline-block;
+  min-width: 80rpx;
+}
+
+.intended-majors-page__major-item-link-arrow {
+  font-size: 32rpx;
+  color: #1A4099;
+  font-weight: bold;
+  margin-left: 4rpx;
+}
+
+.intended-majors-page__major-item-info {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  font-size: 24rpx;
+}
+
+.intended-majors-page__major-item-tag {
+  padding: 4rpx 12rpx;
+  background: #f3e8ff;
+  color: #7c3aed;
+  border-radius: 4rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.intended-majors-page__major-item-score {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.intended-majors-page__major-item-score-label {
+  color: #666;
+}
+
+.intended-majors-page__major-item-score-value {
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.intended-majors-page__wishlist {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.intended-majors-page__wishlist-item {
+  padding: 24rpx;
+  background: #fff;
+}
+
+.intended-majors-page__wishlist-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.intended-majors-page__wishlist-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.intended-majors-page__wishlist-item-title-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  flex: 1;
+}
+
+.intended-majors-page__wishlist-item-number {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #1A4099;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.intended-majors-page__wishlist-item-school {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #000;
+}
+
+.intended-majors-page__wishlist-item-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 8rpx;
+}
+
+.intended-majors-page__wishlist-item-feature {
+  font-size: 24rpx;
+  padding: 4rpx 12rpx;
+  background: rgba(26, 64, 153, 0.1);
+  color: #1A4099;
+  border-radius: 4rpx;
+}
+
+.intended-majors-page__wishlist-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.intended-majors-page__wishlist-item-move-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.intended-majors-page__wishlist-item-move-button {
+  padding: 4rpx 8rpx;
+  font-size: 24rpx;
+  color: #666;
+  min-width: 48rpx;
+  height: 48rpx;
+  
+  &:hover:not(:disabled) {
+    color: #1A4099;
+    background: #e0e7ff;
+  }
+  
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+}
+
+.intended-majors-page__wishlist-item-delete {
+  padding: 8rpx;
+  color: #666;
+  
+  &:hover {
+    color: #ef4444;
+    background: #fee2e2;
+  }
+}
+
+.intended-majors-page__wishlist-item-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+}
+
+.intended-majors-page__wishlist-item-major {
+  font-size: 24rpx;
+  color: #666;
+  font-weight: 600;
+}
+
+.intended-majors-page__wishlist-item-group-link {
+  font-size: 24rpx;
+  color: #666;
+  padding: 0;
+  height: auto;
+  
+  &:hover {
+    color: #1A4099;
+    text-decoration: underline;
+  }
+}
+
+.intended-majors-page__wishlist-item-score {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.intended-majors-page__wishlist-item-score-label {
+  color: #666;
+}
+
+.intended-majors-page__wishlist-item-score-value {
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.intended-majors-page__wishlist-item-location {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.intended-majors-page__wishlist-item-rates {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.intended-majors-page__wishlist-item-history {
+  margin-top: 8rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.intended-majors-page__wishlist-item-history-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #666;
+  padding: 0;
+  height: auto;
+}
+
+.intended-majors-page__wishlist-item-history-arrow {
+  transition: transform 0.2s;
+  
+  &--expanded {
+    transform: rotate(180deg);
+  }
+}
+
+.intended-majors-page__wishlist-item-history-content {
+  margin-top: 16rpx;
+}
+
+.intended-majors-page__wishlist-item-history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  font-size: 24rpx;
+}
+
+.intended-majors-page__wishlist-item-history-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8rpx;
+  padding: 8rpx 0;
+  
+  &:first-child {
+    color: #666;
+    font-weight: 500;
+  }
+}
+
+.intended-majors-page__wishlist-item-history-batch {
+  margin-top: 16rpx;
+  padding: 8rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 4rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.intended-majors-page__wishlist-item-history-batch-text {
+  font-weight: bold;
+  margin-right: 8rpx;
+}
+
+.intended-majors-page__add-more {
+  padding: 32rpx;
+  border: 2rpx dashed #d1d5db;
+  background: #fff;
+  text-align: center;
+  
+  &:hover {
+    border-color: #1A4099;
+    background: rgba(26, 64, 153, 0.05);
+  }
+}
+
+.intended-majors-page__add-more-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  color: #1A4099;
+}
+
+.intended-majors-page__add-more-icon {
+  font-size: 40rpx;
+}
+
+.intended-majors-page__add-more-text {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.intended-majors-page__delete-button {
+  background: #ef4444;
+  color: #fff;
+  
+  &:hover {
+    background: #dc2626;
+  }
+}
+
+// 高考信息对话框样式
+.exam-info-dialog {
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.exam-info-dialog__content {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding-top: 16rpx;
+}
+
+.exam-info-dialog__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.exam-info-dialog__label {
+  font-size: 28rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.exam-info-dialog__value {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 28rpx;
+}
+
+.exam-info-dialog__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.exam-info-dialog__section-title {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.exam-info-dialog__divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16rpx 0;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1rpx;
+    background: #e5e7eb;
+  }
+}
+
+.exam-info-dialog__divider-text {
+  position: relative;
+  background: #fff;
+  padding: 0 16rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.exam-info-dialog__button-group {
+  display: flex;
+  gap: 16rpx;
+}
+
+.exam-info-dialog__button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.exam-info-dialog__button {
+  flex: 1;
+  padding: 20rpx 32rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  min-height: 88rpx;
+  transition: all 0.2s;
+  
+  &--active {
+    background: #1A4099;
+    color: #fff;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.exam-info-dialog__input {
+  width: 160rpx;
+  height: 64rpx;
+  font-size: 28rpx;
+  text-align: right;
+}
+
+.exam-info-dialog__tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+  padding: 20rpx;
+  background: #fef3c7;
+  border-radius: 8rpx;
+}
+
+.exam-info-dialog__tip-icon {
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+
+.exam-info-dialog__tip-text {
+  font-size: 24rpx;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.exam-info-dialog__confirm-button {
+  width: 100%;
+  background: #1A4099;
+  color: #fff;
+  height: 88rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+// 专业组对话框样式
+.intended-majors-page__group-dialog {
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.intended-majors-page__group-dialog-content {
+  margin-top: 32rpx;
+}
+
+.intended-majors-page__group-dialog-empty {
+  text-align: center;
+  color: #666;
+  padding: 64rpx 0;
+}
+
+.intended-majors-page__group-dialog-empty-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 16rpx;
+}
+
+.intended-majors-page__group-section {
+  margin-bottom: 48rpx;
+}
+
+.intended-majors-page__group-warning {
+  margin-bottom: 24rpx;
+  padding: 16rpx;
+  background: #fef3c7;
+  border: 1rpx solid #fbbf24;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #92400e;
+}
+
+.intended-majors-page__group-warning-title {
+  font-weight: 600;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.intended-majors-page__group-warning-text {
+  line-height: 1.5;
+}
+
+.intended-majors-page__group-section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-bottom: 24rpx;
+}
+
+.intended-majors-page__group-table {
+  border: 1rpx solid #e5e7eb;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.intended-majors-page__group-table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 8rpx;
+  padding: 16rpx;
+  background: #f9fafb;
+  border-bottom: 1rpx solid #e5e7eb;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #666;
+}
+
+.intended-majors-page__group-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 8rpx;
+  padding: 16rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+  font-size: 24rpx;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &--warning {
+    background: #fef3c7;
+  }
+}
+
+.intended-majors-page__group-table-major-name {
+  font-weight: 500;
+  display: block;
+}
+
+.intended-majors-page__group-table-major-code {
+  font-size: 20rpx;
+  color: #666;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.intended-majors-page__group-table-score {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-weight: 500;
+}
+
+.intended-majors-page__group-table-score--low {
+  color: #ef4444;
+}
+
+// 返回顶部按钮
+.intended-majors-page__back-to-top {
+  position: fixed;
+  bottom: calc(128rpx + 32rpx + env(safe-area-inset-bottom));
+  right: 32rpx;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #1A4099;
+  color: #fff;
+  box-shadow: 0 8rpx 16rpx rgba(26, 64, 153, 0.3);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: bold;
+  
+  &:hover {
+    background: rgba(26, 64, 153, 0.9);
+    transform: scale(1.1);
+  }
+}
+

@@ -30,7 +30,6 @@
   gap: 8rpx;
   flex: 1;
   height: 100%;
-  transition: color 0.2s;
   color: var(--muted-foreground, #666);
 }
 
@@ -44,10 +43,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s;
+  filter: grayscale(100%) opacity(0.6);
   
   .bottom-nav__item--active & {
-    transform: scale(1.1);
+    filter: grayscale(0%) opacity(1);
   }
 }
 

@@ -7,8 +7,8 @@ import './index.less'
 // tabBar 页面列表
 const TABBAR_PAGES = [
   "/pages/index/index",
-  "/pages/assessment/all-majors/index",
-  "/pages/majors/index",
+  "/pages/assessment/index",
+  "/pages/majors/intended/index",
   "/pages/profile/index",
 ]
 
@@ -35,8 +35,8 @@ const ICON_MAP: Record<string, { normal: string; active: string }> = {
 
 const navItems = [
   { href: "/pages/index/index", label: "主页", icon: "home" },
-  { href: "/pages/assessment/all-majors/index", label: "探索成果", icon: "clipboard" },
-  { href: "/pages/majors/index", label: "志愿方案", icon: "target" },
+  { href: "/pages/assessment/index", label: "探索成果", icon: "clipboard" },
+  { href: "/pages/majors/intended/index?tab=意向志愿", label: "志愿方案", icon: "target" },
   { href: "/pages/profile/index", label: "个人中心", icon: "user" },
 ]
 

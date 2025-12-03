@@ -1,0 +1,370 @@
+// 院校列表页面样式
+@import '@/styles/variables.less';
+@import '@/styles/mixins.less';
+
+.schools-page {
+  min-height: 100vh;
+  background: #f0f7ff;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
+}
+
+.schools-page__loading,
+.schools-page__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #666;
+}
+
+.schools-page__header {
+  background: linear-gradient(to bottom, #1A4099, #2563eb, rgba(37, 99, 235, 0.8));
+  color: #fff;
+  padding: 48rpx 32rpx 64rpx;
+  position: relative;
+}
+
+.schools-page__header-content {
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.schools-page__title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #fff;
+}
+
+.schools-page__wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32rpx;
+  background: #f0f7ff;
+  clip-path: ellipse(70% 100% at 50% 100%);
+}
+
+.schools-page__content {
+  flex: 1;
+  padding: 32rpx;
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.schools-page__schools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.schools-page__school-item {
+  padding: 24rpx;
+  background: #fff;
+}
+
+.schools-page__school-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.schools-page__school-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.schools-page__school-item-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.schools-page__school-item-group-link {
+  font-size: 24rpx;
+  color: #666;
+  padding: 0;
+  height: auto;
+  
+  &:hover {
+    color: #1A4099;
+    text-decoration: underline;
+  }
+}
+
+.schools-page__school-item-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.schools-page__school-item-rank {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  
+  &--positive {
+    color: #10b981;
+  }
+  
+  &--negative {
+    color: #ef4444;
+  }
+}
+
+.schools-page__school-item-rank-text {
+  font-size: 24rpx;
+}
+
+.schools-page__school-item-rank-icon {
+  font-size: 24rpx;
+}
+
+.schools-page__school-item-rank-value {
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.schools-page__school-item-wishlist-button {
+  font-weight: 600;
+  
+  &--active {
+    border: 1rpx solid #10b981;
+    color: #10b981;
+    background: #fff;
+    
+    &:hover {
+      background: #f0fdf4;
+      border-color: #10b981;
+    }
+  }
+  
+  &:not(.schools-page__school-item-wishlist-button--active) {
+    background: #1A4099;
+    color: #fff;
+    
+    &:hover {
+      background: rgba(26, 64, 153, 0.9);
+    }
+  }
+}
+
+.schools-page__school-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.schools-page__school-item-location {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.schools-page__school-item-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.schools-page__school-item-feature {
+  font-size: 24rpx;
+  padding: 4rpx 12rpx;
+  background: rgba(26, 64, 153, 0.1);
+  color: #1A4099;
+  border-radius: 4rpx;
+}
+
+.schools-page__school-item-rates {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  font-size: 24rpx;
+}
+
+.schools-page__school-item-rate {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.schools-page__school-item-rate-label {
+  color: #666;
+}
+
+.schools-page__school-item-rate-value {
+  font-weight: 600;
+  color: #000;
+}
+
+.schools-page__school-item-history {
+  margin-top: 8rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.schools-page__school-item-history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  font-size: 24rpx;
+}
+
+.schools-page__school-item-history-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8rpx;
+  padding: 8rpx 0;
+  color: #666;
+  font-weight: 500;
+}
+
+.schools-page__school-item-history-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8rpx;
+  padding: 8rpx 0;
+}
+
+.schools-page__school-item-history-batch {
+  margin-top: 16rpx;
+  padding: 8rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 4rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.schools-page__school-item-history-batch-text {
+  font-weight: bold;
+  margin-right: 8rpx;
+}
+
+// 专业组对话框样式
+.schools-page__group-dialog {
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.schools-page__group-dialog-content {
+  margin-top: 32rpx;
+}
+
+.schools-page__group-dialog-empty {
+  text-align: center;
+  color: #666;
+  padding: 64rpx 0;
+}
+
+.schools-page__group-dialog-empty-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 16rpx;
+  display: block;
+}
+
+.schools-page__group-section {
+  margin-bottom: 48rpx;
+}
+
+.schools-page__group-warning {
+  margin-bottom: 24rpx;
+  padding: 16rpx;
+  background: #fef3c7;
+  border: 1rpx solid #fbbf24;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #92400e;
+}
+
+.schools-page__group-warning-title {
+  font-weight: 600;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.schools-page__group-warning-text {
+  line-height: 1.5;
+}
+
+.schools-page__group-section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-bottom: 24rpx;
+  display: block;
+}
+
+.schools-page__group-table {
+  border: 1rpx solid #e5e7eb;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.schools-page__group-table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 8rpx;
+  padding: 16rpx;
+  background: #f9fafb;
+  border-bottom: 1rpx solid #e5e7eb;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #666;
+}
+
+.schools-page__group-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 8rpx;
+  padding: 16rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+  font-size: 24rpx;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &--warning {
+    background: #fef3c7;
+  }
+}
+
+.schools-page__group-table-major-name {
+  font-weight: 500;
+  display: block;
+}
+
+.schools-page__group-table-major-code {
+  font-size: 20rpx;
+  color: #666;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.schools-page__group-table-score {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-weight: 500;
+}
+
+.schools-page__group-table-score--low {
+  color: #ef4444;
+}
+

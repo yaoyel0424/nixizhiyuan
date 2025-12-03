@@ -2,8 +2,13 @@ export default {
   pages: [
     'pages/login/index',
     'pages/index/index',
+    'pages/assessment/index',
     'pages/assessment/all-majors/index',
+    'pages/assessment/personal-profile/index',
+    'pages/assessment/favorite-majors/index',
     'pages/majors/index',
+    'pages/majors/intended/index',
+    'pages/majors/intended/schools/index',
     'pages/profile/index',
     'pages/user/index',
     'pages/assessment/questionnaire/index',
