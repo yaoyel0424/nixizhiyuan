@@ -141,10 +141,6 @@ export class AuthService {
         updateData.province = wechatUserInfo.province;
       }
       
-      if (wechatUserInfo.sex !== undefined) {
-        updateData.gender = wechatUserInfo.sex === 1 ? 'male' : wechatUserInfo.sex === 2 ? 'female' : 'unknown';
-      }
-      
       user = await this.usersService.update(user.id, updateData);
     }
 

@@ -104,6 +104,20 @@ import * as fs from 'fs';
                 return req.url === '/api/v2/health';
               },
             },
+            // 自定义请求日志记录逻辑，忽略错误响应（4xx 和 5xx）
+            // 错误响应由 AllExceptionsFilter 统一记录，避免重复
+            customLogLevel: (req, res, err) => {
+              // 如果响应状态码 >= 400，返回 'silent' 不记录（由 AllExceptionsFilter 记录）
+              if (res.statusCode >= 400) {
+                return 'silent';
+              }
+              // 如果有错误，返回 'silent'（由 AllExceptionsFilter 记录）
+              if (err) {
+                return 'silent';
+              }
+              // 正常请求记录为 info
+              return 'info';
+            },
           },
         };
       },

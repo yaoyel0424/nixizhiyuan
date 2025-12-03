@@ -9,8 +9,7 @@ import { AuthGuard } from '@nestjs/passport';
 export class WechatAuthGuard extends AuthGuard('wechat') {
   canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
-    const code = request.query?.code || request.body?.code;
-    
+    const code = request.query?.code || request.body?.code; 
     // 只有当 code 存在时才执行认证
     if (code) {
       return super.canActivate(context);
