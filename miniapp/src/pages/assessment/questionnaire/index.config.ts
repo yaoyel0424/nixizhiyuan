@@ -1,8 +1,8 @@
 export default {
   navigationBarTitleText: '自我测评',
-  navigationBarBackgroundColor: '#f7f9ff',
+  navigationBarBackgroundColor: '#f0f7ff',
   navigationBarTextStyle: 'black',
-  backgroundColor: '#f7f9ff',
+  backgroundColor: '#f0f7ff',
   enablePullDownRefresh: false
 }
 
