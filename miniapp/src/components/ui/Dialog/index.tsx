@@ -1,9 +1,12 @@
 // 对话框组件
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, createContext, useContext } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { cn } from '@/utils/cn'
 import './index.less'
+
+// 创建 Context 用于传递关闭函数
+const DialogContext = createContext<{ onClose: () => void } | null>(null)
 
 export interface DialogProps {
   open?: boolean
@@ -15,6 +18,7 @@ export interface DialogContentProps {
   className?: string
   children?: React.ReactNode
   showCloseButton?: boolean
+  onClose?: () => void
 }
 
 export interface DialogHeaderProps {
@@ -52,12 +56,14 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
   if (!isOpen) return null
 
   return (
-    <View className="ui-dialog" onClick={handleClose}>
-      <View className="ui-dialog__overlay" />
-      <View className="ui-dialog__content" onClick={(e) => e.stopPropagation()}>
-        {children}
+    <DialogContext.Provider value={{ onClose: handleClose }}>
+      <View className="ui-dialog" onClick={handleClose}>
+        <View className="ui-dialog__overlay" />
+        <View className="ui-dialog__content" onClick={(e) => e.stopPropagation()}>
+          {children}
+        </View>
       </View>
-    </View>
+    </DialogContext.Provider>
   )
 }
 
@@ -65,14 +71,16 @@ const DialogContent: React.FC<DialogContentProps> = ({
   className = '',
   children,
   showCloseButton = true,
+  onClose,
 }) => {
+  const context = useContext(DialogContext)
+  const handleClose = onClose || context?.onClose || (() => {})
+
   return (
     <View className={cn('ui-dialog-content', className)}>
       {children}
       {showCloseButton && (
-        <View className="ui-dialog-content__close" onClick={() => {
-          // 关闭逻辑由父组件处理
-        }}>
+        <View className="ui-dialog-content__close" onClick={handleClose}>
           <Text>×</Text>
         </View>
       )}

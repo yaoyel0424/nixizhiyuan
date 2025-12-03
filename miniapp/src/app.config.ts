@@ -13,7 +13,7 @@ export default {
   ],
   window: {
     backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#f7f9ff',
+    navigationBarBackgroundColor: '#f0f7ff',
     navigationBarTitleText: '逆袭智愿',
     navigationBarTextStyle: 'black'
   },

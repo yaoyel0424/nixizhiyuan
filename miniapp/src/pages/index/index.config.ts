@@ -1,9 +1,9 @@
 export default {
   navigationStyle: 'custom', // 使用自定义导航栏，可以控制不显示左侧图标
   navigationBarTitleText: '首页',
-  navigationBarBackgroundColor: '#f7f9ff',
+  navigationBarBackgroundColor: '#f0f7ff',
   navigationBarTextStyle: 'black',
-  backgroundColor: '#f7f9ff',
+  backgroundColor: '#f0f7ff',
   enablePullDownRefresh: false
 }
 
