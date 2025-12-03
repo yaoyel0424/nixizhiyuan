@@ -7,8 +7,10 @@ import {
   Req,
   Query,
   Res,
+  Get,
+  Param,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -18,6 +20,9 @@ import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { WechatAuthGuard } from './guards/wechat-auth.guard';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { IJwtPayload } from './interfaces/jwt-payload.interface';
 
 /**
  * 认证控制器
@@ -25,7 +30,11 @@ import { WechatAuthGuard } from './guards/wechat-auth.guard';
 @ApiTags('认证授权')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
  
   @Post('refresh')
   @Public()
@@ -63,5 +72,49 @@ export class AuthController {
       // user 参数由 WechatStrategy.validate() 返回的 result 注入
       return res.json(user || {});
    }
+
+  @Get('test-token/:id/:nickname')
+  @Public()
+  @ApiOperation({
+    summary: '生成测试用 Token（仅用于开发测试）',
+    description: '为指定用户ID和昵称生成测试用的 JWT Token',
+  })
+  @ApiParam({ name: 'id', description: '用户ID', example: 5 })
+  @ApiParam({ name: 'nickname', description: '用户昵称', example: '夜幕山城' })
+  async generateTestToken(
+    @Param('id') id: string,
+    @Param('nickname') nickname: string,
+  ) {
+    const userId = parseInt(id, 10);
+    
+    const payload: IJwtPayload = {
+      sub: userId,
+      username: nickname,
+      email: `test_${userId}@test.com`,
+      roles: ['user'],
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('jwt.secret'),
+      expiresIn: this.configService.get<string>('jwt.expiresIn') || '7d',
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('jwt.refreshSecret'),
+      expiresIn: this.configService.get<string>('jwt.refreshExpiresIn') || '30d',
+    });
+
+    return {
+      message: '测试 Token 生成成功',
+      user: {
+        id: userId,
+        nickname,
+      },
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer',
+      usage: '在请求头中添加: Authorization: Bearer <accessToken>',
+    };
+  }
 }
 

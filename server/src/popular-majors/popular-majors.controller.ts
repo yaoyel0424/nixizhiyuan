@@ -16,6 +16,7 @@ import { PopularMajorsService } from './popular-majors.service';
 import { QueryPopularMajorDto } from './dto/query-popular-major.dto';
 import { PopularMajorResponseDto } from './dto/popular-major-response.dto';
 import { plainToInstance } from 'class-transformer';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
 /**
  * 热门专业控制器
@@ -27,7 +28,10 @@ export class PopularMajorsController {
   constructor(private readonly popularMajorsService: PopularMajorsService) {}
 
   @Get()
-  @ApiOperation({ summary: '获取热门专业列表（支持分页、排序、筛选）' })
+  @ApiOperation({
+    summary: '获取热门专业列表（支持分页、排序、筛选）',
+    description: '如果用户已登录，将返回每个专业的填写进度和匹配分数',
+  })
   @ApiResponse({
     status: 200,
     description: '查询成功',
@@ -41,8 +45,14 @@ export class PopularMajorsController {
   @ApiQuery({ name: 'level1', required: false, description: '教育层次筛选（ben: 本科, zhuan: 专科, gao_ben: 高职本科）' })
   @ApiQuery({ name: 'name', required: false, description: '专业名称搜索（模糊匹配）' })
   @ApiQuery({ name: 'code', required: false, description: '专业代码搜索' })
-  async findAll(@Query() queryDto: QueryPopularMajorDto) {
-    const result = await this.popularMajorsService.findAll(queryDto);
+  async findAll(
+    @Query() queryDto: QueryPopularMajorDto,
+    @CurrentUser() user?: any,
+  ) {
+    const result = await this.popularMajorsService.findAll(
+      queryDto,
+      user?.id,
+    );
     return {
       items: plainToInstance(PopularMajorResponseDto, result.items, {
         excludeExtraneousValues: true,

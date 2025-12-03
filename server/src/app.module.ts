@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { HealthModule } from './health/health.module';
 import { PopularMajorsModule } from './popular-majors/popular-majors.module';
 import { ScalesModule } from './scales/scales.module';
+import { ScoresModule } from './scores/scores.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseFormatInterceptor } from './common/interceptors/response-format.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -34,6 +35,7 @@ const compression = require('compression');
     HealthModule,
     PopularMajorsModule,
     ScalesModule,
+    ScoresModule,
   ],
   providers: [
     // 全局异常过滤器
