@@ -5,8 +5,7 @@ import {
   Delete,
   Param,
   Body,
-  Query,
-  UseGuards,
+  Query, 
   HttpCode,
   HttpStatus,
   Req,
@@ -28,6 +27,7 @@ import {
 import { MajorDetailResponseDto } from './dto/major-detail-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Public } from '@/common/decorators/public.decorator';
+import { Cache } from '@/common/decorators/cache.decorator';
 import { User } from '@/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
@@ -44,9 +44,10 @@ export class MajorsController {
   /**
    * 通过专业代码获取专业详细信息
    * 支持可选认证：如果用户已登录，会返回用户对元素的分数
+   * 使用 Redis 缓存，默认缓存 10 分钟
    */
   @Get('detail/:majorCode')
-  @Public()
+  @Cache(600) // 缓存 10 分钟（600秒），可通过环境变量配置
   @ApiOperation({ summary: '通过专业代码获取专业详细信息' })
   @ApiParam({
     name: 'majorCode',

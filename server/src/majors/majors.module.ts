@@ -7,8 +7,11 @@ import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
 import { Element } from '@/entities/element.entity';
 import { Scale } from '@/entities/scale.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
+import { RedisModule } from '@/redis/redis.module';
 import { MajorsController } from './majors.controller';
 import { MajorsService } from './majors.service';
+import { CacheInterceptor } from '@/common/interceptors/cache.interceptor';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 /**
  * 专业收藏模块
@@ -24,9 +27,16 @@ import { MajorsService } from './majors.service';
       Scale,
       ScaleAnswer,
     ]),
+    RedisModule,
   ],
   controllers: [MajorsController],
-  providers: [MajorsService],
+  providers: [
+    MajorsService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CacheInterceptor,
+    },
+  ],
   exports: [MajorsService],
 })
 export class MajorsModule {}
