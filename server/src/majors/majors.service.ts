@@ -5,9 +5,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { MajorFavorite } from '@/entities/major-favorite.entity';
 import { Major } from '@/entities/major.entity';
+import { MajorDetail } from '@/entities/major-detail.entity';
+import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
+import { Element } from '@/entities/element.entity';
+import { Scale } from '@/entities/scale.entity';
+import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { CreateMajorFavoriteDto } from './dto/create-major-favorite.dto';
 import { QueryMajorFavoriteDto } from './dto/query-major-favorite.dto';
 import { ErrorCode } from '../common/constants/error-code.constant';
@@ -26,6 +31,16 @@ export class MajorsService {
     private readonly majorFavoriteRepository: Repository<MajorFavorite>,
     @InjectRepository(Major)
     private readonly majorRepository: Repository<Major>,
+    @InjectRepository(MajorDetail)
+    private readonly majorDetailRepository: Repository<MajorDetail>,
+    @InjectRepository(MajorElementAnalysis)
+    private readonly majorElementAnalysisRepository: Repository<MajorElementAnalysis>,
+    @InjectRepository(Element)
+    private readonly elementRepository: Repository<Element>,
+    @InjectRepository(Scale)
+    private readonly scaleRepository: Repository<Scale>,
+    @InjectRepository(ScaleAnswer)
+    private readonly scaleAnswerRepository: Repository<ScaleAnswer>,
   ) {}
 
   /**
@@ -181,6 +196,125 @@ export class MajorsService {
     return await this.majorFavoriteRepository.count({
       where: { userId },
     });
+  }
+
+  /**
+   * 通过专业代码获取专业详细信息
+   * @param majorCode 专业代码
+   * @param userId 用户ID（可选，用于计算用户分数）
+   * @returns 专业详情信息，包含分析信息和用户分数
+   */
+  async getMajorDetailByCode(
+    majorCode: string,
+    userId?: number,
+  ): Promise<MajorDetail & { analyses: any[] }> {
+    // 查找专业详情
+    const majorDetail = await this.majorDetailRepository.findOne({
+      where: { code: majorCode },
+    });
+
+    if (!majorDetail) {
+      this.logger.warn(`专业详情不存在: ${majorCode}`);
+      throw new NotFoundException({
+        code: ErrorCode.RESOURCE_NOT_FOUND,
+        message: '专业详情不存在',
+      });
+    }
+
+    // 查找专业元素分析记录（包含元素信息）
+    const analyses = await this.majorElementAnalysisRepository.find({
+      where: { majorDetailId: majorDetail.id },
+      relations: ['element'],
+      order: { type: 'ASC', id: 'ASC' },
+    });
+
+    // 如果提供了用户ID，计算用户对每个元素的分数
+    if (userId) {
+      // 获取所有相关的元素ID
+      const elementIds = analyses.map((analysis) => analysis.elementId);
+
+      if (elementIds.length > 0) {
+        // 查找这些元素相关的所有量表
+        const scales = await this.scaleRepository.find({
+          where: {
+            elementId: In(elementIds),
+          },
+        });
+
+        // 查找用户对这些量表的答案
+        const scaleIds = scales.map((scale) => scale.id);
+        const userAnswers = scaleIds.length > 0
+          ? await this.scaleAnswerRepository.find({
+              where: {
+                userId,
+                scaleId: In(scaleIds),
+              },
+            })
+          : [];
+
+        // 创建 scaleId -> score 的映射
+        const answerMap = new Map<number, number>();
+        userAnswers.forEach((answer) => {
+          answerMap.set(answer.scaleId, answer.score);
+        });
+
+        // 创建 elementId -> scales 的映射
+        const elementScalesMap = new Map<number, Scale[]>();
+        scales.forEach((scale) => {
+          const scales = elementScalesMap.get(scale.elementId) || [];
+          scales.push(scale);
+          elementScalesMap.set(scale.elementId, scales);
+        });
+
+        // 为每个分析记录计算用户分数
+        for (const analysis of analyses) {
+          const elementScales = elementScalesMap.get(analysis.elementId) || [];
+          if (elementScales.length > 0) {
+            // 计算该元素的所有量表答案的平均分数
+            let totalScore = 0;
+            let answeredCount = 0;
+
+            elementScales.forEach((scale) => {
+              const answer = answerMap.get(scale.id);
+              if (answer !== undefined) {
+                totalScore += answer;
+                answeredCount++;
+              }
+            });
+
+            // 计算平均分数（如果有答案）
+            if (answeredCount > 0) {
+              (analysis as any).userElementScore = Number(
+                (totalScore / answeredCount).toFixed(2),
+              );
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      ...majorDetail,
+      analyses: analyses.map((analysis) => ({
+        id: analysis.id,
+        type: analysis.type,
+        weight: analysis.weight,
+        element: analysis.element
+          ? {
+              id: analysis.element.id,
+              name: analysis.element.name,
+              type: analysis.element.type,
+              dimension: analysis.element.dimension,
+              ownedNaturalState: analysis.element.ownedNaturalState,
+              unownedNaturalState: analysis.element.unownedNaturalState,
+            }
+          : null,
+        summary: analysis.summary,
+        matchReason: analysis.matchReason,
+        theoryBasis: analysis.theoryBasis,
+        userElementScore: (analysis as any).userElementScore,
+      })),
+    };
   }
 }
 

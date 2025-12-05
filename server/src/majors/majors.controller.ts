@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,23 +25,60 @@ import {
   MajorFavoriteResponseDto,
   MajorFavoriteDetailResponseDto,
 } from './dto/major-favorite-response.dto';
+import { MajorDetailResponseDto } from './dto/major-detail-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { Public } from '@/common/decorators/public.decorator';
 import { User } from '@/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
+import { Request } from 'express';
 
 /**
  * 专业收藏控制器
  */
-@ApiTags('专业收藏')
-@Controller('majors/favorites') 
+@ApiTags('专业')
+@Controller('majors')
 @ApiBearerAuth()
 export class MajorsController {
   constructor(private readonly majorsService: MajorsService) {}
 
   /**
+   * 通过专业代码获取专业详细信息
+   * 支持可选认证：如果用户已登录，会返回用户对元素的分数
+   */
+  @Get('detail/:majorCode')
+  @Public()
+  @ApiOperation({ summary: '通过专业代码获取专业详细信息' })
+  @ApiParam({
+    name: 'majorCode',
+    description: '专业代码',
+    example: '010101',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: MajorDetailResponseDto,
+  })
+  @ApiResponse({ status: 404, description: '专业详情不存在' })
+  async getMajorDetail(
+    @Param('majorCode') majorCode: string,
+    @Req() req: Request,
+  ): Promise<MajorDetailResponseDto> {
+    // 尝试从请求中获取用户信息（如果已认证）
+    const user = req.user as User | undefined;
+    const majorDetail = await this.majorsService.getMajorDetailByCode(
+      majorCode,
+      user?.id,
+    );
+    return plainToInstance(MajorDetailResponseDto, majorDetail, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+  }
+
+  /**
    * 收藏专业
    */
-  @Post()
+  @Post('favorites')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '收藏专业' })
   @ApiResponse({
@@ -67,7 +105,7 @@ export class MajorsController {
   /**
    * 取消收藏专业
    */
-  @Delete(':majorCode')
+  @Delete('favorites/:majorCode')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '取消收藏专业' })
   @ApiParam({
@@ -88,7 +126,7 @@ export class MajorsController {
   /**
    * 查询用户的收藏列表（分页）
    */
-  @Get()
+  @Get('favorites')
   @ApiOperation({ summary: '查询用户的收藏列表' })
   @ApiResponse({
     status: 200,
@@ -111,7 +149,7 @@ export class MajorsController {
   /**
    * 检查是否已收藏某个专业
    */
-  @Get('check/:majorCode')
+  @Get('favorites/check/:majorCode')
   @ApiOperation({ summary: '检查是否已收藏某个专业' })
   @ApiParam({
     name: 'majorCode',
@@ -145,7 +183,7 @@ export class MajorsController {
   /**
    * 获取用户的收藏数量
    */
-  @Get('count')
+  @Get('favorites/count')
   @ApiOperation({ summary: '获取用户的收藏数量' })
   @ApiResponse({
     status: 200,
