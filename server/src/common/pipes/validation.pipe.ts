@@ -26,6 +26,11 @@ export class ValidationPipe implements PipeTransform<any> {
       transform: true, // 自动转换类型
     });
 
+    console.log(errors);
+    console.log(metatype);
+    console.log(value);
+    console.log(object);
+
     if (errors.length > 0) {
       const errorMessages = errors.map((error) => {
         return {

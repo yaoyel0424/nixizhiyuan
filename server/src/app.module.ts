@@ -10,6 +10,8 @@ import { HealthModule } from './health/health.module';
 import { PopularMajorsModule } from './popular-majors/popular-majors.module';
 import { ScalesModule } from './scales/scales.module';
 import { ScoresModule } from './scores/scores.module';
+import { MajorsModule } from './majors/majors.module';
+import { ProvincesModule } from './provinces/provinces.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseFormatInterceptor } from './common/interceptors/response-format.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -28,7 +30,7 @@ const compression = require('compression');
   imports: [
     ConfigModule,
     DatabaseModule,
-    RedisModule,
+    // RedisModule,
     LoggerModule,
     AuthModule,
     UsersModule,
@@ -36,6 +38,8 @@ const compression = require('compression');
     PopularMajorsModule,
     ScalesModule,
     ScoresModule,
+    MajorsModule,
+    ProvincesModule,
   ],
   providers: [
     // 全局异常过滤器

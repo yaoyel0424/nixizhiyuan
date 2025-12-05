@@ -101,7 +101,8 @@ export class MajorDetail {
     precision: 5,
     scale: 2,
     nullable: true,
-    comment: '机遇指数'
+    comment: '机遇指数',
+    select:false
   })
   opportunityScore: number | null;
 
@@ -111,7 +112,8 @@ export class MajorDetail {
     precision: 5,
     scale: 2,
     nullable: true,
-    comment: '学业发展'
+    comment: '学业发展',
+    select:false
   })
   academicDevelopmentScore: number | null;
 
@@ -121,7 +123,8 @@ export class MajorDetail {
     precision: 5,
     scale: 2,
     nullable: true,
-    comment: '职业发展'
+    comment: '职业发展',
+    select:false
   })
   careerDevelopmentScore: number | null;
 
@@ -131,7 +134,8 @@ export class MajorDetail {
     precision: 5,
     scale: 2,
     nullable: true,
-    comment: '成长潜力'
+    comment: '成长潜力',
+    select:false
   })
   growthPotentialScore: number | null;
 
@@ -141,7 +145,8 @@ export class MajorDetail {
     precision: 5,
     scale: 2,
     nullable: true,
-    comment: '行业前景'
+    comment: '行业前景',
+    select:false
   })
   industryProspectsScore: number | null;
 
@@ -193,7 +198,8 @@ export class MajorDetail {
     name: 'senior_talk',
     type: 'text',
     nullable: true,
-    comment: '学长学姐说'
+    comment: '学长学姐说',
+    select:false
   })
   seniorTalk: string | null;
 
