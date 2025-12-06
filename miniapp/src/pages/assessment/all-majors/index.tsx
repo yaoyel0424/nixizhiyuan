@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { TopNav } from '@/components/TopNav'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
@@ -345,7 +344,6 @@ export default function AllMajorsPage() {
   if (!isInitialized) {
     return (
       <View className="all-majors-page__fullscreen">
-        <TopNav />
         <View className="all-majors-page__loading">
           <Text className="all-majors-page__loading-text">加载中...</Text>
         </View>
@@ -356,7 +354,6 @@ export default function AllMajorsPage() {
   if (isCompleted) {
     return (
       <View className="all-majors-page__fullscreen">
-        <TopNav />
         <View className="all-majors-page__completed">
         <View className="all-majors-page__completed-content">
           <View className="all-majors-page__completed-icon">
@@ -389,7 +386,6 @@ export default function AllMajorsPage() {
   if (!currentQuestion) {
     return (
       <View className="all-majors-page__fullscreen">
-        <TopNav />
         <View className="all-majors-page__loading">
           <Text className="all-majors-page__loading-text">加载中...</Text>
         </View>
@@ -402,7 +398,6 @@ export default function AllMajorsPage() {
 
   return (
     <View className="all-majors-page__fullscreen">
-      <TopNav />
       <View className="all-majors-page">
         {/* 顶部进度条 */}
         <View className="all-majors-page__header">

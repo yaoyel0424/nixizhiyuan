@@ -5,7 +5,6 @@ import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
-import { TopNav } from '@/components/TopNav'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { getStorage } from '@/utils/storage'
 import questionnaireData from '@/data/questionnaire.json'
@@ -30,7 +29,8 @@ function SystemNavBar() {
       className="system-nav-bar"
       style={{ 
         height: `${statusBarHeight + navigationBarHeight}px`,
-        paddingTop: `${statusBarHeight}px`
+        paddingTop: `${statusBarHeight}px`,
+        backgroundColor: '#f0f7ff'
       }}
     >
       <View className="system-nav-bar__content">
@@ -159,7 +159,6 @@ export default function IndexPage() {
   return (
     <View className="index-page" style={{ paddingTop: `${topPadding}px` }}>
       <SystemNavBar />
-      <TopNav />
       
       {/* 头部横幅 */}
       <View className="index-page__banner">

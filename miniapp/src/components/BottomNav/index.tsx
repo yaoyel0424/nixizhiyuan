@@ -12,24 +12,23 @@ const TABBAR_PAGES = [
   "/pages/profile/index",
 ]
 
-// 图标映射 - 使用清晰的 Unicode 图标字符
-// 这些字符在小程序中显示清晰，无需额外依赖
+// 图标映射 - 使用线条风格的几何图形
 const ICON_MAP: Record<string, { normal: string; active: string }> = {
   home: {
-    normal: '🏠',  // 主页图标 - 房屋
-    active: '🏠'   // 激活状态 - 房屋
+    normal: '○',  // 主页图标 - 空心圆
+    active: '●'   // 激活状态 - 实心圆
   },
   clipboard: {
-    normal: '📊',  // 探索成果图标 - 图表
-    active: '📊'   // 激活状态 - 图表
+    normal: '△',  // 探索成果图标 - 空心三角形
+    active: '▲'   // 激活状态 - 实心三角形
   },
   target: {
-    normal: '🎯',  // 志愿方案图标 - 靶心
-    active: '🎯'   // 激活状态 - 靶心
+    normal: '◇',  // 志愿方案图标 - 空心菱形
+    active: '◆'   // 激活状态 - 实心菱形
   },
   user: {
-    normal: '👤',  // 个人中心图标 - 人形轮廓
-    active: '👤'   // 激活状态 - 人形轮廓
+    normal: '□',  // 个人中心图标 - 空心方形
+    active: '■'   // 激活状态 - 实心方形
   }
 }
 

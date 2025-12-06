@@ -4,7 +4,6 @@ import { View, Text, Slider } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { TopNav } from '@/components/TopNav'
 import { AssessmentCompletionModal } from '@/components/AssessmentCompletionModal'
 import { getStorage, setStorage } from '@/utils/storage'
 import { Question } from '@/types/questionnaire'
@@ -99,7 +98,6 @@ export default function QuestionnairePage() {
 
   return (
     <View className="questionnaire-page">
-      <TopNav />
       
       {/* 进度条 */}
       <View className="questionnaire-page__progress">

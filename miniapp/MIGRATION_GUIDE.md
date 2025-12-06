@@ -13,7 +13,6 @@
 
 ### 3. 关键组件
 - ✅ `src/components/BottomNav/` - 底部导航
-- ✅ `src/components/TopNav/` - 顶部导航
 - ✅ `src/components/PageContainer/` - 页面容器
 - ✅ `src/components/ui/Card/` - 卡片组件
 
