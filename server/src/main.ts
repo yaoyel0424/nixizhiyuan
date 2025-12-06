@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
+import { ValidationPipe as CustomValidationPipe } from './common/pipes/validation.pipe';
 
 /**
  * 应用入口文件
@@ -29,14 +29,9 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // 全局验证管道
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  // 全局验证管道（使用自定义的 ValidationPipe，已在 app.module.ts 中注册）
+  // 注意：自定义 ValidationPipe 已在 app.module.ts 中通过 APP_PIPE 注册
+  // 这里不需要再次注册，避免重复
 
   // Swagger API 文档配置
   const config = new DocumentBuilder()

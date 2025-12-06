@@ -12,6 +12,7 @@ import {
   OneToOne,
 } from 'typeorm';
 import { MajorDetail } from './major-detail.entity';
+import { MajorFavorite } from './major-favorite.entity';
 
 /**
  * 专业类型枚举
@@ -133,6 +134,13 @@ export class Major {
    */
   @OneToOne(() => MajorDetail, (majorDetail) => majorDetail.major)
   majorDetail: MajorDetail;
+
+  /**
+   * 收藏该专业的用户列表（一对多关系）
+   * 一个专业可以被多个用户收藏
+   */
+  @OneToMany(() => MajorFavorite, (majorFavorite) => majorFavorite.major)
+  favorites: MajorFavorite[];
 
 
   // ==================== 辅助方法 ====================

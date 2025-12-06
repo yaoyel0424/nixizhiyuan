@@ -42,3 +42,6 @@ export class ScoreResponseDto {
   shanxueScore: number;
 }
 
+
+
+

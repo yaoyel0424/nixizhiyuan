@@ -3,6 +3,8 @@ import { Order } from './order.entity';
 import { ScaleAnswer } from './scale-answer.entity';
 import { Intention } from './intention.entity';
 import { Alternative } from './alternative.entity';
+import { MajorFavorite } from './major-favorite.entity';
+import { ProvinceFavorite } from './province-favorite.entity';
 
 @Entity("users")
 export class User {
@@ -76,4 +78,16 @@ export class User {
      */
     @OneToMany(() => Alternative, alternative => alternative.user)
     alternatives: Alternative[];
+
+    /**
+     * 用户的专业收藏列表（一对多关联）
+     */
+    @OneToMany(() => MajorFavorite, majorFavorite => majorFavorite.user)
+    majorFavorites: MajorFavorite[];
+
+    /**
+     * 用户的省份收藏列表（一对多关联）
+     */
+    @OneToMany(() => ProvinceFavorite, provinceFavorite => provinceFavorite.user)
+    provinceFavorites: ProvinceFavorite[];
 }
