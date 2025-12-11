@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
-import { TopNav } from '@/components/TopNav'
 import { getStorage, setStorage } from '@/utils/storage'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
@@ -175,7 +174,6 @@ export default function IntendedMajorsSchoolsPage() {
   if (loading) {
     return (
       <View className="schools-page">
-        <TopNav />
         <View className="schools-page__loading">
           <Text>加载中...</Text>
         </View>
@@ -187,7 +185,6 @@ export default function IntendedMajorsSchoolsPage() {
   if (!data || !majorCode) {
     return (
       <View className="schools-page">
-        <TopNav />
         <View className="schools-page__empty">
           <Text>未找到专业信息</Text>
         </View>
@@ -198,7 +195,6 @@ export default function IntendedMajorsSchoolsPage() {
 
   return (
     <View className="schools-page">
-      <TopNav />
       
       {/* 头部 */}
       <View className="schools-page__header">

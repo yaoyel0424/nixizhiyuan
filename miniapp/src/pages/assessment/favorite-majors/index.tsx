@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
-import { TopNav } from '@/components/TopNav'
 import { getStorage, setStorage } from '@/utils/storage'
 import userScoreData from '@/assets/data/user-score.json'
 import intentionData from '@/assets/data/intention.json'
@@ -132,7 +131,6 @@ export default function FavoriteMajorsPage() {
   if (loading) {
     return (
       <View className="favorite-majors-page">
-        <TopNav />
         <View className="favorite-majors-page__loading">
           <Text>加载中...</Text>
         </View>
@@ -143,7 +141,6 @@ export default function FavoriteMajorsPage() {
 
   return (
     <View className="favorite-majors-page">
-      <TopNav />
       
       {/* 头部 */}
       <View className="favorite-majors-page__header">

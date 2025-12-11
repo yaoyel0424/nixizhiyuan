@@ -4,7 +4,6 @@ import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { BottomNav } from '@/components/BottomNav'
-import { TopNav } from '@/components/TopNav'
 import './index.less'
 
 export default function MajorsPage() {
@@ -16,7 +15,6 @@ export default function MajorsPage() {
 
   return (
     <View className="majors-page">
-      <TopNav />
       
       {/* 头部 */}
       <View className="majors-page__header">

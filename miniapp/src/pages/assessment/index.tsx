@@ -5,7 +5,6 @@ import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
-import { TopNav } from '@/components/TopNav'
 import { getStorage } from '@/utils/storage'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
@@ -110,7 +109,6 @@ export default function AssessmentPage() {
 
   return (
     <View className="assessment-page">
-      <TopNav />
       
       {/* 头部 */}
       <View className="assessment-page__header">

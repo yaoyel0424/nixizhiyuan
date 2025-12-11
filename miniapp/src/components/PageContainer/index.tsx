@@ -2,7 +2,6 @@
 import React, { ReactNode } from 'react'
 import { View } from '@tarojs/components'
 import { BottomNav } from '../BottomNav'
-import { TopNav } from '../TopNav'
 import './index.less'
 
 interface PageContainerProps {
@@ -16,7 +15,6 @@ interface PageContainerProps {
 export function PageContainer({ children }: PageContainerProps) {
   return (
     <View className="page-container">
-      <TopNav />
       <View className="page-container__content">{children}</View>
       <BottomNav />
     </View>

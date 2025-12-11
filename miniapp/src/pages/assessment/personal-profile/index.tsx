@@ -5,7 +5,6 @@ import Taro from '@tarojs/taro'
 import { Card } from '@/components/ui/Card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { BottomNav } from '@/components/BottomNav'
-import { TopNav } from '@/components/TopNav'
 import reportData from '@/assets/data/report.json'
 import './index.less'
 
@@ -267,7 +266,6 @@ export default function PersonalProfilePage() {
   if (loading) {
     return (
       <View className="personal-profile-page">
-        <TopNav />
         <View className="personal-profile-page__loading">
           <Text>加载中...</Text>
         </View>
@@ -279,7 +277,6 @@ export default function PersonalProfilePage() {
   if (portraits.length === 0) {
     return (
       <View className="personal-profile-page">
-        <TopNav />
         <View className="personal-profile-page__empty">
           <Text>暂无画像数据</Text>
         </View>
@@ -290,7 +287,6 @@ export default function PersonalProfilePage() {
 
   return (
     <View className="personal-profile-page">
-      <TopNav />
       
       {/* 头部区域 */}
       <View className="personal-profile-page__header">

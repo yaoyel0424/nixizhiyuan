@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
-import { TopNav } from '@/components/TopNav'
 import { getStorage, setStorage } from '@/utils/storage'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
@@ -436,7 +435,6 @@ export default function IntendedMajorsPage() {
   if (loading) {
     return (
       <View className="intended-majors-page">
-        <TopNav />
         <View className="intended-majors-page__loading">
           <Text>加载中...</Text>
         </View>
@@ -468,7 +466,6 @@ export default function IntendedMajorsPage() {
 
   return (
     <View className="intended-majors-page">
-      <TopNav />
       
       {/* 头部 */}
       <View className="intended-majors-page__header">
