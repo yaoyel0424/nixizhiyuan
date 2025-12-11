@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, Generated, OneToMany, ManyToOne } from 'typeorm';
 import { DoubleEdgedInfo } from './double-edged-info.entity';
 import { Scale } from './scale.entity';
+import { Mechanism } from './mechanism.entity';
 @Entity('elements')
 export class Element {
   @PrimaryGeneratedColumn()
@@ -41,4 +42,11 @@ export class Element {
 
   @OneToMany(() => Scale, scale => scale.element)
   scales: Scale[];
+
+  /**
+   * 关联的机制（一对一关系）
+   * 每个元素对应一个机制说明
+   */
+  @OneToOne(() => Mechanism, (mechanism) => mechanism.element)
+  mechanism: Mechanism;
 }

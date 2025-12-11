@@ -52,4 +52,6 @@ public/uploads/
 *.pid
 *.seed
 *.pid.lock
-
+public/
+scripts/
+*.sql
