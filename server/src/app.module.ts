@@ -12,6 +12,7 @@ import { ScalesModule } from './scales/scales.module';
 import { ScoresModule } from './scores/scores.module';
 import { MajorsModule } from './majors/majors.module';
 import { ProvincesModule } from './provinces/provinces.module';
+import { PortraitsModule } from './portraits/portraits.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseFormatInterceptor } from './common/interceptors/response-format.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -40,6 +41,7 @@ const compression = require('compression');
     ScoresModule,
     MajorsModule,
     ProvincesModule,
+    PortraitsModule,
   ],
   providers: [
     // 全局异常过滤器

@@ -26,7 +26,6 @@ import {
 } from './dto/major-favorite-response.dto';
 import { MajorDetailResponseDto } from './dto/major-detail-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { Public } from '@/common/decorators/public.decorator';
 import { Cache } from '@/common/decorators/cache.decorator';
 import { User } from '@/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
