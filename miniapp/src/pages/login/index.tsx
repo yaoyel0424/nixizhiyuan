@@ -19,7 +19,7 @@ const Login: React.FC = () => {
     dispatch(setLoginLoading(true));
 
     try {
-      // 获取微信登录凭证
+      // 1. 获取微信登录凭证
       const loginRes = await Taro.login();
 
       if (!loginRes.code) {
@@ -30,59 +30,66 @@ const Login: React.FC = () => {
         return;
       }
 
-      // // 调用后端接口进行微信登录
-      // const response = await wechatLogin(loginRes.code)
+      // 2. 获取用户信息（需要用户授权）
+      let encryptedData: string | undefined;
+      let iv: string | undefined;
 
-      // // 处理响应数据，适配不同的响应格式
-      // const userInfo = response.user || response.userInfo || response
-      // const token = response.accessToken || response.token
-      // const refreshToken = response.refreshToken
-
-      // if (userInfo) {
-      //   // 转换用户信息格式以适配 store
-      //   const formattedUserInfo = {
-      //     id: userInfo.id,
-      //     nickname: userInfo.nickname || userInfo.nickName,
-      //     avatar: userInfo.avatarUrl || userInfo.avatar,
-      //     phone: userInfo.phone || '',
-      //     email: userInfo.email || '',
-      //     role: userInfo.role || 'user',
-      //     permissions: userInfo.permissions || []
-      //   }
-
-      //   dispatch(setUserInfo(formattedUserInfo))
-
-      //   if (token) {
-      //     Taro.setStorageSync('token', token)
-      //   }
-      //   if (refreshToken) {
-      //     Taro.setStorageSync('refreshToken', refreshToken)
-      //   }
-
-      //   Taro.showToast({
-      //     title: '登录成功',
-      //     icon: 'success'
-      //   })
-
-      //   setTimeout(() => {
-      //     Taro.reLaunch({
-      //       url: '/pages/index/index'
-      //     })
-      //   }, 1500)
-      // } else {
-      //   throw new Error('登录失败：未获取到用户信息')
-      // }
-
-      Taro.showToast({
-        title: '登录成功',
-        icon: 'success',
-      });
-
-      setTimeout(() => {
-        Taro.reLaunch({
-          url: '/pages/index/index',
+      try {
+        const userProfile = await Taro.getUserProfile({
+          desc: '用于完善用户资料',
         });
-      }, 1500);
+
+        if (userProfile.encryptedData && userProfile.iv) {
+          encryptedData = userProfile.encryptedData;
+          iv = userProfile.iv;
+        }
+      } catch (error: any) {
+        // 用户拒绝授权，仍然可以登录，只是没有用户详细信息
+        console.warn('用户拒绝授权:', error);
+      }
+
+      // 3. 调用后端接口进行微信登录
+      const response = await wechatLogin(loginRes.code, encryptedData, iv);
+
+      // 4. 处理响应数据，适配不同的响应格式
+      const userInfo = response.user || response.userInfo || response;
+      const token = response.accessToken || response.token;
+      const refreshToken = response.refreshToken;
+
+      if (userInfo) {
+        // 转换用户信息格式以适配 store
+        const formattedUserInfo = {
+          id: String(userInfo.id || ''),
+          username: userInfo.nickname || userInfo.nickName || '微信用户',
+          nickname: userInfo.nickname || userInfo.nickName || '微信用户',
+          avatar: userInfo.avatarUrl || userInfo.avatar || '',
+          phone: userInfo.phone || '',
+          email: userInfo.email || '',
+          token: token || '',
+        };
+
+        dispatch(setUserInfo(formattedUserInfo));
+
+        if (token) {
+          Taro.setStorageSync('token', token);
+        }
+        if (refreshToken) {
+          Taro.setStorageSync('refreshToken', refreshToken);
+        }
+
+        Taro.showToast({
+          title: '登录成功',
+          icon: 'success',
+        });
+
+        setTimeout(() => {
+          Taro.reLaunch({
+            url: '/pages/index/index',
+          });
+        }, 1500);
+      } else {
+        throw new Error('登录失败：未获取到用户信息');
+      }
     } catch (error: any) {
       console.error('微信登录失败:', error);
       Taro.showToast({

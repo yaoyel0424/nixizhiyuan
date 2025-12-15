@@ -77,22 +77,41 @@ export const checkToken = (): Promise<any> => {
 /**
  * 微信登录
  * @param code 微信授权码
+ * @param encryptedData 加密的用户信息（可选）
+ * @param iv 初始向量（可选）
  * @returns 登录响应
  */
-export const wechatLogin = async (code: string): Promise<any> => {
-  // 微信登录接口需要将 code 作为 query 参数传递
-  // 使用 POST 请求，但 code 放在 query 中（根据后端实现）
-  const response = await post<any>('/auth/wechat/login?code=' + encodeURIComponent(code))
-  
+export const wechatLogin = async (
+  code: string,
+  encryptedData?: string,
+  iv?: string,
+): Promise<any> => {
+  // 构建请求参数
+  const params: any = {
+    code,
+  };
+
+  // 如果有加密数据，添加到请求体中
+  if (encryptedData && iv) {
+    params.encryptedData = encryptedData;
+    params.iv = iv;
+  }
+
+  // 使用 POST 请求，code 放在 query 中，加密数据放在 body 中
+  const response = await post<any>(
+    '/auth/wechat/login?code=' + encodeURIComponent(code),
+    encryptedData && iv ? { encryptedData, iv } : undefined,
+  );
+
   // 如果返回的是标准 BaseResponse 格式
   if (response.data) {
-    return response.data
+    return response.data;
   }
-  
+
   // 如果直接返回用户对象（后端可能直接返回）
-  if (response.user) {
-    return response
+  if (response.data.user) {
+    return response.data;
   }
-  
-  return response
-}
+
+  return response.data;
+};

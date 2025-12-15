@@ -4,10 +4,11 @@ import { Strategy } from 'passport-custom';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
+import * as crypto from 'crypto';
 
 /**
  * 微信认证策略
- * 通过前端传入的 code 获取 token 和用户信息
+ * 通过前端传入的 code 获取 session_key 和 openid，并解密用户信息
  */
 @Injectable()
 export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
@@ -20,30 +21,54 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
 
   /**
    * 验证微信登录
-   * 从请求体中获取 code，然后通过 code 获取 token 和用户信息
+   * 从请求中获取 code 和加密的用户信息，然后通过 code 获取 session_key 并解密用户信息
    */
   async validate(req: Request): Promise<any> {
-    const code = req.query?.code;
- 
+    const code = req.query?.code || req.body?.code;
+    const encryptedData = req.body?.encryptedData;
+    const iv = req.body?.iv;
+
     if (!code) {
       throw new UnauthorizedException('微信授权码不能为空');
     }
 
     try {
-      // 1. 通过 code 获取 access_token 和 openid
-      const tokenData = await this.getWechatAccessToken(code as string);
+      // 1. 通过 code 获取 session_key 和 openid（小程序登录接口）
+      const sessionData = await this.getWechatSession(code as string);
 
-      if (!tokenData.access_token || !tokenData.openid) {
+      if (!sessionData.openid || !sessionData.session_key) {
         throw new UnauthorizedException(
-          '微信授权失败：未获取到 access_token 或 openid',
+          '微信授权失败：未获取到 openid 或 session_key',
         );
       }
 
-      // 2. 通过 access_token 获取用户信息
-      const userInfo = await this.getWechatUserInfo(
-        tokenData.access_token,
-        tokenData.openid,
-      );
+      // 2. 如果有加密数据，解密用户信息
+      let userInfo: any = {
+        openid: sessionData.openid,
+        unionid: sessionData.unionid,
+      };
+
+      if (encryptedData && iv) {
+        try {
+          const decryptedData = this.decryptWechatData(
+            encryptedData,
+            iv,
+            sessionData.session_key,
+          );
+          userInfo = {
+            ...userInfo,
+            nickname: decryptedData.nickName || decryptedData.nickname,
+            headimgurl: decryptedData.avatarUrl || decryptedData.headimgurl,
+            sex: decryptedData.gender || decryptedData.sex,
+            province: decryptedData.province,
+            city: decryptedData.city,
+            country: decryptedData.country,
+          };
+        } catch (error) {
+          // 解密失败不影响登录，只是没有用户详细信息
+          console.warn('解密用户信息失败:', error);
+        }
+      }
 
       // 3. 查找或创建用户，并生成 Token
       const result = await this.authService.findOrCreateWechatUser(userInfo);
@@ -58,69 +83,76 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
   }
 
   /**
-   * 通过 code 获取微信 access_token
+   * 通过 code 获取微信 session_key 和 openid（小程序登录接口）
    */
-  private async getWechatAccessToken(code: string): Promise<any> {
-    // 读取微信配置（通过 registerAs('wechat', ...) 注册的配置）
+  private async getWechatSession(code: string): Promise<any> {
     const appId = this.configService.get<string>('wechat.appId');
     const appSecret = this.configService.get<string>('wechat.appSecret');
-    const tokenUrl = `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${appId}&secret=${appSecret}&code=${code}&grant_type=authorization_code`;
+    // 使用小程序登录接口 jscode2session
+    const sessionUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
 
     try {
-      const response = await fetch(tokenUrl);
+      const response = await fetch(sessionUrl);
       const data = await response.json();
 
       if (data.errcode) {
         throw new UnauthorizedException(
-          `获取微信 access_token 失败: ${data.errmsg}`,
-        );
-      }  
-
-      return {
-        access_token: data.access_token,
-        expires_in: data.expires_in,
-        refresh_token: data.refresh_token,
-        openid: data.openid,
-        scope: data.scope,
-        unionid: data.unionid,
-      }; 
-
-    } catch (error) {
-      throw new UnauthorizedException('获取微信 access_token 失败');
-    }
-  }
-
-  /**
-   * 获取微信用户信息
-   */
-  private async getWechatUserInfo(
-    accessToken: string,
-    openid: string,
-  ): Promise<any> {
-    const userInfoUrl = `https://api.weixin.qq.com/sns/userinfo?access_token=${accessToken}&openid=${openid}&lang=zh_CN`;
-   
-    try {
-      const response = await fetch(userInfoUrl);
-      const data = await response.json();
-
-      if (data.errcode) {
-        throw new UnauthorizedException(
-          `获取微信用户信息失败: ${data.errmsg}`,
+          `获取微信 session 失败: ${data.errmsg || data.errcode}`,
         );
       }
 
       return {
         openid: data.openid,
+        session_key: data.session_key,
         unionid: data.unionid,
-        nickname: data.nickname,
-        headimgurl: data.headimgurl,
-        sex: data.sex,
-        province: data.province,
-        city: data.city,
-        country: data.country,
       };
     } catch (error) {
-      throw new UnauthorizedException('获取微信用户信息失败');
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('获取微信 session 失败');
+    }
+  }
+
+  /**
+   * 解密微信小程序加密数据
+   * @param encryptedData 加密数据
+   * @param iv 初始向量
+   * @param sessionKey 会话密钥
+   */
+  private decryptWechatData(
+    encryptedData: string,
+    iv: string,
+    sessionKey: string,
+  ): any {
+    try {
+      // Base64 解码
+      const encryptedBuffer = Buffer.from(encryptedData, 'base64');
+      const ivBuffer = Buffer.from(iv, 'base64');
+      const sessionKeyBuffer = Buffer.from(sessionKey, 'base64');
+
+      // AES-128-CBC 解密
+      const decipher = crypto.createDecipheriv(
+        'aes-128-cbc',
+        sessionKeyBuffer,
+        ivBuffer,
+      );
+
+      let decrypted = decipher.update(encryptedBuffer, undefined, 'utf8');
+      decrypted += decipher.final('utf8');
+
+      // 解析 JSON
+      const data = JSON.parse(decrypted);
+
+      // 验证 appid（可选，增加安全性）
+      const appId = this.configService.get<string>('wechat.appId');
+      if (data.watermark && data.watermark.appid !== appId) {
+        throw new UnauthorizedException('解密数据 appid 不匹配');
+      }
+
+      return data;
+    } catch (error) {
+      throw new UnauthorizedException('解密用户信息失败');
     }
   }
 }

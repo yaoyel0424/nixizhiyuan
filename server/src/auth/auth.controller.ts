@@ -50,28 +50,32 @@ export class AuthController {
     return this.authService.logout(user.id);
   }
 
-  @All('wechat/login')
+  @Post('wechat/login')
   @Public()
   @UseGuards(WechatAuthGuard)
   @ApiOperation({
-    summary: '微信登录/回调 - 支持 GET（服务器验证/OAuth回调）和 POST（登录）',
+    summary: '微信小程序登录',
+    description: '通过 code 和加密的用户信息进行登录',
   })
   async wechatLogin(
     @Req() req: Request,
     @Query() query: any,
-    @Res() res: Response,
     @CurrentUser() user?: any,
   ) {
-    // 处理 GET 请求 - 服务器验证或 OAuth 回调 
-      // 处理微信服务器验证请求
-      if (query.echostr) {
-        // 直接返回 echostr 用于微信服务器验证
-        return res.send(query.echostr);
-      }
-      // 其他 GET 请求（如 OAuth 回调）返回用户信息和 Token
-      // user 参数由 WechatStrategy.validate() 返回的 result 注入
-      return res.json(user || {});
-   }
+    // 处理 GET 请求 - 服务器验证
+    if (req.method === 'GET' && query.echostr) {
+      // 直接返回 echostr 用于微信服务器验证
+      return query.echostr;
+    }
+
+    // POST 请求返回用户信息和 Token
+    // user 参数由 WechatStrategy.validate() 返回的 result 注入
+    if (!user) {
+      throw new Error('登录失败：未获取到用户信息');
+    }
+
+    return user;
+  }
 
   @Get('test-token/:id/:nickname')
   @Public()
