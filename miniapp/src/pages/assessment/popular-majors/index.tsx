@@ -1,5 +1,5 @@
 // 热门专业评估页面
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { PageContainer } from '@/components/PageContainer'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
+import { Input } from '@/components/ui/Input'
 import hotMajorsData from '@/data/hot.json'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
@@ -44,6 +45,103 @@ interface Question {
 
 const STORAGE_KEY = 'popularMajorsResults'
 
+// 判断专业是理科还是文科
+// 理科：07 理学、08 工学、09 农学、10 医学
+// 文科：01 哲学、02 经济学、03 法学、04 教育学、05 文学、06 历史学、12 管理学、13 艺术学
+const isScienceMajor = (code: string): boolean => {
+  const prefix = code.substring(0, 2)
+  const sciencePrefixes = ['07', '08', '09', '10']
+  return sciencePrefixes.includes(prefix)
+}
+
+// 自定义导航栏组件
+function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFilterChange, onHeightChange }: {
+  searchQuery: string
+  onSearchChange: (value: string) => void
+  subjectFilter: 'all' | 'science' | 'liberal'
+  onSubjectFilterChange: (filter: 'all' | 'science' | 'liberal') => void
+  onHeightChange?: (height: number) => void
+}) {
+  const [systemInfo, setSystemInfo] = useState<any>(null)
+
+  useEffect(() => {
+    const info = Taro.getSystemInfoSync()
+    setSystemInfo(info)
+    
+    // 计算导航栏总高度并通知父组件
+    if (info) {
+      const statusBarHeight = info.statusBarHeight || 0
+      const navigationBarHeight = 44 // 微信导航栏标准高度（px）
+      // 搜索框高度 72rpx + 上margin 40rpx + 下margin 16rpx = 128rpx，过滤标签高度约 60rpx，总共约 188rpx
+      // rpx 转 px: 1rpx = screenWidth / 750
+      const screenWidth = info.screenWidth || 375
+      const rpxToPx = screenWidth / 750
+      const searchAndFilterHeight = 188 * rpxToPx // 搜索框和过滤标签的总高度（已增加顶部间距）
+      const totalHeight = statusBarHeight + navigationBarHeight + searchAndFilterHeight
+      onHeightChange?.(totalHeight)
+    }
+  }, [onHeightChange])
+
+  if (!systemInfo) return null
+
+  const statusBarHeight = systemInfo.statusBarHeight || 0
+  const navigationBarHeight = 44 // 微信导航栏标准高度（px）
+
+  return (
+    <View 
+      className="popular-majors-nav-bar"
+      style={{ 
+        height: `${statusBarHeight + navigationBarHeight + 80}px`, // 增加10rpx间距（约5px）
+        paddingTop: `${statusBarHeight}px`,
+        backgroundColor: '#f0f7ff'
+      }}
+    >
+      <View className="popular-majors-nav-bar__content">
+        <View className="popular-majors-nav-bar__header">
+          <View className="popular-majors-nav-bar__back" onClick={() => Taro.navigateBack()}>
+            <Text className="popular-majors-nav-bar__back-icon">←</Text>
+          </View>
+          <View className="popular-majors-nav-bar__title">热门专业</View>
+          <View className="popular-majors-nav-bar__placeholder"></View>
+        </View>
+        
+        {/* 搜索框 */}
+        <View className="popular-majors-nav-bar__search">
+          <View className="popular-majors-nav-bar__search-icon">🔍</View>
+          <Input
+            className="popular-majors-nav-bar__search-input"
+            placeholder="搜索专业名称或代码..."
+            value={searchQuery}
+            onInput={(e) => onSearchChange(e.detail.value)}
+          />
+        </View>
+
+        {/* 理科/文科过滤标签 */}
+        <View className="popular-majors-nav-bar__filters">
+          <View
+            className={`popular-majors-nav-bar__filter ${subjectFilter === 'all' ? 'popular-majors-nav-bar__filter--active' : ''}`}
+            onClick={() => onSubjectFilterChange('all')}
+          >
+            <Text className="popular-majors-nav-bar__filter-text">全部</Text>
+          </View>
+          <View
+            className={`popular-majors-nav-bar__filter ${subjectFilter === 'science' ? 'popular-majors-nav-bar__filter--active' : ''}`}
+            onClick={() => onSubjectFilterChange('science')}
+          >
+            <Text className="popular-majors-nav-bar__filter-text">理科</Text>
+          </View>
+          <View
+            className={`popular-majors-nav-bar__filter ${subjectFilter === 'liberal' ? 'popular-majors-nav-bar__filter--active' : ''}`}
+            onClick={() => onSubjectFilterChange('liberal')}
+          >
+            <Text className="popular-majors-nav-bar__filter-text">文科</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  )
+}
+
 export default function PopularMajorsPage() {
   const [hotMajors, setHotMajors] = useState<HotMajorsData | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<'ben' | 'gz_ben' | 'zhuan'>('ben')
@@ -57,6 +155,19 @@ export default function PopularMajorsPage() {
   const [loveEnergy, setLoveEnergy] = useState<number | null>(null)
   // 保存每个专业的测评结果 { majorCode: loveEnergy }
   const [majorResults, setMajorResults] = useState<Record<string, number>>({})
+  // 搜索关键词
+  const [searchQuery, setSearchQuery] = useState('')
+  // 学科过滤：all-全部, science-理科, liberal-文科
+  const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all')
+  // 导航栏高度，用于计算页面内容的 padding-top
+  const [navBarHeight, setNavBarHeight] = useState(0)
+  // 系统信息，用于rpx转px
+  const [systemInfo, setSystemInfo] = useState<any>(null)
+
+  useEffect(() => {
+    const info = Taro.getSystemInfoSync()
+    setSystemInfo(info)
+  }, [])
 
   useEffect(() => {
     // 加载热门专业数据
@@ -98,6 +209,30 @@ export default function PopularMajorsPage() {
   }
 
   const currentMajors = hotMajors?.[getDisplayCategory(selectedCategory)] || []
+
+  // 过滤专业列表：根据搜索关键词和学科类型过滤
+  const filteredMajors = useMemo(() => {
+    let filtered = currentMajors
+
+    // 学科类型过滤
+    if (subjectFilter !== 'all') {
+      filtered = filtered.filter(major => {
+        const isScience = isScienceMajor(major.code)
+        return subjectFilter === 'science' ? isScience : !isScience
+      })
+    }
+
+    // 搜索关键词过滤
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase()
+      filtered = filtered.filter(major => 
+        major.name.toLowerCase().includes(query) || 
+        major.code.includes(query)
+      )
+    }
+
+    return filtered
+  }, [currentMajors, searchQuery, subjectFilter])
 
   // 随机选择8道题目
   const loadRandomQuestions = async () => {
@@ -197,7 +332,23 @@ export default function PopularMajorsPage() {
 
   return (
     <PageContainer>
-      <View className="popular-majors-page">
+      {/* 自定义导航栏 */}
+      <SystemNavBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        subjectFilter={subjectFilter}
+        onSubjectFilterChange={setSubjectFilter}
+        onHeightChange={setNavBarHeight}
+      />
+      
+      <View 
+        className="popular-majors-page"
+        style={{ 
+          paddingTop: navBarHeight > 0 && systemInfo 
+            ? `${navBarHeight - (10 * (systemInfo.screenWidth || 375) / 750)}px` 
+            : '0' 
+        }}
+      >
         {/* 头部横幅 */}
         <View className="popular-majors-page__header">
           <View className="popular-majors-page__header-content">
@@ -237,7 +388,7 @@ export default function PopularMajorsPage() {
           </View>
         ) : (
           <View className="popular-majors-page__majors">
-            {currentMajors.map((major, index) => {
+            {filteredMajors.map((major, index) => {
               const hasResult = majorResults[major.code] !== undefined
               const resultEnergy = majorResults[major.code]
 
@@ -301,9 +452,11 @@ export default function PopularMajorsPage() {
           </View>
         )}
 
-        {!loading && currentMajors.length === 0 && (
+        {!loading && filteredMajors.length === 0 && (
           <View className="popular-majors-page__empty">
-            <Text className="popular-majors-page__empty-text">暂无数据</Text>
+            <Text className="popular-majors-page__empty-text">
+              {searchQuery || subjectFilter !== 'all' ? '未找到匹配的专业' : '暂无数据'}
+            </Text>
           </View>
         )}
       </View>

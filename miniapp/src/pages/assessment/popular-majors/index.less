@@ -3,6 +3,128 @@
   min-height: 100vh;
   background: #f0f7ff;
   padding-bottom: 32rpx;
+  // padding-top 通过内联样式动态设置，避免内容被固定导航栏遮挡
+}
+
+// 自定义导航栏样式
+.popular-majors-nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #f0f7ff;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.1);
+}
+
+.popular-majors-nav-bar__content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.popular-majors-nav-bar__header {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32rpx;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.popular-majors-nav-bar__back {
+  width: 60rpx;
+  height: 44px; // 与header高度一致，确保垂直居中
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.popular-majors-nav-bar__back-icon {
+  font-size: 36rpx;
+  color: #000;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.popular-majors-nav-bar__title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #000;
+  line-height: 1;
+}
+
+.popular-majors-nav-bar__placeholder {
+  width: 60rpx;
+}
+
+// 搜索框样式
+.popular-majors-nav-bar__search {
+  display: flex;
+  align-items: center;
+  margin: 40rpx 32rpx 16rpx; // 增加顶部间距，避免在安卓真机上与header重叠
+  padding: 0 24rpx;
+  height: 72rpx;
+  background: #fff;
+  border-radius: 36rpx;
+  border: 2rpx solid #e5e7eb;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.popular-majors-nav-bar__search-icon {
+  font-size: 32rpx;
+  margin-right: 16rpx;
+  color: #999;
+}
+
+.popular-majors-nav-bar__search-input {
+  flex: 1;
+  height: 100%;
+  font-size: 28rpx;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+// 过滤标签样式
+.popular-majors-nav-bar__filters {
+  display: flex;
+  gap: 16rpx;
+  padding: 0 32rpx 16rpx;
+}
+
+.popular-majors-nav-bar__filter {
+  flex: 1;
+  padding: 12rpx 24rpx;
+  border-radius: 32rpx;
+  background: #fff;
+  border: 2rpx solid #e5e7eb;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.popular-majors-nav-bar__filter--active {
+  background: #1A4099;
+  border-color: #1A4099;
+  box-shadow: 0 4rpx 12rpx rgba(26, 64, 153, 0.3);
+}
+
+.popular-majors-nav-bar__filter-text {
+  font-size: 26rpx;
+  color: #666;
+  font-weight: 500;
+}
+
+.popular-majors-nav-bar__filter--active .popular-majors-nav-bar__filter-text {
+  color: #fff;
 }
 
 // 头部横幅
@@ -11,6 +133,7 @@
   color: #fff;
   padding: 48rpx 32rpx 128rpx;
   position: relative;
+  margin-top: 0; // 导航栏是固定定位，头部不需要margin-top
 }
 
 .popular-majors-page__header-content {
