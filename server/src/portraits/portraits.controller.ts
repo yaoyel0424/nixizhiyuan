@@ -10,6 +10,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { User } from '@/entities/user.entity';
 import { UserPortraitResponseDto } from './dto/portrait-response.dto';
 import { plainToInstance } from 'class-transformer';
+import { Cache } from '@/common/decorators/cache.decorator';
 
 /**
  * 画像控制器
@@ -31,6 +32,7 @@ export class PortraitsController {
     description: '查询成功',
     type: UserPortraitResponseDto,
   })
+  @Cache()
   async getUserPortrait(
     @CurrentUser() user: any,
   ): Promise<UserPortraitResponseDto> {

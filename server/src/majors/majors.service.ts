@@ -234,60 +234,40 @@ export class MajorsService {
       const elementIds = analyses.map((analysis) => analysis.elementId);
 
       if (elementIds.length > 0) {
-        // 查找这些元素相关的所有量表
-        const scales = await this.scaleRepository.find({
-          where: {
-            elementId: In(elementIds),
-          },
+        // 使用一条 SQL 查询一次性获取所有元素的分数总和
+        const elementScores = await this.elementRepository
+          .createQueryBuilder('element')
+          .innerJoin(
+            'scales',
+            'scale',
+            'scale.element_id = element.id',
+          )
+          .innerJoin(
+            'scale_answers',
+            'answer',
+            'answer.scale_id = scale.id AND answer.user_id = :userId',
+            { userId },
+          )
+          .select('element.id', 'elementId')
+          .addSelect('SUM(answer.score)', 'totalScore')
+          .where('element.id IN (:...elementIds)', { elementIds })
+          .groupBy('element.id')
+          .getRawMany();
+
+        // 创建 elementId -> totalScore 的映射
+        const elementScoreMap = new Map<number, number>();
+        elementScores.forEach((item) => {
+          elementScoreMap.set(
+            item.elementId,
+            Number(Number(item.totalScore).toFixed(2)),
+          );
         });
 
-        // 查找用户对这些量表的答案
-        const scaleIds = scales.map((scale) => scale.id);
-        const userAnswers = scaleIds.length > 0
-          ? await this.scaleAnswerRepository.find({
-              where: {
-                userId,
-                scaleId: In(scaleIds),
-              },
-            })
-          : [];
-
-        // 创建 scaleId -> score 的映射
-        const answerMap = new Map<number, number>();
-        userAnswers.forEach((answer) => {
-          answerMap.set(answer.scaleId, answer.score);
-        });
-
-        // 创建 elementId -> scales 的映射
-        const elementScalesMap = new Map<number, Scale[]>();
-        scales.forEach((scale) => {
-          const scales = elementScalesMap.get(scale.elementId) || [];
-          scales.push(scale);
-          elementScalesMap.set(scale.elementId, scales);
-        });
-
-        // 为每个分析记录计算用户分数
+        // 为每个分析记录设置用户分数
         for (const analysis of analyses) {
-          const elementScales = elementScalesMap.get(analysis.elementId) || [];
-          if (elementScales.length > 0) {
-            // 计算该元素的所有量表答案的平均分数
-            let totalScore = 0;
-            let answeredCount = 0;
-
-            elementScales.forEach((scale) => {
-              const answer = answerMap.get(scale.id);
-              if (answer !== undefined) {
-                totalScore += answer;
-                answeredCount++;
-              }
-            });
-
-            // 计算平均分数（如果有答案）
-            if (answeredCount > 0) {
-              (analysis as any).userElementScore = Number(
-                (totalScore / answeredCount).toFixed(2),
-              );
-            }
+          const totalScore = elementScoreMap.get(analysis.elementId);
+          if (totalScore !== undefined) {
+            (analysis as any).userElementScore = totalScore;
           }
         }
       }

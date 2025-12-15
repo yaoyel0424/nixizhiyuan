@@ -1,79 +1,41 @@
-version: '3.8'
+version: '3.8' 
 
 services:
-  # PostgreSQL 数据库服务
-  postgres:
-    image: postgres:15-alpine
-    container_name: nestjs-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: nestjs_db
-    ports:
-      - '5432:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - nestjs-network
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis 缓存服务
-  redis:
-    image: redis:7-alpine
-    container_name: nestjs-redis
-    restart: unless-stopped
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
-    networks:
-      - nestjs-network
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # NestJS 应用服务
-  app:
+  nixizhiyuan-server:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nestjs-app
-    restart: unless-stopped
+    container_name: nixizhiyuan-server
+    restart: always
     ports:
-      - '3000:3000'
+      - '3002:3002'
     environment:
-      NODE_ENV: production
-      APP_PORT: 3000
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      DB_DATABASE: nestjs_db
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - NODE_ENV=production
+      - APP_PORT=3002
+      # 使用已存在的 PostgreSQL 容器名称（与服务名 db 对应）
+      - DB_HOST=rbridge-db
+      - DB_PORT=5432
+      # NestJS 应用使用的环境变量名称（从主应用的环境变量读取）
+      - DB_USERNAME=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_DATABASE=${POSTGRES_DB}
+      # 使用已存在的 Redis 容器名称（与服务名 redis 对应）
+      - REDIS_HOST=rbridge-redis
+      - REDIS_PORT=6379
+      # Redis 密码（从主应用的环境变量读取）
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      # JWT 密钥（从主应用的环境变量读取）
+      - JWT_SECRET=${JWT_SECRET}
     networks:
-      - nestjs-network
+      # 连接到已存在的外部网络（主应用的 app-network）
+      - rbridge_app-network
     volumes:
       - ./uploads:/app/uploads
-
-volumes:
-  postgres_data:
-  redis_data:
+      - ./logs:/app/logs
 
 networks:
-  nestjs-network:
-    driver: bridge
+  # 使用已存在的外部网络（主应用的 app-network）
+  rbridge_app-network:
+    external: true
 

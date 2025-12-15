@@ -80,6 +80,33 @@ export class ScalesController {
     };
   }
 
+  @Get('element/:elementId')
+  @ApiOperation({ summary: '根据元素ID获取对应的量表列表及用户答案' })
+  @ApiParam({ name: 'elementId', description: '元素ID' })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: ScalesWithAnswersResponseDto,
+  })
+  @ApiResponse({ status: 404, description: '元素不存在' })
+  async findScalesByElementId(
+    @Param('elementId', ParseIntPipe) elementId: number,
+    @CurrentUser() user: any,
+  ): Promise<ScalesWithAnswersResponseDto> {
+    const result = await this.scalesService.findScalesByElementId(
+      elementId,
+      user.id,
+    );
+    return {
+      scales: plainToInstance(ScaleResponseDto, result.scales, {
+        excludeExtraneousValues: true,
+      }),
+      answers: plainToInstance(ScaleAnswerResponseDto, result.answers, {
+        excludeExtraneousValues: true,
+      }),
+    };
+  }
+
   @Post('answers')
   @ApiOperation({ summary: '创建量表答案' })
   @ApiResponse({
