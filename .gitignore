@@ -12,6 +12,7 @@ build/
 .env
 .env.local
 .env.*.local
+https-key/
 
 # 日志
 logs/
