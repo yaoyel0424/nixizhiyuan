@@ -12,6 +12,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ScalesService } from './scales.service';
 import { CreateScaleAnswerDto } from './dto/create-scale-answer.dto';
@@ -109,6 +110,10 @@ export class ScalesController {
 
   @Post('answers')
   @ApiOperation({ summary: '创建量表答案' })
+  @ApiBody({
+    type: CreateScaleAnswerDto,
+    description: '创建量表答案的请求体',
+  })
   @ApiResponse({
     status: 201,
     description: '创建成功',
