@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, MoreThanOrEqual } from 'typeorm';
@@ -30,9 +29,9 @@ export class ScalesService {
   ) {}
 
   /**
-   * 创建量表答案
+   * 创建或更新量表答案
    * @param createDto 创建量表答案 DTO
-   * @returns 创建的量表答案
+   * @returns 创建或更新的量表答案
    */
   async create(createDto: CreateScaleAnswerDto): Promise<ScaleAnswer> {
     // 验证用户是否存在
@@ -68,13 +67,14 @@ export class ScalesService {
     });
 
     if (existingAnswer) {
-      throw new ConflictException({
-        code: ErrorCode.OPERATION_FAILED,
-        message: '该用户已对该量表提交过答案',
-      });
+      // 如果答案已存在，更新它
+      existingAnswer.score = createDto.score;
+      existingAnswer.submittedAt = new Date();
+      const updatedAnswer = await this.scaleAnswerRepository.save(existingAnswer);
+      return updatedAnswer;
     }
 
-    // 创建量表答案
+    // 如果答案不存在，创建新的
     const scaleAnswer = this.scaleAnswerRepository.create({
       scaleId: createDto.scaleId,
       userId: createDto.userId,

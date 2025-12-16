@@ -109,18 +109,17 @@ export class ScalesController {
   }
 
   @Post('answers')
-  @ApiOperation({ summary: '创建量表答案' })
+  @ApiOperation({ summary: '创建或更新量表答案' })
   @ApiBody({
     type: CreateScaleAnswerDto,
-    description: '创建量表答案的请求体',
+    description: '创建或更新量表答案的请求体，如果答案已存在则更新',
   })
   @ApiResponse({
     status: 201,
-    description: '创建成功',
+    description: '创建或更新成功',
     type: ScaleAnswerResponseDto,
   })
-  @ApiResponse({ status: 404, description: '量表不存在' })
-  @ApiResponse({ status: 409, description: '该用户已对该量表提交过答案' })
+  @ApiResponse({ status: 404, description: '量表不存在或用户不存在' })
   async create(
     @Body() createDto: CreateScaleAnswerDto,
   ): Promise<ScaleAnswerResponseDto> {
