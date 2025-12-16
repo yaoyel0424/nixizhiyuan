@@ -28,6 +28,9 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       # JWT 密钥（从主应用的环境变量读取）
       - JWT_SECRET=${JWT_SECRET}
+      # 微信小程序配置（从主应用的环境变量读取）
+      - WECHAT_APP_ID=${WECHAT_APP_ID}
+      - WECHAT_APP_SECRET=${WECHAT_APP_SECRET}
     networks:
       # 连接到已存在的外部网络（主应用的 app-network）
       - rbridge_app-network

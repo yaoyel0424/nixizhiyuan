@@ -21,12 +21,13 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
 
   /**
    * 验证微信登录
-   * 从请求中获取 code 和加密的用户信息，然后通过 code 获取 session_key 并解密用户信息
+   * 从请求中获取 code 和用户信息，然后通过 code 获取 session_key 并解析用户信息
    */
   async validate(req: Request): Promise<any> {
     const code = req.query?.code || req.body?.code;
     const encryptedData = req.body?.encryptedData;
     const iv = req.body?.iv;
+    const rawData = req.body?.rawData; // 原始 JSON 字符串，无需解密
 
     if (!code) {
       throw new UnauthorizedException('微信授权码不能为空');
@@ -42,13 +43,32 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
         );
       }
 
-      // 2. 如果有加密数据，解密用户信息
+      // 2. 初始化用户信息
       let userInfo: any = {
         openid: sessionData.openid,
-        unionid: sessionData.unionid,
+        unionid: sessionData.unionid || undefined, // unionid 可能为空
       };
 
-      if (encryptedData && iv) {
+      // 3. 优先使用 rawData（无需解密，直接解析 JSON）
+      if (rawData) {
+        try {
+          const userData = JSON.parse(rawData);
+          userInfo = {
+            ...userInfo,
+            nickname: userData.nickName || userData.nickname,
+            headimgurl: userData.avatarUrl || userData.avatar,
+            sex: userData.gender || userData.sex,
+            province: userData.province,
+            city: userData.city,
+            country: userData.country,
+          };
+        } catch (error) {
+          // 解析失败不影响登录
+          console.warn('解析 rawData 失败:', error);
+        }
+      }
+      // 4. 如果没有 rawData，尝试解密 encryptedData
+      else if (encryptedData && iv) {
         try {
           const decryptedData = this.decryptWechatData(
             encryptedData,
@@ -70,7 +90,7 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
         }
       }
 
-      // 3. 查找或创建用户，并生成 Token
+      // 5. 查找或创建用户，并生成 Token
       const result = await this.authService.findOrCreateWechatUser(userInfo);
 
       return result;
@@ -88,8 +108,16 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
   private async getWechatSession(code: string): Promise<any> {
     const appId = this.configService.get<string>('wechat.appId');
     const appSecret = this.configService.get<string>('wechat.appSecret');
+
+    // 验证配置是否存在
+    if (!appId || !appSecret) {
+      throw new UnauthorizedException(
+        '微信配置缺失：请检查 WECHAT_APP_ID 和 WECHAT_APP_SECRET 环境变量',
+      );
+    }
+
     // 使用小程序登录接口 jscode2session
-    const sessionUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
+    const sessionUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=wx864a14a974e12f21&secret=2a3c34dd0cf529b579883402e7fe29fd&js_code=${code}&grant_type=authorization_code`;
 
     try {
       const response = await fetch(sessionUrl);
@@ -97,15 +125,15 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
 
       if (data.errcode) {
         throw new UnauthorizedException(
-          `获取微信 session 失败: ${data.errmsg || data.errcode}`,
+          `获取微信 session 失败: url：${sessionUrl}，错误信息：${data.errmsg || data.errcode} (错误码: ${data.errcode})`,
         );
-      }
+      }  
 
       return {
         openid: data.openid,
         session_key: data.session_key,
         unionid: data.unionid,
-      };
+      }; 
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
