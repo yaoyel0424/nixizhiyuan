@@ -58,6 +58,9 @@ export default {
   permission: {
     'scope.userLocation': {
       desc: '你的位置信息将用于小程序位置接口的效果展示'
+    },
+    'scope.userInfo': {
+      desc: '用于完善会员资料'
     }
   }
 }
