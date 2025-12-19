@@ -9,7 +9,6 @@ import { User } from '@/entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersRepository } from './repositories/users.repository';
-import { HashUtil } from '../common/utils/hash.util';
 import { ErrorCode } from '../common/constants/error-code.constant';
 
 /**
@@ -80,13 +79,6 @@ export class UsersService {
    */
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-
-    // 如果更新密码，需要加密
-    if (updateUserDto.password) {
-      updateUserDto.password = await HashUtil.hashPassword(
-        updateUserDto.password,
-      );
-    }
 
     Object.assign(user, updateUserDto);
     return this.userRepository.save(user);

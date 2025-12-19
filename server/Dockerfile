@@ -3,9 +3,6 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# 安装构建 bcrypt 所需的工具（Python、make、g++等）
-RUN apk add --no-cache python3 make g++
-
 # 复制 package 文件
 COPY package*.json ./
 
@@ -29,8 +26,7 @@ WORKDIR /app
 # 复制 package 文件
 COPY package*.json ./
 
-# 从构建阶段复制已编译的 node_modules（包含原生模块）
-# 这样可以避免在生产阶段重新编译 bcrypt 等原生模块
+# 从构建阶段复制已编译的 node_modules
 COPY --from=builder /app/node_modules ./node_modules
 
 # 清理开发依赖（保留已编译的原生模块）

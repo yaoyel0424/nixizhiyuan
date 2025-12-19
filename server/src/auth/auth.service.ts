@@ -10,7 +10,6 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { IJwtPayload } from './interfaces/jwt-payload.interface';
-import { HashUtil } from '../common/utils/hash.util';
 import { RedisService } from '../redis/redis.service';
 import { ErrorCode } from '../common/constants/error-code.constant';
 
