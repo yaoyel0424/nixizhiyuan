@@ -42,6 +42,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         this.getErrorCodeByStatus(status);
 
       // 记录 HTTP 异常日志（4xx 和 5xx 错误）
+      // 对于 404 错误，减少日志记录频率，避免恶意扫描产生大量日志
       if (status >= 400) {
         // 构建日志消息，包含请求 body
         const bodyStr = request.body
@@ -51,6 +52,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         
         if (status >= 500) {
           this.logger.error(logMessage, undefined, 'AllExceptionsFilter');
+        } else if (status === 404) {
+          // 404 错误只记录 debug 级别，减少日志噪音
+          // 恶意扫描会产生大量 404，避免日志爆炸
+          this.logger.debug(logMessage, 'AllExceptionsFilter');
         } else {
           this.logger.warn(logMessage, 'AllExceptionsFilter');
         }
@@ -64,13 +69,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
-    const errorResponse = {
+    // 对于 404 错误，不暴露具体路径，减少信息泄露
+    const errorResponse: any = {
       success: false,
       code,
       message,
       timestamp: DateUtil.getCurrentTimestamp(),
-      path: request.url,
     };
+
+    // 只在非生产环境或非 404 错误时暴露路径
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (status !== 404 || !isProduction) {
+      errorResponse.path = request.url;
+    }
 
     response.status(status).json(errorResponse);
   }

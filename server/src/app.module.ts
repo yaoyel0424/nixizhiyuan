@@ -13,7 +13,11 @@ import { ScoresModule } from './scores/scores.module';
 import { MajorsModule } from './majors/majors.module';
 import { ProvincesModule } from './provinces/provinces.module';
 import { PortraitsModule } from './portraits/portraits.module';
+import { SecurityModule } from './security/security.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { SecurityMiddleware } from './common/middleware/security.middleware';
+import { IpBlockGuard } from './common/guards/ip-block.guard';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
 import { ResponseFormatInterceptor } from './common/interceptors/response-format.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
@@ -31,8 +35,9 @@ const compression = require('compression');
   imports: [
     ConfigModule,
     DatabaseModule,
-    // RedisModule,
+    RedisModule, // 启用 Redis 模块（安全功能需要）
     LoggerModule,
+    SecurityModule, // 安全模块
     AuthModule,
     UsersModule,
     HealthModule,
@@ -72,10 +77,20 @@ const compression = require('compression');
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: IpBlockGuard, // IP 封禁守卫
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard, // 速率限制守卫
+    },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // 应用安全中间件（恶意路径检测）- 最先执行
+    consumer.apply(SecurityMiddleware).forRoutes('*');
     // 应用安全头中间件
     consumer.apply(helmet()).forRoutes('*');
     // 应用响应压缩中间件

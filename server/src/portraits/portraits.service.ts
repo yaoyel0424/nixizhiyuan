@@ -213,6 +213,7 @@ export class PortraitsService {
     likeCategory: ElementScoreCategory,
     talentCategory: ElementScoreCategory,
   ): { likeObvious: boolean; talentObvious: boolean } | null {
+    // 前20% 后20%
     // 根据分类判断是否明显
     // A (OBVIOUS): 明显（4-6分）
     // C (NOT_OBVIOUS): 不明显（-4到-6分）
