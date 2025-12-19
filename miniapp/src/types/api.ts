@@ -79,3 +79,56 @@ export interface ListResponse<T> {
   pageSize: number
   hasMore: boolean
 }
+
+// 量表相关类型定义
+/**
+ * 量表选项
+ */
+export interface ScaleOption {
+  id: number
+  optionName: string
+  optionValue: number
+  displayOrder: number | null
+  additionalInfo: string | null
+}
+
+/**
+ * 量表
+ */
+export interface Scale {
+  id: number
+  content: string
+  elementId: number
+  type: 'like' | 'talent'
+  dimension: '看' | '听' | '说' | '记' | '想' | '做' | '运动'
+  options?: ScaleOption[]
+  answers?: ScaleAnswer[]
+}
+
+/**
+ * 量表答案
+ */
+export interface ScaleAnswer {
+  id: number
+  scaleId: number
+  userId: number
+  score: number
+  submittedAt: string
+}
+
+/**
+ * 量表列表及用户答案响应
+ */
+export interface ScalesWithAnswersResponse {
+  scales: Scale[]
+  answers: ScaleAnswer[]
+}
+
+/**
+ * 创建或更新量表答案的请求参数
+ */
+export interface CreateScaleAnswerParams {
+  scaleId: number
+  userId: number
+  score: number
+}

@@ -12,59 +12,85 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   /**
-   * 处理微信登录
+   * 处理微信登录按钮点击
+   * 注意：getUserProfile 必须在用户点击事件的同步回调中直接调用
    */
-  const handleWechatLogin = async () => {
+  const handleWechatLogin = () => {
+    // 立即调用 getUserProfile（必须在同步回调中）
+    Taro.getUserProfile({
+      desc: '用于完善会员资料',
+    })
+      .then((userProfile) => {
+        // 获取到用户信息后，继续登录流程
+        const encryptedData = userProfile.encryptedData;
+        const iv = userProfile.iv;
+        const userInfo = userProfile.userInfo;
+        performLogin(encryptedData, iv, userInfo);
+      })
+      .catch((error: any) => {
+        // 用户拒绝授权，仍然可以登录，只是没有用户详细信息
+        console.warn('用户拒绝授权:', error);
+        performLogin(undefined, undefined, null);
+      });
+  };
+
+  /**
+   * 执行登录流程
+   */
+  const performLogin = async (
+    encryptedData?: string,
+    iv?: string,
+    userInfo?: any,
+  ) => {
     setLoading(true);
     dispatch(setLoginLoading(true));
 
     try {
       // 1. 获取微信登录凭证
       const loginRes = await Taro.login();
+      const { code } = loginRes;
 
-      if (!loginRes.code) {
+      if (!code) {
         Taro.showToast({
           title: '获取微信登录凭证失败',
           icon: 'none',
         });
+        setLoading(false);
+        dispatch(setLoginLoading(false));
         return;
       }
 
-      // 2. 获取用户信息（需要用户授权）
-      let encryptedData: string | undefined;
-      let iv: string | undefined;
+      // 2. 调用后端接口进行微信登录
+      // 如果有加密数据，传递给后端；如果没有，只传递 code
+      const response = await wechatLogin(code, encryptedData, iv);
 
-      try {
-        const userProfile = await Taro.getUserProfile({
-          desc: '用于完善用户资料',
-        });
+      // 3. 处理响应数据，适配不同的响应格式
+      // 后端返回格式：{ user: {...}, accessToken: "...", refreshToken: "..." }
+      const responseUserInfo = response.user || response.userInfo || response;
+      const token = response.accessToken || response.token || responseUserInfo?.accessToken;
+      const refreshToken = response.refreshToken || responseUserInfo?.refreshToken;
 
-        if (userProfile.encryptedData && userProfile.iv) {
-          encryptedData = userProfile.encryptedData;
-          iv = userProfile.iv;
-        }
-      } catch (error: any) {
-        // 用户拒绝授权，仍然可以登录，只是没有用户详细信息
-        console.warn('用户拒绝授权:', error);
-      }
-
-      // 3. 调用后端接口进行微信登录
-      const response = await wechatLogin(loginRes.code, encryptedData, iv);
-
-      // 4. 处理响应数据，适配不同的响应格式
-      const userInfo = response.user || response.userInfo || response;
-      const token = response.accessToken || response.token;
-      const refreshToken = response.refreshToken;
-
-      if (userInfo) {
-        // 转换用户信息格式以适配 store
+      if (responseUserInfo) {
+        // 合并前端获取的用户信息（昵称、头像）和后端返回的用户信息
         const formattedUserInfo = {
-          id: String(userInfo.id || ''),
-          username: userInfo.nickname || userInfo.nickName || '微信用户',
-          nickname: userInfo.nickname || userInfo.nickName || '微信用户',
-          avatar: userInfo.avatarUrl || userInfo.avatar || '',
-          phone: userInfo.phone || '',
-          email: userInfo.email || '',
+          id: String(responseUserInfo.id || ''),
+          username:
+            userInfo?.nickName ||
+            responseUserInfo.nickname ||
+            responseUserInfo.nickName ||
+            '微信用户',
+          nickname:
+            userInfo?.nickName ||
+            responseUserInfo.nickname ||
+            responseUserInfo.nickName ||
+            '微信用户',
+          avatar:
+            userInfo?.avatarUrl ||
+            responseUserInfo.avatarUrl ||
+            responseUserInfo.avatar ||
+            '',
+          phone: responseUserInfo.phone || '',
+          email: responseUserInfo.email || '',
           token: token || '',
         };
 

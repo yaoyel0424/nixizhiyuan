@@ -7,7 +7,9 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
 import { Question } from '@/types/questionnaire'
-import questionnaireData from '@/data/questionnaire.json'
+import { Scale, ScaleAnswer } from '@/types/api'
+import { getScalesWithAnswers, submitScaleAnswer } from '@/services/scales'
+import { useAppSelector } from '@/store/hooks'
 import './index.less'
 
 const STORAGE_KEY = 'questionnaire_answers'
@@ -87,11 +89,42 @@ function findUnansweredQuestions(questions: Question[], answers: Record<number, 
     .filter((index) => index !== -1)
 }
 
+// 将 Scale 转换为 Question 格式
+function convertScaleToQuestion(scale: Scale): Question {
+  return {
+    id: scale.id,
+    content: scale.content,
+    elementId: scale.elementId,
+    type: scale.type,
+    direction: '168',
+    dimension: scale.dimension,
+    action: '',
+    options: (scale.options || []).map((opt) => ({
+      id: opt.id,
+      scaleId: scale.id,
+      optionName: opt.optionName,
+      optionValue: opt.optionValue,
+      displayOrder: opt.displayOrder || 0,
+      additionalInfo: opt.additionalInfo || '',
+    })),
+  }
+}
+
 export default function AllMajorsPage() {
+  // 从 Redux store 获取用户信息
+  const userInfo = useAppSelector((state) => state.user.userInfo)
+  
+  const [scales, setScales] = useState<Scale[]>([])
+  const [apiAnswers, setApiAnswers] = useState<ScaleAnswer[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
   // 使用 useMemo 缓存排序后的题目，避免每次渲染都重新计算
   const sortedQuestions = useMemo(() => {
-    return sortQuestions(questionnaireData as Question[])
-  }, [])
+    if (scales.length === 0) return []
+    const questions = scales.map(convertScaleToQuestion)
+    return sortQuestions(questions)
+  }, [scales])
   const totalQuestions = sortedQuestions.length
 
   const [answers, setAnswers] = useState<Record<number, number>>({})
@@ -105,28 +138,86 @@ export default function AllMajorsPage() {
   const [showUnansweredBlink, setShowUnansweredBlink] = useState(false)
   const [showClearDataConfirm, setShowClearDataConfirm] = useState(false)
 
+  // 从 API 加载数据
   useEffect(() => {
-    if (sortedQuestions.length === 0) {
-      return
+    const loadData = async () => {
+      try {
+        setIsLoading(true)
+        setLoadError(null)
+        const result = await getScalesWithAnswers()
+        
+        console.log('API 返回的数据:', result)
+        
+        // 设置量表数据
+        setScales(result.scales || [])
+        
+        // 设置 API 返回的答案
+        setApiAnswers(result.answers || [])
+        
+        // 将 API 答案转换为本地答案格式
+        // 注意：answer.scaleId 对应 question.id，answer.score 对应 option.optionValue
+        const apiAnswersMap: Record<number, number> = {}
+        if (result.answers && Array.isArray(result.answers)) {
+          result.answers.forEach((answer) => {
+            if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
+              // 确保 scaleId 和 score 都是数字类型
+              const scaleId = Number(answer.scaleId)
+              const score = Number(answer.score)
+              if (!isNaN(scaleId) && !isNaN(score)) {
+                apiAnswersMap[scaleId] = score
+              }
+            }
+          })
+        }
+        
+        console.log('API 返回的答案数组:', result.answers)
+        console.log('API 答案映射:', apiAnswersMap)
+        
+        // 加载本地存储的答案
+        const storedAnswers = loadAnswersFromStorage()
+        const storedPreviousAnswers = loadPreviousAnswersFromStorage()
+        
+        console.log('本地存储的答案:', storedAnswers)
+        
+        // 合并 API 答案和本地答案（本地答案优先，用于未提交的答案）
+        // 注意：这里本地答案会覆盖 API 答案，因为本地可能有未提交的新答案
+        const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
+        console.log('合并后的答案:', mergedAnswers)
+        console.log('题目总数:', result.scales?.length || 0)
+        
+        setAnswers(mergedAnswers)
+        setPreviousAnswers(storedPreviousAnswers)
+        
+        // 如果有题目数据，初始化当前索引
+        if (result.scales && result.scales.length > 0) {
+          const questions = result.scales.map(convertScaleToQuestion)
+          const sorted = sortQuestions(questions)
+          const firstUnanswered = findFirstUnansweredIndex(sorted, mergedAnswers)
+          setCurrentIndex(firstUnanswered)
+          
+          // 检查完成状态
+          const answeredCount = Object.keys(mergedAnswers).length
+          if (answeredCount === sorted.length) {
+            setIsCompleted(true)
+          }
+        }
+        
+        setIsInitialized(true)
+      } catch (error: any) {
+        console.error('加载评估数据失败:', error)
+        setLoadError(error?.message || '加载数据失败，请稍后重试')
+        Taro.showToast({
+          title: '加载数据失败',
+          icon: 'none',
+          duration: 2000
+        })
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    const storedAnswers = loadAnswersFromStorage()
-    const storedPreviousAnswers = loadPreviousAnswersFromStorage()
-    setAnswers(storedAnswers)
-    setPreviousAnswers(storedPreviousAnswers)
-
-    const firstUnanswered = findFirstUnansweredIndex(sortedQuestions, storedAnswers)
-    setCurrentIndex(firstUnanswered)
-
-    // 如果答案数量不等于总题目数，确保完成状态为 false
-    const answeredCount = Object.keys(storedAnswers).length
-    if (answeredCount !== totalQuestions) {
-      setIsCompleted(false)
-    }
-
-    setIsInitialized(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // 只在组件挂载时执行一次
+    loadData()
+  }, [])
 
   // 当题目切换时，清除闪烁状态
   useEffect(() => {
@@ -195,7 +286,7 @@ export default function AllMajorsPage() {
 
   const unifiedProgressColor = '#FF7F50' // Orange accent color
 
-  const handleAnswer = (optionValue: number) => {
+  const handleAnswer = async (optionValue: number) => {
     if (!currentQuestion) return
 
     // 清除闪烁状态
@@ -207,6 +298,23 @@ export default function AllMajorsPage() {
     }
     setAnswers(newAnswers)
     saveAnswersToStorage(newAnswers)
+
+    // 提交答案到服务器
+    try {
+      // 获取 userId（优先使用 Redux store，否则使用自动获取）
+      const userId = userInfo?.id ? parseInt(userInfo.id, 10) : undefined
+      await submitScaleAnswer(currentQuestion.id, optionValue, userId)
+      // 提交成功，静默处理（不显示提示，避免干扰用户体验）
+    } catch (error: any) {
+      // 提交失败，记录错误但不影响用户操作
+      console.error('提交答案失败:', error)
+      // 可以选择显示一个不干扰的提示，或者静默失败（因为本地已保存）
+      // Taro.showToast({
+      //   title: '答案已保存到本地',
+      //   icon: 'none',
+      //   duration: 1500
+      // })
+    }
 
     const answeredCount = Object.keys(newAnswers).length
 
@@ -341,11 +449,52 @@ export default function AllMajorsPage() {
     })
   }
 
-  if (!isInitialized) {
+  if (isLoading || !isInitialized) {
     return (
       <View className="all-majors-page__fullscreen">
         <View className="all-majors-page__loading">
           <Text className="all-majors-page__loading-text">加载中...</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <View className="all-majors-page__fullscreen">
+        <View className="all-majors-page__loading">
+          <Text className="all-majors-page__loading-text">{loadError}</Text>
+          <Button
+            onClick={async () => {
+              setIsLoading(true)
+              setLoadError(null)
+              try {
+                const result = await getScalesWithAnswers()
+                setScales(result.scales || [])
+                setApiAnswers(result.answers || [])
+                const apiAnswersMap: Record<number, number> = {}
+                result.answers?.forEach((answer) => {
+                  apiAnswersMap[answer.scaleId] = answer.score
+                })
+                const storedAnswers = loadAnswersFromStorage()
+                const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
+                setAnswers(mergedAnswers)
+                if (result.scales && result.scales.length > 0) {
+                  const questions = result.scales.map(convertScaleToQuestion)
+                  const sorted = sortQuestions(questions)
+                  setCurrentIndex(findFirstUnansweredIndex(sorted, mergedAnswers))
+                }
+                setIsInitialized(true)
+              } catch (error: any) {
+                setLoadError(error?.message || '加载数据失败')
+              } finally {
+                setIsLoading(false)
+              }
+            }}
+            style={{ marginTop: '20px' }}
+          >
+            重试
+          </Button>
         </View>
       </View>
     )
@@ -394,7 +543,7 @@ export default function AllMajorsPage() {
   }
 
   const progress = ((currentIndex + 1) / totalQuestions) * 100
-  const sortedOptions = [...currentQuestion.options].sort((a, b) => a.displayOrder - b.displayOrder)
+  const sortedOptions = [...(currentQuestion.options || [])].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
 
   return (
     <View className="all-majors-page__fullscreen">
@@ -494,9 +643,13 @@ export default function AllMajorsPage() {
 
             <View className="all-majors-page__question-options">
               {sortedOptions.map((option) => {
-                const isSelected = answers[currentQuestion.id] === option.optionValue
-                const hasCurrentAnswer = currentQuestion.id in answers
-                const wasPreviousAnswer = !hasCurrentAnswer && previousAnswers[currentQuestion.id] === option.optionValue
+                // 确保比较时类型一致（都转换为数字）
+                const questionId = Number(currentQuestion.id)
+                const answerValue = Number(answers[questionId])
+                const optionValue = Number(option.optionValue)
+                const isSelected = answerValue === optionValue && !isNaN(answerValue) && !isNaN(optionValue)
+                const hasCurrentAnswer = questionId in answers && answers[questionId] !== undefined && answers[questionId] !== null
+                const wasPreviousAnswer = !hasCurrentAnswer && Number(previousAnswers[questionId]) === optionValue
 
                 return (
                   <Button

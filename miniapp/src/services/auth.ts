@@ -6,8 +6,16 @@ import { LoginParams, LoginResponse, RegisterParams } from '@/types/api'
  * @param params 登录参数
  * @returns 登录响应
  */
-export const login = (params: LoginParams): Promise<LoginResponse> => {
-  return post<LoginResponse>('/auth/login', params)
+export const login = async (params: LoginParams): Promise<LoginResponse> => {
+  const response: any = await post<LoginResponse>('/auth/login', params)
+  // 响应拦截器可能返回原始数据或 BaseResponse 格式
+  if (response && typeof response === 'object') {
+    if (response.data) {
+      return response.data
+    }
+    return response
+  }
+  return response
 }
 
 /**
@@ -32,8 +40,16 @@ export const logout = (): Promise<any> => {
  * @param refreshToken 刷新token
  * @returns 新的token
  */
-export const refreshToken = (refreshToken: string): Promise<LoginResponse> => {
-  return post<LoginResponse>('/auth/refresh', { refreshToken })
+export const refreshToken = async (refreshToken: string): Promise<LoginResponse> => {
+  const response: any = await post<LoginResponse>('/auth/refresh', { refreshToken })
+  // 响应拦截器可能返回原始数据或 BaseResponse 格式
+  if (response && typeof response === 'object') {
+    if (response.data) {
+      return response.data
+    }
+    return response
+  }
+  return response
 }
 
 /**
@@ -98,20 +114,76 @@ export const wechatLogin = async (
   }
 
   // 使用 POST 请求，code 放在 query 中，加密数据放在 body 中
-  const response = await post<any>(
+  // 注意：响应拦截器可能返回原始数据或 BaseResponse 格式
+  const response: any = await post<any>(
     '/auth/wechat/login?code=' + encodeURIComponent(code),
     encryptedData && iv ? { encryptedData, iv } : undefined,
   );
 
-  // 如果返回的是标准 BaseResponse 格式
-  if (response.data) {
-    return response.data;
+  // 后端返回格式：
+  // {
+  //   success: true,
+  //   code: "SUCCESS",
+  //   message: "操作成功",
+  //   data: {
+  //     user: {
+  //       id, openid, nickname, accessToken, refreshToken,
+  //       user: { id, openid, nickname, avatarUrl }  // 嵌套的 user（包含 avatarUrl）
+  //     }
+  //   }
+  // }
+  
+  if (response && typeof response === 'object') {
+    // 如果包含 data 字段，提取 data（后端标准格式）
+    if (response.data) {
+      const data = response.data;
+      
+      // 提取 user 对象
+      let user = data.user;
+      
+      // 如果 user 内部还有嵌套的 user 对象，合并它们
+      if (user && typeof user === 'object' && user.user) {
+        // 合并嵌套的 user 对象（优先使用外层 user 的属性，嵌套 user 补充缺失的属性）
+        user = {
+          ...user.user,  // 先使用嵌套 user（包含 avatarUrl）
+          ...user,       // 再用外层 user 覆盖（包含 accessToken, refreshToken）
+        };
+        // 移除嵌套的 user 字段
+        delete user.user;
+      }
+      
+      // 构建返回结果
+      const result: any = {
+        user: user || {},
+        accessToken: data.accessToken || user?.accessToken,
+        refreshToken: data.refreshToken || user?.refreshToken,
+      };
+      
+      return result;
+    }
+    
+    // 如果直接包含 user 字段，说明是直接返回的用户对象
+    if (response.user) {
+      // 处理嵌套的 user
+      let user = response.user;
+      if (user && typeof user === 'object' && user.user) {
+        user = {
+          ...user.user,
+          ...user,
+        };
+        delete user.user;
+      }
+      
+      return {
+        user,
+        accessToken: response.accessToken || user?.accessToken,
+        refreshToken: response.refreshToken || user?.refreshToken,
+      };
+    }
+    
+    // 其他情况直接返回
+    return response;
   }
 
-  // 如果直接返回用户对象（后端可能直接返回）
-  if (response.data.user) {
-    return response.data;
-  }
-
-  return response.data;
+  return response;
 };
