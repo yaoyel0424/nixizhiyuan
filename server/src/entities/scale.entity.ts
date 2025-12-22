@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn,OneToMany, Column, ManyToOne,JoinColumn 
 import { Element } from './element.entity';
 import { ScaleOption } from './scale-option.entity';
 import { ScaleAnswer } from './scale-answer.entity';
+import { PopularMajorAnswer } from './popular-major-answer.entity';
 
 @Entity('scales')
 export class Scale {
@@ -32,4 +33,7 @@ export class Scale {
 
   @OneToMany(() => ScaleAnswer, answer => answer.scale)
   answers: ScaleAnswer[];
+
+  @OneToMany(() => PopularMajorAnswer, popularMajorAnswer => popularMajorAnswer.scale)
+  popularMajorAnswers: PopularMajorAnswer[];
 }

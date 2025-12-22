@@ -5,6 +5,7 @@ import { Intention } from './intention.entity';
 import { Alternative } from './alternative.entity';
 import { MajorFavorite } from './major-favorite.entity';
 import { ProvinceFavorite } from './province-favorite.entity';
+import { PopularMajorAnswer } from './popular-major-answer.entity';
 
 @Entity("users")
 export class User {
@@ -90,4 +91,10 @@ export class User {
      */
     @OneToMany(() => ProvinceFavorite, provinceFavorite => provinceFavorite.user)
     provinceFavorites: ProvinceFavorite[];
+
+    /**
+     * 用户的热门专业问卷答案列表（一对多关联）
+     */
+    @OneToMany(() => PopularMajorAnswer, popularMajorAnswer => popularMajorAnswer.user)
+    popularMajorAnswers: PopularMajorAnswer[];
 }

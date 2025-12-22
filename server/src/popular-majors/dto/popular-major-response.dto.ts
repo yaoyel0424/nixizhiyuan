@@ -26,6 +26,9 @@ export class MajorDetailInfoDto {
   id: number;
 
   @Expose()
+  name: string;
+
+  @Expose()
   code: string;
 
   @Expose()

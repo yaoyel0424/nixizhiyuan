@@ -21,6 +21,7 @@ import {
   ScaleResponseDto,
   ScalesWithAnswersResponseDto,
 } from './dto/scale-response.dto';
+import { PopularMajorAnswerResponseDto } from '../popular-majors/dto/popular-major-answer-response.dto';
 import { plainToInstance } from 'class-transformer';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
@@ -103,6 +104,45 @@ export class ScalesController {
         excludeExtraneousValues: true,
       }),
       answers: plainToInstance(ScaleAnswerResponseDto, result.answers, {
+        excludeExtraneousValues: true,
+      }),
+    };
+  }
+
+  @Get('popular-major/:popularMajorId')
+  @ApiOperation({ summary: '根据热门专业ID获取对应的量表列表及用户答案' })
+  @ApiParam({ name: 'popularMajorId', description: '热门专业ID' })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    schema: {
+      type: 'object',
+      properties: {
+        scales: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/ScaleResponseDto' },
+        },
+        answers: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/PopularMajorAnswerResponseDto' },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: '热门专业不存在' })
+  async findScalesByPopularMajorId(
+    @Param('popularMajorId', ParseIntPipe) popularMajorId: number,
+    @CurrentUser() user: any,
+  ) {
+    const result = await this.scalesService.findScalesByPopularMajorId(
+      popularMajorId,
+      user.id,
+    );
+    return {
+      scales: plainToInstance(ScaleResponseDto, result.scales, {
+        excludeExtraneousValues: true,
+      }),
+      answers: plainToInstance(PopularMajorAnswerResponseDto, result.answers, {
         excludeExtraneousValues: true,
       }),
     };

@@ -197,5 +197,185 @@ export class ScoresService {
 
     return results;
   }
+
+  /**
+   * 计算用户对热门专业的匹配分数
+   * @param userId 用户ID
+   * @param popularMajorIds 热门专业ID列表（可选，可以是数字或数字数组），如果不传则查询所有热门专业
+   * @returns 热门专业分数列表
+   */
+  async calculatePopularMajorScores(
+    userId: number,
+    popularMajorIds?: number | number[],
+  ): Promise<
+    Array<{
+      popularMajorId: number;
+      majorCode: string;
+      majorName: string;
+      majorBrief: string | null;
+      eduLevel: string;
+      yanxueDeduction: number;
+      tiaozhanDeduction: number;
+      score: number;
+      lexueScore: number;
+      shanxueScore: number;
+    }>
+  > {
+    // 处理 popularMajorIds 参数：统一转换为数组
+    const idsArray: number[] | undefined = popularMajorIds
+      ? Array.isArray(popularMajorIds)
+        ? popularMajorIds
+        : [popularMajorIds]
+      : undefined;
+
+    // 构建 WHERE 条件
+    let popularMajorCondition = '';
+    const queryParams: any[] = [userId];
+    let paramIndex = 2;
+
+    // 如果传入了 popularMajorIds，添加热门专业ID过滤条件
+    if (idsArray && idsArray.length > 0) {
+      // 生成参数占位符：$2, $3, $4, ...
+      const placeholders = idsArray
+        .map(() => `$${paramIndex++}`)
+        .join(', ');
+      popularMajorCondition = `AND pm.id IN (${placeholders})`;
+      queryParams.push(...idsArray);
+    }
+
+    const sql = `
+      WITH user_answers AS (
+        SELECT 
+          s.id as scale_id,
+          pma.score as score,
+          s.action,
+          pma.popular_major_id
+        FROM scales s
+        INNER JOIN popular_major_answers pma ON pma.scale_id = s.id
+        WHERE pma.user_id = $1 AND s.id > 112
+      ),
+      major_base_data AS (
+        SELECT 
+          pm.id as popular_major_id,
+          pm.code as major_code, 
+          pm.name as major_name,
+          m.edu_level as edu_level,
+          md.major_brief, 
+          mea.type,
+          mea.potential_conversion_value,
+          mea.weight,
+          ua.score,
+          ua.action,
+          CASE WHEN ua.score IS NULL THEN 0 ELSE ua.score * mea.weight END as weighted_score,
+          mea.weight * 2 as total_possible_score
+        FROM popular_majors pm
+        INNER JOIN major_details md ON md.code = pm.code
+        INNER JOIN majors m ON m.code = md.code
+        INNER JOIN major_element_analysis mea ON mea.major_id = md.id
+        INNER JOIN elements e ON e.id = mea.element_id
+        INNER JOIN scales s ON s.element_id = e.id
+        LEFT JOIN user_answers ua ON ua.scale_id = s.id AND ua.popular_major_id = pm.id
+        WHERE s.id > 112 AND m.edu_level IS NOT NULL ${popularMajorCondition}
+      ),
+      type_scores AS (
+        SELECT 
+          popular_major_id,
+          major_code,
+          major_name,
+          edu_level,
+          major_brief,
+          type,
+          potential_conversion_value,
+          SUM(weighted_score) as type_score,
+          SUM(total_possible_score) as type_total_score,
+          ROUND(
+            COALESCE(
+              CAST(SUM(weighted_score) AS NUMERIC) / 
+              NULLIF(CAST(SUM(total_possible_score) AS NUMERIC), 0),
+              0
+            )::NUMERIC, 
+            2
+          )::NUMERIC as type_ratio
+        FROM major_base_data
+        GROUP BY popular_major_id, major_code, major_name, edu_level, major_brief, type, potential_conversion_value
+      ),
+      study_scores AS (
+        SELECT 
+          popular_major_id,
+          major_code,
+          major_name,
+          edu_level,
+          major_brief, 
+          ROUND(
+            CAST(SUM(CASE WHEN type = 'lexue' THEN weighted_score ELSE 0 END) AS NUMERIC) /
+            NULLIF(CAST(SUM(CASE WHEN type = 'lexue' THEN total_possible_score ELSE 0 END) AS NUMERIC), 0) * 0.5 * 100,
+            2
+          )::NUMERIC as lexue_score,
+          ROUND(
+            CAST(SUM(CASE WHEN type = 'shanxue' THEN weighted_score ELSE 0 END) AS NUMERIC) /
+            NULLIF(CAST(SUM(CASE WHEN type = 'shanxue' THEN total_possible_score ELSE 0 END) AS NUMERIC), 0) * 0.5 * 100,
+            2
+          )::NUMERIC as shanxue_score 
+        FROM major_base_data
+        GROUP BY popular_major_id, major_code, major_name, edu_level, major_brief
+      ),
+      deduction_scores AS (
+        SELECT 
+          ts.popular_major_id,
+          ts.major_code,
+          ROUND(MAX(CASE WHEN ts.type = 'tiaozhan' AND ts.type_score > 0 THEN 
+            CASE 
+              WHEN ts.potential_conversion_value = 'medium' THEN ts.type_ratio * 0.5 * 0.25 * 100
+              WHEN ts.potential_conversion_value = 'low' THEN ts.type_ratio * 0.25 * 100
+              ELSE 0 
+            END 
+          ELSE 0 END), 2)::NUMERIC as tiaozhan_deduction,
+          ROUND(MAX(CASE WHEN ts.type = 'yanxue' AND ts.type_score > 0 THEN 
+            CASE 
+              WHEN ts.potential_conversion_value = 'medium' THEN ts.type_ratio * 0.5 * 0.25 * 100
+              WHEN ts.potential_conversion_value = 'low' THEN ts.type_ratio * 0.25 * 100
+              ELSE 0 
+            END 
+          ELSE 0 END), 2)::NUMERIC as yanxue_deduction
+        FROM type_scores ts
+        GROUP BY ts.popular_major_id, ts.major_code
+      ),
+      final_scores AS (
+        SELECT 
+          ss.popular_major_id,
+          ss.major_code,
+          ss.major_name,
+          ss.edu_level,  
+          ss.major_brief, 
+          COALESCE(ss.lexue_score, 0) as lexue_score,
+          COALESCE(ss.shanxue_score, 0) as shanxue_score,
+          COALESCE(ds.yanxue_deduction, 0) as yanxue_deduction,
+          COALESCE(ds.tiaozhan_deduction, 0) as tiaozhan_deduction,
+          COALESCE(ss.lexue_score, 0) + COALESCE(ss.shanxue_score, 0) - (COALESCE(ds.tiaozhan_deduction, 0) + COALESCE(ds.yanxue_deduction, 0)) as base_score
+        FROM study_scores ss
+        JOIN deduction_scores ds ON ds.popular_major_id = ss.popular_major_id AND ds.major_code = ss.major_code
+      )
+      SELECT 
+        fs.popular_major_id as "popularMajorId",
+        fs.major_code as "majorCode",
+        fs.major_name as "majorName",
+        fs.major_brief as "majorBrief",
+        fs.edu_level as "eduLevel",
+        fs.yanxue_deduction as "yanxueDeduction",
+        fs.tiaozhan_deduction as "tiaozhanDeduction",
+        ROUND(CAST(fs.base_score AS NUMERIC), 2)::NUMERIC as score,
+        ROUND(CAST(fs.lexue_score AS NUMERIC), 2)::NUMERIC as "lexueScore",
+        ROUND(CAST(fs.shanxue_score AS NUMERIC), 2)::NUMERIC as "shanxueScore"
+      FROM final_scores fs
+      ORDER BY score DESC
+    `;
+
+    const results = await this.popularMajorRepository.manager.query(
+      sql,
+      queryParams,
+    );
+
+    return results;
+  }
 }
 

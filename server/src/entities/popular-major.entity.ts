@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { MajorDetail } from './major-detail.entity';
+import { PopularMajorAnswer } from './popular-major-answer.entity';
 
 /**
  * 热门专业实体类 - 存储热门专业的详细信息
@@ -131,5 +133,12 @@ export class PopularMajor {
   @OneToOne(() => MajorDetail, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'code', referencedColumnName: 'code' })
   majorDetail: MajorDetail;
+
+  /**
+   * 关联的问卷答案列表（一对多关系）
+   * 每个热门专业可以有多个用户的问卷答案
+   */
+  @OneToMany(() => PopularMajorAnswer, (popularMajorAnswer) => popularMajorAnswer.popularMajor)
+  answers: PopularMajorAnswer[];
 }
 
