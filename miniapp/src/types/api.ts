@@ -213,3 +213,19 @@ export interface QueryPopularMajorParams {
   name?: string
   code?: string
 }
+
+/**
+ * 专业分数响应数据
+ * 注意：API 返回的分数字段可能是字符串类型
+ */
+export interface MajorScoreResponse {
+  majorCode: string
+  majorName: string
+  majorBrief: string | null
+  eduLevel: string
+  yanxueDeduction: number | string
+  tiaozhanDeduction: number | string
+  score: number | string
+  lexueScore: number | string
+  shanxueScore: number | string
+}
