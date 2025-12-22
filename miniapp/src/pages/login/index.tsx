@@ -13,44 +13,25 @@ const Login: React.FC = () => {
 
   /**
    * 处理微信登录按钮点击
-   * 注意：getUserProfile 必须在用户点击事件的同步回调中直接调用
+   * 直接使用微信登录，不通过插件
    */
   const handleWechatLogin = () => {
-    // 立即调用 getUserProfile（必须在同步回调中）
-    Taro.getUserProfile({
-      desc: '用于完善会员资料',
-    })
-      .then((userProfile) => {
-        // 获取到用户信息后，继续登录流程
-        const encryptedData = userProfile.encryptedData;
-        const iv = userProfile.iv;
-        const userInfo = userProfile.userInfo;
-        performLogin(encryptedData, iv, userInfo);
-      })
-      .catch((error: any) => {
-        // 用户拒绝授权，仍然可以登录，只是没有用户详细信息
-        console.warn('用户拒绝授权:', error);
-        performLogin(undefined, undefined, null);
-      });
+    performLogin();
   };
 
   /**
    * 执行登录流程
    */
-  const performLogin = async (
-    encryptedData?: string,
-    iv?: string,
-    userInfo?: any,
-  ) => {
+  const performLogin = async () => {
     setLoading(true);
     dispatch(setLoginLoading(true));
 
     try {
       // 1. 获取微信登录凭证
       const loginRes = await Taro.login();
-      const { code } = loginRes;
+      const loginCode = loginRes.code;
 
-      if (!code) {
+      if (!loginCode) {
         Taro.showToast({
           title: '获取微信登录凭证失败',
           icon: 'none',
@@ -61,8 +42,8 @@ const Login: React.FC = () => {
       }
 
       // 2. 调用后端接口进行微信登录
-      // 如果有加密数据，传递给后端；如果没有，只传递 code
-      const response = await wechatLogin(code, encryptedData, iv);
+      // 不传递 encryptedData 和 iv，只使用 code 登录
+      const response = await wechatLogin(loginCode, undefined, undefined);
 
       // 3. 处理响应数据，适配不同的响应格式
       // 后端返回格式：{ user: {...}, accessToken: "...", refreshToken: "..." }
@@ -71,21 +52,18 @@ const Login: React.FC = () => {
       const refreshToken = response.refreshToken || responseUserInfo?.refreshToken;
 
       if (responseUserInfo) {
-        // 合并前端获取的用户信息（昵称、头像）和后端返回的用户信息
+        // 使用后端返回的用户信息
         const formattedUserInfo = {
           id: String(responseUserInfo.id || ''),
           username:
-            userInfo?.nickName ||
             responseUserInfo.nickname ||
             responseUserInfo.nickName ||
             '微信用户',
           nickname:
-            userInfo?.nickName ||
             responseUserInfo.nickname ||
             responseUserInfo.nickName ||
             '微信用户',
           avatar:
-            userInfo?.avatarUrl ||
             responseUserInfo.avatarUrl ||
             responseUserInfo.avatar ||
             '',

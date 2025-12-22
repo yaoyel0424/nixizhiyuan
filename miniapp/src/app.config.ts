@@ -62,5 +62,11 @@ export default {
     'scope.userInfo': {
       desc: '用于完善会员资料'
     }
+  },
+  plugins: {
+    loginplugin: {
+      version: 'latest',
+      provider: 'wx12251485dfaf24d3'
+    }
   }
 }

@@ -1,5 +1,5 @@
 // 热门专业评估页面
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { PageContainer } from '@/components/PageContainer'
@@ -8,26 +8,25 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
 import { Input } from '@/components/ui/Input'
-import hotMajorsData from '@/data/hot.json'
+import { getPopularMajors } from '@/services/popular-majors'
+import { getMajorDetailByCode } from '@/services/majors'
+import { getScalesByMajorDetailId } from '@/services/scales'
+import { PopularMajorResponse, Scale } from '@/types/api'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
+// 适配后的专业接口，兼容原有代码
 interface Major {
-  id: string
+  id: string | number
   name: string
   code: string
-  degree: string
-  limit_year: string
-  boy_rate: string
-  girl_rate: string
-  salaryavg: string
-  fivesalaryavg: number
-}
-
-interface HotMajorsData {
-  ben: Major[]
-  gz_ben: Major[]
-  zhuan: Major[]
+  degree: string | null
+  limit_year: string | null
+  boy_rate?: string
+  girl_rate?: string
+  salaryavg?: string | null
+  fivesalaryavg?: number
+  majorBrief?: string | null
 }
 
 interface Question {
@@ -41,6 +40,22 @@ interface Question {
     optionName: string
     optionValue: number
   }>
+}
+
+// 将 Scale 转换为 Question 格式
+const scaleToQuestion = (scale: Scale): Question => {
+  return {
+    id: scale.id,
+    content: scale.content,
+    elementId: scale.elementId,
+    type: scale.type,
+    dimension: scale.dimension,
+    options: (scale.options || []).map(option => ({
+      id: option.id,
+      optionName: option.optionName,
+      optionValue: option.optionValue,
+    })),
+  }
 }
 
 const STORAGE_KEY = 'popularMajorsResults'
@@ -143,7 +158,7 @@ function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFil
 }
 
 export default function PopularMajorsPage() {
-  const [hotMajors, setHotMajors] = useState<HotMajorsData | null>(null)
+  const [majors, setMajors] = useState<Major[]>([])
   const [selectedCategory, setSelectedCategory] = useState<'ben' | 'gz_ben' | 'zhuan'>('ben')
   const [loading, setLoading] = useState(true)
   const [showQuestionnaire, setShowQuestionnaire] = useState(false)
@@ -163,28 +178,122 @@ export default function PopularMajorsPage() {
   const [navBarHeight, setNavBarHeight] = useState(0)
   // 系统信息，用于rpx转px
   const [systemInfo, setSystemInfo] = useState<any>(null)
+  // 分页相关
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
     const info = Taro.getSystemInfoSync()
     setSystemInfo(info)
   }, [])
 
-  useEffect(() => {
-    // 加载热门专业数据
+  // 将 API 响应数据转换为页面使用的格式
+  const transformMajorData = (apiData: PopularMajorResponse): Major => {
+    return {
+      id: String(apiData.id),
+      name: apiData.name || '',
+      code: apiData.code || apiData.majorDetail?.code || '',
+      degree: apiData.degree || apiData.majorDetail?.awardedDegree || null,
+      limit_year: apiData.limitYear || apiData.majorDetail?.studyPeriod || null,
+      salaryavg: apiData.averageSalary || null,
+      fivesalaryavg: 0, // API 中暂无此字段
+      majorBrief: apiData.majorDetail?.majorBrief || null,
+    }
+  }
+
+  // 加载热门专业数据
+  const loadMajors = useCallback(async (
+    pageNum: number = 1,
+    reset: boolean = false,
+    category?: 'ben' | 'gz_ben' | 'zhuan',
+    query?: string
+  ) => {
     try {
-      const data = (hotMajorsData as any).data as HotMajorsData
-      setHotMajors(data)
-      setLoading(false)
+      setLoading(true)
+      
+      // 使用传入的参数或当前状态
+      const currentCategory = category ?? selectedCategory
+      const currentQuery = query ?? searchQuery
+      
+      // 映射分类到 API 的 level1 参数
+      const level1Map: Record<string, string> = {
+        'ben': 'ben',
+        'gz_ben': 'gao_ben',
+        'zhuan': 'zhuan',
+      }
+      
+      const params: any = {
+        page: pageNum,
+        limit: 20, // 每页20条
+        level1: level1Map[currentCategory],
+      }
+
+      // 如果有搜索关键词，添加到参数中
+      if (currentQuery.trim()) {
+        // 判断是专业名称还是代码
+        if (/^\d+$/.test(currentQuery.trim())) {
+          params.code = currentQuery.trim()
+        } else {
+          params.name = currentQuery.trim()
+        }
+      }
+
+      const response = await getPopularMajors(params)
+      
+      if (response && response.items) {
+        const transformedMajors = response.items.map(transformMajorData)
+        
+        if (reset) {
+          setMajors(transformedMajors)
+        } else {
+          setMajors(prev => [...prev, ...transformedMajors])
+        }
+        
+        setTotal(response.meta.total)
+        setHasMore(pageNum < response.meta.totalPages)
+      } else {
+        if (reset) {
+          setMajors([])
+        }
+        setHasMore(false)
+      }
     } catch (error) {
       console.error('加载热门专业数据失败:', error)
       Taro.showToast({
         title: '加载数据失败',
         icon: 'none'
       })
+      if (reset) {
+        setMajors([])
+      }
+    } finally {
       setLoading(false)
     }
+  }, [selectedCategory, searchQuery])
 
-    // 从本地存储加载已保存的测评结果
+  // 当分类改变时，重新加载数据
+  useEffect(() => {
+    setPage(1)
+    setHasMore(true)
+    loadMajors(1, true, selectedCategory, searchQuery)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory])
+
+  // 搜索防抖处理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1)
+      setHasMore(true)
+      loadMajors(1, true, selectedCategory, searchQuery)
+    }, 500) // 500ms 防抖
+
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery])
+
+  // 从本地存储加载已保存的测评结果
+  useEffect(() => {
     try {
       const savedResults = Taro.getStorageSync(STORAGE_KEY)
       if (savedResults) {
@@ -201,20 +310,11 @@ export default function PopularMajorsPage() {
     { key: 'zhuan' as const, label: '专科' },
   ]
 
-  // 调换高职本科和专科的数据显示
-  const getDisplayCategory = (category: 'ben' | 'gz_ben' | 'zhuan'): 'ben' | 'gz_ben' | 'zhuan' => {
-    if (category === 'gz_ben') return 'zhuan' // 高职本科tab显示专科数据
-    if (category === 'zhuan') return 'gz_ben' // 专科tab显示高职本科数据
-    return category // 本科tab显示本科数据
-  }
-
-  const currentMajors = hotMajors?.[getDisplayCategory(selectedCategory)] || []
-
-  // 过滤专业列表：根据搜索关键词和学科类型过滤
+  // 过滤专业列表：根据学科类型过滤（搜索已通过 API 实现）
   const filteredMajors = useMemo(() => {
-    let filtered = currentMajors
+    let filtered = majors
 
-    // 学科类型过滤
+    // 学科类型过滤（前端过滤，因为 API 不支持此筛选）
     if (subjectFilter !== 'all') {
       filtered = filtered.filter(major => {
         const isScience = isScienceMajor(major.code)
@@ -222,19 +322,19 @@ export default function PopularMajorsPage() {
       })
     }
 
-    // 搜索关键词过滤
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase()
-      filtered = filtered.filter(major => 
-        major.name.toLowerCase().includes(query) || 
-        major.code.includes(query)
-      )
-    }
-
     return filtered
-  }, [currentMajors, searchQuery, subjectFilter])
+  }, [majors, subjectFilter])
 
-  // 随机选择8道题目
+  // 加载更多数据
+  const loadMore = useCallback(() => {
+    if (!loading && hasMore) {
+      const nextPage = page + 1
+      setPage(nextPage)
+      loadMajors(nextPage, false, selectedCategory, searchQuery)
+    }
+  }, [page, hasMore, loading, selectedCategory, searchQuery, loadMajors])
+
+  // 随机选择8道题目（从本地问卷数据）
   const loadRandomQuestions = async () => {
     try {
       const allQuestions: Question[] = questionnaireData as any
@@ -258,11 +358,58 @@ export default function PopularMajorsPage() {
     }
   }
 
+  // 通过专业code获取量表和答案
+  const loadScalesByMajorCode = async (majorCode: string, restoreAnswers: boolean = true) => {
+    try {
+      // 1. 通过专业code获取专业详情（包含 majorDetailId）
+      const majorDetail = await getMajorDetailByCode(majorCode)
+      
+      if (!majorDetail || !majorDetail.id) {
+        throw new Error('获取专业详情失败')
+      }
+
+      // 2. 通过 majorDetailId 获取量表和答案
+      const scalesResponse = await getScalesByMajorDetailId(majorDetail.id)
+      
+      if (!scalesResponse || !scalesResponse.scales || scalesResponse.scales.length === 0) {
+        throw new Error('该专业暂无测评题目')
+      }
+
+      // 3. 将 Scale 转换为 Question 格式
+      const questions = scalesResponse.scales.map(scaleToQuestion)
+
+      // 4. 如果有已保存的答案且需要恢复，恢复答案状态
+      // answer.score 就是用户选择的选项值（optionValue）
+      const savedAnswers: Record<number, number> = {}
+      if (restoreAnswers && scalesResponse.answers && scalesResponse.answers.length > 0) {
+        scalesResponse.answers.forEach(answer => {
+          savedAnswers[answer.scaleId] = answer.score
+        })
+      }
+
+      setQuestions(questions)
+      setAnswers(savedAnswers)
+      setCurrentQuestionIndex(0)
+      setIsCompleted(false)
+      setLoveEnergy(null)
+    } catch (error: any) {
+      console.error('加载量表和答案失败:', error)
+      Taro.showToast({
+        title: error?.message || '加载测评题目失败',
+        icon: 'none',
+        duration: 2000
+      })
+      setQuestions([])
+    }
+  }
+
   // 处理开始测评
-  const handleStartAssessment = (major: Major) => {
+  const handleStartAssessment = async (major: Major) => {
     setSelectedMajor(major)
     setShowQuestionnaire(true)
-    loadRandomQuestions()
+    
+    // 通过专业code获取量表和答案
+    await loadScalesByMajorCode(major.code)
   }
 
   // 处理答题
@@ -323,8 +470,14 @@ export default function PopularMajorsPage() {
   }
 
   // 重新测评
-  const handleRetake = () => {
-    loadRandomQuestions()
+  const handleRetake = async () => {
+    if (selectedMajor) {
+      // 重新加载量表和答案（不恢复已保存的答案，清空重新开始）
+      await loadScalesByMajorCode(selectedMajor.code, false)
+    } else {
+      // 如果没有选中的专业，使用本地问卷数据
+      loadRandomQuestions()
+    }
   }
 
   const currentQuestion = questions[currentQuestionIndex]
@@ -407,14 +560,14 @@ export default function PopularMajorsPage() {
                         {major.limit_year && (
                           <Text className="popular-majors-page__major-tag">{major.limit_year}</Text>
                         )}
-                        {major.fivesalaryavg > 0 && (
+                        {major.salaryavg && (
                           <Text className="popular-majors-page__major-tag">
-                            毕业5年薪资: ¥{major.fivesalaryavg}
+                            平均薪资: {major.salaryavg}
                           </Text>
                         )}
                       </View>
                       <Text className="popular-majors-page__major-desc">
-                        该专业致力于培养具备扎实理论基础和实践能力的专业人才，为学生提供全面的学科知识和职业发展指导。
+                        {major.majorBrief || '该专业致力于培养具备扎实理论基础和实践能力的专业人才，为学生提供全面的学科知识和职业发展指导。'}
                       </Text>
                     </View>
                     <View className="popular-majors-page__major-actions">
@@ -456,6 +609,28 @@ export default function PopularMajorsPage() {
           <View className="popular-majors-page__empty">
             <Text className="popular-majors-page__empty-text">
               {searchQuery || subjectFilter !== 'all' ? '未找到匹配的专业' : '暂无数据'}
+            </Text>
+          </View>
+        )}
+
+        {/* 加载更多 */}
+        {!loading && hasMore && filteredMajors.length > 0 && (
+          <View className="popular-majors-page__load-more">
+            <Button
+              variant="outline"
+              onClick={loadMore}
+              className="popular-majors-page__load-more-button"
+            >
+              加载更多
+            </Button>
+          </View>
+        )}
+
+        {/* 没有更多数据提示 */}
+        {!loading && !hasMore && filteredMajors.length > 0 && (
+          <View className="popular-majors-page__no-more">
+            <Text className="popular-majors-page__no-more-text">
+              已加载全部 {total} 条数据
             </Text>
           </View>
         )}

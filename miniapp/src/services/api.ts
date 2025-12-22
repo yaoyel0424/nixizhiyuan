@@ -23,11 +23,6 @@ const requestInterceptor = (config: any) => {
     }
   }
   
-  // 添加时间戳防止缓存
-  if (config.method === 'GET') {
-    config.url += (config.url.includes('?') ? '&' : '?') + `_t=${Date.now()}`
-  }
-  
   return config
 }
 

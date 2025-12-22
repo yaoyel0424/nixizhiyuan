@@ -1,7 +1,10 @@
 // 个人中心页面
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { clearUserInfo } from '@/store/slices/userSlice'
+import { logout } from '@/services/auth'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
@@ -11,12 +14,26 @@ import './index.less'
 type AssessmentStatus = "not_started" | "in_progress" | "completed"
 
 export default function ProfilePage() {
+  const dispatch = useAppDispatch()
+  // 从 Redux store 中获取用户信息
+  const { userInfo, isLogin } = useAppSelector((state) => state.user)
+  
   // 模拟数据 - 仅用于UI展示
-  const [isLoggedIn] = useState(true) // 是否已登录
-  const [userName] = useState("张同学") // 用户昵称
   const [assessmentStatus] = useState<AssessmentStatus>("in_progress") // 测评状态
   const [progress] = useState(45) // 测评进度百分比
   const [currentQuestion] = useState(76) // 当前题目编号（如果有未完成测评）
+  const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
+  
+  // 从用户信息中获取昵称和头像
+  const userName = userInfo?.nickname || userInfo?.username || '未来的同学'
+  const userAvatar = userInfo?.avatar || ''
+  const isLoggedIn = isLogin && !!userInfo
+  const shouldShowAvatar = userAvatar && !avatarError // 是否显示头像
+  
+  // 当用户信息或头像变化时，重置头像错误状态
+  useEffect(() => {
+    setAvatarError(false)
+  }, [userInfo?.avatar])
 
   // 根据状态获取头部副标题和图标
   const getStatusInfo = () => {
@@ -112,17 +129,58 @@ export default function ProfilePage() {
     })
   }
 
+  /**
+   * 处理退出登录
+   */
   const handleLogout = () => {
     Taro.showModal({
       title: '提示',
       content: '确定要退出登录吗？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          // TODO: 清除登录状态
-          Taro.showToast({
-            title: '已退出登录',
-            icon: 'success'
-          })
+          try {
+            // 调用退出登录接口
+            await logout()
+            
+            // 清除本地存储的 token 和 refreshToken
+            Taro.removeStorageSync('token')
+            Taro.removeStorageSync('refreshToken')
+            
+            // 清除 Redux 中的用户信息
+            dispatch(clearUserInfo())
+            
+            // 显示退出成功提示
+            Taro.showToast({
+              title: '已退出登录',
+              icon: 'success',
+              duration: 1500
+            })
+            
+            // 跳转到登录页（清除页面栈）
+            setTimeout(() => {
+              Taro.reLaunch({
+                url: '/pages/login/index'
+              })
+            }, 1500)
+          } catch (error: any) {
+            // 即使接口调用失败，也清除本地状态并跳转
+            console.error('退出登录失败:', error)
+            Taro.removeStorageSync('token')
+            Taro.removeStorageSync('refreshToken')
+            dispatch(clearUserInfo())
+            
+            Taro.showToast({
+              title: error?.message || '退出登录失败',
+              icon: 'none',
+              duration: 1500
+            })
+            
+            setTimeout(() => {
+              Taro.reLaunch({
+                url: '/pages/login/index'
+              })
+            }, 1500)
+          }
         }
       }
     })
@@ -136,11 +194,17 @@ export default function ProfilePage() {
           <View className="profile-page__header-content">
             {/* 头像 */}
             <View className="profile-page__avatar">
-              <Image
-                src={require('@/assets/images/placeholder-user.jpg')}
-                className="profile-page__avatar-img"
-                mode="aspectFill"
-              />
+              {shouldShowAvatar ? (
+                <Image
+                  src={userAvatar}
+                  className="profile-page__avatar-img"
+                  mode="aspectFill"
+                  onError={() => {
+                    // 头像加载失败时显示占位符
+                    setAvatarError(true)
+                  }}
+                />
+              ) : null}
               <View className="profile-page__avatar-fallback">
                 <Text className="profile-page__avatar-text">
                   {isLoggedIn && userName ? userName.charAt(0) : "未"}

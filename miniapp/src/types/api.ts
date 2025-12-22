@@ -132,3 +132,100 @@ export interface CreateScaleAnswerParams {
   userId: number
   score: number
 }
+
+// 热门专业相关类型定义
+/**
+ * 专业详情信息
+ */
+export interface MajorDetailInfo {
+  id: number
+  code: string
+  educationLevel: string | null
+  studyPeriod: string | null
+  awardedDegree: string | null
+  majorBrief: string | null
+}
+
+/**
+ * 填写进度信息
+ */
+export interface ProgressInfo {
+  completedCount: number
+  totalCount: number
+  isCompleted: boolean
+}
+
+/**
+ * 专业分数信息
+ */
+export interface ScoreInfo {
+  score: number
+  lexueScore: number
+  shanxueScore: number
+  yanxueDeduction: number
+  tiaozhanDeduction: number
+}
+
+/**
+ * 热门专业响应数据
+ */
+export interface PopularMajorResponse {
+  id: number
+  averageSalary: string | null
+  majorDetail?: MajorDetailInfo
+  progress?: ProgressInfo
+  score?: ScoreInfo | null
+  // 从 majorDetail 中提取的字段，方便使用
+  name?: string
+  code?: string
+  degree?: string | null
+  limitYear?: string | null
+  majorBrief?: string | null
+}
+
+/**
+ * 分页元数据
+ */
+export interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+/**
+ * 热门专业列表响应
+ */
+export interface PopularMajorsListResponse {
+  items: PopularMajorResponse[]
+  meta: PaginationMeta
+}
+
+/**
+ * 查询热门专业参数
+ */
+export interface QueryPopularMajorParams {
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'ASC' | 'DESC'
+  level1?: 'ben' | 'zhuan' | 'gao_ben'
+  name?: string
+  code?: string
+}
+
+/**
+ * 专业分数响应数据
+ * 注意：API 返回的分数字段可能是字符串类型
+ */
+export interface MajorScoreResponse {
+  majorCode: string
+  majorName: string
+  majorBrief: string | null
+  eduLevel: string
+  yanxueDeduction: number | string
+  tiaozhanDeduction: number | string
+  score: number | string
+  lexueScore: number | string
+  shanxueScore: number | string
+}
