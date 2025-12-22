@@ -56,8 +56,7 @@ export class PopularMajorAnswer {
    */
   @CreateDateColumn({
     name: 'submitted_at',
-    comment: '提交时间',
-    select: false,
+    comment: '提交时间' 
   })
   submittedAt: Date;
 

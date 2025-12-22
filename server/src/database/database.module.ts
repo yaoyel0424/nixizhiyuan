@@ -28,6 +28,17 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         autoLoadEntities: true,
         retryAttempts: 3,
         retryDelay: 3000,
+        // 连接池配置
+        extra: {
+          // 最大连接数（默认5）
+          max: configService.get('database.pool.max') || 15,
+          // 最小连接数
+          min: configService.get('database.pool.min') || 1,
+          // 空闲连接超时时间（毫秒），默认30秒
+          idleTimeoutMillis: configService.get('database.pool.idleTimeoutMillis') || 30000,
+          // 连接超时时间（毫秒），默认10秒
+          connectionTimeoutMillis: configService.get('database.pool.connectionTimeoutMillis') || 10000,
+        },
       }),
     }),
   ],

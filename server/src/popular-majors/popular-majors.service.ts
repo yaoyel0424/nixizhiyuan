@@ -475,33 +475,48 @@ export class PopularMajorsService {
     const { page = 1, limit = 10, userId: queryUserId, popularMajorId, scaleId } = queryDto;
     const skip = (page - 1) * limit;
 
-    // 构建查询条件
-    const where: any = {};
-
     // 如果查询条件中指定了 userId，使用查询条件中的；否则使用当前登录用户的
     const targetUserId = queryUserId || userId;
+
+    // 构建查询条件对象（用于 count）
+    const where: any = {};
     if (targetUserId) {
       where.userId = targetUserId;
     }
-
     if (popularMajorId) {
       where.popularMajorId = popularMajorId;
     }
-
     if (scaleId) {
       where.scaleId = scaleId;
     }
 
-    // 执行查询
-    const [items, total] = await this.popularMajorAnswerRepository.findAndCount({
-      where,
-      relations: ['popularMajor', 'scale'],
-      order: {
-        submittedAt: 'DESC',
-      },
-      skip,
-      take: limit,
-    });
+    // 先查询总数
+    const total = await this.popularMajorAnswerRepository.count({ where });
+
+    // 查询数据（使用 QueryBuilder 以支持排序）
+    const queryBuilder = this.popularMajorAnswerRepository
+      .createQueryBuilder('answer')
+      .leftJoinAndSelect('answer.popularMajor', 'popularMajor')
+      .leftJoinAndSelect('answer.scale', 'scale');
+
+    if (targetUserId) {
+      queryBuilder.andWhere('answer.user_id = :userId', { userId: targetUserId });
+    }
+    if (popularMajorId) {
+      queryBuilder.andWhere('answer.popular_major_id = :popularMajorId', {
+        popularMajorId,
+      });
+    }
+    if (scaleId) {
+      queryBuilder.andWhere('answer.scale_id = :scaleId', { scaleId });
+    }
+
+    // 使用实体属性名排序（TypeORM 会自动转换为数据库列名）
+    const items = await queryBuilder
+      .orderBy('answer.submittedAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
 
     const totalPages = Math.ceil(total / limit);
 
