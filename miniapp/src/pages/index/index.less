@@ -301,6 +301,12 @@
     border-color: rgba(255, 127, 80, 0.3);
   }
   
+  &--locked {
+    background: linear-gradient(to right, #f3f4f6, #f9fafb);
+    border-color: #e5e7eb;
+    opacity: 0.6;
+  }
+  
   &:not(.index-page__dialog-step--unlocked) {
     background: linear-gradient(to right, #f3f4f6, #f9fafb);
     border-color: #e5e7eb;
@@ -351,6 +357,17 @@
   color: #fff;
   font-weight: bold;
   border-radius: 999rpx;
+  margin-left: 6rpx;
+  
+  &--completed {
+    background: #10b981;
+    color: #fff;
+  }
+  
+  &--current {
+    background: #FF7F50;
+    color: #fff;
+  }
   
   &--unlocked {
     background: #FF7F50;

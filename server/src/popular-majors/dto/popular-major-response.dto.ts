@@ -93,6 +93,18 @@ export class PopularMajorResponseDto {
   id: number; 
 
   @Expose()
+  name: string;
+
+  @Expose()
+  code: string;
+
+  @Expose()
+  degree: string | null;
+
+  @Expose()
+  limitYear: string | null;
+
+  @Expose()
   averageSalary: string | null; 
 
   @Expose()
