@@ -171,7 +171,7 @@ export class ProvincesController {
     },
   })
   async getFavoriteCount(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
   ): Promise<{ count: number }> {
     const count = await this.provincesService.getFavoriteCount(user.id);
     return { count };
