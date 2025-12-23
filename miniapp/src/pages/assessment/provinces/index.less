@@ -2,37 +2,315 @@
 .provinces-page {
   min-height: 100vh;
   background: #f0f7ff;
-  padding: 48rpx 32rpx;
+  display: flex;
+  flex-direction: column;
 }
 
-.provinces-page__content {
+// 顶部标题区域
+.provinces-page__header {
+  background: #1A4099;
+  color: #fff;
+  padding: 48rpx 32rpx 64rpx;
+  position: relative;
+  overflow: hidden;
+}
+
+.provinces-page__header-content {
   max-width: 1200rpx;
   margin: 0 auto;
 }
 
+.provinces-page__header-title {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.provinces-page__header-title-text {
+  font-size: 40rpx;
+  font-weight: bold;
+  line-height: 1.5;
+}
+
+.provinces-page__header-title-subtitle {
+  font-size: 32rpx;
+  font-weight: normal;
+  opacity: 0.9;
+}
+
+// 波浪效果
+.provinces-page__header-wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32rpx;
+  background: #f0f7ff;
+  clip-path: ellipse(70% 100% at 50% 100%);
+}
+
+// 内容区域
+.provinces-page__content {
+  flex: 1;
+  padding: 32rpx;
+  max-width: 1200rpx;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+// 加载状态
+.provinces-page__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400rpx;
+  color: #666;
+  font-size: 28rpx;
+}
+
+// 筛选标签
+.provinces-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 32rpx;
+}
+
+.provinces-page__filter-tag {
+  padding: 16rpx 32rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  border-radius: 16rpx;
+  background: #e5e7eb;
+  color: #374151;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.provinces-page__filter-tag--active {
+  background: #1A4099;
+  color: #fff;
+}
+
+.provinces-page__filter-tag-text {
+  font-size: 28rpx;
+}
+
+// 已选择的省份
+.provinces-page__selected {
+  margin-bottom: 32rpx;
+}
+
+.provinces-page__selected-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A4099;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.provinces-page__selected-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.provinces-page__selected-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 12rpx 24rpx;
+  background: rgba(26, 64, 153, 0.1);
+  border: 2rpx solid #1A4099;
+  border-radius: 48rpx;
+}
+
+.provinces-page__selected-item-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1A4099;
+}
+
+.provinces-page__selected-item-close {
+  width: 32rpx;
+  height: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1A4099;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.provinces-page__selected-item-close:hover {
+  opacity: 0.7;
+}
+
+.provinces-page__selected-item-close-icon {
+  font-size: 32rpx;
+  line-height: 1;
+  color: #1A4099;
+}
+
+// 省份列表
+.provinces-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
 .provinces-page__card {
-  padding: 64rpx 48rpx;
+  padding: 24rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 16rpx;
+  background: #fff;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.provinces-page__card--selected {
+  border-color: #1A4099;
+  background: rgba(26, 64, 153, 0.05);
+}
+
+.provinces-page__card-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+
+.provinces-page__card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.provinces-page__card-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+  flex-wrap: wrap;
+}
+
+.provinces-page__card-icon {
+  font-size: 32rpx;
+  color: #999;
+}
+
+.provinces-page__card-icon--selected {
+  color: #1A4099;
+}
+
+.provinces-page__card-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #000;
+}
+
+.provinces-page__card-name--selected {
+  color: #1A4099;
+}
+
+.provinces-page__card-type {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.provinces-page__card-check {
+  font-size: 32rpx;
+  color: #1A4099;
+  font-weight: bold;
+}
+
+.provinces-page__card-desc {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.provinces-page__card-actions {
+  display: flex;
+  gap: 16rpx;
+  flex-shrink: 0;
+}
+
+.provinces-page__card-detail-btn {
+  font-weight: bold;
+  color: #FF7F50;
+}
+
+.provinces-page__card-select-btn {
+  font-weight: bold;
+}
+
+.provinces-page__card-select-btn--selected {
+  border-color: #1A4099;
+  color: #1A4099;
+  background: #fff;
+}
+
+// 详情对话框
+.provinces-page__detail-dialog {
+  max-width: 1024rpx;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.provinces-page__detail-title {
+  font-size: 48rpx;
+  font-weight: bold;
   text-align: center;
 }
 
-.provinces-page__title {
-  font-size: 48rpx;
-  font-weight: bold;
-  color: #1A4099;
-  margin-bottom: 32rpx;
-  display: block;
-}
-
-.provinces-page__desc {
-  font-size: 32rpx;
-  color: #666;
-  line-height: 1.6;
-  margin-bottom: 32rpx;
-  display: block;
-}
-
-.provinces-page__tip {
+.provinces-page__detail-type {
   font-size: 28rpx;
-  color: #999;
+  color: #666;
+  text-align: center;
+  margin-top: 16rpx;
+}
+
+.provinces-page__detail-content {
+  flex: 1;
+  margin-top: 32rpx;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.provinces-page__detail-section {
+  margin-bottom: 32rpx;
+}
+
+.provinces-page__detail-section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1A4099;
+  margin-bottom: 16rpx;
   display: block;
+}
+
+.provinces-page__detail-section-text {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.8;
+  white-space: pre-line;
+  display: block;
+}
+
+.provinces-page__detail-footer {
+  margin-top: 32rpx;
+  padding-top: 32rpx;
+  border-top: 2rpx solid #e5e7eb;
+}
+
+.provinces-page__detail-action-btn {
+  width: 100%;
+  font-weight: bold;
 }

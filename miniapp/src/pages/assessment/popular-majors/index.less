@@ -209,6 +209,10 @@
   border-radius: 16rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
   transition: all 0.3s;
+  position: relative;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
 }
 
 .popular-majors-page__major-card:active {
@@ -220,6 +224,8 @@
   display: flex;
   gap: 24rpx;
   align-items: flex-start;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .popular-majors-page__major-index {
@@ -265,11 +271,24 @@
   color: #666;
 }
 
+.popular-majors-page__major-desc-wrapper {
+  width: 100%;
+  padding-top: 6rpx;
+  border-top: 1rpx solid #f0f0f0;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
 .popular-majors-page__major-desc {
   font-size: 24rpx;
-  color: #999;
+  color: #666;
   line-height: 1.6;
   display: block;
+  width: 100%;
+  word-wrap: break-word;
+  word-break: break-all;
 }
 
 .popular-majors-page__major-actions {
@@ -278,6 +297,9 @@
   gap: 16rpx;
   align-items: flex-end;
   flex-shrink: 0;
+  min-width: 200rpx;
+  position: relative;
+  z-index: 2;
 }
 
 .popular-majors-page__major-result {
@@ -312,6 +334,39 @@
 
 .popular-majors-page__major-button--retake {
   background: #1A4099;
+}
+
+// 测评进度样式（绝对定位，不占用布局空间）
+.popular-majors-page__major-progress {
+  position: absolute;
+  top: calc(100% + 8rpx);
+  left: 0;
+  right: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  align-items: flex-start;
+  z-index: 5;
+  pointer-events: none;
+  background: transparent;
+}
+
+.popular-majors-page__major-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.popular-majors-page__major-progress-text {
+  font-size: 22rpx;
+  color: #666;
+  font-weight: 500;
+}
+
+.popular-majors-page__major-progress-bar {
+  width: 100%;
+  height: 8rpx;
 }
 
 // 加载和空状态
