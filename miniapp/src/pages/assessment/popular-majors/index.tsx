@@ -8,9 +8,8 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
 import { Input } from '@/components/ui/Input'
-import { getPopularMajors } from '@/services/popular-majors'
-import { getMajorDetailByCode } from '@/services/majors'
-import { getScalesByMajorDetailId } from '@/services/scales'
+import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
+import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale } from '@/types/api'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
@@ -27,6 +26,19 @@ interface Major {
   salaryavg?: string | null
   fivesalaryavg?: number
   majorBrief?: string | null
+  // 从接口返回的测评进度和分数
+  progress?: {
+    completedCount: number
+    totalCount: number
+    isCompleted: boolean
+  }
+  score?: {
+    score: number
+    lexueScore: number
+    shanxueScore: number
+    yanxueDeduction: number
+    tiaozhanDeduction: number
+  } | null
 }
 
 interface Question {
@@ -78,6 +90,7 @@ function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFil
   onHeightChange?: (height: number) => void
 }) {
   const [systemInfo, setSystemInfo] = useState<any>(null)
+  const [navBarHeight, setNavBarHeight] = useState<number>(0)
 
   useEffect(() => {
     const info = Taro.getSystemInfoSync()
@@ -87,12 +100,13 @@ function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFil
     if (info) {
       const statusBarHeight = info.statusBarHeight || 0
       const navigationBarHeight = 44 // 微信导航栏标准高度（px）
-      // 搜索框高度 72rpx + 上margin 40rpx + 下margin 16rpx = 128rpx，过滤标签高度约 60rpx，总共约 188rpx
+      // 搜索框高度 72rpx + 上margin 40rpx + 下margin 16rpx = 128rpx（过滤标签已隐藏）
       // rpx 转 px: 1rpx = screenWidth / 750
       const screenWidth = info.screenWidth || 375
       const rpxToPx = screenWidth / 750
-      const searchAndFilterHeight = 188 * rpxToPx // 搜索框和过滤标签的总高度（已增加顶部间距）
-      const totalHeight = statusBarHeight + navigationBarHeight + searchAndFilterHeight
+      const searchHeight = 128 * rpxToPx // 搜索框区域高度（过滤标签已隐藏）
+      const totalHeight = statusBarHeight + navigationBarHeight + searchHeight
+      setNavBarHeight(totalHeight)
       onHeightChange?.(totalHeight)
     }
   }, [onHeightChange])
@@ -101,12 +115,15 @@ function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFil
 
   const statusBarHeight = systemInfo.statusBarHeight || 0
   const navigationBarHeight = 44 // 微信导航栏标准高度（px）
+  const screenWidth = systemInfo.screenWidth || 375
+  const rpxToPx = screenWidth / 750
+  const searchHeight = 128 * rpxToPx // 搜索框区域高度（过滤标签已隐藏）
 
   return (
     <View 
       className="popular-majors-nav-bar"
       style={{ 
-        height: `${statusBarHeight + navigationBarHeight + 80}px`, // 增加10rpx间距（约5px）
+        height: `${statusBarHeight + navigationBarHeight + searchHeight}px`, // 搜索框区域高度（过滤标签已隐藏）
         paddingTop: `${statusBarHeight}px`,
         backgroundColor: '#f0f7ff'
       }}
@@ -132,7 +149,7 @@ function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFil
         </View>
 
         {/* 理科/文科过滤标签 */}
-        <View className="popular-majors-nav-bar__filters">
+        {/* <View className="popular-majors-nav-bar__filters">
           <View
             className={`popular-majors-nav-bar__filter ${subjectFilter === 'all' ? 'popular-majors-nav-bar__filter--active' : ''}`}
             onClick={() => onSubjectFilterChange('all')}
@@ -151,7 +168,7 @@ function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFil
           >
             <Text className="popular-majors-nav-bar__filter-text">文科</Text>
           </View>
-        </View>
+        </View> */}
       </View>
     </View>
   )
@@ -199,6 +216,9 @@ export default function PopularMajorsPage() {
       salaryavg: apiData.averageSalary || null,
       fivesalaryavg: 0, // API 中暂无此字段
       majorBrief: apiData.majorDetail?.majorBrief || null,
+      // 保留接口返回的测评进度和分数数据
+      progress: apiData.progress,
+      score: apiData.score,
     }
   }
 
@@ -358,33 +378,34 @@ export default function PopularMajorsPage() {
     }
   }
 
-  // 通过专业code获取量表和答案
-  const loadScalesByMajorCode = async (majorCode: string, restoreAnswers: boolean = true) => {
+  // 通过热门专业ID获取量表和答案
+  const loadScalesByPopularMajorId = async (popularMajorId: number, restoreAnswers: boolean = true) => {
     try {
-      // 1. 通过专业code获取专业详情（包含 majorDetailId）
-      const majorDetail = await getMajorDetailByCode(majorCode)
-      
-      if (!majorDetail || !majorDetail.id) {
-        throw new Error('获取专业详情失败')
-      }
-
-      // 2. 通过 majorDetailId 获取量表和答案
-      const scalesResponse = await getScalesByMajorDetailId(majorDetail.id)
+      // 直接通过热门专业ID获取量表和答案
+      const scalesResponse = await getScalesByPopularMajorId(popularMajorId)
       
       if (!scalesResponse || !scalesResponse.scales || scalesResponse.scales.length === 0) {
         throw new Error('该专业暂无测评题目')
       }
 
-      // 3. 将 Scale 转换为 Question 格式
+      // 将 Scale 转换为 Question 格式
       const questions = scalesResponse.scales.map(scaleToQuestion)
 
-      // 4. 如果有已保存的答案且需要恢复，恢复答案状态
-      // answer.score 就是用户选择的选项值（optionValue）
+      // 如果有已保存的答案且需要恢复，恢复答案状态
+      // 根据提交逻辑反向推理：提交时 score = answers[question.id] = optionValue
+      // 所以恢复时：answers[scaleId] = answer.score（score 就是 optionValue）
       const savedAnswers: Record<number, number> = {}
       if (restoreAnswers && scalesResponse.answers && scalesResponse.answers.length > 0) {
         scalesResponse.answers.forEach(answer => {
-          savedAnswers[answer.scaleId] = answer.score
+          // 直接按照提交逻辑反向恢复：score 就是 optionValue
+          // 提交时：score = answers[question.id]，所以恢复时：answers[answer.scaleId] = answer.score
+          // 注意：answer.score 可能是字符串，需要转换为数字以匹配 optionValue 的类型
+          const scoreValue = typeof answer.score === 'string' ? parseFloat(answer.score) : Number(answer.score)
+          if (!isNaN(scoreValue)) {
+            savedAnswers[answer.scaleId] = scoreValue
+          }
         })
+        console.log('恢复答案完成，答案数量:', scalesResponse.answers.length, '恢复后的答案对象:', savedAnswers)
       }
 
       setQuestions(questions)
@@ -392,6 +413,20 @@ export default function PopularMajorsPage() {
       setCurrentQuestionIndex(0)
       setIsCompleted(false)
       setLoveEnergy(null)
+      
+      // 调试信息：确认答案恢复状态
+      if (Object.keys(savedAnswers).length > 0) {
+        console.log('答案恢复完成，已恢复的题目ID和答案值:', savedAnswers)
+        console.log('题目列表ID:', questions.map(q => q.id))
+        // 验证答案值类型
+        Object.entries(savedAnswers).forEach(([questionId, answerValue]) => {
+          const question = questions.find(q => q.id === Number(questionId))
+          if (question) {
+            const optionValues = question.options.map(opt => opt.optionValue)
+            console.log(`题目 ${questionId}: 答案值=${answerValue} (类型: ${typeof answerValue}), 选项值=${optionValues.join(',')} (类型: ${typeof optionValues[0]})`)
+          }
+        })
+      }
     } catch (error: any) {
       console.error('加载量表和答案失败:', error)
       Taro.showToast({
@@ -408,13 +443,45 @@ export default function PopularMajorsPage() {
     setSelectedMajor(major)
     setShowQuestionnaire(true)
     
-    // 通过专业code获取量表和答案
-    await loadScalesByMajorCode(major.code)
+    // 通过热门专业ID获取量表和答案
+    const popularMajorId = Number(major.id)
+    if (isNaN(popularMajorId)) {
+      Taro.showToast({
+        title: '无法获取热门专业ID',
+        icon: 'none'
+      })
+      return
+    }
+    await loadScalesByPopularMajorId(popularMajorId)
   }
 
-  // 处理答题
-  const handleAnswer = (questionId: number, optionValue: number) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: optionValue }))
+  // 处理答题（每答完一题立即同步到数据库）
+  const handleAnswer = async (questionId: number, optionValue: number) => {
+    // 确保 optionValue 是数字类型
+    const answerValue = typeof optionValue === 'string' ? parseFloat(optionValue) : Number(optionValue)
+    if (!isNaN(answerValue)) {
+      // 更新本地答案状态
+      setAnswers((prev) => ({ ...prev, [questionId]: answerValue }))
+      
+      // 立即提交到数据库
+      if (selectedMajor) {
+        const popularMajorId = Number(selectedMajor.id)
+        if (!isNaN(popularMajorId)) {
+          try {
+            await createOrUpdatePopularMajorAnswer({
+              popularMajorId,
+              scaleId: questionId,
+              score: answerValue,
+            })
+            // 静默提交，不显示提示，避免影响用户体验
+          } catch (error) {
+            console.error(`提交题目 ${questionId} 的答案失败:`, error)
+            // 提交失败时，可以选择显示提示或静默处理
+            // 这里选择静默处理，避免打断用户答题流程
+          }
+        }
+      }
+    }
   }
 
   // 处理下一题
@@ -435,7 +502,7 @@ export default function PopularMajorsPage() {
   }
 
   // 完成测评
-  const handleComplete = () => {
+  const handleComplete = async () => {
     // 计算总分（所有选项值的总和）
     // 选项值范围通常是 -2 到 2，需要映射到 0-1 范围
     const totalScore = Object.values(answers).reduce((sum, val) => sum + val, 0)
@@ -459,6 +526,14 @@ export default function PopularMajorsPage() {
       } catch (error) {
         console.error('保存测评结果失败:', error)
       }
+
+      // 答案已经在每答一题时同步到数据库，这里只需要刷新列表数据
+      // 刷新当前页数据以获取最新的 progress 和 score
+      try {
+        loadMajors(page, true, selectedCategory, searchQuery)
+      } catch (error) {
+        console.error('刷新列表数据失败:', error)
+      }
     }
 
     // 延迟关闭对话框，让用户看到完成状态
@@ -473,7 +548,15 @@ export default function PopularMajorsPage() {
   const handleRetake = async () => {
     if (selectedMajor) {
       // 重新加载量表和答案（不恢复已保存的答案，清空重新开始）
-      await loadScalesByMajorCode(selectedMajor.code, false)
+      const popularMajorId = Number(selectedMajor.id)
+      if (isNaN(popularMajorId)) {
+        Taro.showToast({
+          title: '无法获取热门专业ID',
+          icon: 'none'
+        })
+        return
+      }
+      await loadScalesByPopularMajorId(popularMajorId, false)
     } else {
       // 如果没有选中的专业，使用本地问卷数据
       loadRandomQuestions()
@@ -497,9 +580,7 @@ export default function PopularMajorsPage() {
       <View 
         className="popular-majors-page"
         style={{ 
-          paddingTop: navBarHeight > 0 && systemInfo 
-            ? `${navBarHeight - (10 * (systemInfo.screenWidth || 375) / 750)}px` 
-            : '0' 
+          paddingTop: navBarHeight > 0 ? `${navBarHeight}px` : '0'
         }}
       >
         {/* 头部横幅 */}
@@ -542,8 +623,38 @@ export default function PopularMajorsPage() {
         ) : (
           <View className="popular-majors-page__majors">
             {filteredMajors.map((major, index) => {
-              const hasResult = majorResults[major.code] !== undefined
-              const resultEnergy = majorResults[major.code]
+              // 使用接口返回的数据判断是否完成测评
+              const isCompleted = major.progress?.isCompleted || false
+              // 使用接口返回的分数数据
+              const score = major.score?.score
+              // 兼容本地存储的数据（作为后备方案）
+              const hasLocalResult = majorResults[major.code] !== undefined
+              const localResultEnergy = majorResults[major.code]
+              // 获取测评进度（确保转换为数字类型）
+              const completedCount = major.progress?.completedCount 
+                ? (typeof major.progress.completedCount === 'string' 
+                    ? parseInt(major.progress.completedCount, 10) 
+                    : Number(major.progress.completedCount))
+                : 0
+              const totalCount = major.progress?.totalCount
+                ? (typeof major.progress.totalCount === 'string'
+                    ? parseInt(major.progress.totalCount, 10)
+                    : Number(major.progress.totalCount))
+                : 0
+              const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+              const hasProgress = completedCount > 0 && totalCount > 0
+              
+              // 调试信息
+              if (major.progress) {
+                console.log(`专业 ${major.name} 进度:`, {
+                  rawCompletedCount: major.progress.completedCount,
+                  rawTotalCount: major.progress.totalCount,
+                  completedCount,
+                  totalCount,
+                  hasProgress,
+                  progressPercent
+                })
+              }
 
               return (
                 <Card key={major.id} className="popular-majors-page__major-card">
@@ -566,21 +677,25 @@ export default function PopularMajorsPage() {
                           </Text>
                         )}
                       </View>
-                      <Text className="popular-majors-page__major-desc">
-                        {major.majorBrief || '该专业致力于培养具备扎实理论基础和实践能力的专业人才，为学生提供全面的学科知识和职业发展指导。'}
-                      </Text>
                     </View>
                     <View className="popular-majors-page__major-actions">
-                      {/* 显示测评结果 */}
-                      {hasResult && (
+                      {/* 显示测评结果：优先使用接口返回的分数，否则使用本地存储的数据 */}
+                      {isCompleted && (score !== undefined && score !== null) ? (
                         <View className="popular-majors-page__major-result">
                           <Text className="popular-majors-page__major-result-icon">⚡</Text>
                           <Text className="popular-majors-page__major-result-value">
-                            {resultEnergy.toFixed(2)}
+                            {Number(score).toFixed(2)}
                           </Text>
                         </View>
-                      )}
-                      {hasResult ? (
+                      ) : hasLocalResult ? (
+                        <View className="popular-majors-page__major-result">
+                          <Text className="popular-majors-page__major-result-icon">⚡</Text>
+                          <Text className="popular-majors-page__major-result-value">
+                            {localResultEnergy.toFixed(2)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {isCompleted || hasLocalResult ? (
                         <Button
                           size="sm"
                           className="popular-majors-page__major-button popular-majors-page__major-button--retake"
@@ -597,7 +712,28 @@ export default function PopularMajorsPage() {
                           测评
                         </Button>
                       )}
+                      {/* 显示测评进度：未完成且进度不为0才显示 */}
+                      {!isCompleted && hasProgress && (
+                        <View className="popular-majors-page__major-progress">
+                          <View className="popular-majors-page__major-progress-info">
+                            <Text className="popular-majors-page__major-progress-text">
+                              {completedCount}/{totalCount}
+                            </Text>
+                          </View>
+                          <Progress 
+                            value={progressPercent} 
+                            max={100}
+                            className="popular-majors-page__major-progress-bar"
+                          />
+                        </View>
+                      )}
                     </View>
+                  </View>
+                  {/* 专业简介单独一行，占据全宽 */}
+                  <View className="popular-majors-page__major-desc-wrapper">
+                    <Text className="popular-majors-page__major-desc">
+                      {major.majorBrief || '该专业致力于培养具备扎实理论基础和实践能力的专业人才，为学生提供全面的学科知识和职业发展指导。'}
+                    </Text>
                   </View>
                 </Card>
               )
@@ -715,7 +851,13 @@ export default function PopularMajorsPage() {
                   {/* 选项 */}
                   <View className="popular-majors-page__question-options">
                     {currentQuestion.options.map((option) => {
-                      const isAnswered = answers[currentQuestion.id] === option.optionValue
+                      // 根据提交逻辑反向推理：提交时 score = answers[question.id] = optionValue
+                      // 所以恢复时：answers[scaleId] = answer.score，判断时直接比较
+                      // 确保类型一致：都转换为数字进行比较
+                      const currentAnswer = answers[currentQuestion.id]
+                      const currentAnswerNum = typeof currentAnswer === 'string' ? parseFloat(currentAnswer) : Number(currentAnswer)
+                      const optionValueNum = typeof option.optionValue === 'string' ? parseFloat(option.optionValue) : Number(option.optionValue)
+                      const isAnswered = currentAnswer !== undefined && !isNaN(currentAnswerNum) && !isNaN(optionValueNum) && currentAnswerNum === optionValueNum
                       return (
                         <View
                           key={option.id}

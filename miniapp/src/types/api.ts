@@ -229,3 +229,69 @@ export interface MajorScoreResponse {
   lexueScore: number | string
   shanxueScore: number | string
 }
+
+// 省份相关类型定义
+/**
+ * 省份信息
+ */
+export interface ProvinceResponse {
+  id: number
+  name: string
+  type: string
+  overallImpression: string | null
+  livingCost: string | null
+  suitablePerson: string | null
+  keyIndustries: string | null
+  typicalEmployers: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * 省份列表响应
+ */
+export interface ProvincesListResponse {
+  items: ProvinceResponse[]
+  total?: number
+}
+
+/**
+ * 收藏省份请求参数
+ */
+export interface FavoriteProvinceParams {
+  provinceId: number
+}
+
+/**
+ * 收藏省份响应
+ */
+export interface FavoriteProvinceResponse {
+  id: number
+  userId: number
+  provinceId: number
+  province?: ProvinceResponse
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * 收藏列表响应
+ */
+export interface FavoriteProvincesListResponse {
+  items: FavoriteProvinceResponse[]
+  total?: number
+}
+
+/**
+ * 检查收藏状态响应
+ */
+export interface CheckFavoriteResponse {
+  isFavorited: boolean
+}
+
+/**
+ * 收藏数量响应
+ */
+export interface FavoriteCountResponse {
+  count: number
+}
