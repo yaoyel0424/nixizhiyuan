@@ -142,7 +142,7 @@ export class ProvincesController {
     },
   })
   async checkFavorite(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
     @Param('provinceId', ParseIntPipe) provinceId: number,
   ): Promise<{ isFavorite: boolean }> {
     const isFavorite = await this.provincesService.isFavorite(
