@@ -224,6 +224,18 @@ export default function AllMajorsPage() {
     setShowUnansweredBlink(false)
   }, [currentIndex])
 
+  // 当评估完成时，自动跳转到专业推荐页面
+  useEffect(() => {
+    if (isCompleted && isInitialized && !isLoading) {
+      const timer = setTimeout(() => {
+        Taro.reLaunch({
+          url: '/pages/majors/index'
+        })
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [isCompleted, isInitialized, isLoading])
+
 
   const currentQuestion = sortedQuestions[currentIndex]
   const currentDimension = currentQuestion?.dimension || ''
@@ -343,13 +355,9 @@ export default function AllMajorsPage() {
     }
 
     if (answeredCount === totalQuestions) {
+      // 延迟设置完成状态，让用户看到最后一题的反馈
       setTimeout(() => {
         setIsCompleted(true)
-        setTimeout(() => {
-          Taro.reLaunch({
-            url: '/pages/majors/index'
-          })
-        }, 3000)
       }, 500)
       return
     }

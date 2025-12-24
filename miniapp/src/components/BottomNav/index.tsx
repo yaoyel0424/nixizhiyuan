@@ -67,9 +67,16 @@ export function BottomNav() {
         <View className="bottom-nav__items">
           {navItems.map((item) => {
             const baseHref = item.href.split("?")[0]
-            const isActive = baseHref === "/pages/index/index" 
-              ? currentPath === "/pages/index/index" 
-              : currentPath.startsWith(baseHref)
+            // 特殊处理：探索成果tab，所有 /pages/assessment 下的页面都激活
+            let isActive: boolean
+            if (baseHref === "/pages/index/index") {
+              isActive = currentPath === "/pages/index/index"
+            } else if (baseHref === "/pages/assessment/index") {
+              // 探索成果tab：所有 assessment 下的页面都激活
+              isActive = currentPath.startsWith("/pages/assessment")
+            } else {
+              isActive = currentPath.startsWith(baseHref)
+            }
 
             const iconData = ICON_MAP[item.icon] || { normal: '●', active: '●' }
             const iconText = isActive ? iconData.active : iconData.normal
