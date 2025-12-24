@@ -19,17 +19,38 @@ export const getProvinces = async (): Promise<ProvincesListResponse> => {
   if (response && typeof response === 'object') {
     // 如果包含 data 字段，提取 data
     if (response.data && typeof response.data === 'object') {
-      // 检查 data 中是否包含 items
-      if (Array.isArray(response.data.items) || Array.isArray(response.data)) {
+      // API 返回格式：{ data: { provinces: [...], types: [...] } }
+      if (Array.isArray(response.data.provinces)) {
         return {
-          items: Array.isArray(response.data.items) ? response.data.items : response.data,
-          total: response.data.total || response.total
+          items: response.data.provinces,
+          total: response.data.provinces.length
+        }
+      }
+      // 兼容旧格式：data 中直接包含 items
+      if (Array.isArray(response.data.items)) {
+        return {
+          items: response.data.items,
+          total: response.data.total || response.data.items.length
+        }
+      }
+      // 兼容旧格式：data 本身就是数组
+      if (Array.isArray(response.data)) {
+        return {
+          items: response.data,
+          total: response.data.length
         }
       }
     }
     // 如果直接包含 items 字段，直接返回
     if (Array.isArray(response.items)) {
       return response
+    }
+    // 如果直接包含 provinces 字段（兼容处理）
+    if (Array.isArray(response.provinces)) {
+      return {
+        items: response.provinces,
+        total: response.provinces.length
+      }
     }
     // 如果是数组，包装成标准格式
     if (Array.isArray(response)) {

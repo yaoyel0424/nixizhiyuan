@@ -111,7 +111,7 @@ const Login: React.FC = () => {
       <View className="login-page__container">
         {/* Logo 区域 */}
         <View className="login-page__header">
-          <Image className="login-page__logo" src="/assets/images/logo.png" mode="aspectFit" />
+          <Image className="login-page__logo" src={require('@/assets/images/logo.png')} mode="aspectFit" />
         </View>
 
         {/* 标题 */}

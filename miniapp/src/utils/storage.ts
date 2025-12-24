@@ -26,8 +26,14 @@ export const getStorage = async <T = any>(key: string): Promise<T | null> => {
   try {
     const result = await Taro.getStorage({ key })
     return JSON.parse(result.data)
-  } catch (error) {
-    console.error('获取数据失败:', error)
+  } catch (error: any) {
+    // 数据不存在是正常情况，不应该打印错误日志
+    // 只有当是其他类型的错误时才打印
+    const errMsg = error?.errMsg || error?.message || ''
+    // 如果错误信息包含 "data not found"，说明数据不存在，这是正常情况
+    if (errMsg && !errMsg.includes('data not found')) {
+      console.error('获取数据失败:', error)
+    }
     return null
   }
 }
