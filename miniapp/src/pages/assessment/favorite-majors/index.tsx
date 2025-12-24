@@ -1,66 +1,105 @@
 // 心动专业页面
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
-import { getStorage, setStorage } from '@/utils/storage'
-import userScoreData from '@/assets/data/user-score.json'
+import { 
+  getFavoriteMajors, 
+  unfavoriteMajor, 
+  getFavoriteMajorsCount,
+  getMajorDetailByCode
+} from '@/services/majors'
+import { getAllScores } from '@/services/scores'
+import { MajorScoreResponse, MajorDetailInfo } from '@/types/api'
 import intentionData from '@/assets/data/intention.json'
 import './index.less'
 
-interface MajorScore {
-  majorCode: string
-  majorName: string
-  majorBrief: string
-  eduLevel: string
-  score: string
-  lexueScore: string
-  shanxueScore: string
-  schoolCount: string
-}
-
-interface UserScoreData {
-  userId: string
-  scores: MajorScore[]
+// 合并后的专业数据接口
+interface FavoriteMajorWithScore extends MajorScoreResponse {
+  favoriteId?: number
+  favoriteCreatedAt?: string
 }
 
 export default function FavoriteMajorsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [intendedMajors, setIntendedMajors] = useState<Set<string>>(new Set())
-  const [allMajorsData, setAllMajorsData] = useState<UserScoreData | null>(null)
+  const [favoriteMajorsList, setFavoriteMajorsList] = useState<FavoriteMajorWithScore[]>([])
+  const [favoriteCount, setFavoriteCount] = useState(0)
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [majorToDelete, setMajorToDelete] = useState<string | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [selectedMajorDetail, setSelectedMajorDetail] = useState<MajorDetailInfo | null>(null)
+  const [selectedMajorName, setSelectedMajorName] = useState<string>('')
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
-  // 从本地存储读取心动专业列表
+  // 加载心动专业列表
   useEffect(() => {
-    const loadData = async () => {
+    const loadFavoriteMajors = async () => {
       try {
-        const stored = await getStorage<string[]>('intendedMajors')
-        if (stored) {
-          setIntendedMajors(new Set(stored))
-        }
-      } catch (error) {
+        setLoading(true)
+        
+        // 并行获取收藏列表和收藏数量
+        const [favorites, count, allScores] = await Promise.all([
+          getFavoriteMajors(),
+          getFavoriteMajorsCount(),
+          getAllScores()
+        ])
+
+        // 创建专业代码到分数的映射
+        const scoreMap = new Map<string, MajorScoreResponse>()
+        allScores.forEach(score => {
+          scoreMap.set(score.majorCode, score)
+        })
+
+        // 合并收藏列表和专业分数数据
+        const mergedList: FavoriteMajorWithScore[] = favorites
+          .map(fav => {
+            const scoreData = scoreMap.get(fav.majorCode)
+            if (scoreData) {
+              return {
+                ...scoreData,
+                favoriteId: fav.id,
+                favoriteCreatedAt: fav.createdAt
+              }
+            }
+            // 如果没有分数数据，至少返回基本信息
+            return {
+              majorCode: fav.majorCode,
+              majorName: fav.majorName || fav.majorCode,
+              majorBrief: null,
+              eduLevel: '',
+              score: '0',
+              lexueScore: '0',
+              shanxueScore: '0',
+              yanxueDeduction: '0',
+              tiaozhanDeduction: '0',
+              favoriteId: fav.id,
+              favoriteCreatedAt: fav.createdAt
+            }
+          })
+          .filter(major => major.majorCode) // 过滤掉无效数据
+
+        setFavoriteMajorsList(mergedList)
+        setFavoriteCount(count)
+      } catch (error: any) {
         console.error('加载心动专业失败:', error)
+        Taro.showToast({
+          title: error?.message || '加载收藏列表失败',
+          icon: 'none',
+          duration: 2000
+        })
+        setFavoriteMajorsList([])
+        setFavoriteCount(0)
+      } finally {
+        setLoading(false)
       }
     }
-    loadData()
-  }, [])
 
-  // 加载所有专业数据
-  useEffect(() => {
-    try {
-      const data = userScoreData as any
-      setAllMajorsData(data.data || data)
-      setLoading(false)
-    } catch (error) {
-      console.error('加载专业数据失败:', error)
-      setLoading(false)
-    }
+    loadFavoriteMajors()
   }, [])
 
   // 打开删除确认对话框
@@ -71,18 +110,63 @@ export default function FavoriteMajorsPage() {
 
   // 确认删除心动专业
   const confirmDelete = async () => {
-    if (majorToDelete) {
-      const newSet = new Set(intendedMajors)
-      newSet.delete(majorToDelete)
-      setIntendedMajors(newSet)
-      try {
-        await setStorage('intendedMajors', Array.from(newSet))
-      } catch (error) {
-        console.error('保存心动专业失败:', error)
-      }
+    if (!majorToDelete) {
+      setDeleteConfirmOpen(false)
+      setMajorToDelete(null)
+      return
     }
-    setDeleteConfirmOpen(false)
-    setMajorToDelete(null)
+
+    try {
+      // 调用 API 删除收藏
+      await unfavoriteMajor(majorToDelete)
+      
+      // 更新本地状态
+      setFavoriteMajorsList(prev => prev.filter(major => major.majorCode !== majorToDelete))
+      setFavoriteCount(prev => Math.max(0, prev - 1))
+      
+      Taro.showToast({
+        title: '已取消收藏',
+        icon: 'success',
+        duration: 1500
+      })
+    } catch (error: any) {
+      console.error('删除收藏失败:', error)
+      Taro.showToast({
+        title: error?.message || '删除失败，请重试',
+        icon: 'none',
+        duration: 2000
+      })
+    } finally {
+      setDeleteConfirmOpen(false)
+      setMajorToDelete(null)
+    }
+  }
+
+  // 处理深度了解
+  const handleViewDetail = async (majorCode: string) => {
+    try {
+      setLoadingDetail(true)
+      setDetailDialogOpen(true)
+      
+      // 从收藏列表中获取专业名称
+      const major = favoriteMajorsList.find(m => m.majorCode === majorCode)
+      if (major) {
+        setSelectedMajorName(major.majorName)
+      }
+      
+      const detail = await getMajorDetailByCode(majorCode)
+      setSelectedMajorDetail(detail)
+    } catch (error: any) {
+      console.error('获取专业详情失败:', error)
+      Taro.showToast({
+        title: error?.message || '获取专业详情失败',
+        icon: 'none',
+        duration: 2000
+      })
+      setDetailDialogOpen(false)
+    } finally {
+      setLoadingDetail(false)
+    }
   }
 
   const toggleBrief = (majorCode: string) => {
@@ -97,36 +181,42 @@ export default function FavoriteMajorsPage() {
     })
   }
 
-  // 获取心动专业列表
-  const favoriteMajors = allMajorsData?.scores.filter((major) => intendedMajors.has(major.majorCode)) || []
-
   // 过滤搜索结果
-  const filteredMajors = favoriteMajors.filter((major) => {
-    if (!searchQuery.trim()) return true
-    const query = searchQuery.toLowerCase()
-    return major.majorName.toLowerCase().includes(query) || major.majorCode.toLowerCase().includes(query)
-  })
+  const filteredMajors = useMemo(() => {
+    return favoriteMajorsList.filter((major) => {
+      if (!searchQuery.trim()) return true
+      const query = searchQuery.toLowerCase()
+      return major.majorName.toLowerCase().includes(query) || major.majorCode.toLowerCase().includes(query)
+    })
+  }, [favoriteMajorsList, searchQuery])
 
   // 计算热爱能量前20%的专业
-  const allMajorsWithScores = (intentionData as any[])
-    .map((item: any) => ({
-      code: item.major.code,
-      name: item.major.name,
-      score: parseFloat(item.major.score || '0')
-    }))
-    .filter((major: any) => major.score > 0)
-  
-  const sortedAllMajors = [...allMajorsWithScores].sort((a: any, b: any) => b.score - a.score)
-  const top20PercentThresholdIndex = sortedAllMajors.length > 0 
-    ? Math.ceil(sortedAllMajors.length * 0.2) 
-    : 0
-  const top20PercentMajorCodes = new Set(
-    sortedAllMajors.slice(0, top20PercentThresholdIndex).map((m: any) => m.code)
-  )
-  const top20PercentInFavorites = favoriteMajors.filter((major) => {
-    return top20PercentMajorCodes.has(major.majorCode)
-  })
-  const top20PercentCount = top20PercentInFavorites.length
+  const top20PercentCount = useMemo(() => {
+    try {
+      const allMajorsWithScores = (intentionData as any[])
+        .map((item: any) => ({
+          code: item.major.code,
+          name: item.major.name,
+          score: parseFloat(item.major.score || '0')
+        }))
+        .filter((major: any) => major.score > 0)
+      
+      const sortedAllMajors = [...allMajorsWithScores].sort((a: any, b: any) => b.score - a.score)
+      const top20PercentThresholdIndex = sortedAllMajors.length > 0 
+        ? Math.ceil(sortedAllMajors.length * 0.2) 
+        : 0
+      const top20PercentMajorCodes = new Set(
+        sortedAllMajors.slice(0, top20PercentThresholdIndex).map((m: any) => m.code)
+      )
+      const top20PercentInFavorites = filteredMajors.filter((major) => {
+        return top20PercentMajorCodes.has(major.majorCode)
+      })
+      return top20PercentInFavorites.length
+    } catch (error) {
+      console.error('计算前20%专业失败:', error)
+      return 0
+    }
+  }, [filteredMajors])
 
   if (loading) {
     return (
@@ -146,7 +236,7 @@ export default function FavoriteMajorsPage() {
       <View className="favorite-majors-page__header">
         <View className="favorite-majors-page__header-content">
           <Text className="favorite-majors-page__title">心动专业列表</Text>
-          <Text className="favorite-majors-page__subtitle">共 {intendedMajors.size} 个心动专业</Text>
+          <Text className="favorite-majors-page__subtitle">共 {favoriteCount} 个心动专业</Text>
         </View>
         <View className="favorite-majors-page__wave" />
       </View>
@@ -167,7 +257,7 @@ export default function FavoriteMajorsPage() {
         {/* 心动专业列表 */}
         {filteredMajors.length === 0 ? (
           <Card className="favorite-majors-page__empty">
-            {intendedMajors.size === 0 ? (
+            {favoriteCount === 0 ? (
               <View className="favorite-majors-page__empty-content">
                 <Text className="favorite-majors-page__empty-icon">⭐</Text>
                 <Text className="favorite-majors-page__empty-text">暂无心动专业</Text>
@@ -176,7 +266,7 @@ export default function FavoriteMajorsPage() {
                 </Text>
                 <Button
                   onClick={() => {
-                    Taro.navigateTo({
+                    Taro.redirectTo({
                       url: '/pages/majors/index'
                     })
                   }}
@@ -203,17 +293,18 @@ export default function FavoriteMajorsPage() {
                       <Text className="favorite-majors-page__item-name">{major.majorName}</Text>
                       <Text className="favorite-majors-page__item-code">({major.majorCode})</Text>
                       <View className="favorite-majors-page__item-score-badge">
-                        <Text>热爱能量: {major.score}</Text>
+                        <Text>热爱能量: {typeof major.score === 'string' ? parseFloat(major.score).toFixed(2) : major.score.toFixed(2)}</Text>
                       </View>
                     </View>
                   </View>
 
-                  <View className="favorite-majors-page__item-brief">
-                    <Text 
-                      className={`favorite-majors-page__item-brief-text ${expandedBriefs.has(major.majorCode) ? '' : 'favorite-majors-page__item-brief-text--clamped'}`}
-                    >
-                      {major.majorBrief}
-                    </Text>
+                  {major.majorBrief && (
+                    <View className="favorite-majors-page__item-brief">
+                      <Text 
+                        className={`favorite-majors-page__item-brief-text ${expandedBriefs.has(major.majorCode) ? '' : 'favorite-majors-page__item-brief-text--clamped'}`}
+                      >
+                        {major.majorBrief}
+                      </Text>
                     <Button
                       onClick={() => toggleBrief(major.majorCode)}
                       className="favorite-majors-page__item-brief-toggle"
@@ -222,7 +313,8 @@ export default function FavoriteMajorsPage() {
                     >
                       {expandedBriefs.has(major.majorCode) ? '收起 ↑' : '展开 ↓'}
                     </Button>
-                  </View>
+                    </View>
+                  )}
 
                   {/* 操作按钮区域 */}
                   <View className="favorite-majors-page__item-actions">
@@ -235,12 +327,7 @@ export default function FavoriteMajorsPage() {
                       🗑️ 删除
                     </Button>
                     <Button
-                      onClick={() => {
-                        Taro.showToast({
-                          title: '深度了解功能开发中',
-                          icon: 'none'
-                        })
-                      }}
+                      onClick={() => handleViewDetail(major.majorCode)}
                       className="favorite-majors-page__item-view-button"
                       size="sm"
                       variant="outline"
@@ -287,6 +374,69 @@ export default function FavoriteMajorsPage() {
               className="favorite-majors-page__delete-confirm-button"
             >
               确定删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 专业详情对话框 */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>专业详情</DialogTitle>
+            <DialogDescription>
+              {loadingDetail ? '加载中...' : selectedMajorDetail ? '专业详细信息' : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {loadingDetail ? (
+            <View style={{ padding: '20px', textAlign: 'center' }}>
+              <Text>加载中...</Text>
+            </View>
+          ) : selectedMajorDetail ? (
+            <View style={{ padding: '20px' }}>
+              <View style={{ marginBottom: '16px' }}>
+                {selectedMajorName && (
+                  <Text style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '4px', display: 'block' }}>
+                    {selectedMajorName}
+                  </Text>
+                )}
+                <Text style={{ color: '#666', fontSize: '14px', marginBottom: '12px', display: 'block' }}>
+                  专业代码: {selectedMajorDetail.code}
+                </Text>
+                {selectedMajorDetail.educationLevel && (
+                  <Text style={{ color: '#666', marginBottom: '4px', display: 'block' }}>
+                    学历层次: {selectedMajorDetail.educationLevel}
+                  </Text>
+                )}
+                {selectedMajorDetail.studyPeriod && (
+                  <Text style={{ color: '#666', marginBottom: '4px', display: 'block' }}>
+                    修业年限: {selectedMajorDetail.studyPeriod}
+                  </Text>
+                )}
+                {selectedMajorDetail.awardedDegree && (
+                  <Text style={{ color: '#666', marginBottom: '4px', display: 'block' }}>
+                    授予学位: {selectedMajorDetail.awardedDegree}
+                  </Text>
+                )}
+              </View>
+              {selectedMajorDetail.majorBrief && (
+                <View style={{ marginTop: '16px' }}>
+                  <Text style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
+                    专业简介:
+                  </Text>
+                  <Text style={{ lineHeight: '1.6', color: '#333' }}>
+                    {selectedMajorDetail.majorBrief}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : null}
+          <DialogFooter>
+            <Button
+              onClick={() => setDetailDialogOpen(false)}
+              variant="outline"
+            >
+              关闭
             </Button>
           </DialogFooter>
         </DialogContent>

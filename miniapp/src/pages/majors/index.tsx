@@ -5,6 +5,13 @@ import Taro from '@tarojs/taro'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
 import { getAllScores } from '@/services/scores'
+import { 
+  getFavoriteMajors, 
+  favoriteMajor, 
+  unfavoriteMajor, 
+  checkFavoriteMajor,
+  getFavoriteMajorsCount
+} from '@/services/majors'
 import { MajorScoreResponse } from '@/types/api'
 import { getStorage, setStorage } from '@/utils/storage'
 import './index.less'
@@ -102,12 +109,20 @@ export default function MajorsPage() {
   useEffect(() => {
     const loadFavoriteMajors = async () => {
       try {
-        const stored = await getStorage<string[]>('intendedMajors')
-        if (stored && Array.isArray(stored)) {
-          setFavoriteMajors(new Set(stored))
-        }
-      } catch (error) {
+        const favorites = await getFavoriteMajors()
+        const majorCodes = favorites.map(fav => fav.majorCode)
+        setFavoriteMajors(new Set(majorCodes))
+      } catch (error: any) {
         console.error('加载心动专业失败:', error)
+        // API调用失败，显示错误提示
+        const errorMsg = error?.message || '加载收藏列表失败'
+        Taro.showToast({
+          title: errorMsg,
+          icon: 'none',
+          duration: 2000
+        })
+        // 不设置任何数据，保持空状态
+        setFavoriteMajors(new Set())
       }
     }
     loadFavoriteMajors()
@@ -176,34 +191,59 @@ export default function MajorsPage() {
 
   // 切换心动专业
   const toggleFavorite = useCallback(async (majorCode: string) => {
+    // 获取当前状态
+    const isCurrentlyFavorited = favoriteMajors.has(majorCode)
+    
+    // 乐观更新：先更新UI状态
     const newFavorites = new Set(favoriteMajors)
-    if (newFavorites.has(majorCode)) {
+    if (isCurrentlyFavorited) {
       newFavorites.delete(majorCode)
-      Taro.showToast({
-        title: '已取消心动',
-        icon: 'none',
-        duration: 1500
-      })
     } else {
       newFavorites.add(majorCode)
-      Taro.showToast({
-        title: '已添加心动',
-        icon: 'success',
-        duration: 1500
-      })
-      
-      // 如果是在引导步骤1，完成第一步，进入第二步
-      if (guideStep === 1) {
-        setGuideStep(2)
-      }
     }
     setFavoriteMajors(newFavorites)
     
-    // 保存到本地存储
     try {
-      await setStorage('intendedMajors', Array.from(newFavorites))
-    } catch (error) {
-      console.error('保存心动专业失败:', error)
+      if (isCurrentlyFavorited) {
+        // 取消收藏
+        await unfavoriteMajor(majorCode)
+        Taro.showToast({
+          title: '已取消心动',
+          icon: 'none',
+          duration: 1500
+        })
+      } else {
+        // 添加收藏
+        await favoriteMajor(majorCode)
+        Taro.showToast({
+          title: '已添加心动',
+          icon: 'success',
+          duration: 1500
+        })
+        
+        // 如果是在引导步骤1，完成第一步，进入第二步
+        if (guideStep === 1) {
+          setGuideStep(2)
+        }
+      }
+    } catch (error: any) {
+      // API调用失败，回滚UI状态
+      setFavoriteMajors(prev => {
+        const rollbackFavorites = new Set(prev)
+        if (isCurrentlyFavorited) {
+          rollbackFavorites.add(majorCode)
+        } else {
+          rollbackFavorites.delete(majorCode)
+        }
+        return rollbackFavorites
+      })
+      console.error('切换收藏状态失败:', error)
+      const errorMsg = error?.message || '操作失败，请稍后重试'
+      Taro.showToast({
+        title: errorMsg,
+        icon: 'none',
+        duration: 2000
+      })
     }
   }, [favoriteMajors, guideStep])
 

@@ -295,3 +295,45 @@ export interface CheckFavoriteResponse {
 export interface FavoriteCountResponse {
   count: number
 }
+
+// 专业收藏相关类型定义
+/**
+ * 收藏专业请求参数
+ */
+export interface FavoriteMajorParams {
+  majorCode: string
+}
+
+/**
+ * 收藏专业响应
+ */
+export interface FavoriteMajorResponse {
+  id: number
+  userId: number
+  majorCode: string
+  majorName?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * 专业收藏列表响应
+ */
+export interface FavoriteMajorsListResponse {
+  items: FavoriteMajorResponse[]
+  total?: number
+}
+
+/**
+ * 检查专业收藏状态响应
+ */
+export interface CheckFavoriteMajorResponse {
+  isFavorited: boolean
+}
+
+/**
+ * 专业收藏数量响应
+ */
+export interface FavoriteMajorsCountResponse {
+  count: number
+}

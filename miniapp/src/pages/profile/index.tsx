@@ -1,13 +1,14 @@
 // 个人中心页面
 import React, { useState, useEffect } from 'react'
 import { View, Text, Image } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearUserInfo } from '@/store/slices/userSlice'
 import { logout } from '@/services/auth'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
+import { ShareModal } from '@/components/ShareModal'
 import './index.less'
 
 // 模拟用户状态类型
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const [progress] = useState(45) // 测评进度百分比
   const [currentQuestion] = useState(76) // 当前题目编号（如果有未完成测评）
   const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
+  const [shareModalOpen, setShareModalOpen] = useState(false) // 分享弹窗显示状态
   
   // 从用户信息中获取昵称和头像
   const userName = userInfo?.nickname || userInfo?.username || '未来的同学'
@@ -93,22 +95,6 @@ export default function ProfilePage() {
     })
   }
 
-  const handleClearCache = () => {
-    Taro.showModal({
-      title: '提示',
-      content: '确定要清除缓存吗？',
-      success: (res) => {
-        if (res.confirm) {
-          Taro.clearStorageSync()
-          Taro.showToast({
-            title: '缓存已清除',
-            icon: 'success'
-          })
-        }
-      }
-    })
-  }
-
   const handleFeedback = () => {
     Taro.showToast({
       title: '功能开发中',
@@ -123,11 +109,24 @@ export default function ProfilePage() {
     })
   }
 
+  /**
+   * 处理分享功能
+   */
   const handleShare = () => {
-    Taro.showShareMenu({
-      withShareTicket: true
-    })
+    setShareModalOpen(true)
   }
+
+  /**
+   * 小程序分享配置
+   * 当用户点击右上角分享或使用 Button 的 openType="share" 时会触发
+   */
+  useShareAppMessage(() => {
+    return {
+      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
+      path: '/pages/index/index',
+      imageUrl: '', // 可选：分享图片 URL
+    }
+  })
 
   /**
    * 处理退出登录
@@ -308,18 +307,6 @@ export default function ProfilePage() {
               <Text className="profile-page__card-title">更多</Text>
             </View>
             <View className="profile-page__card-body">
-              {/* 清除缓存 */}
-              <View className="profile-page__card-item" onClick={handleClearCache}>
-                <View className="profile-page__card-icon profile-page__card-icon--cache">
-                  <Text className="profile-page__card-icon-text">🧹</Text>
-                </View>
-                <View className="profile-page__card-item-content">
-                  <Text className="profile-page__card-item-title">清除缓存</Text>
-                  <Text className="profile-page__card-item-desc">释放设备空间</Text>
-                </View>
-                <Text className="profile-page__card-arrow">›</Text>
-              </View>
-
               {/* 用户反馈 */}
               <View className="profile-page__card-item" onClick={handleFeedback}>
                 <View className="profile-page__card-icon profile-page__card-icon--feedback">
@@ -375,6 +362,12 @@ export default function ProfilePage() {
         </View>
       </View>
       <BottomNav />
+      
+      {/* 分享弹窗 */}
+      <ShareModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+      />
     </PageContainer>
   )
 }
