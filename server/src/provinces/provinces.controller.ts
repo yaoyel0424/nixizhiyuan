@@ -142,7 +142,7 @@ export class ProvincesController {
     },
   })
   async checkFavorite(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
     @Param('provinceId', ParseIntPipe) provinceId: number,
   ): Promise<{ isFavorite: boolean }> {
     const isFavorite = await this.provincesService.isFavorite(
@@ -171,7 +171,7 @@ export class ProvincesController {
     },
   })
   async getFavoriteCount(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
   ): Promise<{ count: number }> {
     const count = await this.provincesService.getFavoriteCount(user.id);
     return { count };
