@@ -23,6 +23,7 @@ import { QueryMajorFavoriteDto } from './dto/query-major-favorite.dto';
 import {
   MajorFavoriteResponseDto,
   MajorFavoriteDetailResponseDto,
+  UserFavoritesResponseDto,
 } from './dto/major-favorite-response.dto';
 import { MajorDetailResponseDto } from './dto/major-detail-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -90,7 +91,7 @@ export class MajorsController {
   @ApiResponse({ status: 404, description: '专业不存在' })
   @ApiResponse({ status: 409, description: '该专业已收藏' })
   async createFavorite(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
     @Body() createDto: CreateMajorFavoriteDto,
   ): Promise<MajorFavoriteResponseDto> {
     const favorite = await this.majorsService.createFavorite(
@@ -116,7 +117,7 @@ export class MajorsController {
   @ApiResponse({ status: 200, description: '取消收藏成功' })
   @ApiResponse({ status: 404, description: '收藏记录不存在' })
   async removeFavorite(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
     @Param('majorCode') majorCode: string,
   ): Promise<{ message: string }> {
     await this.majorsService.removeFavorite(user.id, majorCode);
@@ -125,25 +126,67 @@ export class MajorsController {
 
   /**
    * 查询用户的收藏列表（分页）
+   * 返回用户信息和收藏专业的列表，包括专业的匹配分数
    */
   @Get('favorites')
-  @ApiOperation({ summary: '查询用户的收藏列表' })
+  @ApiOperation({ summary: '查询用户的收藏列表（包含用户信息和专业分数）' })
   @ApiResponse({
     status: 200,
     description: '查询成功',
-    type: [MajorFavoriteDetailResponseDto],
+    type: UserFavoritesResponseDto,
   })
   async findFavorites(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
     @Query() queryDto: QueryMajorFavoriteDto,
-  ) {
+  ): Promise<UserFavoritesResponseDto> {
     const result = await this.majorsService.findFavorites(user.id, queryDto);
-    return {
-      items: plainToInstance(MajorFavoriteDetailResponseDto, result.items, {
-        excludeExtraneousValues: true,
-      }),
-      meta: result.meta,
+    
+    // 转换用户信息
+    const userInfo = { 
+      nickname: result.user.nickname, 
     };
+
+    // 转换收藏列表，包含专业信息和分数
+    const items = result.items.map((item) => {
+      // 先转换主要字段（使用 DTO）
+      const itemDto = plainToInstance(MajorFavoriteDetailResponseDto, {
+        id: item.id,
+        userId: item.userId,
+        majorCode: item.majorCode,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        score: item.score,
+        lexueScore: item.lexueScore,
+        shanxueScore: item.shanxueScore,
+        yanxueDeduction: item.yanxueDeduction,
+        tiaozhanDeduction: item.tiaozhanDeduction,
+      }, {
+        excludeExtraneousValues: true,
+        enableImplicitConversion: true,
+      });
+
+      // 手动添加 major 对象（不使用 DTO 转换，避免嵌套对象字段被过滤）
+      if (item.major) {
+        itemDto.major = {
+          id: item.major.id,
+          name: item.major.name,
+          code: item.major.code,
+          level: item.major.level,
+          eduLevel: item.major.eduLevel,
+          brief: item.major.majorDetail?.majorBrief || null,
+        };
+      }
+
+      return itemDto;
+    });
+
+    // 直接返回对象，不使用 plainToInstance 转换顶层对象
+    // 因为嵌套对象的字段无法通过 @Expose() 正确过滤
+    return {
+      user: userInfo,
+      items,
+      meta: result.meta,
+    } as UserFavoritesResponseDto;
   }
 
   /**
@@ -170,7 +213,7 @@ export class MajorsController {
     },
   })
   async checkFavorite(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
     @Param('majorCode') majorCode: string,
   ): Promise<{ isFavorite: boolean }> {
     const isFavorite = await this.majorsService.isFavorite(
@@ -199,7 +242,7 @@ export class MajorsController {
     },
   })
   async getFavoriteCount(
-    @CurrentUser() user: User,
+    @CurrentUser() user: any,
   ): Promise<{ count: number }> {
     const count = await this.majorsService.getFavoriteCount(user.id);
     return { count };

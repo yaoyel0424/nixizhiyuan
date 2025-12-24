@@ -61,8 +61,112 @@ export class MajorFavoriteDetailResponseDto extends MajorFavoriteResponseDto {
     id: number;
     name: string;
     code: string;
+    brief: string | null;
     level: number;
     eduLevel: string;
+  };
+
+  /**
+   * 专业匹配分数
+   */
+  @ApiProperty({
+    description: '专业匹配分数',
+    type: 'number',
+    required: false,
+    example: 85.5,
+  })
+  @Expose()
+  score?: number;
+
+  /**
+   * 乐学分数
+   */
+  @ApiProperty({
+    description: '乐学分数',
+    type: 'number',
+    required: false,
+    example: 45.2,
+  })
+  @Expose()
+  lexueScore?: number;
+
+  /**
+   * 善学分数
+   */
+  @ApiProperty({
+    description: '善学分数',
+    type: 'number',
+    required: false,
+    example: 40.3,
+  })
+  @Expose()
+  shanxueScore?: number;
+
+  /**
+   * 厌学扣分
+   */
+  @ApiProperty({
+    description: '厌学扣分',
+    type: 'number',
+    required: false,
+    example: 0,
+  })
+  @Expose()
+  yanxueDeduction?: number;
+
+  /**
+   * 挑战扣分
+   */
+  @ApiProperty({
+    description: '挑战扣分',
+    type: 'number',
+    required: false,
+    example: 0,
+  })
+  @Expose()
+  tiaozhanDeduction?: number;
+}
+
+/**
+ * 用户收藏列表响应 DTO（包含用户信息和收藏列表）
+ */
+export class UserFavoritesResponseDto {
+  /**
+   * 用户信息
+   */
+  @ApiProperty({
+    description: '用户信息',
+    type: 'object',
+  })
+  @Expose()
+  user: {
+    id: number;
+    nickname?: string | null;
+  };
+
+  /**
+   * 收藏列表
+   */
+  @ApiProperty({
+    description: '收藏列表',
+    type: [MajorFavoriteDetailResponseDto],
+  })
+  @Expose()
+  items: MajorFavoriteDetailResponseDto[];
+
+  /**
+   * 分页信息
+   */
+  @ApiProperty({
+    description: '分页信息',
+    type: 'object',
+  })
+  @Expose()
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
   };
 }
 
