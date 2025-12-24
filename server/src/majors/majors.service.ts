@@ -13,6 +13,8 @@ import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
 import { Element } from '@/entities/element.entity';
 import { Scale } from '@/entities/scale.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
+import { User } from '@/entities/user.entity';
+import { ScoresService } from '@/scores/scores.service';
 import { CreateMajorFavoriteDto } from './dto/create-major-favorite.dto';
 import { QueryMajorFavoriteDto } from './dto/query-major-favorite.dto';
 import { ErrorCode } from '../common/constants/error-code.constant';
@@ -41,6 +43,9 @@ export class MajorsService {
     private readonly scaleRepository: Repository<Scale>,
     @InjectRepository(ScaleAnswer)
     private readonly scaleAnswerRepository: Repository<ScaleAnswer>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly scoresService: ScoresService,
   ) {}
 
   /**
@@ -132,24 +137,101 @@ export class MajorsService {
 
   /**
    * 查询用户的收藏列表（分页）
+   * 包含用户信息和每个收藏专业的匹配分数
    * @param userId 用户ID
    * @param queryDto 查询条件
-   * @returns 分页的收藏列表
+   * @returns 分页的收藏列表，包含用户信息和专业分数
    */
   async findFavorites(
     userId: number,
     queryDto: QueryMajorFavoriteDto,
-  ): Promise<IPaginationResponse<MajorFavorite>> {
+  ): Promise<{
+    user: User;
+    items: Array<MajorFavorite & { major?: Major; score?: number; lexueScore?: number; shanxueScore?: number; yanxueDeduction?: number; tiaozhanDeduction?: number }>;
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
     const { page = 1, limit = 10 } = queryDto;
     const skip = (page - 1) * limit;
 
-    // 查询收藏列表（包含专业信息）
+    // 获取用户信息
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      this.logger.warn(`用户不存在: ${userId}`);
+      throw new NotFoundException({
+        code: ErrorCode.RESOURCE_NOT_FOUND,
+        message: '用户不存在',
+      });
+    }
+
+    // 查询收藏列表（包含专业信息和专业详情）
     const [favorites, total] = await this.majorFavoriteRepository.findAndCount({
       where: { userId },
-      relations: ['major'],
+      relations: ['major', 'major.majorDetail'],
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
+    });
+
+    // 获取所有收藏专业的代码
+    const majorCodes = favorites
+      .map((favorite) => favorite.majorCode)
+      .filter((code) => code);
+
+    // 如果有关收藏的专业，计算每个专业的匹配分数
+    let scoresMap = new Map<string, {
+      score: number;
+      lexueScore: number;
+      shanxueScore: number;
+      yanxueDeduction: number;
+      tiaozhanDeduction: number;
+    }>();
+
+    if (majorCodes.length > 0) {
+      try {
+        // 批量计算所有收藏专业的分数
+        const scores = await this.scoresService.calculateScores(
+          userId,
+          undefined, // 不限制教育层次
+          majorCodes,
+        );
+
+        // 创建专业代码到分数的映射
+        scores.forEach((scoreInfo) => {
+          scoresMap.set(scoreInfo.majorCode, {
+            score: scoreInfo.score,
+            lexueScore: scoreInfo.lexueScore,
+            shanxueScore: scoreInfo.shanxueScore,
+            yanxueDeduction: scoreInfo.yanxueDeduction,
+            tiaozhanDeduction: scoreInfo.tiaozhanDeduction,
+          });
+        });
+      } catch (error) {
+        this.logger.warn(
+          `计算专业分数失败，用户ID: ${userId}, 错误: ${error.message}`,
+        );
+        // 分数计算失败不影响返回收藏列表，只是没有分数信息
+      }
+    }
+
+    // 为每个收藏记录添加分数信息
+    const itemsWithScores = favorites.map((favorite) => {
+      const scoreInfo = scoresMap.get(favorite.majorCode);
+      return {
+        ...favorite,
+        score: scoreInfo?.score,
+        lexueScore: scoreInfo?.lexueScore,
+        shanxueScore: scoreInfo?.shanxueScore,
+        yanxueDeduction: scoreInfo?.yanxueDeduction,
+        tiaozhanDeduction: scoreInfo?.tiaozhanDeduction,
+      };
     });
 
     // 计算总页数
@@ -160,7 +242,8 @@ export class MajorsService {
     );
 
     return {
-      items: favorites,
+      user,
+      items: itemsWithScores,
       meta: {
         total,
         page,
