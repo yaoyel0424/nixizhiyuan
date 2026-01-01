@@ -135,15 +135,51 @@ export interface CreateScaleAnswerParams {
 
 // 热门专业相关类型定义
 /**
+ * 专业元素分析
+ */
+export interface MajorElementAnalysis {
+  element?: {
+    id: number
+    name: string
+    status?: string
+  }
+  type?: string
+  summary?: string
+  matchReason?: string
+  originalIndex?: number
+}
+
+/**
+ * 专业匹配分数
+ */
+export interface MajorScore {
+  score?: number | string
+  lexueScore?: number | string
+  shanxueScore?: number | string
+  yanxueDeduction?: number | string
+  tiaozhanDeduction?: number | string
+}
+
+/**
  * 专业详情信息
  */
 export interface MajorDetailInfo {
-  id: number
+  id?: number
   code: string
-  educationLevel: string | null
-  studyPeriod: string | null
-  awardedDegree: string | null
-  majorBrief: string | null
+  name?: string
+  educationLevel?: string | null
+  studyPeriod?: string | null
+  awardedDegree?: string | null
+  majorBrief?: string | null
+  majorKey?: string | null
+  major?: MajorScore | null
+  majorElementAnalyses?: MajorElementAnalysis[] | null
+  studyContent?: any
+  academicDevelopment?: any
+  careerDevelopment?: any
+  industryProspects?: any
+  growthPotential?: any
+  [key: string]: any // 允许其他字段
 }
 
 /**

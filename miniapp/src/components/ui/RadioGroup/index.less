@@ -1,0 +1,45 @@
+// 单选组组件样式
+.ui-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.ui-radio-group-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #d1d5db;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+
+  &--checked {
+    border-color: #1A4099;
+    background: #fff;
+  }
+
+  &__indicator {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__dot {
+    width: 20rpx;
+    height: 20rpx;
+    border-radius: 50%;
+    background: #1A4099;
+  }
+}
+
+.ui-label {
+  cursor: pointer;
+  flex: 1;
+}
+

@@ -1,5 +1,5 @@
 // 心动专业页面
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
@@ -9,11 +9,10 @@ import { BottomNav } from '@/components/BottomNav'
 import { 
   getFavoriteMajors, 
   unfavoriteMajor, 
-  getFavoriteMajorsCount,
-  getMajorDetailByCode
+  getFavoriteMajorsCount
 } from '@/services/majors'
 import { getAllScores } from '@/services/scores'
-import { MajorScoreResponse, MajorDetailInfo } from '@/types/api'
+import { MajorScoreResponse } from '@/types/api'
 import intentionData from '@/assets/data/intention.json'
 import './index.less'
 
@@ -31,10 +30,11 @@ export default function FavoriteMajorsPage() {
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [majorToDelete, setMajorToDelete] = useState<string | null>(null)
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-  const [selectedMajorDetail, setSelectedMajorDetail] = useState<MajorDetailInfo | null>(null)
-  const [selectedMajorName, setSelectedMajorName] = useState<string>('')
-  const [loadingDetail, setLoadingDetail] = useState(false)
+  // 浮动按钮位置
+  const [floatButtonTop, setFloatButtonTop] = useState<number>(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStartY, setDragStartY] = useState(0)
+  const [dragStartTop, setDragStartTop] = useState(0)
 
   // 加载心动专业列表
   useEffect(() => {
@@ -51,13 +51,23 @@ export default function FavoriteMajorsPage() {
 
         // 创建专业代码到分数的映射
         const scoreMap = new Map<string, MajorScoreResponse>()
-        allScores.forEach(score => {
-          scoreMap.set(score.majorCode, score)
-        })
+        // 确保 allScores 是数组
+        if (Array.isArray(allScores)) {
+          allScores.forEach(score => {
+            if (score && score.majorCode) {
+              scoreMap.set(score.majorCode, score)
+            }
+          })
+        }
 
         // 合并收藏列表和专业分数数据
-        const mergedList: FavoriteMajorWithScore[] = favorites
+        // 确保 favorites 是数组
+        const favoritesList = Array.isArray(favorites) ? favorites : []
+        const mergedList: FavoriteMajorWithScore[] = favoritesList
           .map(fav => {
+            if (!fav || !fav.majorCode) {
+              return null
+            }
             const scoreData = scoreMap.get(fav.majorCode)
             if (scoreData) {
               return {
@@ -81,7 +91,7 @@ export default function FavoriteMajorsPage() {
               favoriteCreatedAt: fav.createdAt
             }
           })
-          .filter(major => major.majorCode) // 过滤掉无效数据
+          .filter((major): major is FavoriteMajorWithScore => major !== null && !!major.majorCode) // 过滤掉无效数据
 
         setFavoriteMajorsList(mergedList)
         setFavoriteCount(count)
@@ -142,31 +152,11 @@ export default function FavoriteMajorsPage() {
     }
   }
 
-  // 处理深度了解
-  const handleViewDetail = async (majorCode: string) => {
-    try {
-      setLoadingDetail(true)
-      setDetailDialogOpen(true)
-      
-      // 从收藏列表中获取专业名称
-      const major = favoriteMajorsList.find(m => m.majorCode === majorCode)
-      if (major) {
-        setSelectedMajorName(major.majorName)
-      }
-      
-      const detail = await getMajorDetailByCode(majorCode)
-      setSelectedMajorDetail(detail)
-    } catch (error: any) {
-      console.error('获取专业详情失败:', error)
-      Taro.showToast({
-        title: error?.message || '获取专业详情失败',
-        icon: 'none',
-        duration: 2000
-      })
-      setDetailDialogOpen(false)
-    } finally {
-      setLoadingDetail(false)
-    }
+  // 处理深度了解 - 跳转到深度探索页面
+  const handleViewDetail = (majorCode: string) => {
+    Taro.navigateTo({
+      url: `/pages/assessment/career-exploration/index?code=${majorCode}`
+    })
   }
 
   const toggleBrief = (majorCode: string) => {
@@ -180,6 +170,79 @@ export default function FavoriteMajorsPage() {
       return newSet
     })
   }
+
+  // 跳转到所有专业列表
+  const navigateToAllMajors = useCallback(() => {
+    // 如果正在拖动或刚拖动完，不触发跳转
+    if (isDragging) {
+      return
+    }
+    
+    // 延迟检查，避免拖动结束后立即触发点击
+    setTimeout(() => {
+      if (!isDragging) {
+        Taro.navigateTo({
+          url: '/pages/majors/index'
+        })
+      }
+    }, 150)
+  }, [isDragging])
+
+  // 处理拖动开始
+  const handleTouchStart = useCallback((e: any) => {
+    e.stopPropagation()
+    const touch = e.touches[0]
+    setIsDragging(false) // 先设为false，等待移动距离判断
+    setDragStartY(touch.clientY || touch.y)
+    // 如果已经有位置，使用当前位置；否则使用默认位置
+    const systemInfo = Taro.getSystemInfoSync()
+    const defaultBottom = 160 * (systemInfo.windowWidth / 750) // rpx转px
+    const currentTop = floatButtonTop > 0 
+      ? floatButtonTop 
+      : systemInfo.windowHeight - defaultBottom - 112 * (systemInfo.windowWidth / 750)
+    setDragStartTop(currentTop)
+  }, [floatButtonTop])
+
+  // 处理拖动中
+  const handleTouchMove = useCallback((e: any) => {
+    e.stopPropagation()
+    const touch = e.touches[0]
+    const currentY = touch.clientY || touch.y
+    const deltaY = Math.abs(currentY - dragStartY)
+    
+    // 如果移动距离超过5px，认为是拖动
+    if (deltaY > 5) {
+      setIsDragging(true)
+    }
+    
+    if (deltaY > 5) {
+      const newTop = dragStartTop + (currentY - dragStartY)
+      
+      // 获取系统信息，计算可拖动范围
+      const systemInfo = Taro.getSystemInfoSync()
+      const windowHeight = systemInfo.windowHeight
+      const rpxToPx = systemInfo.windowWidth / 750
+      const buttonHeight = 112 * rpxToPx // 按钮高度
+      const bottomNavHeight = 100 * rpxToPx // 底部导航栏高度
+      const headerHeight = 200 * rpxToPx // 顶部区域高度
+      
+      // 限制拖动范围：不能超出屏幕上下边界
+      const minTop = headerHeight
+      const maxTop = windowHeight - buttonHeight - bottomNavHeight
+      
+      const clampedTop = Math.max(minTop, Math.min(maxTop, newTop))
+      setFloatButtonTop(clampedTop)
+    }
+  }, [dragStartY, dragStartTop])
+
+  // 处理拖动结束
+  const handleTouchEnd = useCallback((e: any) => {
+    e.stopPropagation()
+    // 延迟重置拖动状态，避免立即触发点击事件
+    setTimeout(() => {
+      setIsDragging(false)
+    }, 100)
+  }, [])
 
   // 过滤搜索结果
   const filteredMajors = useMemo(() => {
@@ -290,7 +353,16 @@ export default function FavoriteMajorsPage() {
                 <View className="favorite-majors-page__item-content">
                   <View className="favorite-majors-page__item-header">
                     <View className="favorite-majors-page__item-title-section">
-                      <Text className="favorite-majors-page__item-name">{major.majorName}</Text>
+                      <Text 
+                        className="favorite-majors-page__item-name favorite-majors-page__item-name--clickable"
+                        onClick={() => {
+                          Taro.navigateTo({
+                            url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
+                          })
+                        }}
+                      >
+                        {major.majorName}
+                      </Text>
                       <Text className="favorite-majors-page__item-code">({major.majorCode})</Text>
                       <View className="favorite-majors-page__item-score-badge">
                         <Text>热爱能量: {typeof major.score === 'string' ? parseFloat(major.score).toFixed(2) : major.score.toFixed(2)}</Text>
@@ -351,6 +423,24 @@ export default function FavoriteMajorsPage() {
         )}
       </View>
 
+      {/* 浮动按钮：跳转到所有专业列表 */}
+      <View 
+        className={`favorite-majors-page__float-button ${isDragging ? 'favorite-majors-page__float-button--dragging' : ''}`}
+        style={{ 
+          bottom: floatButtonTop > 0 ? 'auto' : '160rpx',
+          top: floatButtonTop > 0 ? `${floatButtonTop}px` : 'auto',
+          transform: isDragging ? 'scale(1.05)' : 'scale(1)'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={navigateToAllMajors}
+      >
+        <View className="favorite-majors-page__float-button-content">
+          <Text className="favorite-majors-page__float-button-text">所有专业</Text>
+        </View>
+      </View>
+
       <BottomNav />
 
       {/* 删除确认对话框 */}
@@ -379,68 +469,6 @@ export default function FavoriteMajorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 专业详情对话框 */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>专业详情</DialogTitle>
-            <DialogDescription>
-              {loadingDetail ? '加载中...' : selectedMajorDetail ? '专业详细信息' : ''}
-            </DialogDescription>
-          </DialogHeader>
-          {loadingDetail ? (
-            <View style={{ padding: '20px', textAlign: 'center' }}>
-              <Text>加载中...</Text>
-            </View>
-          ) : selectedMajorDetail ? (
-            <View style={{ padding: '20px' }}>
-              <View style={{ marginBottom: '16px' }}>
-                {selectedMajorName && (
-                  <Text style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '4px', display: 'block' }}>
-                    {selectedMajorName}
-                  </Text>
-                )}
-                <Text style={{ color: '#666', fontSize: '14px', marginBottom: '12px', display: 'block' }}>
-                  专业代码: {selectedMajorDetail.code}
-                </Text>
-                {selectedMajorDetail.educationLevel && (
-                  <Text style={{ color: '#666', marginBottom: '4px', display: 'block' }}>
-                    学历层次: {selectedMajorDetail.educationLevel}
-                  </Text>
-                )}
-                {selectedMajorDetail.studyPeriod && (
-                  <Text style={{ color: '#666', marginBottom: '4px', display: 'block' }}>
-                    修业年限: {selectedMajorDetail.studyPeriod}
-                  </Text>
-                )}
-                {selectedMajorDetail.awardedDegree && (
-                  <Text style={{ color: '#666', marginBottom: '4px', display: 'block' }}>
-                    授予学位: {selectedMajorDetail.awardedDegree}
-                  </Text>
-                )}
-              </View>
-              {selectedMajorDetail.majorBrief && (
-                <View style={{ marginTop: '16px' }}>
-                  <Text style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
-                    专业简介:
-                  </Text>
-                  <Text style={{ lineHeight: '1.6', color: '#333' }}>
-                    {selectedMajorDetail.majorBrief}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ) : null}
-          <DialogFooter>
-            <Button
-              onClick={() => setDetailDialogOpen(false)}
-              variant="outline"
-            >
-              关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </View>
   )
 }

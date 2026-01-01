@@ -438,7 +438,16 @@ export default function MajorsPage() {
                           <Text className="majors-page__major-rank-text">{rank}</Text>
                         </View>
                         <View className="majors-page__major-info">
-                          <Text className="majors-page__major-name">{major.majorName}</Text>
+                          <Text 
+                            className="majors-page__major-name majors-page__major-name--clickable"
+                            onClick={() => {
+                              Taro.navigateTo({
+                                url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
+                              })
+                            }}
+                          >
+                            {major.majorName}
+                          </Text>
                           <Text className="majors-page__major-code">专业代码：{major.majorCode}</Text>
                         </View>
                         <View className="majors-page__major-score">

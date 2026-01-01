@@ -180,6 +180,16 @@
   margin-bottom: 6rpx;
   display: block;
   word-break: break-all;
+
+  &--clickable {
+    color: #1A4099;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    
+    &:active {
+      opacity: 0.7;
+    }
+  }
 }
 
 .majors-page__major-code {

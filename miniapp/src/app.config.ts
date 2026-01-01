@@ -6,6 +6,7 @@ export default {
     'pages/assessment/all-majors/index',
     'pages/assessment/personal-profile/index',
     'pages/assessment/favorite-majors/index',
+    'pages/assessment/single-major/index',
     'pages/majors/index',
     'pages/majors/intended/index',
     'pages/majors/intended/schools/index',
@@ -14,7 +15,8 @@ export default {
     'pages/assessment/questionnaire/index',
     'pages/assessment/popular-majors/index',
     'pages/assessment/report/index',
-    'pages/assessment/provinces/index'
+    'pages/assessment/provinces/index',
+    'pages/assessment/career-exploration/index'
   ],
   window: {
     backgroundTextStyle: 'light',

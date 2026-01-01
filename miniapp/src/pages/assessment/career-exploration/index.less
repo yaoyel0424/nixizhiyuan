@@ -1,0 +1,918 @@
+// 深度探索页面样式
+@import '@/styles/variables.less';
+@import '@/styles/mixins.less';
+
+.career-exploration-page {
+  min-height: 100vh;
+  background: #f0f7ff;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
+}
+
+.career-exploration-page__loading,
+.career-exploration-page__error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 48rpx;
+}
+
+.career-exploration-page__error {
+  &-title {
+    font-size: 36rpx;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 16rpx;
+  }
+
+  &-message {
+    font-size: 28rpx;
+    color: #666;
+    margin-bottom: 48rpx;
+    text-align: center;
+  }
+
+  &-button {
+    margin-top: 32rpx;
+  }
+}
+
+.career-exploration-page__header {
+  background: #1A4099;
+  color: #fff;
+  padding: 48rpx 32rpx 64rpx;
+  position: relative;
+}
+
+.career-exploration-page__header-content {
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.career-exploration-page__title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #fff;
+  display: block;
+}
+
+.career-exploration-page__title-sub {
+  font-size: 32rpx;
+  font-weight: normal;
+}
+
+.career-exploration-page__wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32rpx;
+  background: #f0f7ff;
+  clip-path: ellipse(70% 100% at 50% 100%);
+}
+
+.career-exploration-page__scroll {
+  flex: 1;
+  height: calc(100vh - 200rpx);
+}
+
+.career-exploration-page__content {
+  padding: 32rpx;
+  max-width: 1024rpx;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.career-exploration-page__info-card {
+  padding: 32rpx;
+  background: #fff;
+  margin-bottom: 32rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.career-exploration-page__info-header {
+  margin-bottom: 24rpx;
+}
+
+.career-exploration-page__info-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #1A4099;
+}
+
+.career-exploration-page__info-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.career-exploration-page__info-field {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.career-exploration-page__info-label {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.career-exploration-page__info-value {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.career-exploration-page__info-brief {
+  padding-top: 24rpx;
+  border-top: 1rpx solid #e5e7eb;
+  margin-bottom: 24rpx;
+}
+
+.career-exploration-page__info-brief-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+.career-exploration-page__info-keywords {
+  padding-top: 24rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.career-exploration-page__info-keywords-label {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.career-exploration-page__info-keywords-value {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.career-exploration-page__tabs-wrapper {
+  width: 100%;
+  margin-left: -32rpx;
+  margin-right: -32rpx;
+  padding: 0 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.career-exploration-page__tabs-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  background: #fff;
+  padding: 8rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  width: 100%;
+}
+
+.career-exploration-page__tabs-trigger {
+  padding: 24rpx 16rpx;
+  text-align: center;
+  border-radius: 12rpx;
+  background: transparent;
+  border: 2rpx solid transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  
+  &:active {
+    transform: scale(0.98);
+  }
+  
+  // 激活状态样式
+  &.ui-tabs-trigger--active {
+    background: linear-gradient(135deg, #1A4099 0%, #2563eb 100%);
+    color: #fff;
+    border-color: #1A4099;
+    box-shadow: 0 4rpx 12rpx rgba(26, 64, 153, 0.3);
+    font-weight: 600;
+    
+    .ui-tabs-trigger__text,
+    .career-exploration-page__tabs-trigger-text {
+      color: #fff;
+    }
+    
+    .career-exploration-page__tabs-trigger-icon {
+      filter: brightness(0) invert(1);
+    }
+  }
+  
+  // 未激活状态
+  &:not(.ui-tabs-trigger--active) {
+    background: #f5f5f5;
+    color: #666;
+    
+    .ui-tabs-trigger__text,
+    .career-exploration-page__tabs-trigger-text {
+      color: #666;
+    }
+    
+    &:active {
+      background: #e5e5e5;
+      transform: scale(0.98);
+    }
+    
+    &:hover {
+      background: #eeeeee;
+    }
+  }
+}
+
+.career-exploration-page__tabs-trigger-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  width: 100%;
+}
+
+.career-exploration-page__tabs-trigger-icon {
+  font-size: 32rpx;
+  line-height: 1;
+}
+
+.career-exploration-page__tabs-trigger-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  display: block;
+  color: inherit;
+}
+
+// 激活状态文字颜色
+.ui-tabs-trigger--active .career-exploration-page__tabs-trigger-text {
+  color: #fff;
+  font-weight: 600;
+}
+
+// 未激活状态文字颜色
+.ui-tabs-trigger:not(.ui-tabs-trigger--active) .career-exploration-page__tabs-trigger-text {
+  color: #666;
+}
+
+.career-exploration-page__tabs-content {
+  margin-top: 32rpx;
+  min-height: 200rpx;
+}
+
+.career-exploration-page__passion-content,
+.career-exploration-page__opportunity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.career-exploration-page__tabs-content {
+  margin-top: 32rpx;
+}
+
+.career-exploration-page__passion-content,
+.career-exploration-page__opportunity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.career-exploration-page__action-button {
+  margin-top: 48rpx;
+  margin-bottom: 32rpx;
+  position: sticky;
+  bottom: 32rpx;
+}
+
+.career-exploration-page__not-suitable-button {
+  width: 100%;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  height: 96rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(239, 68, 68, 0.3);
+  transition: all 0.3s;
+  
+  &:active {
+    transform: scale(0.98);
+    box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.3);
+  }
+}
+
+.career-exploration-page__delete-confirm-button {
+  background: #ef4444;
+  color: #fff;
+  
+  &:hover {
+    background: #dc2626;
+  }
+}
+
+// 热爱能量显示样式
+.career-exploration-page__empty-text {
+  padding: 32rpx;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+.career-exploration-page__score-card {
+  padding: 32rpx;
+  background: #fff;
+  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.career-exploration-page__score-display {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.career-exploration-page__score-main {
+  text-align: center;
+}
+
+.career-exploration-page__score-value {
+  font-size: 72rpx;
+  font-weight: 800;
+  color: #FF7F50;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.career-exploration-page__score-label {
+  font-size: 24rpx;
+  color: #666;
+  display: block;
+}
+
+.career-exploration-page__score-details {
+  padding-top: 24rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.career-exploration-page__score-details-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8rpx 0;
+}
+
+.career-exploration-page__score-details-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A4099;
+}
+
+.career-exploration-page__score-details-arrow {
+  font-size: 24rpx;
+  color: #1A4099;
+}
+
+.career-exploration-page__score-details-content {
+  margin-top: 16rpx;
+}
+
+.career-exploration-page__score-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.career-exploration-page__score-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.career-exploration-page__score-detail-label {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.career-exploration-page__score-detail-value {
+  font-size: 24rpx;
+  font-weight: bold;
+  
+  &--positive {
+    color: #16a34a;
+  }
+  
+  &--negative {
+    color: #ef4444;
+  }
+}
+
+// 喜欢与天赋概览样式
+.career-exploration-page__analysis-empty {
+  padding: 48rpx 32rpx;
+  text-align: center;
+  border: 2rpx dashed #d1d5db;
+  background: #f9fafb;
+}
+
+.career-exploration-page__analysis-empty-text {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 32rpx;
+  display: block;
+}
+
+.career-exploration-page__analysis-empty-button {
+  margin-top: 32rpx;
+}
+
+.career-exploration-page__analysis-card {
+  padding: 0;
+  background: #fff;
+  border: 1rpx solid rgba(26, 64, 153, 0.2);
+  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.career-exploration-page__analysis-header {
+  background: rgba(26, 64, 153, 0.05);
+  padding: 24rpx 32rpx;
+  border-bottom: 1rpx solid rgba(26, 64, 153, 0.1);
+}
+
+.career-exploration-page__analysis-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A4099;
+}
+
+.career-exploration-page__analysis-buttons {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 32rpx;
+}
+
+.career-exploration-page__analysis-button {
+  flex: 1;
+  padding: 32rpx 16rpx;
+  border-radius: 16rpx;
+  text-align: center;
+  border: 2rpx solid;
+  transition: all 0.3s;
+  
+  &--positive {
+    border-color: #86efac;
+    background: #f0fdf4;
+    
+    &.career-exploration-page__analysis-button--active {
+      border-color: #4ade80;
+      background: #dcfce7;
+    }
+  }
+  
+  &--negative {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    
+    &.career-exploration-page__analysis-button--active {
+      border-color: #f87171;
+      background: #fee2e2;
+    }
+  }
+}
+
+.career-exploration-page__analysis-button-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
+}
+
+.career-exploration-page__analysis-button-count {
+  font-size: 48rpx;
+  font-weight: bold;
+  
+  &--positive {
+    color: #16a34a;
+  }
+  
+  &--negative {
+    color: #ef4444;
+  }
+}
+
+.career-exploration-page__analysis-button-icon {
+  font-size: 48rpx;
+}
+
+.career-exploration-page__analysis-button-label {
+  font-size: 28rpx;
+  color: #666;
+}
+
+.career-exploration-page__analysis-items {
+  padding: 24rpx 32rpx;
+  border-top: 1rpx solid;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  
+  &--positive {
+    border-top-color: #86efac;
+  }
+  
+  &--negative {
+    border-top-color: #fca5a5;
+  }
+}
+
+.career-exploration-page__item-card {
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 2rpx solid;
+  
+  &--positive {
+    background: #f0fdf4;
+    border-color: #86efac;
+  }
+  
+  &--negative {
+    background: #fef2f2;
+    border-color: #fca5a5;
+  }
+}
+
+.career-exploration-page__item-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 24rpx;
+}
+
+.career-exploration-page__item-card-content {
+  flex: 1;
+}
+
+.career-exploration-page__item-card-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.career-exploration-page__item-card-summary {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.5;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.career-exploration-page__item-card-icons {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.career-exploration-page__item-card-icon {
+  font-size: 32rpx;
+  
+  &--positive {
+    color: #16a34a;
+  }
+  
+  &--negative {
+    color: #ef4444;
+  }
+}
+
+.career-exploration-page__item-card-arrow {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.career-exploration-page__item-card-expanded {
+  padding: 0 24rpx 24rpx;
+  border-top: 1rpx solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.career-exploration-page__item-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.career-exploration-page__item-card-field-label {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #666;
+}
+
+.career-exploration-page__item-card-field-value {
+  font-size: 24rpx;
+  color: #1f2937;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+// 职业发展 Tab 样式
+.career-exploration-page__opportunity-card {
+  padding: 32rpx;
+  background: #fff;
+  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.career-exploration-page__opportunity-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  
+  &:active {
+    background: rgba(26, 64, 153, 0.05);
+  }
+}
+
+.career-exploration-page__opportunity-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  flex: 1;
+}
+
+.career-exploration-page__opportunity-label {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #666;
+}
+
+.career-exploration-page__opportunity-tag {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  
+  &--purple {
+    background: #f3e8ff;
+    color: #7c3aed;
+  }
+  
+  &--orange {
+    background: #fed7aa;
+    color: #ea580c;
+  }
+  
+  &--green {
+    background: #dcfce7;
+    color: #16a34a;
+  }
+  
+  &--blue {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+}
+
+.career-exploration-page__opportunity-arrow {
+  font-size: 24rpx;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.career-exploration-page__opportunity-content-inner {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.career-exploration-page__opportunity-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.career-exploration-page__opportunity-score-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 8rpx;
+  margin-bottom: 8rpx;
+}
+
+.career-exploration-page__opportunity-score-label {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.career-exploration-page__opportunity-score-value {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1A4099;
+}
+
+.career-exploration-page__opportunity-score {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.career-exploration-page__opportunity-text-wrapper {
+  margin-bottom: 8rpx;
+}
+
+.career-exploration-page__opportunity-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  display: block;
+}
+
+.career-exploration-page__opportunity-salary {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.career-exploration-page__opportunity-risks {
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.career-exploration-page__opportunity-risks-title {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.career-exploration-page__opportunity-risk-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.career-exploration-page__opportunity-risk-key {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.career-exploration-page__opportunity-risk-value {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+// 天赋匹配度详细分析对话框样式
+.career-exploration-page__detail-dialog {
+  max-height: 80vh;
+}
+
+.career-exploration-page__detail-dialog-content {
+  max-height: 60vh;
+  padding: 24rpx;
+}
+
+.career-exploration-page__element-analyses {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.career-exploration-page__element-analyses-group {
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 1rpx solid #e5e7eb;
+}
+
+.career-exploration-page__element-analyses-group-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx;
+}
+
+.career-exploration-page__element-analyses-group-icon {
+  font-size: 40rpx;
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.career-exploration-page__element-analyses-group-title {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.career-exploration-page__element-analyses-group-content {
+  padding: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.career-exploration-page__element-analyses-item {
+  width: 100%;
+}
+
+.career-exploration-page__element-analyses-item-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  background: #f3f4f6;
+  border: 1rpx solid transparent;
+  transition: all 0.3s;
+  
+  &--expanded {
+    background: rgba(26, 64, 153, 0.1);
+    border-color: #1A4099;
+  }
+}
+
+.career-exploration-page__element-analyses-item-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+  flex: 1;
+}
+
+.career-exploration-page__element-analyses-item-arrow {
+  font-size: 24rpx;
+  color: #666;
+  transition: transform 0.3s;
+  
+  &--expanded {
+    transform: rotate(180deg);
+  }
+}
+
+.career-exploration-page__element-analyses-item-content {
+  margin-top: 8rpx;
+  padding: 16rpx;
+  border-radius: 12rpx;
+  background: rgba(26, 64, 153, 0.05);
+  border: 1rpx solid rgba(26, 64, 153, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.career-exploration-page__element-analyses-item-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.career-exploration-page__element-analyses-item-field-label {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #666;
+}
+
+.career-exploration-page__element-analyses-item-field-value {
+  font-size: 28rpx;
+  color: #1f2937;
+  line-height: 1.6;
+}
+

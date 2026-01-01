@@ -50,6 +50,7 @@ const Tabs: React.FC<TabsProps> = ({
     <View className={cn('ui-tabs', className)}>
       {React.Children.map(children, (child) => {
         if (React.isValidElement(child)) {
+          // 直接给所有子组件传递属性，让它们自己判断是否需要
           return React.cloneElement(child as any, {
             activeValue: value,
             onValueChange: handleValueChange,
@@ -61,13 +62,28 @@ const Tabs: React.FC<TabsProps> = ({
   )
 }
 
-const TabsList: React.FC<TabsListProps> = ({ className = '', children }) => {
+const TabsList: React.FC<TabsListProps & { activeValue?: string; onValueChange?: (value: string) => void }> = ({ 
+  className = '', 
+  children,
+  activeValue,
+  onValueChange
+}) => {
   return (
     <View className={cn('ui-tabs-list', className)}>
-      {children}
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child as any, {
+            activeValue,
+            onValueChange,
+          })
+        }
+        return child
+      })}
     </View>
   )
 }
+
+TabsList.displayName = 'TabsList'
 
 const TabsTrigger: React.FC<TabsTriggerProps & { value: string; onValueChange?: (value: string) => void; activeValue?: string }> = ({
   value,
@@ -83,7 +99,11 @@ const TabsTrigger: React.FC<TabsTriggerProps & { value: string; onValueChange?: 
       className={cn('ui-tabs-trigger', isActive && 'ui-tabs-trigger--active', className)}
       onClick={() => onValueChange?.(value)}
     >
-      <Text className="ui-tabs-trigger__text">{children}</Text>
+      {typeof children === 'string' ? (
+        <Text className="ui-tabs-trigger__text">{children}</Text>
+      ) : (
+        children
+      )}
     </View>
   )
 }
@@ -94,7 +114,15 @@ const TabsContent: React.FC<TabsContentProps & { activeValue?: string }> = ({
   children,
   activeValue,
 }) => {
-  if (activeValue !== value) return null
+  // 如果没有 activeValue，不渲染（等待 Tabs 传递）
+  if (activeValue === undefined) {
+    return null
+  }
+  
+  // 如果 activeValue 不匹配，不渲染
+  if (activeValue !== value) {
+    return null
+  }
 
   return (
     <View className={cn('ui-tabs-content', className)}>
@@ -102,6 +130,9 @@ const TabsContent: React.FC<TabsContentProps & { activeValue?: string }> = ({
     </View>
   )
 }
+
+TabsContent.displayName = 'TabsContent'
+TabsTrigger.displayName = 'TabsTrigger'
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }
 

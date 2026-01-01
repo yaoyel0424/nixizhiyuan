@@ -1,0 +1,25 @@
+// 可折叠组件样式
+.ui-collapsible {
+  width: 100%;
+}
+
+.ui-collapsible-trigger {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ui-collapsible-content {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
