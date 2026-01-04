@@ -27,7 +27,7 @@ export class School {
     /**
      * 国标代码
      */
-    @Column({ length: 50, nullable: true, name: 'gb_code',select:false })
+    @Column({ length: 50, nullable: true, name: 'gb_code',select:false})
     gbCode: string;
 
     /**

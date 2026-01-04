@@ -5,11 +5,13 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { ProvinceFavorite } from '@/entities/province-favorite.entity';
 import { Province } from '@/entities/province.entity';
+import { School } from '@/entities/school.entity';
 import { CreateProvinceFavoriteDto } from './dto/create-province-favorite.dto';
 import { ProvincesListResponseDto } from './dto/province-response.dto';
+import { QuerySchoolDto } from './dto/query-school.dto';
 import { ErrorCode } from '../common/constants/error-code.constant';
 import { IPaginationResponse } from '../common/interfaces/response.interface';
 
@@ -26,6 +28,8 @@ export class ProvincesService {
     private readonly provinceRepository: Repository<Province>,
     @InjectRepository(ProvinceFavorite)
     private readonly provinceFavoriteRepository: Repository<ProvinceFavorite>,
+    @InjectRepository(School)
+    private readonly schoolRepository: Repository<School>,
   ) {}
 
   /**
@@ -183,6 +187,58 @@ export class ProvincesService {
     return await this.provinceFavoriteRepository.count({
       where: { userId },
     });
+  }
+
+  /**
+   * 通过省份名称查询院校（支持分页和按名称查询）
+   * @param queryDto 查询条件
+   * @returns 分页的院校列表
+   */
+  async findSchoolsByProvince(
+    queryDto: QuerySchoolDto,
+  ): Promise<IPaginationResponse<School>> {
+    const {
+      provinceName,
+      name,
+      page = 1,
+      limit = 10,
+    } = queryDto;
+
+    const skip = (page - 1) * limit;
+
+    // 构建查询条件
+    const where: any = {
+      provinceName,
+    };
+
+    // 如果提供了学校名称，进行模糊查询
+    if (name) {
+      where.name = Like(`%${name}%`);
+    }
+
+    // 执行分页查询
+    const [items, total] = await this.schoolRepository.findAndCount({
+      where,
+      order: { code: 'ASC' },
+      skip,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    this.logger.log(
+      `通过省份 ${provinceName} 查询院校，名称: ${name || '全部'}，共 ${total} 所，当前页: ${page}/${totalPages}`,
+    );
+
+    return {
+      items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    };
   }
 }
 

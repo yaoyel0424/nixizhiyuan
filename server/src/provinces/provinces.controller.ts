@@ -5,10 +5,12 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
   ParseIntPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,6 +18,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ProvincesService } from './provinces.service';
 import { CreateProvinceFavoriteDto } from './dto/create-province-favorite.dto';
@@ -24,6 +27,12 @@ import {
   ProvinceFavoriteResponseDto,
   ProvinceFavoriteDetailResponseDto,
 } from './dto/province-response.dto';
+import { SchoolResponseDto } from './dto/school-response.dto';
+import { QuerySchoolDto } from './dto/query-school.dto';
+import {
+  SchoolPaginationResponseDto,
+  PaginationMetaDto,
+} from './dto/school-pagination-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { User } from '@/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
@@ -175,6 +184,61 @@ export class ProvincesController {
   ): Promise<{ count: number }> {
     const count = await this.provincesService.getFavoriteCount(user.id);
     return { count };
+  }
+
+  /**
+   * 通过省份名称查询院校（支持分页和按名称查询）
+   * @param queryDto 查询参数
+   * @returns 分页的院校列表
+   */
+  @Get('schools')
+  @ApiOperation({ summary: '通过省份名称查询院校（支持分页和按名称查询）' })
+  @ApiQuery({
+    name: 'provinceName',
+    description: '省份名称',
+    example: '北京',
+    required: true,
+  })
+  @ApiQuery({
+    name: 'name',
+    description: '学校名称（模糊查询）',
+    example: '大学',
+    required: false,
+  })
+  @ApiQuery({
+    name: 'page',
+    description: '页码',
+    example: 1,
+    required: false,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: '每页数量',
+    example: 10,
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: SchoolPaginationResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: '参数错误',
+  })
+  async findSchoolsByProvince(
+    @Query() queryDto: QuerySchoolDto,
+  ): Promise<SchoolPaginationResponseDto> {
+    const result = await this.provincesService.findSchoolsByProvince(queryDto);
+
+    return {
+      items: plainToInstance(SchoolResponseDto, result.items, {
+        excludeExtraneousValues: true,
+      }),
+      meta: plainToInstance(PaginationMetaDto, result.meta, {
+        excludeExtraneousValues: true,
+      }),
+    };
   }
 }
 
