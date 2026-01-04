@@ -102,7 +102,7 @@ export class ScoresService {
         LEFT JOIN user_answers ua ON ua.scale_id = s.id
         WHERE s.id > 112 ${eduLevelCondition} ${majorCodeCondition}
       ),
-      type_scores AS (
+      aggregated_scores AS (
         SELECT 
           major_code,
           major_name,
@@ -112,6 +112,7 @@ export class ScoresService {
           potential_conversion_value,
           SUM(weighted_score) as type_score,
           SUM(total_possible_score) as type_total_score,
+          -- 计算类型比例
           ROUND(
             COALESCE(
               CAST(SUM(weighted_score) AS NUMERIC) / 
@@ -119,74 +120,81 @@ export class ScoresService {
               0
             )::NUMERIC, 
             2
-          )::NUMERIC as type_ratio
+          )::NUMERIC as type_ratio,
+          -- 预计算学习类型分数
+          SUM(CASE WHEN type = 'lexue' THEN weighted_score ELSE 0 END) as lexue_weighted_sum,
+          SUM(CASE WHEN type = 'lexue' THEN total_possible_score ELSE 0 END) as lexue_total_sum,
+          SUM(CASE WHEN type = 'shanxue' THEN weighted_score ELSE 0 END) as shanxue_weighted_sum,
+          SUM(CASE WHEN type = 'shanxue' THEN total_possible_score ELSE 0 END) as shanxue_total_sum
         FROM major_base_data
         GROUP BY major_code, major_name, edu_level, major_brief, type, potential_conversion_value
       ),
-      study_scores AS (
+      final_scores AS (
         SELECT 
           major_code,
           major_name,
           edu_level,
-          major_brief, 
+          major_brief,
+          -- 计算学习分数
           ROUND(
-            CAST(SUM(CASE WHEN type = 'lexue' THEN weighted_score ELSE 0 END) AS NUMERIC) /
-            NULLIF(CAST(SUM(CASE WHEN type = 'lexue' THEN total_possible_score ELSE 0 END) AS NUMERIC), 0) * 0.5 * 100,
+            COALESCE(
+              CAST(SUM(lexue_weighted_sum) AS NUMERIC) /
+              NULLIF(CAST(SUM(lexue_total_sum) AS NUMERIC), 0),
+              0
+            )::NUMERIC * 0.5 * 100,
             2
           )::NUMERIC as lexue_score,
           ROUND(
-            CAST(SUM(CASE WHEN type = 'shanxue' THEN weighted_score ELSE 0 END) AS NUMERIC) /
-            NULLIF(CAST(SUM(CASE WHEN type = 'shanxue' THEN total_possible_score ELSE 0 END) AS NUMERIC), 0) * 0.5 * 100,
+            COALESCE(
+              CAST(SUM(shanxue_weighted_sum) AS NUMERIC) /
+              NULLIF(CAST(SUM(shanxue_total_sum) AS NUMERIC), 0),
+              0
+            )::NUMERIC * 0.5 * 100,
             2
-          )::NUMERIC as shanxue_score 
-        FROM major_base_data
+          )::NUMERIC as shanxue_score,
+          -- 计算扣分
+          ROUND(
+            MAX(CASE 
+              WHEN type = 'tiaozhan' AND type_score > 0 THEN
+                CASE 
+                  WHEN potential_conversion_value = 'medium' THEN type_ratio * 0.5 * 0.25 * 100
+                  WHEN potential_conversion_value = 'low' THEN type_ratio * 0.25 * 100
+                  ELSE 0 
+                END 
+              ELSE 0 
+            END),
+            2
+          )::NUMERIC as tiaozhan_deduction,
+          ROUND(
+            MAX(CASE 
+              WHEN type = 'yanxue' AND type_score > 0 THEN
+                CASE 
+                  WHEN potential_conversion_value = 'medium' THEN type_ratio * 0.5 * 0.25 * 100
+                  WHEN potential_conversion_value = 'low' THEN type_ratio * 0.25 * 100
+                  ELSE 0 
+                END 
+              ELSE 0 
+            END),
+            2
+          )::NUMERIC as yanxue_deduction
+        FROM aggregated_scores
         GROUP BY major_code, major_name, edu_level, major_brief
-      ),
-      deduction_scores AS (
-        SELECT 
-          ts.major_code,
-          ROUND(MAX(CASE WHEN ts.type = 'tiaozhan' AND ts.type_score > 0 THEN 
-            CASE 
-              WHEN ts.potential_conversion_value = 'medium' THEN ts.type_ratio * 0.5 * 0.25 * 100
-              WHEN ts.potential_conversion_value = 'low' THEN ts.type_ratio * 0.25 * 100
-              ELSE 0 
-            END 
-          ELSE 0 END), 2)::NUMERIC as tiaozhan_deduction,
-          ROUND(MAX(CASE WHEN ts.type = 'yanxue' AND ts.type_score > 0 THEN 
-            CASE 
-              WHEN ts.potential_conversion_value = 'medium' THEN ts.type_ratio * 0.5 * 0.25 * 100
-              WHEN ts.potential_conversion_value = 'low' THEN ts.type_ratio * 0.25 * 100
-              ELSE 0 
-            END 
-          ELSE 0 END), 2)::NUMERIC as yanxue_deduction
-        FROM type_scores ts
-        GROUP BY ts.major_code
-      ),
-      final_scores AS (
-        SELECT 
-          ss.major_code,
-          ss.major_name,
-          ss.edu_level,  
-          ss.major_brief, 
-          COALESCE(ss.lexue_score, 0) as lexue_score,
-          COALESCE(ss.shanxue_score, 0) as shanxue_score,
-          COALESCE(ds.yanxue_deduction, 0) as yanxue_deduction,
-          COALESCE(ds.tiaozhan_deduction, 0) as tiaozhan_deduction,
-          COALESCE(ss.lexue_score, 0) + COALESCE(ss.shanxue_score, 0) - (COALESCE(ds.tiaozhan_deduction, 0) + COALESCE(ds.yanxue_deduction, 0)) as base_score
-        FROM study_scores ss
-        JOIN deduction_scores ds ON ds.major_code = ss.major_code
       )
       SELECT 
-        fs.major_code as "majorCode",
-        fs.major_name as "majorName",
-        fs.major_brief as "majorBrief",
-        fs.edu_level as "eduLevel",
-        fs.yanxue_deduction as "yanxueDeduction",
-        fs.tiaozhan_deduction as "tiaozhanDeduction",
-        ROUND(CAST(fs.base_score AS NUMERIC), 2)::NUMERIC as score,
-        ROUND(CAST(fs.lexue_score AS NUMERIC), 2)::NUMERIC as "lexueScore",
-        ROUND(CAST(fs.shanxue_score AS NUMERIC), 2)::NUMERIC as "shanxueScore"
-      FROM final_scores fs
+        major_code as "majorCode",
+        major_name as "majorName",
+        major_brief as "majorBrief",
+        edu_level as "eduLevel",
+        COALESCE(yanxue_deduction, 0) as "yanxueDeduction",
+        COALESCE(tiaozhan_deduction, 0) as "tiaozhanDeduction",
+        ROUND(
+          COALESCE(lexue_score, 0) + COALESCE(shanxue_score, 0) - 
+          (COALESCE(tiaozhan_deduction, 0) + COALESCE(yanxue_deduction, 0)),
+          2
+        )::NUMERIC as score,
+        COALESCE(lexue_score, 0) as "lexueScore",
+        COALESCE(shanxue_score, 0) as "shanxueScore"
+      FROM final_scores
       ORDER BY score DESC
     `;
 

@@ -4,6 +4,8 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 import { ValidationPipe as CustomValidationPipe } from './common/pipes/validation.pipe';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const basicAuth = require('express-basic-auth');
 
 /**
  * 应用入口文件
@@ -41,6 +43,21 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
+
+  // 配置 Swagger 文档的 Basic Auth 保护
+  const swaggerUsername = configService.get<string>('swagger.username') || 'admin';
+  const swaggerPassword = configService.get<string>('swagger.password') || 'NIXIzhiyuan123!@#';
+
+  app.use(
+    ['/api/docs', '/api/docs-json', '/api/docs-yaml'],
+    basicAuth({
+      challenge: true,
+      users: {
+        [swaggerUsername]: swaggerPassword,
+      },
+    }),
+  );
+
   SwaggerModule.setup('api/docs', app, document);
 
     // 监听所有网络接口，允许外部访问
