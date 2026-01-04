@@ -8,6 +8,7 @@ import { Element } from '@/entities/element.entity';
 import { Scale } from '@/entities/scale.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { User } from '@/entities/user.entity';
+import { SchoolMajor } from '@/entities/school-major.entity';
 import { RedisModule } from '@/redis/redis.module';
 import { ScoresModule } from '@/scores/scores.module';
 import { MajorsController } from './majors.controller';
@@ -29,6 +30,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
       Scale,
       ScaleAnswer,
       User,
+      SchoolMajor,
     ]),
     RedisModule,
     ScoresModule,

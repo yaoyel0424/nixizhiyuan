@@ -14,6 +14,7 @@ import { Element } from '@/entities/element.entity';
 import { Scale } from '@/entities/scale.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { User } from '@/entities/user.entity';
+import { SchoolMajor } from '@/entities/school-major.entity';
 import { ScoresService } from '@/scores/scores.service';
 import { CreateMajorFavoriteDto } from './dto/create-major-favorite.dto';
 import { QueryMajorFavoriteDto } from './dto/query-major-favorite.dto';
@@ -45,6 +46,8 @@ export class MajorsService {
     private readonly scaleAnswerRepository: Repository<ScaleAnswer>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(SchoolMajor)
+    private readonly schoolMajorRepository: Repository<SchoolMajor>,
     private readonly scoresService: ScoresService,
   ) {}
 
@@ -378,6 +381,87 @@ export class MajorsService {
         userElementScore: (analysis as any).userElementScore,
       })),
     };
+  }
+
+  /**
+   * 通过学校代码查询学校专业，并返回专业分数
+   * @param userId 用户ID
+   * @param schoolCode 学校代码
+   * @returns 专业分数列表
+   */
+  async getSchoolMajorsWithScores(
+    userId: number,
+    schoolCode: string,
+  ): Promise<
+    Array<{
+      majorCode: string;
+      majorName: string;
+      majorBrief: string | null;
+      eduLevel: string;
+      yanxueDeduction: number;
+      tiaozhanDeduction: number;
+      score: number;
+      lexueScore: number;
+      shanxueScore: number;
+    }>
+  > {
+
+    // 通过学校代码查询学校专业记录
+    const schoolMajors = await this.schoolMajorRepository.find({
+      where: { schoolCode },
+      relations: ['majorDetail', 'majorDetail.major'],
+    });
+
+    if (schoolMajors.length === 0) {
+      this.logger.warn(
+        `未找到学校专业记录，schoolCode: ${schoolCode}`,
+      );
+      return [];
+    }
+
+    // 获取所有专业代码
+    const foundMajorCodes = schoolMajors.map((sm) => sm.majorCode);
+
+    // 调用分数服务计算专业分数
+    const scores = await this.scoresService.calculateScores(
+      userId,
+      undefined, // 不限制教育层次
+      foundMajorCodes,
+    );
+
+    // 创建专业代码到专业详情的映射
+    const majorDetailMap = new Map<string, { name: string; brief: string | null; eduLevel: string }>();
+    schoolMajors.forEach((sm) => {
+      if (sm.majorDetail) {
+        majorDetailMap.set(sm.majorCode, {
+          name: sm.majorName || sm.majorDetail.major?.name || '未知专业',
+          brief: sm.majorDetail.majorBrief || null,
+          eduLevel: sm.majorDetail.major?.eduLevel || '未知',
+        });
+      }
+    });
+
+    // 合并分数和专业信息
+    const result = scores.map((score) => {
+      const majorInfo = majorDetailMap.get(score.majorCode);
+      return {
+        majorCode: score.majorCode,
+        majorName: majorInfo?.name || score.majorName,
+        majorBrief: majorInfo?.brief || score.majorBrief,
+        eduLevel: majorInfo?.eduLevel || score.eduLevel,
+        yanxueDeduction: score.yanxueDeduction,
+        tiaozhanDeduction: score.tiaozhanDeduction,
+        score: score.score,
+        lexueScore: score.lexueScore,
+        shanxueScore: score.shanxueScore,
+      };
+    });
+
+    this.logger.log(
+      `通过学校代码 ${schoolCode} 查询专业分数，共 ${result.length} 个专业`,
+    );
+
+    return result;
   }
 }
 

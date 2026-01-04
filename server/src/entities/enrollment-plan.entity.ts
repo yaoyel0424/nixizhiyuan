@@ -9,6 +9,8 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { MajorGroup } from './major-group.entity';
+import { School } from './school.entity';
+import { SchoolDetail } from './school-detail.entity';
 
 /**
  * 招生计划实体类 - 存储学校招生计划信息
@@ -289,5 +291,24 @@ export class EnrollmentPlan {
     select: false,
   })
   updatedAt: Date;
+
+  // ==================== 关系映射 ====================
+
+  /**
+   * 关联的学校信息（多对一关系）
+   * 通过 school_code 字段与 School 表的 code 字段关联
+   */
+  @ManyToOne(() => School, { nullable: true })
+  @JoinColumn({
+    name: 'school_code',
+    referencedColumnName: 'code',
+  })
+  school: School | null;
+
+  /**
+   * 关联的学校详细信息（通过 schoolCode 关联 SchoolDetail 的 code）
+   * 注意：这是一个虚拟关系，需要通过查询手动关联
+   */
+  schoolDetail: SchoolDetail | null;
 }
 

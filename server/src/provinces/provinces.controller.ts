@@ -5,12 +5,10 @@ import {
   Delete,
   Param,
   Body,
-  Query,
-  UseGuards,
+  Query, 
   HttpCode,
   HttpStatus,
-  ParseIntPipe,
-  BadRequestException,
+  ParseIntPipe, 
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -33,8 +31,7 @@ import {
   SchoolPaginationResponseDto,
   PaginationMetaDto,
 } from './dto/school-pagination-response.dto';
-import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { User } from '@/entities/user.entity';
+import { CurrentUser } from '@/common/decorators/current-user.decorator'; 
 import { plainToInstance } from 'class-transformer';
 
 /**

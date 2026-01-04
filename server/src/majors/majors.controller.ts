@@ -16,6 +16,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { MajorsService } from './majors.service';
 import { CreateMajorFavoriteDto } from './dto/create-major-favorite.dto';
@@ -26,6 +27,7 @@ import {
   UserFavoritesResponseDto,
 } from './dto/major-favorite-response.dto';
 import { MajorDetailResponseDto } from './dto/major-detail-response.dto';
+import { ScoreResponseDto } from '@/scores/dto/score-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Cache } from '@/common/decorators/cache.decorator';
 import { User } from '@/entities/user.entity';
@@ -246,6 +248,42 @@ export class MajorsController {
   ): Promise<{ count: number }> {
     const count = await this.majorsService.getFavoriteCount(user.id);
     return { count };
+  }
+
+  /**
+   * 通过学校代码查询专业并返回专业分数
+   * @param user 当前用户
+   * @param schoolCode 学校代码
+   * @returns 专业分数列表
+   */
+  @Get('school-majors/:schoolCode/scores')
+  @ApiOperation({ summary: '通过学校代码查询专业并返回专业分数' })
+  @ApiParam({
+    name: 'schoolCode',
+    description: '学校代码',
+    example: '10001',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: [ScoreResponseDto],
+  })
+  @ApiResponse({
+    status: 400,
+    description: '参数错误',
+  })
+  async getSchoolMajorsWithScores(
+    @CurrentUser() user: any,
+    @Param('schoolCode') schoolCode: string,
+  ): Promise<ScoreResponseDto[]> {
+    const scores = await this.majorsService.getSchoolMajorsWithScores(
+      user.id,
+      schoolCode,
+    );
+
+    return plainToInstance(ScoreResponseDto, scores, {
+      excludeExtraneousValues: true,
+    });
   }
 }
 
