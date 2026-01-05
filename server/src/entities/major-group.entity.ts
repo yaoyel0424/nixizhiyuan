@@ -82,8 +82,7 @@ export class MajorGroup {
    * 专业组ID
    */
   @Column({
-    type: 'varchar',
-    length: 50,
+    type: 'integer',
     name: 'mg_id',
     nullable: true,
     comment: '专业组ID',

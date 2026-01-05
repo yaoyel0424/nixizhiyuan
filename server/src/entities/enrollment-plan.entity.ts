@@ -16,7 +16,7 @@ import { SchoolDetail } from './school-detail.entity';
  * 招生计划实体类 - 存储学校招生计划信息
  */
 @Entity('enrollment_plans')
-@Index(['schoolCode', 'province', 'year', 'subjectSelectionMode', 'enrollmentType']) // 复合索引，提高查询性能
+@Index(['schoolCode', 'province', 'subjectSelectionMode', 'batch', 'enrollmentType', 'year']) // 复合索引，提高查询性能
 @Index(['majorGroupId']) // 专业组ID索引
 export class EnrollmentPlan {
   /**

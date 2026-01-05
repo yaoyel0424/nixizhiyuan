@@ -6,6 +6,8 @@ import { Major } from '@/entities/major.entity';
 import { User } from '@/entities/user.entity';
 import { School } from '@/entities/school.entity';
 import { SchoolDetail } from '@/entities/school-detail.entity';
+import { MajorScore } from '@/entities/major-score.entity';
+import { ScoresModule } from '@/scores/scores.module';
 import { EnrollPlanController } from './enroll-plan.controller';
 import { EnrollPlanService } from './enroll-plan.service';
 
@@ -21,11 +23,14 @@ import { EnrollPlanService } from './enroll-plan.service';
       User,
       School,
       SchoolDetail,
+      MajorScore,
     ]),
+    ScoresModule,
   ],
   controllers: [EnrollPlanController],
   providers: [EnrollPlanService],
   exports: [EnrollPlanService],
 })
 export class EnrollPlanModule {}
+
 

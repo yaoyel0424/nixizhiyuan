@@ -204,11 +204,11 @@ export class UsersService {
       updateData.enrollType = enrollType;
     }
 
-    if (updateData.preferredSubjects=="物理"){
-      updateData.preferredSubjects="物理类"
-    }  else if (updateData.preferredSubjects=="历史"){
-      updateData.preferredSubjects="历史类"
-    } 
+     //if (updateData.preferredSubjects=="物理"){
+     //updateData.preferredSubjects="物理类"
+     //}  else if (updateData.preferredSubjects=="历史"){
+     //  updateData.preferredSubjects="历史类"
+     //} 
     // 更新用户信息
     Object.assign(user, updateData);
     return this.userRepository.save(user);

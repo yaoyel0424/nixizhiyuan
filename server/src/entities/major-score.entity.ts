@@ -14,7 +14,7 @@ import { MajorGroup } from './major-group.entity';
  * 专业分数实体类 - 存储专业录取分数信息
  */
 @Entity('major_scores')
-@Index(['schoolCode', 'province', 'year','enrollmentType']) // 复合索引，提高查询性能
+@Index(['schoolCode', 'province', 'subjectSelectionMode', 'batch', 'enrollmentType', 'year']) // 复合索引，提高查询性能
 @Index(['majorGroupId']) // 专业组ID索引
 export class MajorScore {
   /**
@@ -172,6 +172,16 @@ export class MajorScore {
     comment: '招生专业',
   })
   enrollmentMajor: string | null;
+
+  /**
+   * 备注
+   */
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: '备注',
+  })
+  remark: string | null;
 
   /**
    * 三级专业ID数组
