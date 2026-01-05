@@ -204,3 +204,38 @@ export const getScalesByPopularMajorId = async (
   return response
 }
 
+/**
+ * 根据元素ID获取对应的量表列表及用户答案
+ * @param elementId 元素ID
+ * @returns 包含量表列表和答案列表的响应
+ */
+export const getScalesByElementId = async (
+  elementId: number
+): Promise<ScalesWithAnswersResponse> => {
+  const response: any = await get<ScalesWithAnswersResponse>(
+    `/scales/element/${elementId}`
+  )
+  
+  // 响应拦截器可能返回原始数据或 BaseResponse 格式
+  if (response && typeof response === 'object') {
+    // 如果包含 data 字段，提取 data
+    if (response.data && typeof response.data === 'object') {
+      // 检查 data 中是否包含 scales 和 answers
+      if (response.data.scales || response.data.answers) {
+        return response.data
+      }
+      // 如果 data 本身没有 scales 和 answers，但 response 有，说明 data 就是 scales 和 answers
+      if (response.scales || response.answers) {
+        return response
+      }
+    }
+    // 如果直接包含 scales 和 answers 字段，直接返回
+    if (response.scales || response.answers) {
+      return response
+    }
+    // 其他情况直接返回
+    return response
+  }
+  return response
+}
+

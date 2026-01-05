@@ -445,6 +445,7 @@
   // 喜欢与天赋概览
   &__analysis-wrapper {
     margin-bottom: 16rpx;
+    gap: 8rpx !important;
   }
 
   &__analysis-card {
@@ -452,6 +453,7 @@
     background: #fff;
     border-radius: 16rpx;
     border: 1rpx solid rgba(26, 64, 153, 0.2);
+    gap: 8rpx !important;
     overflow: hidden;
   }
 
@@ -581,10 +583,24 @@
   }
 
   // 问卷对话框
-  &__questionnaire-dialog,
-  &__questionnaire-view-dialog,
-  &__detail-dialog {
+  &__questionnaire-dialog {
     max-height: 80vh;
+  }
+
+  // 天赋匹配度详细分析对话框 - 与宽度对应的百分比计算
+  &__detail-dialog {
+    max-height: calc(100vh - 32rpx) !important;
+    width: calc(100% - 32rpx) !important;
+    max-width: 100% !important;
+    padding: 32rpx !important;
+  }
+
+  // 查看问卷对话框 - 最大化显示区域
+  &__questionnaire-view-dialog {
+    max-height: calc(100vh - 32rpx) !important; // 与宽度对应的百分比计算
+    width: calc(100% - 32rpx) !important;
+    max-width: 100% !important;
+    padding: 32rpx !important; // 减少内边距，增加内容区域
   }
 
   &__questionnaire-loading,
@@ -669,13 +685,13 @@
   }
 
   &__questionnaire-view-content {
-    max-height: 60vh;
-    padding: 0 24rpx;
+    max-height: calc(100vh - 180rpx); // 与对话框高度对应的计算
+    padding: 0 16rpx;
   }
 
   &__questionnaire-view-item {
-    margin-bottom: 32rpx;
-    padding: 32rpx;
+    margin-bottom: 24rpx;
+    padding: 24rpx;
   }
 
   &__questionnaire-view-item-header {
@@ -894,10 +910,57 @@
     }
   }
 
+  &__element-analyses-item-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+
   &__element-analyses-item-name {
     font-size: 28rpx;
     font-weight: 500;
     color: #1f2937;
+  }
+
+  &__element-analyses-item-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4rpx;
+    padding: 4rpx 12rpx;
+    border-radius: 12rpx;
+    font-size: 20rpx;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &--obvious {
+      background: rgba(34, 197, 94, 0.15);
+      color: #16a34a;
+      border: 1rpx solid rgba(34, 197, 94, 0.3);
+    }
+
+    &--to-discover {
+      background: rgba(251, 191, 36, 0.15);
+      color: #d97706;
+      border: 1rpx solid rgba(251, 191, 36, 0.3);
+    }
+
+    &--unobvious {
+      background: rgba(156, 163, 175, 0.15);
+      color: #6b7280;
+      border: 1rpx solid rgba(156, 163, 175, 0.3);
+    }
+  }
+
+  &__element-analyses-item-badge-icon {
+    font-size: 20rpx;
+    line-height: 1;
+  }
+
+  &__element-analyses-item-badge-text {
+    font-size: 20rpx;
+    line-height: 1;
   }
 
   &__element-analyses-item-arrow {
@@ -926,12 +989,41 @@
     display: flex;
     flex-direction: column;
     gap: 4rpx;
+
+    &--highlight {
+      padding: 12rpx;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 12rpx;
+      border: 1rpx solid rgba(26, 64, 153, 0.15);
+    }
+  }
+
+  &__element-analyses-item-field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8rpx;
   }
 
   &__element-analyses-item-field-label {
     font-size: 24rpx;
     font-weight: 500;
     color: #666;
+  }
+
+  &__element-analyses-item-field-description {
+    font-size: 24rpx;
+    line-height: 1.6;
+    color: #666;
+    margin-top: 4rpx;
+    margin-bottom: 8rpx;
+  }
+
+  &__element-analyses-item-field-score {
+    font-size: 26rpx;
+    font-weight: 600;
+    color: #1A4099;
+    margin-top: 4rpx;
   }
 
   &__element-analyses-item-field-value {
@@ -946,8 +1038,8 @@
   }
 
   &__detail-content {
-    max-height: 60vh;
-    padding: 0 24rpx;
+    max-height: calc(100vh - 180rpx); // 与对话框高度对应的计算
+    padding: 0 16rpx;
   }
 }
 

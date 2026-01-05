@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { RadioGroup, RadioGroupItem, Label } from '@/components/ui/RadioGroup'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/Collapsible'
 import { getMajorDetailByCode } from '@/services/majors'
-import { MajorDetailInfo } from '@/types/api'
+import { getScalesByElementId } from '@/services/scales'
+import { MajorDetailInfo, Scale, ScaleAnswer, ScaleOption } from '@/types/api'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
@@ -102,6 +103,53 @@ function getAnalysisCounts(analyses: any[]) {
     })
   }
   return { positiveCount, negativeCount }
+}
+
+// 根据 userElementScore 判断是否明显
+// > 3: 明显
+// 3 到 -3: 待发现
+// < -3: 不明显
+function getElementScoreStatus(userElementScore: number | undefined): 'obvious' | 'to-discover' | 'unobvious' | null {
+  if (userElementScore === undefined || userElementScore === null) {
+    return null
+  }
+  if (userElementScore > 3) {
+    return 'obvious'
+  } else if (userElementScore >= -3 && userElementScore <= 3) {
+    return 'to-discover'
+  } else {
+    return 'unobvious'
+  }
+}
+
+// 获取状态标签文本和图标
+function getElementScoreStatusInfo(status: 'obvious' | 'to-discover' | 'unobvious' | null): { label: string; icon: string; description: string } {
+  switch (status) {
+    case 'obvious':
+      return {
+        label: '优势明显',
+        icon: '✓',
+        description: '您的这项特质表现突出，是该专业的明显优势'
+      }
+    case 'to-discover':
+      return {
+        label: '潜力待发现',
+        icon: '🔍',
+        description: '这项特质有待进一步探索和发现'
+      }
+    case 'unobvious':
+      return {
+        label: '特点不明显',
+        icon: '⚠️',
+        description: '这项特质在您身上表现不明显，可能需要特别关注'
+      }
+    default:
+      return {
+        label: '',
+        icon: '',
+        description: ''
+      }
+  }
 }
 
 // 问卷测试对话框组件
@@ -257,37 +305,64 @@ function QuestionnaireModal({ open, onOpenChange, elementIds }: { open: boolean;
 
 // 查看问卷对话框组件
 function QuestionnaireViewModal({ open, onOpenChange, elementId }: { open: boolean; onOpenChange: (open: boolean) => void; elementId: number | undefined }) {
-  const [questions, setQuestions] = useState<any[]>([])
+  const [questions, setQuestions] = useState<Scale[]>([])
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     if (open && elementId) {
       loadQuestionsAndAnswers()
+    } else {
+      // 关闭对话框时清空数据
+      setQuestions([])
+      setAnswers({})
     }
   }, [open, elementId])
 
-  const loadQuestionsAndAnswers = () => {
+  const loadQuestionsAndAnswers = async () => {
+    if (!elementId) {
+      return
+    }
+
     setIsLoading(true)
     try {
-      const allQuestions: any[] = questionnaireData as any[]
-      const filtered = allQuestions.filter((q) => q.elementId === elementId)
-      setQuestions(filtered)
+      // 调用 API 获取量表列表和用户答案
+      const response = await getScalesByElementId(elementId)
+      
+      // 设置量表列表（作为题目）
+      setQuestions(response.scales || [])
 
-      // 从本地存储加载答案
-      const stored = Taro.getStorageSync('questionnaire_answers')
-      const storedAnswers = stored ? JSON.parse(stored) : {}
-      setAnswers(storedAnswers)
+      // 将答案列表转换为以 scaleId 为 key 的映射
+      // ScaleAnswer.score 对应选项的 optionValue
+      const answersMap: Record<number, number> = {}
+      if (response.answers && Array.isArray(response.answers)) {
+        response.answers.forEach((answer: ScaleAnswer) => {
+          answersMap[answer.scaleId] = answer.score
+        })
+      }
+      setAnswers(answersMap)
     } catch (error) {
-      console.error('Error loading questionnaire:', error)
+      console.error('加载问卷失败:', error)
+      Taro.showToast({
+        title: '加载问卷失败',
+        icon: 'none',
+        duration: 2000
+      })
       setQuestions([])
+      setAnswers({})
     } finally {
       setIsLoading(false)
     }
   }
 
-  const getAnswerText = (question: any, answerValue: number) => {
-    const option = question.options?.find((opt: any) => opt.optionValue === answerValue)
+  // 根据 scaleId 和 score 获取答案文本
+  const getAnswerText = (scale: Scale, answerScore: number) => {
+    if (!scale.options || scale.options.length === 0) {
+      return '未作答'
+    }
+    
+    // 查找匹配的选项（optionValue 对应 score）
+    const option = scale.options.find((opt) => opt.optionValue === answerScore)
     return option ? option.optionName : '未作答'
   }
 
@@ -295,7 +370,7 @@ function QuestionnaireViewModal({ open, onOpenChange, elementId }: { open: boole
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="single-major-page__questionnaire-view-dialog">
         <DialogHeader>
-          <DialogTitle>问卷内容与答案</DialogTitle>
+          <DialogTitle>查看对应问卷内容和答案</DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
@@ -314,17 +389,6 @@ function QuestionnaireViewModal({ open, onOpenChange, elementId }: { open: boole
 
               return (
                 <Card key={question.id} className="single-major-page__questionnaire-view-item">
-                  <View className="single-major-page__questionnaire-view-item-header">
-                    <View className="single-major-page__questionnaire-view-item-title-section">
-                      <Text className="single-major-page__questionnaire-view-item-number">题目 {index + 1}</Text>
-                      <Text className="single-major-page__questionnaire-view-item-meta">
-                        {question.dimension} · {question.type}
-                      </Text>
-                    </View>
-                    {hasAnswer && (
-                      <Text className="single-major-page__questionnaire-view-item-check">✓</Text>
-                    )}
-                  </View>
                   <Text className="single-major-page__questionnaire-view-item-content">{question.content}</Text>
 
                   {hasAnswer ? (
@@ -343,7 +407,7 @@ function QuestionnaireViewModal({ open, onOpenChange, elementId }: { open: boole
                   {question.options && question.options.length > 0 && (
                     <View className="single-major-page__questionnaire-view-options">
                       <Text className="single-major-page__questionnaire-view-options-label">选项：</Text>
-                      {question.options.map((option: any) => {
+                      {question.options.map((option: ScaleOption) => {
                         const isSelected = hasAnswer && option.optionValue === answerValue
                         return (
                           <View
@@ -457,6 +521,8 @@ function MajorElementAnalysesDisplay({ analyses }: { analyses: any[] }) {
             <View className="single-major-page__element-analyses-group-content">
               {items.map((item: any) => {
                 const isExpanded = expandedIndex === item.originalIndex
+                const scoreStatus = getElementScoreStatus(item.userElementScore)
+                const statusInfo = getElementScoreStatusInfo(scoreStatus)
 
                 return (
                   <View key={item.originalIndex} className="single-major-page__element-analyses-item">
@@ -466,15 +532,39 @@ function MajorElementAnalysesDisplay({ analyses }: { analyses: any[] }) {
                         setExpandedIndex(isExpanded ? null : item.originalIndex)
                       }}
                     >
-                      <Text className="single-major-page__element-analyses-item-name">
-                        {item.element?.name || '未命名'}
-                      </Text>
+                      <View className="single-major-page__element-analyses-item-name-wrapper">
+                        <Text className="single-major-page__element-analyses-item-name">
+                          {item.element?.name || '未命名'}
+                        </Text>
+                        {scoreStatus && (
+                          <View className={`single-major-page__element-analyses-item-badge single-major-page__element-analyses-item-badge--${scoreStatus}`}>
+                            <Text className="single-major-page__element-analyses-item-badge-icon">{statusInfo.icon}</Text>
+                            <Text className="single-major-page__element-analyses-item-badge-text">{statusInfo.label}</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text className={`single-major-page__element-analyses-item-arrow ${isExpanded ? 'single-major-page__element-analyses-item-arrow--expanded' : ''}`}>
                         ▼
                       </Text>
                     </View>
                     {isExpanded && (
                       <View className="single-major-page__element-analyses-item-content">
+                        {/* 特质表现评估 */}
+                        {scoreStatus && item.userElementScore !== undefined && (
+                          <View className="single-major-page__element-analyses-item-field single-major-page__element-analyses-item-field--highlight">
+                            <View className="single-major-page__element-analyses-item-field-header">
+                              <Text className="single-major-page__element-analyses-item-field-label">特质表现评估</Text>
+                              <View className={`single-major-page__element-analyses-item-badge single-major-page__element-analyses-item-badge--${scoreStatus}`}>
+                                <Text className="single-major-page__element-analyses-item-badge-icon">{statusInfo.icon}</Text>
+                                <Text className="single-major-page__element-analyses-item-badge-text">{statusInfo.label}</Text>
+                              </View>
+                            </View>
+                            <Text className="single-major-page__element-analyses-item-field-description">{statusInfo.description}</Text>
+                            <Text className="single-major-page__element-analyses-item-field-score">
+                              匹配得分：{typeof item.userElementScore === 'number' ? item.userElementScore.toFixed(1) : item.userElementScore}
+                            </Text>
+                          </View>
+                        )}
                         {item.summary && (
                           <View className="single-major-page__element-analyses-item-field">
                             <Text className="single-major-page__element-analyses-item-field-label">摘要</Text>
@@ -504,7 +594,7 @@ function MajorElementAnalysesDisplay({ analyses }: { analyses: any[] }) {
                               variant="outline"
                               size="sm"
                             >
-                              <Text>📄 查看问卷内容和答案</Text>
+                              <Text>📄 查看对应问卷内容和答案</Text>
                             </Button>
                           </View>
                         )}
