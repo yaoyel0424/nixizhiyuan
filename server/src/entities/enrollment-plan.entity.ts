@@ -201,6 +201,19 @@ export class EnrollmentPlan {
   remark: string | null;
 
   /**
+   * 关键词数组
+   */
+  @Column({
+    type: 'varchar',
+    length: 200,
+    array: true,
+    name: 'key_words',
+    nullable: true,
+    comment: '关键词数组',
+  })
+  keyWords: string[] | null;
+
+  /**
    * 学费
    */
   @Column({

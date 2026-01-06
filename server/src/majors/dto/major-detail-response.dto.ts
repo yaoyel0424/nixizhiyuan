@@ -129,6 +129,13 @@ export class MajorDetailResponseDto {
   code: string;
 
   /**
+   * 专业名称（来自关联的 Major 实体）
+   */
+  @ApiProperty({ description: '专业名称', example: '哲学', required: false })
+  @Expose()
+  name?: string | null;
+
+  /**
    * 学历层次
    */
   @ApiProperty({ description: '学历层次', example: '本科', required: false })

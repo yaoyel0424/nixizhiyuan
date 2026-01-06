@@ -293,10 +293,11 @@ export class MajorsService {
   async getMajorDetailByCode(
     majorCode: string,
     userId?: number,
-  ): Promise<MajorDetail & { analyses: any[] }> {
-    // 查找专业详情
+  ): Promise<MajorDetail & { analyses: any[]; name?: string }> {
+    // 查找专业详情，同时加载关联的 major 信息
     const majorDetail = await this.majorDetailRepository.findOne({
       where: { code: majorCode },
+      relations: ['major'],
     });
 
     if (!majorDetail) {
@@ -361,6 +362,8 @@ export class MajorsService {
 
     return {
       ...majorDetail,
+      // 从关联的 major 实体中获取 name
+      name: majorDetail.major?.name || null,
       analyses: analyses.map((analysis) => ({
         id: analysis.id,
         type: analysis.type,

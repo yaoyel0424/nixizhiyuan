@@ -65,6 +65,18 @@ export class Major {
   eduLevel: string;
 
   /**
+   * 站点分配代码
+   */
+  @Column({ 
+    type: 'varchar', 
+    length: 10, 
+    nullable: true,
+    name: 'site_allocation_code',
+    comment: '站点分配代码'
+  })
+  siteAllocationCode: string | null;
+
+  /**
    * 层级标识
    * 1: 学科门类
    * 2: 专业类
