@@ -1,0 +1,112 @@
+.range-slider {
+  width: 100%;
+  padding: 24rpx 16rpx;
+  position: relative;
+}
+
+.range-slider__container {
+  position: relative;
+  width: 100%;
+  overflow: visible; // 确保指示器不被裁剪
+}
+
+.range-slider__track {
+  position: relative;
+  width: 100%;
+  height: 8rpx;
+  background: #e5e7eb;
+  border-radius: 4rpx;
+  margin-top: 36rpx;
+  z-index: 1;
+}
+
+.range-slider__track-bg {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4rpx;
+  
+  &--left {
+    background: #e5e7eb;
+  }
+  
+  &--active {
+    background: #1A4099;
+  }
+  
+  &--right {
+    background: #e5e7eb;
+  }
+}
+
+.range-slider__thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 40rpx;
+  height: 40rpx;
+  background: #fff;
+  border: 4rpx solid #1A4099;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  
+  &--active {
+    transform: translate(-50%, -50%) scale(1.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 8rpx rgba(26, 64, 153, 0.1);
+  }
+}
+
+.range-slider__thumb-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #1A4099;
+  opacity: 0.3;
+}
+
+.range-slider__thumb--active .range-slider__thumb-inner {
+  opacity: 0.5;
+}
+
+// 用户分数指示器
+.range-slider__current-score-indicator {
+  position: absolute;
+  top: -70rpx; // 显示在滑轨上方
+  transform: translateX(-50%);
+  z-index: 10; // 提高层级，确保在最上层
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.range-slider__current-score-bubble {
+  background: #1A4099;
+  color: #fff;
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  white-space: nowrap;
+  margin-bottom: 8rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+.range-slider__current-score-text {
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.range-slider__current-score-arrow {
+  width: 0;
+  height: 0;
+  border-left: 8rpx solid transparent;
+  border-right: 8rpx solid transparent;
+  border-top: 8rpx solid #1A4099;
+  margin: 0 auto;
+}

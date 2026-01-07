@@ -1,6 +1,6 @@
 // 志愿方案页面
-import React, { useState, useEffect } from 'react'
-import { View, Text, Slider } from '@tarojs/components'
+import React, { useState, useEffect, useRef } from 'react'
+import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -8,6 +8,10 @@ import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
 import { getStorage, setStorage } from '@/utils/storage'
+import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
+import { getCurrentUserDetail } from '@/services/user'
+import { getUserEnrollmentPlans, UserEnrollmentPlan } from '@/services/enroll-plan'
+import { RangeSlider } from '@/components/RangeSlider'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
 import './index.less'
@@ -60,37 +64,134 @@ interface IntentionMajor {
 }
 
 // 高考信息对话框组件
-function ExamInfoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+function ExamInfoDialog({ 
+  open, 
+  onOpenChange,
+  examInfo,
+  onUpdate
+}: { 
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  examInfo?: ExamInfo
+  onUpdate?: () => void
+}) {
   const [selectedProvince, setSelectedProvince] = useState<string>('四川')
-  const [firstChoice, setFirstChoice] = useState<'物理' | '历史' | null>('历史')
-  const [optionalSubjects, setOptionalSubjects] = useState<Set<string>>(new Set(['政治', '地理']))
+  const [firstChoice, setFirstChoice] = useState<string | null>(null)
+  const [optionalSubjects, setOptionalSubjects] = useState<Set<string>>(new Set())
   const [totalScore, setTotalScore] = useState<string>('580')
   const [ranking, setRanking] = useState<string>('9150')
+  const [gaokaoConfig, setGaokaoConfig] = useState<GaokaoSubjectConfig[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showProvinceDropdown, setShowProvinceDropdown] = useState(false)
+  const [isUpdatingProvince, setIsUpdatingProvince] = useState(false)
+  const [isFetchingRank, setIsFetchingRank] = useState(false)
+  const scoreChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 从本地存储加载数据
+  // 获取当前省份的科目配置
+  const currentProvinceConfig = gaokaoConfig.find(config => config.province === selectedProvince)
+  
+  // 获取所有省份列表
+  const provinceList = gaokaoConfig.map(config => config.province).sort()
+
+  // 根据省份变化，重置科目选择
   useEffect(() => {
-    if (open) {
+    if (currentProvinceConfig) {
+      // 如果省份配置中没有首选科目要求，清空首选
+      if (!currentProvinceConfig.primarySubjects || currentProvinceConfig.primarySubjects.count === 0) {
+        setFirstChoice(null)
+      } else {
+        // 如果有首选科目要求，但当前选择不在可选列表中，清空
+        if (firstChoice && !currentProvinceConfig.primarySubjects.subjects.includes(firstChoice)) {
+          setFirstChoice(null)
+        }
+      }
+      
+      // 清空不在可选列表中的次选科目
+      if (currentProvinceConfig.secondarySubjects) {
+        setOptionalSubjects(prev => {
+          const newSet = new Set<string>()
+          prev.forEach(subject => {
+            if (currentProvinceConfig.secondarySubjects!.subjects.includes(subject)) {
+              newSet.add(subject)
+            }
+          })
+          return newSet
+        })
+      } else {
+        setOptionalSubjects(new Set())
+      }
+    }
+  }, [selectedProvince, currentProvinceConfig])
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (scoreChangeTimerRef.current) {
+        clearTimeout(scoreChangeTimerRef.current)
+        scoreChangeTimerRef.current = null
+      }
+    }
+  }, [])
+
+  // 从 API 或本地存储加载数据
+  useEffect(() => {
+    if (open && !isUpdatingProvince) {
       const loadData = async () => {
         try {
-          const savedProvince = await getStorage<string>('examProvince')
-          if (savedProvince) {
-            setSelectedProvince(savedProvince)
+          // 先加载高考科目配置（如果还没有加载）
+          if (gaokaoConfig.length === 0) {
+            const config = await getGaokaoConfig()
+            setGaokaoConfig(config)
           }
-          const savedFirstChoice = await getStorage<'物理' | '历史'>('examFirstChoice')
-          if (savedFirstChoice) {
-            setFirstChoice(savedFirstChoice)
-          }
-          const savedOptional = await getStorage<string[]>('examOptionalSubjects')
-          if (savedOptional) {
-            setOptionalSubjects(new Set(savedOptional))
-          }
-          const savedScore = await getStorage<string>('examTotalScore')
-          if (savedScore) {
-            setTotalScore(savedScore)
-          }
-          const savedRanking = await getStorage<string>('examRanking')
-          if (savedRanking) {
-            setRanking(savedRanking)
+
+          // 优先使用传入的 examInfo
+          if (examInfo) {
+            if (examInfo.province && examInfo.province !== selectedProvince) {
+              setSelectedProvince(examInfo.province)
+            }
+            if (examInfo.preferredSubjects && examInfo.preferredSubjects !== firstChoice) {
+              setFirstChoice(examInfo.preferredSubjects)
+            }
+            if (examInfo.secondarySubjects) {
+              const subjects = examInfo.secondarySubjects.split(',').map(s => s.trim())
+              const currentSubjects = Array.from(optionalSubjects).sort().join(',')
+              const newSubjects = subjects.sort().join(',')
+              if (currentSubjects !== newSubjects) {
+                setOptionalSubjects(new Set(subjects))
+              }
+            }
+            if (examInfo.score !== undefined && String(examInfo.score) !== totalScore) {
+              setTotalScore(String(examInfo.score))
+            }
+            if (examInfo.rank !== undefined && String(examInfo.rank) !== ranking) {
+              setRanking(String(examInfo.rank))
+            }
+          } else {
+            // 从本地存储加载
+            const savedProvince = await getStorage<string>('examProvince')
+            if (savedProvince && savedProvince !== selectedProvince) {
+              setSelectedProvince(savedProvince)
+            }
+            const savedFirstChoice = await getStorage<string>('examFirstChoice')
+            if (savedFirstChoice && savedFirstChoice !== firstChoice) {
+              setFirstChoice(savedFirstChoice)
+            }
+            const savedOptional = await getStorage<string[]>('examOptionalSubjects')
+            if (savedOptional) {
+              const currentSubjects = Array.from(optionalSubjects).sort().join(',')
+              const newSubjects = savedOptional.sort().join(',')
+              if (currentSubjects !== newSubjects) {
+                setOptionalSubjects(new Set(savedOptional))
+              }
+            }
+            const savedScore = await getStorage<string>('examTotalScore')
+            if (savedScore && savedScore !== totalScore) {
+              setTotalScore(savedScore)
+            }
+            const savedRanking = await getStorage<string>('examRanking')
+            if (savedRanking && savedRanking !== ranking) {
+              setRanking(savedRanking)
+            }
           }
         } catch (error) {
           console.error('加载高考信息失败:', error)
@@ -98,24 +199,149 @@ function ExamInfoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
       }
       loadData()
     }
-  }, [open])
+  }, [open, examInfo])
 
-  const handleOptionalToggle = (subject: string) => {
+  // 处理首选科目选择
+  const handlePrimarySubjectChange = (subject: string) => {
+    if (currentProvinceConfig?.primarySubjects) {
+      if (currentProvinceConfig.primarySubjects.count === 1) {
+        // 单选模式
+        setFirstChoice(subject === firstChoice ? null : subject)
+      } else {
+        // 多选模式（虽然目前没有，但预留）
+        setFirstChoice(subject)
+      }
+    }
+  }
+
+  // 处理次选科目选择
+  const handleSecondarySubjectToggle = (subject: string) => {
+    if (!currentProvinceConfig?.secondarySubjects) return
+    
     setOptionalSubjects((prev) => {
       const newSet = new Set(prev)
+      const maxCount = currentProvinceConfig.secondarySubjects!.count
+      
       if (newSet.has(subject)) {
         newSet.delete(subject)
       } else {
-        if (newSet.size < 2) {
+        if (newSet.size < maxCount) {
           newSet.add(subject)
+        } else {
+          Taro.showToast({
+            title: `最多只能选择${maxCount}门科目`,
+            icon: 'none',
+            duration: 2000
+          })
         }
       }
       return newSet
     })
   }
 
+  // 处理分数变化，自动获取排名
+  const handleScoreChange = async (score: string) => {
+    // 如果分数为空或无效，不调用API
+    if (!score || score.trim() === '' || isNaN(Number(score))) {
+      return
+    }
+    
+    // 检查必要参数是否齐全
+    if (!selectedProvince || !firstChoice) {
+      return
+    }
+    
+    // 防止重复请求
+    if (isFetchingRank) {
+      return
+    }
+    
+    setIsFetchingRank(true)
+    
+    try {
+      // 调用API获取排名信息
+      const scoreRangeInfo = await getScoreRange(
+        selectedProvince,
+        firstChoice,
+        score
+      )
+      
+      if (scoreRangeInfo && scoreRangeInfo.rankRange) {
+        // 解析排名范围，取最小值作为排名
+        // rankRange 格式可能是 "1000-2000" 或 "1000"
+        const rankMatch = scoreRangeInfo.rankRange.match(/^(\d+)/)
+        if (rankMatch) {
+          const minRank = rankMatch[1]
+          setRanking(minRank)
+        }
+      }
+    } catch (error) {
+      console.error('获取排名信息失败:', error)
+      // 不显示错误提示，避免打扰用户输入
+    } finally {
+      setIsFetchingRank(false)
+    }
+  }
+
+  // 处理省份选择
+  const handleProvinceChange = async (province: string) => {
+    // 防止重复请求
+    if (isUpdatingProvince || province === selectedProvince) {
+      setShowProvinceDropdown(false)
+      return
+    }
+    
+    setIsUpdatingProvince(true)
+    setShowProvinceDropdown(false)
+    
+    // 先更新本地状态
+    setSelectedProvince(province)
+    
+    // 更新高考信息中的省份
+    try {
+      const updatedInfo: ExamInfo = {
+        province,
+        preferredSubjects: firstChoice || undefined,
+        secondarySubjects: optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined,
+        score: totalScore ? parseInt(totalScore, 10) : undefined,
+        rank: ranking ? parseInt(ranking, 10) : undefined,
+      }
+      await updateExamInfo(updatedInfo)
+      
+      // 更新成功后刷新数据（只刷新，不再次更新）
+      if (onUpdate) {
+        onUpdate()
+      }
+    } catch (error) {
+      console.error('更新省份失败:', error)
+      // 更新失败，恢复原省份
+      setSelectedProvince(examInfo?.province || '四川')
+      Taro.showToast({
+        title: '更新失败，请重试',
+        icon: 'none'
+      })
+    } finally {
+      setIsUpdatingProvince(false)
+    }
+  }
+
   const handleConfirm = async () => {
     try {
+      setLoading(true)
+      
+      // 准备更新数据
+      const updateData: ExamInfo = {
+        province: selectedProvince,
+        preferredSubjects: firstChoice || undefined,
+        secondarySubjects: optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined,
+        score: totalScore ? parseInt(totalScore, 10) : undefined,
+        rank: ranking ? parseInt(ranking, 10) : undefined,
+      }
+
+      // 调用 API 更新
+      const updatedInfo = await updateExamInfo(updateData)
+
+      // 同时保存到本地存储（作为备份）
       await setStorage('examProvince', selectedProvince)
       if (firstChoice) {
         await setStorage('examFirstChoice', firstChoice)
@@ -123,10 +349,28 @@ function ExamInfoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
       await setStorage('examOptionalSubjects', Array.from(optionalSubjects))
       await setStorage('examTotalScore', totalScore)
       await setStorage('examRanking', ranking)
+
+      Taro.showToast({
+        title: '保存成功',
+        icon: 'success',
+        duration: 2000
+      })
+
+      // 通知父组件更新（传入更新后的信息）
+      if (onUpdate) {
+        onUpdate()
+      }
     } catch (error) {
       console.error('保存高考信息失败:', error)
+      Taro.showToast({
+        title: '保存失败，请重试',
+        icon: 'none',
+        duration: 2000
+      })
+    } finally {
+      setLoading(false)
+      onOpenChange(false)
     }
-    onOpenChange(false)
   }
 
   return (
@@ -136,54 +380,138 @@ function ExamInfoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
           <DialogTitle>高考信息</DialogTitle>
         </DialogHeader>
         <View className="exam-info-dialog__content">
-          {/* 高考省份 */}
+          {/* 高考省份选择 */}
           <View className="exam-info-dialog__row">
             <Text className="exam-info-dialog__label">高考省份</Text>
-            <View className="exam-info-dialog__value">
-              <Text>{selectedProvince}</Text>
+            <View className="exam-info-dialog__province-select-wrapper">
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowProvinceDropdown(!showProvinceDropdown)
+                }}
+                className="exam-info-dialog__province-button"
+                variant="outline"
+              >
+                <Text>{selectedProvince || '请选择省份'}</Text>
+                <Text className={`exam-info-dialog__province-arrow ${showProvinceDropdown ? 'exam-info-dialog__province-arrow--open' : ''}`}>▼</Text>
+              </Button>
+              
+              {/* 浮动下拉框 */}
+              {showProvinceDropdown && (
+                <View className="exam-info-dialog__province-dropdown">
+                  <View className="exam-info-dialog__province-dropdown-content">
+                    {provinceList.length === 0 ? (
+                      <View className="exam-info-dialog__province-dropdown-loading">
+                        <Text>加载中...</Text>
+                      </View>
+                    ) : (
+                      <View className="exam-info-dialog__province-dropdown-grid">
+                        {provinceList.map((province) => (
+                          <Button
+                            key={province}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                              if (!isUpdatingProvince) {
+                                handleProvinceChange(province)
+                              }
+                            }}
+                            disabled={isUpdatingProvince}
+                            className={`exam-info-dialog__province-dropdown-item ${selectedProvince === province ? 'exam-info-dialog__province-dropdown-item--active' : ''}`}
+                            variant={selectedProvince === province ? 'default' : 'ghost'}
+                          >
+                            {province}
+                          </Button>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
             </View>
           </View>
 
           {/* 选择科目 */}
-          <View className="exam-info-dialog__section">
-            <Text className="exam-info-dialog__section-title">选择科目</Text>
-            
-            {/* 首选 (2选1) */}
-            <View className="exam-info-dialog__divider">
-              <Text className="exam-info-dialog__divider-text">首选 (2选1)</Text>
-            </View>
-            <View className="exam-info-dialog__button-group">
-              <Button
-                onClick={() => setFirstChoice('物理')}
-                className={`exam-info-dialog__button ${firstChoice === '物理' ? 'exam-info-dialog__button--active' : ''}`}
-              >
-                物理
-              </Button>
-              <Button
-                onClick={() => setFirstChoice('历史')}
-                className={`exam-info-dialog__button ${firstChoice === '历史' ? 'exam-info-dialog__button--active' : ''}`}
-              >
-                历史
-              </Button>
-            </View>
+          {currentProvinceConfig && (
+            <View className="exam-info-dialog__section">
+              <Text className="exam-info-dialog__section-title">
+                选择科目 ({currentProvinceConfig.mode})
+              </Text>
+              
+              {/* 首选科目 */}
+              {currentProvinceConfig.primarySubjects && currentProvinceConfig.primarySubjects.count > 0 && (
+                <>
+                  <View className="exam-info-dialog__divider">
+                    <Text className="exam-info-dialog__divider-text">
+                      首选 ({currentProvinceConfig.primarySubjects.count}选{currentProvinceConfig.primarySubjects.count})
+                    </Text>
+                  </View>
+                  <View className="exam-info-dialog__button-group">
+                    {currentProvinceConfig.primarySubjects.subjects.map((subject) => (
+                      <Button
+                        key={subject}
+                        onClick={() => handlePrimarySubjectChange(subject)}
+                        className={`exam-info-dialog__button ${firstChoice === subject ? 'exam-info-dialog__button--active' : ''}`}
+                      >
+                        {subject}
+                      </Button>
+                    ))}
+                  </View>
+                </>
+              )}
 
-            {/* 可选 (4选2) */}
-            <View className="exam-info-dialog__divider">
-              <Text className="exam-info-dialog__divider-text">可选 (4选2)</Text>
+              {/* 次选科目 */}
+              {currentProvinceConfig.secondarySubjects && currentProvinceConfig.secondarySubjects.count > 0 && (
+                <>
+                  <View className="exam-info-dialog__divider">
+                    <Text className="exam-info-dialog__divider-text">
+                      次选 ({currentProvinceConfig.secondarySubjects.subjects.length}选{currentProvinceConfig.secondarySubjects.count})
+                    </Text>
+                  </View>
+                  <View className="exam-info-dialog__button-grid">
+                    {currentProvinceConfig.secondarySubjects.subjects.map((subject) => (
+                      <Button
+                        key={subject}
+                        onClick={() => handleSecondarySubjectToggle(subject)}
+                        disabled={!optionalSubjects.has(subject) && optionalSubjects.size >= currentProvinceConfig.secondarySubjects!.count}
+                        className={`exam-info-dialog__button ${optionalSubjects.has(subject) ? 'exam-info-dialog__button--active' : ''}`}
+                      >
+                        {subject}
+                      </Button>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* 传统文理科模式 */}
+              {currentProvinceConfig.traditionalSubjects && currentProvinceConfig.traditionalSubjects.length > 0 && (
+                <>
+                  <View className="exam-info-dialog__divider">
+                    <Text className="exam-info-dialog__divider-text">选择科类</Text>
+                  </View>
+                  <View className="exam-info-dialog__button-group">
+                    {currentProvinceConfig.traditionalSubjects.map((subject) => (
+                      <Button
+                        key={subject}
+                        onClick={() => setFirstChoice(subject)}
+                        className={`exam-info-dialog__button ${firstChoice === subject ? 'exam-info-dialog__button--active' : ''}`}
+                      >
+                        {subject}
+                      </Button>
+                    ))}
+                  </View>
+                </>
+              )}
             </View>
-            <View className="exam-info-dialog__button-grid">
-              {['化学', '生物', '政治', '地理'].map((subject) => (
-                <Button
-                  key={subject}
-                  onClick={() => handleOptionalToggle(subject)}
-                  disabled={!optionalSubjects.has(subject) && optionalSubjects.size >= 2}
-                  className={`exam-info-dialog__button ${optionalSubjects.has(subject) ? 'exam-info-dialog__button--active' : ''}`}
-                >
-                  {subject}
-                </Button>
-              ))}
+          )}
+
+          {/* 未选择省份时的提示 */}
+          {!currentProvinceConfig && gaokaoConfig.length > 0 && (
+            <View className="exam-info-dialog__tip">
+              <Text className="exam-info-dialog__tip-icon">⚠️</Text>
+              <Text className="exam-info-dialog__tip-text">请先选择省份</Text>
             </View>
-          </View>
+          )}
 
           {/* 预估或实际总分 */}
           <View className="exam-info-dialog__row">
@@ -191,9 +519,28 @@ function ExamInfoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
             <Input
               type="number"
               value={totalScore}
-              onInput={(e) => setTotalScore(e.detail.value)}
+              onInput={(e) => {
+                // 使用防抖，延迟500ms后调用API
+                const score = e.detail.value
+                setTotalScore(score)
+                
+                // 清除之前的定时器
+                if (scoreChangeTimerRef.current) {
+                  clearTimeout(scoreChangeTimerRef.current)
+                  scoreChangeTimerRef.current = null
+                }
+                
+                // 设置新的定时器
+                scoreChangeTimerRef.current = setTimeout(() => {
+                  handleScoreChange(score)
+                  scoreChangeTimerRef.current = null
+                }, 500)
+              }}
               className="exam-info-dialog__input"
             />
+            {isFetchingRank && (
+              <Text className="exam-info-dialog__loading-text">正在获取排名...</Text>
+            )}
           </View>
 
           {/* 高考排名 */}
@@ -223,6 +570,7 @@ function ExamInfoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
           </Button>
         </View>
       </DialogContent>
+
     </Dialog>
   )
 }
@@ -233,6 +581,7 @@ export default function IntendedMajorsPage() {
   const activeTab = tabParam === '意向志愿' ? '意向志愿' : '专业赛道'
   
   const [data, setData] = useState<IntentionMajor[]>([])
+  const [enrollmentPlans, setEnrollmentPlans] = useState<UserEnrollmentPlan[]>([]) // 用户招生计划数据
   const [loading, setLoading] = useState(true)
   const [wishlist, setWishlist] = useState<Set<string>>(new Set())
   const [wishlistItems, setWishlistItems] = useState<any[]>([])
@@ -240,6 +589,7 @@ export default function IntendedMajorsPage() {
   const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
   const [currentScore, setCurrentScore] = useState<number>(580)
   const [scoreRange, setScoreRange] = useState<[number, number]>([500, 650])
+  const [minControlScore, setMinControlScore] = useState<number>(0) // 省份最低省控线
   const [expandedHistoryScores, setExpandedHistoryScores] = useState<Set<number>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<number | null>(null)
@@ -250,12 +600,21 @@ export default function IntendedMajorsPage() {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false)
   const [groupDataList, setGroupDataList] = useState<any[]>([])
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
 
-  // 加载数据
+  // 加载数据（院校探索页面使用API数据，意向志愿页面使用静态数据）
   useEffect(() => {
     const loadData = async () => {
       try {
-        setData(intentionData as unknown as IntentionMajor[])
+        if (activeTab === '专业赛道') {
+          // 院校探索页面：调用API获取用户招生计划
+          const plans = await getUserEnrollmentPlans()
+          setEnrollmentPlans(plans)
+          console.log('获取用户招生计划成功:', plans)
+        } else {
+          // 意向志愿页面：使用静态数据
+          setData(intentionData as unknown as IntentionMajor[])
+        }
         setLoading(false)
       } catch (error) {
         console.error('加载数据失败:', error)
@@ -263,7 +622,7 @@ export default function IntendedMajorsPage() {
       }
     }
     loadData()
-  }, [])
+  }, [activeTab])
 
   // 加载专业组数据
   useEffect(() => {
@@ -303,34 +662,162 @@ export default function IntendedMajorsPage() {
     loadWishlist()
   }, [])
 
-  // 从本地存储加载分数
-  useEffect(() => {
-    const loadScore = async () => {
-      try {
-        const savedScore = await getStorage<string>('examTotalScore')
-        let parsedScore = 580
-        if (savedScore) {
-          const parsed = parseInt(savedScore, 10)
-          if (!isNaN(parsed) && parsed >= 0 && parsed <= 750) {
-            parsedScore = parsed
-          }
-        }
-        setCurrentScore(parsedScore)
-        
-        const savedRange = await getStorage<[number, number]>('scoreRange')
-        if (savedRange && Array.isArray(savedRange) && savedRange.length === 2) {
-          setScoreRange([savedRange[0], savedRange[1]])
-        } else {
-          const minScore = Math.max(0, parsedScore - 50)
-          const maxScore = Math.min(750, parsedScore + 50)
-          setScoreRange([minScore, maxScore])
-        }
-      } catch (error) {
-        console.error('加载分数失败:', error)
-      }
+  // 获取省份最低省控线（通过 score-range 接口的 controlScore 字段）
+  const getMinControlScore = async (province: string, subjectType: string) => {
+    if (!province || !subjectType) {
+      return 0
     }
-    loadScore()
+    
+    try {
+      // 尝试使用不同的分数值来获取省控线信息
+      // 接口会返回 controlScore 字段，这就是省控线
+      // 先尝试使用较低的分数（200），如果失败则尝试其他分数
+      const scoreKeys = ['200', '300', '400', '500']
+      
+      for (const scoreKey of scoreKeys) {
+        const scoreRangeInfo = await getScoreRange(province, subjectType, scoreKey)
+        if (scoreRangeInfo && scoreRangeInfo.controlScore !== undefined && scoreRangeInfo.controlScore !== null) {
+          console.log('获取省控线成功:', {
+            province,
+            subjectType,
+            controlScore: scoreRangeInfo.controlScore,
+            usedScoreKey: scoreKey
+          })
+          return scoreRangeInfo.controlScore
+        }
+      }
+      
+      // 如果所有分数键都失败，返回0（使用默认值）
+      console.warn('无法获取省控线，将使用默认值0:', { province, subjectType })
+      return 0
+    } catch (error) {
+      // 静默处理错误，不输出日志（因为404是正常情况）
+      return 0
+    }
+  }
+
+  // 从本地存储加载高考信息（页面加载时，不调用 API）
+  const loadExamInfoFromStorage = async () => {
+    try {
+      const savedProvince = await getStorage<string>('examProvince')
+      const savedFirstChoice = await getStorage<string>('examFirstChoice')
+      const savedOptional = await getStorage<string[]>('examOptionalSubjects')
+      const savedScore = await getStorage<string>('examTotalScore')
+      const savedRanking = await getStorage<string>('examRanking')
+      
+      const info: ExamInfo = {
+        province: savedProvince || undefined,
+        preferredSubjects: savedFirstChoice || undefined,
+        secondarySubjects: savedOptional ? savedOptional.join(',') : undefined,
+        score: savedScore ? parseInt(savedScore, 10) : undefined,
+        rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
+      }
+      
+      setExamInfo(info)
+      
+      // 更新分数相关状态
+      const score = info.score || 580
+      setCurrentScore(score)
+      
+      // 不在这里获取省控线，让 useEffect 统一处理，避免重复调用
+      // 先设置默认的分数区间，等省控线获取后再更新
+      const savedRange = await getStorage<[number, number]>('scoreRange')
+      if (savedRange && Array.isArray(savedRange) && savedRange.length === 2) {
+        setScoreRange(savedRange)
+      } else {
+        const minScore = Math.max(0, score - 50)
+        const maxScore = Math.min(750, score + 50)
+        setScoreRange([minScore, maxScore])
+      }
+    } catch (error) {
+      console.error('从本地存储加载高考信息失败:', error)
+      setCurrentScore(580)
+    }
+  }
+
+  // 从 API 加载高考信息（仅在需要时调用，如更新后刷新）
+  const loadExamInfo = async () => {
+    try {
+      const info = await getExamInfo()
+      setExamInfo(info)
+      
+      // 更新分数相关状态
+      const score = info.score || 580
+      setCurrentScore(score)
+      
+      // 获取省份最低省控线
+      let controlScore = 0
+      if (info.province && info.preferredSubjects) {
+        controlScore = await getMinControlScore(info.province, info.preferredSubjects)
+        setMinControlScore(controlScore)
+      }
+      
+      const savedRange = await getStorage<[number, number]>('scoreRange')
+      if (savedRange && Array.isArray(savedRange) && savedRange.length === 2) {
+        // 确保最小值不低于省控线
+        const minValue = Math.max(savedRange[0], controlScore)
+        setScoreRange([minValue, savedRange[1]])
+      } else {
+        const minScore = Math.max(controlScore, score - 50)
+        const maxScore = Math.min(750, score + 50)
+        setScoreRange([minScore, maxScore])
+      }
+    } catch (error) {
+      console.error('从 API 加载高考信息失败:', error)
+      // 如果 API 失败，从本地存储加载
+      await loadExamInfoFromStorage()
+    }
+  }
+
+  // 页面加载时，只从本地存储加载，不调用 API
+  useEffect(() => {
+    loadExamInfoFromStorage()
   }, [])
+
+  // 监听 examInfo 变化，更新省控线（统一在这里处理，避免重复调用）
+  useEffect(() => {
+    if (examInfo?.province && examInfo?.preferredSubjects) {
+      const updateControlScore = async () => {
+        const controlScore = await getMinControlScore(examInfo.province!, examInfo.preferredSubjects!)
+        setMinControlScore(controlScore)
+        // 如果当前分数区间的最小值低于省控线，则更新左侧滑块位置
+        setScoreRange((prevRange) => {
+          if (prevRange[0] < controlScore) {
+            const newMinValue = Math.max(controlScore, prevRange[0])
+            const newRange: [number, number] = [newMinValue, prevRange[1]]
+            // 保存更新后的区间
+            setStorage('scoreRange', newRange).catch((error) => {
+              console.error('保存分数区间失败:', error)
+            })
+            return newRange
+          }
+          return prevRange
+        })
+      }
+      updateControlScore()
+    }
+  }, [examInfo?.province, examInfo?.preferredSubjects])
+
+  // 院校探索页面加载时获取用户详情
+  useEffect(() => {
+    // 使用 activeTab 判断是否为院校探索页面
+    if (activeTab !== '意向志愿') {
+      const fetchUserDetail = async () => {
+        try {
+          const userDetail = await getCurrentUserDetail()
+          if (userDetail) {
+            console.log('用户详情:', userDetail)
+            // 这里可以根据需要处理用户详情数据
+            // 例如更新某些状态或执行其他操作
+          }
+        } catch (error) {
+          console.error('获取用户详情失败:', error)
+        }
+      }
+      fetchUserDetail()
+    }
+  }, [activeTab])
+
 
   // 监听 wishlistItems 变化，更新志愿数量
   useEffect(() => {
@@ -355,14 +842,15 @@ export default function IntendedMajorsPage() {
   }, [activeTab, wishlistItems.length])
 
   // 处理分数区间变化
-  const handleScoreRangeChange = async (value: number) => {
-    // Taro Slider 的 onChange 事件返回的是单个值，需要处理双滑块
-    // 这里简化处理，使用当前值更新区间
-    const newRange: [number, number] = [scoreRange[0], value]
-    if (newRange[0] <= newRange[1]) {
-      setScoreRange(newRange)
+  const handleScoreRangeChange = async (newRange: [number, number]) => {
+    // 确保最小值不低于省控线
+    const minValue = Math.max(newRange[0], minControlScore || 0)
+    const finalRange: [number, number] = [minValue, newRange[1]]
+    
+    if (finalRange[0] <= finalRange[1]) {
+      setScoreRange(finalRange)
       try {
-        await setStorage('scoreRange', newRange)
+        await setStorage('scoreRange', finalRange)
       } catch (error) {
         console.error('保存分数区间失败:', error)
       }
@@ -525,17 +1013,13 @@ export default function IntendedMajorsPage() {
               💡 滑动滑块可查看不同分数区间的院校
             </Text>
             <View className="intended-majors-page__slider-container">
-              <Slider
-                value={scoreRange[1]}
-                min={0}
+              <RangeSlider
+                min={minControlScore || 0}
                 max={750}
+                value={scoreRange}
+                onChange={handleScoreRangeChange}
                 step={1}
-                activeColor="#1A4099"
-                backgroundColor="#e5e7eb"
-                blockColor="#1A4099"
-                blockSize={20}
-                onChange={(e) => handleScoreRangeChange(e.detail.value)}
-                className="intended-majors-page__slider"
+                currentScore={currentScore}
               />
               <View className="intended-majors-page__slider-labels">
                 <View className="intended-majors-page__slider-label">
@@ -758,51 +1242,84 @@ export default function IntendedMajorsPage() {
             </View>
           )
         ) : (
-          // 专业赛道tab
-          data.length === 0 ? (
+          // 专业赛道tab - 使用API数据（按收藏专业分组）
+          enrollmentPlans.length === 0 ? (
             <View className="intended-majors-page__empty">
-              <Text>暂无意向专业</Text>
+              <Text className="intended-majors-page__empty-icon">📚</Text>
+              <Text className="intended-majors-page__empty-text">暂无收藏专业</Text>
+              <Text className="intended-majors-page__empty-desc">请先收藏感兴趣的专业，系统将为您匹配招生计划</Text>
             </View>
           ) : (
             <View className="intended-majors-page__majors-list">
-              {data.map((item) => (
-                <Card key={item.major.code} className="intended-majors-page__major-item">
-                  <View className="intended-majors-page__major-item-content">
-                    <View className="intended-majors-page__major-item-header">
-                      <View>
-                        <Text className="intended-majors-page__major-item-name">{item.major.name}</Text>
-                        <Text className="intended-majors-page__major-item-code">({item.major.code})</Text>
-                        {wishlistCounts[item.major.code] > 0 && (
-                          <View className="intended-majors-page__major-item-badge">
-                            <Text>{wishlistCounts[item.major.code]} 个志愿</Text>
-                          </View>
-                        )}
+              {enrollmentPlans.map((plan) => {
+                const major = plan.majorFavorite.major
+                const majorCode = plan.majorFavorite.majorCode
+                return (
+                  <Card key={majorCode} className="intended-majors-page__major-item">
+                    <View className="intended-majors-page__major-item-content">
+                      <View className="intended-majors-page__major-item-header">
+                        <View>
+                          <Text className="intended-majors-page__major-item-name">{major.name}</Text>
+                          <Text className="intended-majors-page__major-item-code">({major.code})</Text>
+                          {wishlistCounts[majorCode] > 0 && (
+                            <View className="intended-majors-page__major-item-badge">
+                              <Text>{wishlistCounts[majorCode]} 个志愿</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Button
+                          onClick={() => {
+                            Taro.navigateTo({
+                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}`
+                            })
+                          }}
+                          className="intended-majors-page__major-item-link"
+                          variant="ghost"
+                        >
+                          <Text className="intended-majors-page__major-item-link-number">{plan.schoolCount}所</Text>
+                          <Text className="intended-majors-page__major-item-link-arrow">→</Text>
+                        </Button>
                       </View>
-                      <Button
-                        onClick={() => {
-                          Taro.navigateTo({
-                            url: `/pages/majors/intended/schools/index?majorCode=${item.major.code}`
-                          })
-                        }}
-                        className="intended-majors-page__major-item-link"
-                        variant="ghost"
-                      >
-                        <Text className="intended-majors-page__major-item-link-number">{item.schools.length}所</Text>
-                        <Text className="intended-majors-page__major-item-link-arrow">→</Text>
-                      </Button>
+                      <View className="intended-majors-page__major-item-info">
+                        <View className="intended-majors-page__major-item-tag">
+                          <Text>
+                            {(() => {
+                              // 教育层次映射：ben -> 本科, zhuan -> 专科, gao_ben -> 高职本科
+                              const eduLevelMap: Record<string, string> = {
+                                'ben': '本科',
+                                'zhuan': '专科',
+                                'gao_ben': '高职本科'
+                              }
+                              return eduLevelMap[major.eduLevel || ''] || '本科'
+                            })()}
+                          </Text>
+                        </View>
+                        <View className="intended-majors-page__major-item-score">
+                          <Text className="intended-majors-page__major-item-score-label">热爱能量:</Text>
+                          <Text className="intended-majors-page__major-item-score-value">
+                            {(() => {
+                              // 处理 score 值：可能是数字或字符串
+                              if (plan.score === null || plan.score === undefined) {
+                                return '-'
+                              }
+                              // 转换为数字（支持字符串类型）
+                              const scoreNum = typeof plan.score === 'string' 
+                                ? parseFloat(plan.score) 
+                                : Number(plan.score)
+                              // 检查是否为有效数字
+                              if (isNaN(scoreNum)) {
+                                return '-'
+                              }
+                              // 四舍五入到整数
+                              return Math.round(scoreNum).toString()
+                            })()}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
-                    <View className="intended-majors-page__major-item-info">
-                      <View className="intended-majors-page__major-item-tag">
-                        <Text>本科</Text>
-                      </View>
-                      <View className="intended-majors-page__major-item-score">
-                        <Text className="intended-majors-page__major-item-score-label">热爱能量:</Text>
-                        <Text className="intended-majors-page__major-item-score-value">{item.major.score}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </Card>
-              ))}
+                  </Card>
+                )
+              })}
             </View>
           )
         )}
@@ -822,7 +1339,12 @@ export default function IntendedMajorsPage() {
       )}
 
       {/* 高考信息对话框 */}
-      <ExamInfoDialog open={showExamInfoDialog} onOpenChange={setShowExamInfoDialog} />
+      <ExamInfoDialog 
+        open={showExamInfoDialog} 
+        onOpenChange={setShowExamInfoDialog}
+        examInfo={examInfo || undefined}
+        onUpdate={loadExamInfo}
+      />
 
       {/* 删除确认对话框 */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

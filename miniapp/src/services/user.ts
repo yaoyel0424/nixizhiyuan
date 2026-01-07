@@ -1,5 +1,50 @@
+import Taro from '@tarojs/taro'
 import { get, post, put } from './api'
 import { UserInfo, UpdateUserParams, ChangePasswordParams } from '@/types/api'
+
+/**
+ * 获取当前用户ID
+ * @returns 用户ID（number类型），如果获取失败返回 null
+ */
+function getCurrentUserId(): number | null {
+  try {
+    // 尝试从 Redux persist 存储中获取用户信息
+    const persistRoot = Taro.getStorageSync('persist:root')
+    if (persistRoot) {
+      try {
+        const rootData = typeof persistRoot === 'string' ? JSON.parse(persistRoot) : persistRoot
+        if (rootData && rootData.user) {
+          const userData = typeof rootData.user === 'string' ? JSON.parse(rootData.user) : rootData.user
+          if (userData && userData.userInfo && userData.userInfo.id) {
+            const userId = parseInt(userData.userInfo.id, 10)
+            if (!isNaN(userId)) {
+              return userId
+            }
+          }
+        }
+      } catch (parseError) {
+        console.warn('解析 Redux persist 数据失败:', parseError)
+      }
+    }
+    
+    // 备选方案：尝试从直接存储的 userInfo 获取
+    const userInfoStr = Taro.getStorageSync('userInfo')
+    if (userInfoStr) {
+      const userInfo = typeof userInfoStr === 'string' ? JSON.parse(userInfoStr) : userInfoStr
+      if (userInfo && userInfo.id) {
+        const userId = parseInt(userInfo.id, 10)
+        if (!isNaN(userId)) {
+          return userId
+        }
+      }
+    }
+    
+    return null
+  } catch (error) {
+    console.error('获取用户ID失败:', error)
+    return null
+  }
+}
 
 /**
  * 获取用户信息
@@ -7,6 +52,33 @@ import { UserInfo, UpdateUserParams, ChangePasswordParams } from '@/types/api'
  */
 export const getUserInfo = (): Promise<UserInfo> => {
   return get<UserInfo>('/user/info')
+}
+
+/**
+ * 获取用户详情
+ * @param userId 用户ID
+ * @returns 用户详情信息
+ */
+export const getUserDetail = (userId: number): Promise<any> => {
+  return get(`/users/${userId}`)
+}
+
+/**
+ * 获取当前用户详情（自动获取用户ID）
+ * @returns 用户详情信息，如果无法获取用户ID则返回 null
+ */
+export const getCurrentUserDetail = async (): Promise<any | null> => {
+  const userId = getCurrentUserId()
+  if (!userId) {
+    console.warn('无法获取用户ID，请先登录')
+    return null
+  }
+  try {
+    return await getUserDetail(userId)
+  } catch (error) {
+    console.error('获取用户详情失败:', error)
+    return null
+  }
 }
 
 /**
