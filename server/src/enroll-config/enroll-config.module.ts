@@ -4,13 +4,15 @@ import { ConfigModule } from '@nestjs/config';
 import { EnrollConfigController } from './enroll-config.controller';
 import { EnrollConfigService } from './enroll-config.service';
 import { ScoreRange } from '@/entities/score-range.entity';
+import { ProvincialControlLine } from '@/entities/provincial-control-line.entity';
+import { User } from '@/entities/user.entity';
 
 /**
  * 招生配置模块
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ScoreRange]),
+    TypeOrmModule.forFeature([ScoreRange, ProvincialControlLine, User]),
     ConfigModule,
   ],
   controllers: [EnrollConfigController],

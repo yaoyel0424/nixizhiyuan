@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, ArrayOverlap } from 'typeorm';
+import { plainToInstance } from 'class-transformer';
 import { EnrollmentPlan } from '@/entities/enrollment-plan.entity';
 import { MajorFavorite } from '@/entities/major-favorite.entity';
 import { Major } from '@/entities/major.entity';
@@ -9,13 +10,16 @@ import { School } from '@/entities/school.entity';
 import { SchoolDetail } from '@/entities/school-detail.entity';
 import { MajorScore } from '@/entities/major-score.entity';
 import { ScoresService } from '@/scores/scores.service';
+import { IdTransformUtil } from '@/common/utils/id-transform.util';
 import {
   EnrollmentPlanWithScoresDto,
+  EnrollmentPlanItemDto,
   SchoolSimpleDto,
   SchoolDetailSimpleDto,
   MajorGroupSimpleDto,
   MajorScoreSimpleDto,
 } from './dto/enrollment-plan-with-scores.dto';
+import { MajorGroupInfoResponseDto, MajorLoveEnergyDto } from './dto/major-group-info-response.dto';
 
 /**
  * 招生计划服务
@@ -30,6 +34,8 @@ export class EnrollPlanService {
     private readonly enrollmentPlanRepository: Repository<EnrollmentPlan>,
     @InjectRepository(MajorFavorite)
     private readonly majorFavoriteRepository: Repository<MajorFavorite>,
+    @InjectRepository(Major)
+    private readonly majorRepository: Repository<Major>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(School)
@@ -369,6 +375,8 @@ export class EnrollPlanService {
          AND "ep"."province" = "ms"."province"::varchar
          AND "ep"."batch" = "ms"."batch"::varchar
          AND "ep"."subject_selection_mode" = "ms"."subject_selection_mode"::varchar
+         AND "ep"."enrollment_major"="ms"."enrollment_major"
+         AND "ep"."key_words"="ms"."key_words" 
          AND (
            ("ep"."level3_major_id" && ARRAY[:majorId]::integer[] 
             AND "ms"."level3_major_id" && ARRAY[:majorId]::integer[])
@@ -456,65 +464,52 @@ export class EnrollPlanService {
     // 4. 执行查询并获取原始数据（使用 getRaw() 获取所有记录，不被去重）
     const raw = await queryBuilder.getRawMany();
 
-    // 5. 按 enrollment_plan 分组，将多个 major_scores 合并为数组
+    // 5. 先按 school 分组，再按 enrollmentMajor 和 remark 分组
     // 完全基于 raw 数据构建结果，因为 entities 会被去重
-    const enrollmentPlanMap = new Map<
-      number,
-      EnrollmentPlan & {
+    // 外层 Map: schoolCode -> school 信息和 plans
+    // 内层 Map: enrollmentMajor|remark -> enrollmentPlan 信息
+    const schoolMap = new Map<
+      string,
+      {
         school: School | null;
-        schoolDetail: SchoolDetail | null;
-        majorGroup: any | null;
-        majorScores: Array<{
-          id: number;
-          schoolCode: string | null;
-          province: string | null;
-          year: string | null;
-          subjectSelectionMode: string | null;
-          batch: string | null;
-          minScore: number | null;
-          minRank: number | null;
-          admitCount: number | null;
-          enrollmentType: string | null;
-        }>;
+        enrollmentRate: number | null;
+        employmentRate: number | null;
+        plans: Map<
+          string,
+          EnrollmentPlan & {
+            majorGroup: any | null;
+            majorScores: Array<{
+              id: number;
+              schoolCode: string | null;
+              province: string | null;
+              year: string | null;
+              subjectSelectionMode: string | null;
+              batch: string | null;
+              minScore: number | null;
+              minRank: number | null;
+              admitCount: number | null;
+              enrollmentType: string | null;
+            }>;
+          }
+        >;
       }
     >();
 
     // 使用 raw 数据来分组，因为 raw 数据包含所有 JOIN 的结果（75条）
     raw.forEach((rawData) => {
-      // 从 raw 数据中获取 enrollment_plan 的 id
-      const epId = rawData['ep_id'];
-
-      if (!epId) {
+      // 从 raw 数据中获取 school_code
+      const schoolCode = rawData['ep_school_code'];
+      if (!schoolCode) {
         return;
       }
 
-      // 如果该 enrollment_plan 还没有在 map 中，从 raw 数据构建实体
-      if (!enrollmentPlanMap.has(epId)) {
-        // 从 raw 数据构建 enrollment_plan 实体
-        const enrollmentPlan: EnrollmentPlan = {
-          id: epId,
-          schoolCode: rawData['ep_school_code'],
-          majorGroupId: rawData['ep_major_group_id'] ?? null,
-          majorGroupInfo: rawData['ep_major_group_info'] ?? null,
-          province: rawData['ep_province'] ?? null,
-          year: rawData['ep_year'] ?? null,
-          batch: rawData['ep_batch'] ?? null,
-          subjectSelectionMode: rawData['ep_subject_selection_mode'] ?? null,
-          primarySubject: rawData['ep_primary_subject'] ?? null,
-          secondarySubjects: rawData['ep_secondary_subjects'] ?? null,
-          secondarySubjectType: rawData['ep_secondary_subject_type'] ?? null,
-          studyPeriod: rawData['ep_study_period'] ?? null,
-          enrollmentQuota: rawData['ep_enrollment_quota'] ?? null,
-          enrollmentType: rawData['ep_enrollment_type'] ?? null,
-          remark: rawData['ep_remark'] ?? null,
-          tuitionFee: rawData['ep_tuition_fee'] ?? null,
-          enrollmentMajor: rawData['ep_enrollment_major'] ?? null,
-          curUnit: rawData['ep_cur_unit'] ?? null,
-          level3MajorId: rawData['ep_level3_major_id'] ?? null,
-          level2MajorIds: rawData['ep_level2_major_ids'] ?? null,
-          subLevel2MajorIds: rawData['ep_sub_level2_major_ids'] ?? null,
-        } as EnrollmentPlan;
+      // 从 raw 数据中获取 enrollment_major 和 remark，用于内部分组
+      const enrollmentMajor = rawData['ep_enrollment_major'] ?? '';
+      const remark = rawData['ep_remark'] ?? '';
+      const planKey = `${enrollmentMajor}|${remark}`;
 
+      // 如果该 school 还没有在 map 中，初始化
+      if (!schoolMap.has(schoolCode)) {
         // 构建 school 实体
         const school: School | null = rawData['school_id']
           ? ({
@@ -539,24 +534,43 @@ export class EnrollPlanService {
             } as School)
           : null;
 
-        // 构建 schoolDetail 实体
-        const schoolDetail: SchoolDetail | null = rawData['schoolDetail_id']
-          ? ({
-              id: rawData['schoolDetail_id'],
-              code: rawData['schoolDetail_code'],
-              briefComment: rawData['schoolDetail_brief_comment'],
-              keyTags: rawData['schoolDetail_key_tags'],
-              historyIntro: rawData['schoolDetail_history_intro'],
-              advantageMajors: rawData['schoolDetail_advantage_majors'],
-              nationalLabs: rawData['schoolDetail_national_labs'],
-              provincialLabs: rawData['schoolDetail_provincial_labs'],
-              seniorRecommendations: rawData['schoolDetail_senior_recommendations'],
-              disadvantages: rawData['schoolDetail_disadvantages'],
-              dataSource: rawData['schoolDetail_data_source'],
-              enrollmentRate: rawData['schoolDetail_enrollment_rate'],
-              employmentRate: rawData['schoolDetail_employment_rate'],
-            } as SchoolDetail)
-          : null;
+        schoolMap.set(schoolCode, {
+          school,
+          enrollmentRate: rawData['schoolDetail_enrollment_rate'] ?? null,
+          employmentRate: rawData['schoolDetail_employment_rate'] ?? null,
+          plans: new Map(),
+        });
+      }
+
+      const schoolData = schoolMap.get(schoolCode)!;
+
+      // 如果该 plan 分组还没有在 map 中，从 raw 数据构建实体
+      if (!schoolData.plans.has(planKey)) {
+        // 从 raw 数据构建 enrollment_plan 实体
+        const epId = rawData['ep_id'];
+        const enrollmentPlan: EnrollmentPlan = {
+          id: epId,
+          schoolCode: rawData['ep_school_code'],
+          majorGroupId: rawData['ep_major_group_id'] ?? null,
+          majorGroupInfo: rawData['ep_major_group_info'] ?? null,
+          province: rawData['ep_province'] ?? null,
+          year: rawData['ep_year'] ?? null,
+          batch: rawData['ep_batch'] ?? null,
+          subjectSelectionMode: rawData['ep_subject_selection_mode'] ?? null,
+          primarySubject: rawData['ep_primary_subject'] ?? null,
+          secondarySubjects: rawData['ep_secondary_subjects'] ?? null,
+          secondarySubjectType: rawData['ep_secondary_subject_type'] ?? null,
+          studyPeriod: rawData['ep_study_period'] ?? null,
+          enrollmentQuota: rawData['ep_enrollment_quota'] ?? null,
+          enrollmentType: rawData['ep_enrollment_type'] ?? null,
+          remark: rawData['ep_remark'] ?? null,
+          tuitionFee: rawData['ep_tuition_fee'] ?? null,
+          enrollmentMajor: rawData['ep_enrollment_major'] ?? null,
+          curUnit: rawData['ep_cur_unit'] ?? null,
+          level3MajorId: rawData['ep_level3_major_id'] ?? null,
+          level2MajorIds: rawData['ep_level2_major_ids'] ?? null,
+          subLevel2MajorIds: rawData['ep_sub_level2_major_ids'] ?? null,
+        } as EnrollmentPlan;
 
         // 构建 majorGroup 实体
         const majorGroup: any | null = rawData['majorGroup_id']
@@ -576,16 +590,14 @@ export class EnrollPlanService {
             }
           : null;
 
-        enrollmentPlanMap.set(epId, {
+        schoolData.plans.set(planKey, {
           ...enrollmentPlan,
-          school,
-          schoolDetail,
           majorGroup,
           majorScores: [],
         });
       }
 
-      const enrollmentPlan = enrollmentPlanMap.get(epId)!;
+      const enrollmentPlan = schoolData.plans.get(planKey)!;
 
       // 如果存在 major_scores 数据，创建 MajorScore 对象并添加到数组
       const msId = rawData['ms_id'];
@@ -616,35 +628,40 @@ export class EnrollPlanService {
     });
 
     // 6. 转换为数组并简化为 DTO
-    const processedResults = Array.from(enrollmentPlanMap.values());
+    const simplifiedResults: EnrollmentPlanWithScoresDto[] = Array.from(
+      schoolMap.values(),
+    ).map((schoolData) => {
+      // 简化的 school（包含 enrollmentRate 和 employmentRate）
+      const schoolSimple: SchoolSimpleDto = schoolData.school
+        ? {
+            code: schoolData.school.code,
+            name: schoolData.school.name,
+            nature: schoolData.school.nature,
+            level: schoolData.school.level,
+            belong: schoolData.school.belong,
+            categories: schoolData.school.categories,
+            features: schoolData.school.features,
+            provinceName: schoolData.school.provinceName,
+            cityName: schoolData.school.cityName,
+            enrollmentRate: schoolData.enrollmentRate,
+            employmentRate: schoolData.employmentRate,
+          }
+        : {
+            code: '',
+            name: '',
+            nature: '',
+            level: '',
+            belong: '',
+            categories: '',
+            features: '',
+            provinceName: '',
+            cityName: '',
+            enrollmentRate: schoolData.enrollmentRate,
+            employmentRate: schoolData.employmentRate,
+          };
 
-    // 7. 转换为简化的 DTO 格式
-    const simplifiedResults: EnrollmentPlanWithScoresDto[] =
-      processedResults.map((ep) => {
-        // 简化的 school
-        const schoolSimple: SchoolSimpleDto | null = ep.school
-          ? {
-              code: ep.school.code,
-              name: ep.school.name,
-              nature: ep.school.nature,
-              level: ep.school.level,
-              belong: ep.school.belong,
-              categories: ep.school.categories,
-              features: ep.school.features,
-              provinceName: ep.school.provinceName,
-              cityName: ep.school.cityName,
-            }
-          : null;
-
-        // 简化的 schoolDetail
-        const schoolDetailSimple: SchoolDetailSimpleDto | null = ep.schoolDetail
-          ? {
-              code: ep.schoolDetail.code,
-              enrollmentRate: ep.schoolDetail.enrollmentRate,
-              employmentRate: ep.schoolDetail.employmentRate,
-            }
-          : null;
-
+      // 转换为 plans 数组
+      const plans = Array.from(schoolData.plans.values()).map((ep) => {
         // 简化的 majorGroup
         const majorGroupSimple: MajorGroupSimpleDto | null = ep.majorGroup
           ? {
@@ -690,18 +707,142 @@ export class EnrollPlanService {
           tuitionFee: ep.tuitionFee,
           enrollmentMajor: ep.enrollmentMajor,
           curUnit: ep.curUnit,
-          school: schoolSimple,
-          schoolDetail: schoolDetailSimple,
           majorGroup: majorGroupSimple,
           majorScores: majorScoresSimple,
         };
       });
 
+      return {
+        school: schoolSimple,
+        plans,
+      };
+    });
+
+    const totalPlans = simplifiedResults.reduce(
+      (sum, school) => sum + school.plans.length,
+      0,
+    );
     this.logger.log(
-      `用户 ${userId} 查询专业ID ${majorId} 的招生计划，找到 ${simplifiedResults.length} 条记录（原始 raw 数据 ${raw.length} 条，合并后 ${simplifiedResults.length} 条）`,
+      `用户 ${userId} 查询专业ID ${majorId} 的招生计划，找到 ${simplifiedResults.length} 所学校，共 ${totalPlans} 个招生计划（原始 raw 数据 ${raw.length} 条）`,
     );
 
-    return simplifiedResults;
+    // 使用 plainToInstance 转换，使 @Transform 装饰器生效
+    return plainToInstance(EnrollmentPlanWithScoresDto, simplifiedResults, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  /**
+   * 通过专业组ID查询专业组信息
+   * @param encodedMgId 混淆后的专业组ID
+   * @param userId 用户ID（用于计算热爱能量）
+   * @returns 专业组信息及专业热爱能量数组
+   */
+  async getMajorGroupInfoByMgId(
+    encodedMgId: number,
+    userId: number,
+  ): Promise<MajorGroupInfoResponseDto[]> {
+    // 1. 反转换 mg_id
+    const realMgId = IdTransformUtil.decode(encodedMgId);
+
+    if (realMgId === null) {
+      throw new NotFoundException('无效的专业组ID');
+    }
+
+    // 2. 查询 enrollment_plans，通过 majorGroupId 查询（可能有多个）
+    const enrollmentPlans = await this.enrollmentPlanRepository.find({
+      where: { majorGroupId: realMgId },
+    });
+
+    if (!enrollmentPlans || enrollmentPlans.length === 0) {
+      throw new NotFoundException('未找到对应的招生计划');
+    }
+
+    // 3. 合并所有 enrollmentPlan 的 level3MajorId 数组（去重），用于一次性查询所有 major
+    const allLevel3MajorIds = new Set<number>();
+    enrollmentPlans.forEach((ep) => {
+      if (ep.level3MajorId && ep.level3MajorId.length > 0) {
+        ep.level3MajorId.forEach((id) => allLevel3MajorIds.add(id));
+      }
+    });
+
+    const level3MajorIds = Array.from(allLevel3MajorIds);
+
+    // 4. 一次性查询所有需要的 major 信息
+    let majorsMap = new Map<number, Major>();
+    let loveEnergyMap = new Map<string, number>();
+
+    if (level3MajorIds.length > 0) {
+      const majors = await this.majorRepository.find({
+        where: { id: In(level3MajorIds) },
+      });
+
+      // 创建 major id 到 major 实体的映射
+      majors.forEach((major) => {
+        majorsMap.set(major.id, major);
+      });
+
+      // 5. 获取所有专业代码，一次性计算所有专业的热爱能量
+      const majorCodes = majors.map((major) => major.code).filter((code) => code);
+
+      if (majorCodes.length > 0) {
+        try {
+          const scores = await this.scoresService.calculateScores(
+            userId,
+            undefined, // 不限制教育层次
+            majorCodes,
+          );
+
+          // 创建专业代码到热爱能量的映射
+          scores.forEach((scoreInfo) => {
+            loveEnergyMap.set(scoreInfo.majorCode, scoreInfo.score);
+          });
+        } catch (error) {
+          this.logger.warn(
+            `计算专业热爱能量失败，用户ID: ${userId}, 错误: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          // 计算失败不影响返回结果，只是没有热爱能量信息
+        }
+      }
+    }
+
+    // 6. 为每个 enrollmentPlan 构建对应的 scores
+    const results: MajorGroupInfoResponseDto[] = enrollmentPlans.map((ep) => {
+      // 获取当前 enrollmentPlan 的 level3MajorId
+      const currentLevel3MajorIds = ep.level3MajorId || [];
+
+      // 为当前 enrollmentPlan 构建对应的 scores
+      const scores: MajorLoveEnergyDto[] = currentLevel3MajorIds
+        .map((majorId) => {
+          const major = majorsMap.get(majorId);
+          if (!major) {
+            return null;
+          }
+          return {
+            majorCode: major.code,
+            majorName: major.name,
+            loveEnergy: loveEnergyMap.get(major.code) || null,
+          };
+        })
+        .filter((item): item is MajorLoveEnergyDto => item !== null);
+
+      return {
+        id: ep.id,
+        studyPeriod: ep.studyPeriod,
+        enrollmentQuota: ep.enrollmentQuota,
+        remark: ep.remark,
+        enrollmentMajor: ep.enrollmentMajor,
+        scores,
+      };
+    });
+
+    this.logger.log(
+      `通过专业组ID ${realMgId}（混淆ID: ${encodedMgId}）查询专业组信息，找到 ${enrollmentPlans.length} 个招生计划`,
+    );
+
+    return plainToInstance(MajorGroupInfoResponseDto, results, {
+      excludeExtraneousValues: true,
+    });
   }
 }
 

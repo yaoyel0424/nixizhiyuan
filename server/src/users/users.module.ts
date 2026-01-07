@@ -5,6 +5,10 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from '@/entities/user.entity';
 import { ProvincialControlLine } from '@/entities/provincial-control-line.entity';
+import { ScaleAnswer } from '@/entities/scale-answer.entity';
+import { MajorFavorite } from '@/entities/major-favorite.entity';
+import { ProvinceFavorite } from '@/entities/province-favorite.entity';
+import { Alternative } from '@/entities/alternative.entity';
 import { UsersRepository } from './repositories/users.repository';
 
 /**
@@ -12,7 +16,14 @@ import { UsersRepository } from './repositories/users.repository';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, ProvincialControlLine]),
+    TypeOrmModule.forFeature([
+      User,
+      ProvincialControlLine,
+      ScaleAnswer,
+      MajorFavorite,
+      ProvinceFavorite,
+      Alternative,
+    ]),
     ConfigModule,
   ],
   controllers: [UsersController],

@@ -1,7 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Type, Transform, Exclude } from 'class-transformer';
+import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
- * 简化的学校信息 DTO
+ * 简化的学校信息 DTO（包含招生率和就业率）
  */
 export class SchoolSimpleDto {
   @Expose()
@@ -30,6 +31,12 @@ export class SchoolSimpleDto {
 
   @Expose()
   cityName: string;
+
+  @Expose()
+  enrollmentRate: number | null;
+
+  @Expose()
+  employmentRate: number | null;
 }
 
 /**
@@ -65,7 +72,7 @@ export class MajorGroupSimpleDto {
   @Expose()
   batch: string | null;
 
-  @Expose()
+  @Exclude({ toPlainOnly: true })
   mgId: number | null;
 
   @Expose()
@@ -108,9 +115,9 @@ export class MajorScoreSimpleDto {
 }
 
 /**
- * 招生计划及分数信息 DTO
+ * 招生计划项 DTO（按 enrollmentMajor 和 remark 分组）
  */
-export class EnrollmentPlanWithScoresDto {
+export class EnrollmentPlanItemDto {
   @Expose()
   id: number;
 
@@ -118,6 +125,7 @@ export class EnrollmentPlanWithScoresDto {
   schoolCode: string;
 
   @Expose()
+  @Transform(({ value }) => IdTransformUtil.encode(value))
   majorGroupId: number | null;
 
   @Expose()
@@ -157,19 +165,24 @@ export class EnrollmentPlanWithScoresDto {
   curUnit: string | null;
 
   @Expose()
-  @Type(() => SchoolSimpleDto)
-  school: SchoolSimpleDto | null;
-
-  @Expose()
-  @Type(() => SchoolDetailSimpleDto)
-  schoolDetail: SchoolDetailSimpleDto | null;
-
-  @Expose()
   @Type(() => MajorGroupSimpleDto)
   majorGroup: MajorGroupSimpleDto | null;
 
   @Expose()
   @Type(() => MajorScoreSimpleDto)
   majorScores: MajorScoreSimpleDto[];
+}
+
+/**
+ * 按学校分组的招生计划 DTO
+ */
+export class EnrollmentPlanWithScoresDto {
+  @Expose()
+  @Type(() => SchoolSimpleDto)
+  school: SchoolSimpleDto;
+
+  @Expose()
+  @Type(() => EnrollmentPlanItemDto)
+  plans: EnrollmentPlanItemDto[];
 }
 

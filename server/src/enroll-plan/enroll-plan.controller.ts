@@ -16,6 +16,7 @@ import {
 import { EnrollPlanService } from './enroll-plan.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { EnrollmentPlanWithScoresDto } from './dto/enrollment-plan-with-scores.dto';
+import { MajorGroupInfoResponseDto } from './dto/major-group-info-response.dto';
 
 /**
  * 招生计划控制器
@@ -105,5 +106,35 @@ export class EnrollPlanController {
       user.id,
       year,
     );
+  }
+
+  /**
+   * 通过专业组ID查询专业组信息
+   * @param mgId 混淆后的专业组ID
+   * @param user 当前用户
+   * @returns 专业组信息及专业热爱能量
+   */
+  @Get('major-group/:mgId')
+  @ApiOperation({ summary: '通过专业组ID查询专业组信息' })
+  @ApiParam({
+    name: 'mgId',
+    description: '专业组ID',
+    type: Number,
+    example: 123456,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: [MajorGroupInfoResponseDto],
+  })
+  @ApiResponse({
+    status: 404,
+    description: '专业组不存在或未找到数据',
+  })
+  async getMajorGroupInfo(
+    @Param('mgId', ParseIntPipe) mgId: number,
+    @CurrentUser() user: any,
+  ): Promise<MajorGroupInfoResponseDto[]> {
+    return await this.enrollPlanService.getMajorGroupInfoByMgId(mgId, user.id);
   }
 } 

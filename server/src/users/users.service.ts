@@ -9,12 +9,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '@/entities/user.entity';
 import { ProvincialControlLine } from '@/entities/provincial-control-line.entity';
+import { ScaleAnswer } from '@/entities/scale-answer.entity';
+import { MajorFavorite } from '@/entities/major-favorite.entity';
+import { ProvinceFavorite } from '@/entities/province-favorite.entity';
+import { Alternative } from '@/entities/alternative.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersRepository } from './repositories/users.repository';
 import { ErrorCode } from '../common/constants/error-code.constant';
 import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
+import { UserRelatedDataResponseDto } from './dto/user-related-data-response.dto';
 
 /**
  * 用户服务
@@ -29,6 +35,14 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(ProvincialControlLine)
     private readonly provincialControlLineRepository: Repository<ProvincialControlLine>,
+    @InjectRepository(ScaleAnswer)
+    private readonly scaleAnswerRepository: Repository<ScaleAnswer>,
+    @InjectRepository(MajorFavorite)
+    private readonly majorFavoriteRepository: Repository<MajorFavorite>,
+    @InjectRepository(ProvinceFavorite)
+    private readonly provinceFavoriteRepository: Repository<ProvinceFavorite>,
+    @InjectRepository(Alternative)
+    private readonly alternativeRepository: Repository<Alternative>,
     private readonly usersRepository: UsersRepository,
     private readonly configService: ConfigService,
   ) {}
@@ -212,6 +226,60 @@ export class UsersService {
     // 更新用户信息
     Object.assign(user, updateData);
     return this.userRepository.save(user);
+  }
+
+  /**
+   * 获取用户相关数据的数量统计
+   * @param userId 用户ID
+   * @returns 用户相关数据的数量统计
+   */
+  async getUserRelatedDataCount(
+    userId: number,
+  ): Promise<UserRelatedDataResponseDto> {
+    // 通过 User 实体关联查询，一次性获取所有关联数据
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: [
+        'scaleAnswers',
+        'scaleAnswers.scale', // 加载 scaleAnswers 的 scale 关联
+        'majorFavorites',
+        'provinceFavorites',
+        'alternatives',
+      ],
+    });
+
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    // 从关联数据中获取数量
+    // 统计 scaleAnswers 中不重复的 scale 数量
+    const uniqueScales = new Set(
+      user.scaleAnswers
+        ?.map((answer) => answer.scale?.id)
+        .filter((id) => id !== undefined && id >112) || [],
+    );
+    const scaleAnswersCount = uniqueScales.size;
+    const majorFavoritesCount = user.majorFavorites?.length || 0;
+    const provinceFavoritesCount = user.provinceFavorites?.length || 0;
+    const alternativesCount = user.alternatives?.length || 0;
+
+    this.logger.log(
+      `用户 ${userId} 相关数据统计：scaleAnswers=${scaleAnswersCount}, majorFavorites=${majorFavoritesCount}, provinceFavorites=${provinceFavoritesCount}, alternatives=${alternativesCount}`,
+    );
+
+    return plainToInstance(
+      UserRelatedDataResponseDto,
+      {
+        scaleAnswersCount,
+        majorFavoritesCount,
+        provinceFavoritesCount,
+        alternativesCount,
+      },
+      {
+        excludeExtraneousValues: true,
+      },
+    );
   }
 }
 

@@ -16,6 +16,8 @@ import { GAOKAO_SUBJECT_CONFIG } from '@/config/gaokao-subjects';
 import { EnrollConfigService } from './enroll-config.service';
 import { GetScoreRangeDto } from './dto/get-score-range.dto';
 import { ScoreRangeResponseDto } from './dto/score-range-response.dto';
+import { ProvincialControlLineResponseDto } from './dto/provincial-control-line-response.dto';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { plainToInstance } from 'class-transformer';
 
 /**
@@ -113,6 +115,32 @@ export class EnrollConfigController {
       batchName: scoreRange.batchName,
       controlScore: scoreRange.controlScore,
     });
+  }
+
+  /**
+   * 根据当前用户信息查询省控线
+   * @param user 当前用户
+   * @returns 省控线列表
+   */
+  @Get('provincial-control-lines')
+  @ApiOperation({ summary: '根据当前用户信息查询省控线' })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: [ProvincialControlLineResponseDto],
+  })
+  @ApiResponse({
+    status: 400,
+    description: '用户信息不完整（缺少省份、首选科目或录取类型）',
+  })
+  async getProvincialControlLines(
+    @CurrentUser() user: any,
+  ): Promise<ProvincialControlLineResponseDto[]> {
+    const year = process.env.CURRENT_YEAR || '2025';
+    return await this.enrollConfigService.findProvincialControlLinesByUser(
+      user,
+      year,
+    );
   }
 }
 

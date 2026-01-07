@@ -2,34 +2,52 @@ import { Expose, Exclude } from 'class-transformer';
 
 /**
  * 用户响应 DTO
- * 使用 class-transformer 进行序列化，不包含敏感信息
+ * 使用 class-transformer 进行序列化，不包含敏感信息（如 openid、unionid）
  */
 export class UserResponseDto {
   @Expose()
   id: number;
 
   @Expose()
-  username: string;
+  nickname?: string;
 
   @Expose()
-  email: string;
+  avatarUrl?: string;
 
   @Expose()
-  roles: string[];
+  province?: string;
 
   @Expose()
-  avatar?: string;
+  score?: number;
+
+  @Expose()
+  preferredSubjects?: string;
+
+  @Expose()
+  secondarySubjects?: string;
+
+  @Expose()
+  rank?: number;
+
+  @Expose()
+  enrollType?: string;
+
+  @Expose()
+  userType: 'child' | 'adult';
+
+  @Expose()
+  age?: number;
+
+  @Expose()
+  gender?: string;
 
   @Expose()
   createdAt: Date;
 
-  @Expose()
-  updatedAt: Date;
+  @Exclude()
+  openid?: string;
 
   @Exclude()
-  password?: string;
-
-  @Exclude()
-  deletedAt?: Date;
+  unionid?: string;
 }
 

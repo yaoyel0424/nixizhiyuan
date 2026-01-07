@@ -19,10 +19,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { UserRelatedDataResponseDto } from './dto/user-related-data-response.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { Public } from '../common/decorators/public.decorator';
+import { Roles } from '../common/decorators/roles.decorator'; 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { plainToInstance } from 'class-transformer';
 import { isValidProvinceName } from '@/config/province';
@@ -45,7 +45,29 @@ export class UsersController {
     return plainToInstance(UserResponseDto, user, {
       excludeExtraneousValues: true,
     });
-  } 
+  }
+
+  /**
+   * 获取当前用户相关数据的数量统计
+   * @param user 当前用户
+   * @returns 用户相关数据的数量统计
+   */
+  @Get('/related-data-count')
+  @ApiOperation({ summary: '获取当前用户相关数据的数量统计' })
+  @ApiResponse({
+    status: 200,
+    description: '获取成功',
+    type: UserRelatedDataResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: '用户不存在',
+  })
+  async getUserRelatedDataCount(
+    @CurrentUser() user: any,
+  ): Promise<UserRelatedDataResponseDto> {
+    return await this.usersService.getUserRelatedDataCount(user.id);
+  }
 
   @Get(':id')
   @ApiOperation({ summary: '获取用户详情' })
