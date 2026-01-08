@@ -10,7 +10,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { getStorage, setStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import { getCurrentUserDetail } from '@/services/user'
-import { getUserEnrollmentPlans, UserEnrollmentPlan } from '@/services/enroll-plan'
+import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine } from '@/services/enroll-plan'
 import { RangeSlider } from '@/components/RangeSlider'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
@@ -602,15 +602,28 @@ export default function IntendedMajorsPage() {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
 
+  // 使用 ref 防止重复调用招生计划接口
+  const fetchingEnrollmentPlansRef = useRef(false)
+
   // 加载数据（院校探索页面使用API数据，意向志愿页面使用静态数据）
   useEffect(() => {
     const loadData = async () => {
       try {
         if (activeTab === '专业赛道') {
-          // 院校探索页面：调用API获取用户招生计划
-          const plans = await getUserEnrollmentPlans()
-          setEnrollmentPlans(plans)
-          console.log('获取用户招生计划成功:', plans)
+          // 如果正在获取中，避免重复调用
+          if (fetchingEnrollmentPlansRef.current) {
+            return
+          }
+          
+          try {
+            fetchingEnrollmentPlansRef.current = true
+            // 院校探索页面：调用API获取用户招生计划
+            const plans = await getUserEnrollmentPlans()
+            setEnrollmentPlans(plans)
+            console.log('获取用户招生计划成功:', plans)
+          } finally {
+            fetchingEnrollmentPlansRef.current = false
+          }
         } else {
           // 意向志愿页面：使用静态数据
           setData(intentionData as unknown as IntentionMajor[])
@@ -662,36 +675,37 @@ export default function IntendedMajorsPage() {
     loadWishlist()
   }, [])
 
-  // 获取省份最低省控线（通过 score-range 接口的 controlScore 字段）
-  const getMinControlScore = async (province: string, subjectType: string) => {
-    if (!province || !subjectType) {
-      return 0
-    }
-    
+  // 获取省份最低省控线（通过 provincial-control-lines 接口）
+  const getMinControlScore = async () => {
     try {
-      // 尝试使用不同的分数值来获取省控线信息
-      // 接口会返回 controlScore 字段，这就是省控线
-      // 先尝试使用较低的分数（200），如果失败则尝试其他分数
-      const scoreKeys = ['200', '300', '400', '500']
+      // 调用接口获取省控线列表（根据当前用户信息自动查询）
+      const controlLines = await getProvincialControlLines()
       
-      for (const scoreKey of scoreKeys) {
-        const scoreRangeInfo = await getScoreRange(province, subjectType, scoreKey)
-        if (scoreRangeInfo && scoreRangeInfo.controlScore !== undefined && scoreRangeInfo.controlScore !== null) {
-          console.log('获取省控线成功:', {
-            province,
-            subjectType,
-            controlScore: scoreRangeInfo.controlScore,
-            usedScoreKey: scoreKey
-          })
-          return scoreRangeInfo.controlScore
-        }
+      if (!controlLines || controlLines.length === 0) {
+        console.warn('未获取到省控线数据')
+        return 0
       }
       
-      // 如果所有分数键都失败，返回0（使用默认值）
-      console.warn('无法获取省控线，将使用默认值0:', { province, subjectType })
-      return 0
+      // 从省控线列表中找出最低的分数
+      const scores = controlLines
+        .map(line => line.score)
+        .filter((score): score is number => score !== null && score !== undefined && score > 0)
+      
+      if (scores.length === 0) {
+        console.warn('省控线数据中没有有效的分数')
+        return 0
+      }
+      
+      const minScore = Math.min(...scores)
+      console.log('获取省控线成功:', {
+        controlLinesCount: controlLines.length,
+        minControlScore: minScore,
+        allScores: scores
+      })
+      
+      return minScore
     } catch (error) {
-      // 静默处理错误，不输出日志（因为404是正常情况）
+      console.error('获取省控线失败:', error)
       return 0
     }
   }
@@ -745,20 +759,13 @@ export default function IntendedMajorsPage() {
       const score = info.score || 580
       setCurrentScore(score)
       
-      // 获取省份最低省控线
-      let controlScore = 0
-      if (info.province && info.preferredSubjects) {
-        controlScore = await getMinControlScore(info.province, info.preferredSubjects)
-        setMinControlScore(controlScore)
-      }
-      
+      // 不在这里获取省控线，让 useEffect 统一处理，避免重复调用
+      // 先设置默认的分数区间，等省控线获取后再更新
       const savedRange = await getStorage<[number, number]>('scoreRange')
       if (savedRange && Array.isArray(savedRange) && savedRange.length === 2) {
-        // 确保最小值不低于省控线
-        const minValue = Math.max(savedRange[0], controlScore)
-        setScoreRange([minValue, savedRange[1]])
+        setScoreRange(savedRange)
       } else {
-        const minScore = Math.max(controlScore, score - 50)
+        const minScore = Math.max(0, score - 50)
         const maxScore = Math.min(750, score + 50)
         setScoreRange([minScore, maxScore])
       }
@@ -774,36 +781,58 @@ export default function IntendedMajorsPage() {
     loadExamInfoFromStorage()
   }, [])
 
+  // 使用 ref 防止重复调用省控线接口
+  const fetchingControlScoreRef = useRef(false)
+
   // 监听 examInfo 变化，更新省控线（统一在这里处理，避免重复调用）
   useEffect(() => {
-    if (examInfo?.province && examInfo?.preferredSubjects) {
+    if (examInfo?.province && examInfo?.preferredSubjects && !fetchingControlScoreRef.current) {
       const updateControlScore = async () => {
-        const controlScore = await getMinControlScore(examInfo.province!, examInfo.preferredSubjects!)
-        setMinControlScore(controlScore)
-        // 如果当前分数区间的最小值低于省控线，则更新左侧滑块位置
-        setScoreRange((prevRange) => {
-          if (prevRange[0] < controlScore) {
-            const newMinValue = Math.max(controlScore, prevRange[0])
-            const newRange: [number, number] = [newMinValue, prevRange[1]]
-            // 保存更新后的区间
-            setStorage('scoreRange', newRange).catch((error) => {
-              console.error('保存分数区间失败:', error)
-            })
-            return newRange
-          }
-          return prevRange
-        })
+        // 如果正在获取中，避免重复调用
+        if (fetchingControlScoreRef.current) {
+          return
+        }
+        
+        try {
+          fetchingControlScoreRef.current = true
+          const controlScore = await getMinControlScore()
+          setMinControlScore(controlScore)
+          // 如果当前分数区间的最小值低于省控线，则更新左侧滑块位置
+          setScoreRange((prevRange) => {
+            if (prevRange[0] < controlScore) {
+              const newMinValue = Math.max(controlScore, prevRange[0])
+              const newRange: [number, number] = [newMinValue, prevRange[1]]
+              // 保存更新后的区间
+              setStorage('scoreRange', newRange).catch((error) => {
+                console.error('保存分数区间失败:', error)
+              })
+              return newRange
+            }
+            return prevRange
+          })
+        } finally {
+          fetchingControlScoreRef.current = false
+        }
       }
       updateControlScore()
     }
   }, [examInfo?.province, examInfo?.preferredSubjects])
 
+  // 使用 ref 防止重复调用用户详情接口
+  const fetchingUserDetailRef = useRef(false)
+
   // 院校探索页面加载时获取用户详情
   useEffect(() => {
     // 使用 activeTab 判断是否为院校探索页面
-    if (activeTab !== '意向志愿') {
+    if (activeTab !== '意向志愿' && !fetchingUserDetailRef.current) {
       const fetchUserDetail = async () => {
+        // 如果正在获取中，避免重复调用
+        if (fetchingUserDetailRef.current) {
+          return
+        }
+        
         try {
+          fetchingUserDetailRef.current = true
           const userDetail = await getCurrentUserDetail()
           if (userDetail) {
             console.log('用户详情:', userDetail)
@@ -812,6 +841,8 @@ export default function IntendedMajorsPage() {
           }
         } catch (error) {
           console.error('获取用户详情失败:', error)
+        } finally {
+          fetchingUserDetailRef.current = false
         }
       }
       fetchUserDetail()
@@ -1246,8 +1277,8 @@ export default function IntendedMajorsPage() {
           enrollmentPlans.length === 0 ? (
             <View className="intended-majors-page__empty">
               <Text className="intended-majors-page__empty-icon">📚</Text>
-              <Text className="intended-majors-page__empty-text">暂无收藏专业</Text>
-              <Text className="intended-majors-page__empty-desc">请先收藏感兴趣的专业，系统将为您匹配招生计划</Text>
+              <Text className="intended-majors-page__empty-text">暂无数据</Text>
+              <Text className="intended-majors-page__empty-desc">暂无院校探索数据，请稍后再试</Text>
             </View>
           ) : (
             <View className="intended-majors-page__majors-list">
@@ -1269,8 +1300,9 @@ export default function IntendedMajorsPage() {
                         </View>
                         <Button
                           onClick={() => {
+                            // 传递 majorId 和 majorCode，院校列表页面可以根据 majorId 调用 API
                             Taro.navigateTo({
-                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}`
+                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}`
                             })
                           }}
                           className="intended-majors-page__major-item-link"

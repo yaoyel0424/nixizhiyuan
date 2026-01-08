@@ -373,3 +373,13 @@ export interface CheckFavoriteMajorResponse {
 export interface FavoriteMajorsCountResponse {
   count: number
 }
+
+/**
+ * 用户相关数据统计响应
+ */
+export interface UserRelatedDataResponse {
+  scaleAnswersCount: number
+  majorFavoritesCount: number
+  provinceFavoritesCount: number
+  alternativesCount: number
+}

@@ -1,6 +1,6 @@
 import Taro from '@tarojs/taro'
 import { get, post, put } from './api'
-import { UserInfo, UpdateUserParams, ChangePasswordParams } from '@/types/api'
+import { UserInfo, UpdateUserParams, ChangePasswordParams, UserRelatedDataResponse } from '@/types/api'
 
 /**
  * 获取当前用户ID
@@ -123,4 +123,27 @@ export const getUserSettings = (): Promise<any> => {
  */
 export const updateUserSettings = (settings: any): Promise<any> => {
   return put('/user/settings', settings)
+}
+
+/**
+ * 获取当前用户相关数据的数量统计
+ * @returns 用户相关数据的数量统计
+ */
+export const getUserRelatedDataCount = async (): Promise<UserRelatedDataResponse> => {
+  const response: any = await get<UserRelatedDataResponse>('/users/related-data-count')
+  
+  // 处理响应数据
+  if (response && typeof response === 'object') {
+    // 如果包含 data 字段，提取 data
+    if (response.data) {
+      return response.data
+    }
+    // 如果直接包含统计字段，直接返回
+    if (typeof response.scaleAnswersCount === 'number') {
+      return response
+    }
+    // 其他情况直接返回
+    return response
+  }
+  return response
 }
