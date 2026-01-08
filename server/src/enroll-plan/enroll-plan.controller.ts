@@ -17,7 +17,7 @@ import { EnrollPlanService } from './enroll-plan.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { EnrollmentPlanWithScoresDto } from './dto/enrollment-plan-with-scores.dto';
 import { MajorGroupInfoResponseDto } from './dto/major-group-info-response.dto';
-
+import { Cache } from '@/common/decorators/cache.decorator';
 /**
  * 招生计划控制器
  */
@@ -44,6 +44,7 @@ export class EnrollPlanController {
     status: 404,
     description: '用户不存在',
   })
+  @Cache(60)
   async getUserEnrollmentPlans(
     @CurrentUser() user: any,
   ): Promise<
@@ -80,6 +81,7 @@ export class EnrollPlanController {
    * @returns 招生计划列表（包含学校、学校详情、专业组和分数信息）
    */
   @Get('major/:majorId/scores')
+  @Cache(60)
   @ApiOperation({ summary: '根据专业ID查询招生计划和分数信息' })
   @ApiParam({
     name: 'majorId',
@@ -115,6 +117,7 @@ export class EnrollPlanController {
    * @returns 专业组信息及专业热爱能量
    */
   @Get('major-group/:mgId')
+  @Cache(600)
   @ApiOperation({ summary: '通过专业组ID查询专业组信息' })
   @ApiParam({
     name: 'mgId',

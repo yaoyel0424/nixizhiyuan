@@ -18,6 +18,7 @@ import { SchoolDetail } from './school-detail.entity';
 @Entity('enrollment_plans')
 @Index(['schoolCode', 'province', 'subjectSelectionMode', 'batch', 'enrollmentType', 'year']) // 复合索引，提高查询性能
 @Index(['majorGroupId']) // 专业组ID索引
+@Index(['year', 'province', 'batch', 'primarySubject', 'enrollmentType']) // 针对 findEnrollmentPlansByMajorId 查询的优化索引，enrollmentType 放在最后
 export class EnrollmentPlan {
   /**
    * 招生计划唯一标识符 (自增长ID)

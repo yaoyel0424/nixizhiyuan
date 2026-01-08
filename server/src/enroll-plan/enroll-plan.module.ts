@@ -7,6 +7,8 @@ import { User } from '@/entities/user.entity';
 import { School } from '@/entities/school.entity';
 import { SchoolDetail } from '@/entities/school-detail.entity';
 import { MajorScore } from '@/entities/major-score.entity';
+import { ProvinceFavorite } from '@/entities/province-favorite.entity';
+import { Province } from '@/entities/province.entity';
 import { ScoresModule } from '@/scores/scores.module';
 import { EnrollPlanController } from './enroll-plan.controller';
 import { EnrollPlanService } from './enroll-plan.service';
@@ -24,6 +26,8 @@ import { EnrollPlanService } from './enroll-plan.service';
       School,
       SchoolDetail,
       MajorScore,
+      ProvinceFavorite,
+      Province,
     ]),
     ScoresModule,
   ],

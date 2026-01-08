@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, ArrayOverlap } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
@@ -9,6 +9,8 @@ import { User } from '@/entities/user.entity';
 import { School } from '@/entities/school.entity';
 import { SchoolDetail } from '@/entities/school-detail.entity';
 import { MajorScore } from '@/entities/major-score.entity';
+import { ProvinceFavorite } from '@/entities/province-favorite.entity';
+import { Province } from '@/entities/province.entity';
 import { ScoresService } from '@/scores/scores.service';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
 import {
@@ -44,6 +46,10 @@ export class EnrollPlanService {
     private readonly schoolDetailRepository: Repository<SchoolDetail>,
     @InjectRepository(MajorScore)
     private readonly majorScoreRepository: Repository<MajorScore>,
+    @InjectRepository(ProvinceFavorite)
+    private readonly provinceFavoriteRepository: Repository<ProvinceFavorite>,
+    @InjectRepository(Province)
+    private readonly provinceRepository: Repository<Province>,
     private readonly scoresService: ScoresService,
   ) {}
 
@@ -86,7 +92,26 @@ export class EnrollPlanService {
       throw new NotFoundException('用户不存在');
     }
 
-    // 2. 获取用户收藏的专业（按收藏顺序排序，先收藏的在前）
+    // 2. 查询用户收藏的省份，JOIN Province 获取省份名称
+    const provinceFavorites = await this.provinceFavoriteRepository.find({
+      where: { userId: userId },
+      relations: ['province'],
+    });
+
+    // 获取收藏的省份名称列表
+    const favoriteProvinceNames = provinceFavorites
+      .map((pf) => pf.province?.name)
+      .filter((name): name is string => !!name);
+
+    // 验证用户是否收藏了省份
+    if (favoriteProvinceNames.length === 0) {
+      throw new BadRequestException('请先收藏您的意向省份');
+    }
+
+    // 使用收藏的省份名称列表
+    const provinceNames = favoriteProvinceNames;
+
+    // 3. 获取用户收藏的专业（按收藏顺序排序，先收藏的在前）
     const majorFavorites = await this.majorFavoriteRepository.find({
       where: { userId },
       relations: ['major'],
@@ -98,7 +123,7 @@ export class EnrollPlanService {
       return [];
     }
 
-    // 3. 获取所有收藏专业的ID和代码（从已加载的 major 关系中获取）
+    // 4. 获取所有收藏专业的ID和代码（从已加载的 major 关系中获取）
     const majorIds = majorFavorites
       .map((mf) => mf.major?.id)
       .filter((id): id is number => id !== undefined && id !== null);
@@ -112,7 +137,7 @@ export class EnrollPlanService {
       .map((mf) => mf.majorCode)
       .filter((code) => code);
 
-    // 4. 计算热爱能量分值
+    // 5. 计算热爱能量分值
     let scoresMap = new Map<string, number>();
     if (majorCodes.length > 0) {
       try {
@@ -132,21 +157,21 @@ export class EnrollPlanService {
       }
     }
 
-    // 5. 构建查询条件
+    // 6. 构建查询条件
     const queryBuilder = this.enrollmentPlanRepository
       .createQueryBuilder('ep')
       .leftJoinAndSelect('ep.school', 'school')
-      .where('ep.year = :year', { year })
+      // 按照索引顺序添加查询条件：schoolCode, province, subjectSelectionMode, batch, enrollmentType, year
+      // schoolCode 条件：学校的省份名称在用户收藏的省份中（通过 JOIN 的 school 表过滤）
+      .where('school.province_name IN (:...provinceNames)', {
+        provinceNames: provinceNames,
+      })
+      // province 条件：招生计划的省份在用户收藏的省份中（索引顺序：schoolCode → province）
+      .andWhere('ep.province=:province', { province: user.province })
+      .andWhere('ep.year = :year', { year })
       .andWhere('ep.enrollment_type = :enrollmentType', {
         enrollmentType: '普通类',
       });
-
-    // 省份条件
-    if (user.province) {
-      queryBuilder.andWhere('ep.province = :province', {
-        province: user.province,
-      });
-    }
 
     // 批次条件（从用户的 enrollType 获取）
     if (user.enrollType) {
@@ -199,17 +224,17 @@ export class EnrollPlanService {
       majorIds,
     });
 
-    // 6. 执行查询
+    // 7. 执行查询
     const enrollmentPlans = await queryBuilder.getMany();
 
     if (enrollmentPlans.length === 0) {
       this.logger.log(
-        `用户 ${userId} 没有找到匹配的招生计划，省份: ${user.province}, 批次: ${user.enrollType}, 首选: ${user.preferredSubjects}`,
+        `用户 ${userId} 没有找到匹配的招生计划，收藏省份: ${provinceNames.join(', ')}, 批次: ${user.enrollType}, 首选: ${user.preferredSubjects}`,
       );
       return [];
     }
 
-    // 7. 按收藏专业分组招生计划
+    // 8. 按收藏专业分组招生计划
     const result: Array<{
       majorFavorite: {
         id: number;
@@ -349,12 +374,31 @@ export class EnrollPlanService {
       throw new NotFoundException('用户不存在');
     }
 
-    // 2. 处理次选科目数组
+    // 2. 查询用户收藏的省份，JOIN Province 获取省份名称
+    const provinceFavorites = await this.provinceFavoriteRepository.find({
+      where: { userId: userId },
+      relations: ['province'],
+    });
+
+    // 获取收藏的省份名称列表
+    const favoriteProvinceNames = provinceFavorites
+      .map((pf) => pf.province?.name)
+      .filter((name): name is string => !!name);
+
+    // 3. 验证用户是否收藏了省份
+    if (favoriteProvinceNames.length === 0) {
+      throw new BadRequestException('请先收藏您的意向省份');
+    }
+
+    // 使用收藏的省份名称列表
+    const provinceNames = favoriteProvinceNames;
+
+    // 4. 处理次选科目数组
     const secondarySubjectsArray = user.secondarySubjects
       ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
       : [];
 
-    // 3. 构建查询（使用 getRawAndEntities 来获取 JOIN 的数据）
+    // 5. 构建查询（使用 getRawAndEntities 来获取 JOIN 的数据）
     const queryBuilder = this.enrollmentPlanRepository
       .createQueryBuilder('ep')
       // 加载 school 关系
@@ -405,24 +449,28 @@ export class EnrollPlanService {
       .addSelect('"ms"."min_rank"', 'ms_min_rank')
       .addSelect('"ms"."admit_count"', 'ms_admit_count')
       .addSelect('"ms"."enrollment_type"', 'ms_enrollment_type')
-      .where('ep.year = :year', { year })
-      .andWhere('ep.enrollment_type = :enrollmentType', {
-        enrollmentType: '普通类',
-      });
+      // 按照索引顺序添加查询条件：schoolCode, province, subjectSelectionMode, batch, enrollmentType, year
+      // schoolCode 条件：学校的省份名称在用户收藏的省份中（通过 JOIN 的 school 表过滤）
+      .where('school.province_name IN (:...provinceNames)', {
+        provinceNames: provinceNames,
+      })
+      // province 条件：招生计划的省份在用户收藏的省份中（索引顺序：schoolCode → province）
+      .andWhere('ep.province = :province', { province: user.province });
 
-    // 省份条件
-    if (user.province) {
-      queryBuilder.andWhere('ep.province = :province', {
-        province: user.province,
-      });
-    }
-
-    // 批次条件（从用户的 enrollType 获取）
+    // 批次条件（从用户的 enrollType 获取）（索引顺序：province → batch）
     if (user.enrollType) {
       queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
     }
 
-    // 首选科目条件
+    // 招生类型条件（索引顺序：province → batch → enrollmentType）
+    queryBuilder.andWhere('ep.enrollment_type = :enrollmentType', {
+      enrollmentType: '普通类',
+    });
+
+    // 年份条件（索引顺序：province → batch → enrollmentType → year，放在最后）
+    queryBuilder.andWhere('ep.year = :year', { year });
+
+    // 首选科目条件（不在索引中，但需要查询）
     if (user.preferredSubjects) {
       queryBuilder.andWhere('ep.primary_subject = :primarySubject', {
         primarySubject: user.preferredSubjects,

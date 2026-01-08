@@ -32,7 +32,7 @@ services:
       - WECHAT_APP_ID=${WECHAT_APP_ID}
       - WECHAT_APP_SECRET=${WECHAT_APP_SECRET}
       - CURRENT_YEAR=2025
-      - SECRET_KEY=${SECARE_KEY}
+      - SECRET_KEY=${SECRET_KEY}
       - OFFSET=${OFFSET}
     networks:
       # 连接到已存在的外部网络（主应用的 app-network）
