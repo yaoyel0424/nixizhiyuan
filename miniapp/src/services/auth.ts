@@ -113,12 +113,15 @@ export const wechatLogin = async (
     params.iv = iv;
   }
 
-  // 使用 POST 请求，code 放在 query 中，加密数据放在 body 中
+  // 使用 POST 请求，code 放在 body 中（后端支持从 query 或 body 获取）
   // 注意：响应拦截器可能返回原始数据或 BaseResponse 格式
-  const response: any = await post<any>(
-    '/auth/wechat/login?code=' + encodeURIComponent(code),
-    encryptedData && iv ? { encryptedData, iv } : undefined,
-  );
+  const requestBody: any = { code };
+  if (encryptedData && iv) {
+    requestBody.encryptedData = encryptedData;
+    requestBody.iv = iv;
+  }
+  
+  const response: any = await post<any>('/auth/wechat/login', requestBody);
 
   // 后端返回格式：
   // {

@@ -10,12 +10,18 @@ import './index.less';
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
+  // 使用 ref 来防止重复点击（同步检查）
+  const isLoggingInRef = React.useRef(false);
 
   /**
    * 处理微信登录按钮点击
    * 直接使用微信登录，不通过插件
    */
   const handleWechatLogin = () => {
+    // 防止重复点击
+    if (isLoggingInRef.current || loading) {
+      return;
+    }
     performLogin();
   };
 
@@ -23,6 +29,8 @@ const Login: React.FC = () => {
    * 执行登录流程
    */
   const performLogin = async () => {
+    // 立即设置防重复点击标志
+    isLoggingInRef.current = true;
     setLoading(true);
     dispatch(setLoginLoading(true));
 
@@ -96,11 +104,24 @@ const Login: React.FC = () => {
       }
     } catch (error: any) {
       console.error('微信登录失败:', error);
-      Taro.showToast({
-        title: error?.message || '登录失败，请稍后重试',
-        icon: 'none',
-      });
+      const errorMessage = error?.message || '登录失败，请稍后重试';
+      // 对于 404 错误，给出更明确的提示
+      if (errorMessage.includes('Not Found') || errorMessage.includes('404')) {
+        Taro.showToast({
+          title: '登录接口不存在，请检查网络或联系客服',
+          icon: 'none',
+          duration: 3000,
+        });
+      } else {
+        Taro.showToast({
+          title: errorMessage,
+          icon: 'none',
+          duration: 2000,
+        });
+      }
     } finally {
+      // 重置防重复点击标志
+      isLoggingInRef.current = false;
       setLoading(false);
       dispatch(setLoginLoading(false));
     }

@@ -91,6 +91,10 @@ const responseInterceptor = (response: any) => {
       icon: 'none'
     })
     return Promise.reject(new Error('权限不足'))
+  } else if (statusCode === 404) {
+    // 404 错误：接口不存在
+    const errorMessage = data?.message || '接口不存在 (404)'
+    return Promise.reject(new Error(errorMessage))
   } else if (statusCode >= 500) {
     Taro.showToast({
       title: '服务器错误',
