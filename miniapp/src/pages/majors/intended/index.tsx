@@ -73,7 +73,7 @@ function ExamInfoDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   examInfo?: ExamInfo
-  onUpdate?: () => void
+  onUpdate?: (updatedInfo?: ExamInfo) => void
 }) {
   const [selectedProvince, setSelectedProvince] = useState<string>('四川')
   const [firstChoice, setFirstChoice] = useState<string | null>(null)
@@ -86,6 +86,7 @@ function ExamInfoDialog({
   const [isUpdatingProvince, setIsUpdatingProvince] = useState(false)
   const [isFetchingRank, setIsFetchingRank] = useState(false)
   const scoreChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastProcessedScoreRef = useRef<string | null>(null) // 记录上次处理的分数，避免重复调用
 
   // 获取当前省份的科目配置
   const currentProvinceConfig = gaokaoConfig.find(config => config.province === selectedProvince)
@@ -123,19 +124,24 @@ function ExamInfoDialog({
     }
   }, [selectedProvince, currentProvinceConfig])
 
-  // 清理定时器
+  // 清理定时器和状态
   useEffect(() => {
     return () => {
       if (scoreChangeTimerRef.current) {
         clearTimeout(scoreChangeTimerRef.current)
         scoreChangeTimerRef.current = null
       }
+      // 对话框关闭时，清除上次处理的分数记录
+      lastProcessedScoreRef.current = null
     }
   }, [])
 
   // 从 API 或本地存储加载数据
   useEffect(() => {
     if (open && !isUpdatingProvince) {
+      // 对话框打开时，清除上次处理的分数记录，避免影响新的输入
+      lastProcessedScoreRef.current = null
+      
       const loadData = async () => {
         try {
           // 先加载高考科目配置（如果还没有加载）
@@ -198,6 +204,13 @@ function ExamInfoDialog({
         }
       }
       loadData()
+    } else if (!open) {
+      // 对话框关闭时，清除定时器和状态
+      if (scoreChangeTimerRef.current) {
+        clearTimeout(scoreChangeTimerRef.current)
+        scoreChangeTimerRef.current = null
+      }
+      lastProcessedScoreRef.current = null
     }
   }, [open, examInfo])
 
@@ -251,11 +264,18 @@ function ExamInfoDialog({
       return
     }
     
+    // 如果分数和上次处理的相同，不重复调用
+    if (lastProcessedScoreRef.current === score) {
+      return
+    }
+    
     // 防止重复请求
     if (isFetchingRank) {
       return
     }
     
+    // 记录当前要处理的分数
+    lastProcessedScoreRef.current = score
     setIsFetchingRank(true)
     
     try {
@@ -278,6 +298,8 @@ function ExamInfoDialog({
     } catch (error) {
       console.error('获取排名信息失败:', error)
       // 不显示错误提示，避免打扰用户输入
+      // 如果请求失败，清除记录，允许重试
+      lastProcessedScoreRef.current = null
     } finally {
       setIsFetchingRank(false)
     }
@@ -306,11 +328,13 @@ function ExamInfoDialog({
         score: totalScore ? parseInt(totalScore, 10) : undefined,
         rank: ranking ? parseInt(ranking, 10) : undefined,
       }
-      await updateExamInfo(updatedInfo)
+      // updateExamInfo 已经返回更新后的信息，不需要再次调用 API
+      const result = await updateExamInfo(updatedInfo)
       
-      // 更新成功后刷新数据（只刷新，不再次更新）
+      // 使用返回的数据更新父组件状态，避免重复调用 API
       if (onUpdate) {
-        onUpdate()
+        // 将更新后的信息传递给父组件，而不是让父组件再次调用 API
+        onUpdate(result)
       }
     } catch (error) {
       console.error('更新省份失败:', error)
@@ -356,9 +380,9 @@ function ExamInfoDialog({
         duration: 2000
       })
 
-      // 通知父组件更新（传入更新后的信息）
+      // 通知父组件更新（传入更新后的信息，避免重复调用 API）
       if (onUpdate) {
-        onUpdate()
+        onUpdate(updatedInfo)
       }
     } catch (error) {
       console.error('保存高考信息失败:', error)
@@ -528,6 +552,13 @@ function ExamInfoDialog({
                 if (scoreChangeTimerRef.current) {
                   clearTimeout(scoreChangeTimerRef.current)
                   scoreChangeTimerRef.current = null
+                }
+                
+                // 如果分数为空或无效，不设置定时器
+                if (!score || score.trim() === '' || isNaN(Number(score))) {
+                  // 清除上次处理的分数记录
+                  lastProcessedScoreRef.current = null
+                  return
                 }
                 
                 // 设置新的定时器
@@ -750,9 +781,11 @@ export default function IntendedMajorsPage() {
   }
 
   // 从 API 加载高考信息（仅在需要时调用，如更新后刷新）
-  const loadExamInfo = async () => {
+  // 如果提供了 updatedInfo，直接使用，避免重复调用 API
+  const loadExamInfo = async (updatedInfo?: ExamInfo) => {
     try {
-      const info = await getExamInfo()
+      // 如果提供了更新后的信息，直接使用，不调用 API
+      const info = updatedInfo || await getExamInfo()
       setExamInfo(info)
       
       // 更新分数相关状态

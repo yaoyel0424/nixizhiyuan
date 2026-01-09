@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { getStorage } from '@/utils/storage'
+import { getUserRelatedDataCount } from '@/services/user'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
@@ -60,6 +61,14 @@ export default function IndexPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [isClient, setIsClient] = useState(false)
   const [systemInfo, setSystemInfo] = useState<any>(null)
+  // API 返回的数据统计
+  const [scaleAnswersCount, setScaleAnswersCount] = useState(0)
+  const [majorFavoritesCount, setMajorFavoritesCount] = useState(0)
+  const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0)
+  const [alternativesCount, setAlternativesCount] = useState(0)
+  // 标记是否成功获取了 API 数据
+  const [apiDataLoaded, setApiDataLoaded] = useState(false)
+  // 降级使用的本地数据（API 失败时使用）
   const [intendedMajorsCount, setIntendedMajorsCount] = useState(0)
   const [selectedProvincesCount, setSelectedProvincesCount] = useState(0)
   const [hasVisitedMajors, setHasVisitedMajors] = useState(false)
@@ -74,65 +83,103 @@ export default function IndexPage() {
     setSystemInfo(info)
   }, [])
 
-  // 当对话框打开时，重新读取本地数据
+  // 当对话框打开时，从 API 获取用户相关数据统计
   useEffect(() => {
     if (isGuideDialogOpen && isClient) {
+      // 先读取本地答案数据（用于显示进度）
       const storedAnswers = loadAnswersFromStorage()
       setAnswers(storedAnswers)
-      
-      // 读取心动专业数量
-      getStorage<string[]>('intendedMajors').then((storedMajors) => {
-        if (storedMajors) {
-          setIntendedMajorsCount(Array.isArray(storedMajors) ? storedMajors.length : 0)
-        } else {
-          setIntendedMajorsCount(0)
-        }
-      }).catch(() => {
-        setIntendedMajorsCount(0)
-      })
 
-      // 读取意向省份数量
-      getStorage<string[]>('selectedProvinces').then((storedProvinces) => {
-        if (storedProvinces) {
-          setSelectedProvincesCount(Array.isArray(storedProvinces) ? storedProvinces.length : 0)
-        } else {
-          setSelectedProvincesCount(0)
-        }
-      }).catch(() => {
-        setSelectedProvincesCount(0)
-      })
-
-      // 检查是否访问过专业页面（通过检查是否有专业相关数据）
-      getStorage<any[]>('wishlist-items').then((wishlistItems) => {
-        setHasVisitedMajors(Array.isArray(wishlistItems) && wishlistItems.length > 0)
-      }).catch(() => {
-        // 如果 wishlist-items 不存在，检查是否有其他专业相关数据
-        getStorage<string[]>('intendedMajors').then((intendedMajors) => {
-          setHasVisitedMajors(Array.isArray(intendedMajors) && intendedMajors.length > 0)
-        }).catch(() => {
-          setHasVisitedMajors(false)
+      // 从 API 获取用户相关数据统计
+      getUserRelatedDataCount()
+        .then((data) => {
+          // 使用 API 返回的数据
+          setScaleAnswersCount(data.scaleAnswersCount || 0)
+          setMajorFavoritesCount(data.majorFavoritesCount || 0)
+          setProvinceFavoritesCount(data.provinceFavoritesCount || 0)
+          setAlternativesCount(data.alternativesCount || 0)
+          setApiDataLoaded(true)
         })
-      })
+        .catch((error) => {
+          console.error('获取用户统计数据失败:', error)
+          setApiDataLoaded(false)
+          // API 调用失败时，降级使用本地存储数据
+          // 读取心动专业数量
+          getStorage<string[]>('intendedMajors').then((storedMajors) => {
+            if (storedMajors) {
+              setIntendedMajorsCount(Array.isArray(storedMajors) ? storedMajors.length : 0)
+            } else {
+              setIntendedMajorsCount(0)
+            }
+          }).catch(() => {
+            setIntendedMajorsCount(0)
+          })
+
+          // 读取意向省份数量
+          getStorage<string[]>('selectedProvinces').then((storedProvinces) => {
+            if (storedProvinces) {
+              setSelectedProvincesCount(Array.isArray(storedProvinces) ? storedProvinces.length : 0)
+            } else {
+              setSelectedProvincesCount(0)
+            }
+          }).catch(() => {
+            setSelectedProvincesCount(0)
+          })
+
+          // 检查是否访问过专业页面（通过检查是否有专业相关数据）
+          getStorage<any[]>('wishlist-items').then((wishlistItems) => {
+            setHasVisitedMajors(Array.isArray(wishlistItems) && wishlistItems.length > 0)
+          }).catch(() => {
+            // 如果 wishlist-items 不存在，检查是否有其他专业相关数据
+            getStorage<string[]>('intendedMajors').then((intendedMajors) => {
+              setHasVisitedMajors(Array.isArray(intendedMajors) && intendedMajors.length > 0)
+            }).catch(() => {
+              setHasVisitedMajors(false)
+            })
+          })
+
+          // 降级时使用本地答案数量
+          setScaleAnswersCount(Object.keys(storedAnswers).length)
+        })
     }
   }, [isGuideDialogOpen, isClient])
 
   const totalQuestions = (questionnaireData as any[]).length
   const answeredCount = Object.keys(answers).length
-  const isCompleted = answeredCount === totalQuestions && totalQuestions > 0
   
   // 完成168个题目后解锁三个功能
   const UNLOCK_THRESHOLD = 168
-  const isUnlocked = isClient && answeredCount >= UNLOCK_THRESHOLD
-
-  // 计算每个步骤的完成状态
+  
+  // 使用 API 数据判断步骤完成状态（如果 API 数据已加载）
+  // 如果 API 调用失败，降级使用本地数据
+  const useApiData = apiDataLoaded
+  
   // 步骤1：深度自我洞察 - 完成168题
-  const step1Completed = isCompleted
+  // 使用 API 的 scaleAnswersCount 或本地 answeredCount
+  const step1AnswerCount = useApiData ? scaleAnswersCount : answeredCount
+  const step1Completed = step1AnswerCount >= UNLOCK_THRESHOLD
+  const isUnlocked = isClient && step1AnswerCount >= UNLOCK_THRESHOLD
+  
   // 步骤2：发现契合专业 - 已解锁且访问过专业页面
-  const step2Completed = isUnlocked && hasVisitedMajors
+  // 使用 API 的 majorFavoritesCount 或 alternativesCount 判断是否访问过专业页面
+  // 如果降级，使用 hasVisitedMajors
+  const step2Completed = isUnlocked && (
+    useApiData 
+      ? (majorFavoritesCount > 0 || alternativesCount > 0)
+      : hasVisitedMajors
+  )
+  
   // 步骤3：圈定理想城市 - 有选择的省份
-  const step3Completed = selectedProvincesCount > 0
+  // 使用 API 的 provinceFavoritesCount 或本地 selectedProvincesCount
+  const step3Completed = useApiData 
+    ? provinceFavoritesCount > 0 
+    : selectedProvincesCount > 0
+  
   // 步骤4：锁定目标院校 - 有选择的专业
-  const step4Completed = intendedMajorsCount > 0
+  // 使用 API 的 majorFavoritesCount 或本地 intendedMajorsCount
+  const step4Completed = useApiData 
+    ? majorFavoritesCount > 0 
+    : intendedMajorsCount > 0
 
   // 确定当前步骤（显示"您探索到此处"的步骤）
   const getCurrentStep = (): number => {
@@ -349,7 +396,7 @@ export default function IndexPage() {
                       </Text>
                       {isClient && (
                         <Text className="index-page__dialog-step-progress">
-                          ({answeredCount}/{totalQuestions})
+                          ({step1AnswerCount}/{totalQuestions})
                         </Text>
                       )}
                     </View>
