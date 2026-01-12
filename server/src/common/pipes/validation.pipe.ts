@@ -19,7 +19,9 @@ export class ValidationPipe implements PipeTransform<any> {
       return value;
     }
 
-    const object = plainToInstance(metatype, value);
+    const object = plainToInstance(metatype, value, {
+      enableImplicitConversion: true, // 启用隐式转换，使 @Transform 装饰器生效
+    });
     const errors = await validate(object, {
       whitelist: true, // 移除未定义的属性
       forbidNonWhitelisted: true, // 禁止未定义的属性

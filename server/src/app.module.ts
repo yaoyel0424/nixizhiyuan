@@ -15,6 +15,7 @@ import { ProvincesModule } from './provinces/provinces.module';
 import { PortraitsModule } from './portraits/portraits.module';
 import { EnrollConfigModule } from './enroll-config/enroll-config.module';
 import { EnrollPlanModule } from './enroll-plan/enroll-plan.module';
+import { ChoicesModule } from './choices/choices.module';
 import { SecurityModule } from './security/security.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { SecurityMiddleware } from './common/middleware/security.middleware';
@@ -51,6 +52,7 @@ const compression = require('compression');
     PortraitsModule,
     EnrollConfigModule,
     EnrollPlanModule,
+    ChoicesModule,
   ],
   providers: [
     // 全局异常过滤器

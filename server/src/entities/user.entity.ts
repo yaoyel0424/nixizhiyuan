@@ -6,6 +6,7 @@ import { Alternative } from './alternative.entity';
 import { MajorFavorite } from './major-favorite.entity';
 import { ProvinceFavorite } from './province-favorite.entity';
 import { PopularMajorAnswer } from './popular-major-answer.entity';
+import { Choice } from './choices.entity';
 
 @Entity("users")
 export class User {
@@ -97,4 +98,10 @@ export class User {
      */
     @OneToMany(() => PopularMajorAnswer, popularMajorAnswer => popularMajorAnswer.user)
     popularMajorAnswers: PopularMajorAnswer[];
+
+    /**
+     * 用户的选择列表（一对多关联）
+     */
+    @OneToMany(() => Choice, choice => choice.user)
+    choices: Choice[];
 }

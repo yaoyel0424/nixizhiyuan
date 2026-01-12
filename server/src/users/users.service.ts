@@ -144,20 +144,17 @@ export class UsersService {
         'UsersService',
       );
 
-      const result = await this.provincialControlLineRepository
+      const results = await this.provincialControlLineRepository
         .createQueryBuilder('pcl')
-        .select([
-          'MAX(CASE WHEN pcl.batchName LIKE :undergraduatePattern THEN pcl.score END) AS undergraduate_score',
-          'MAX(CASE WHEN pcl.batchName LIKE :collegePattern THEN pcl.score END) AS college_score',
-        ])
+        .select(['pcl.batchName', 'pcl.score'])
         .where('pcl.province = :province', { province })
         .andWhere('pcl.year = :year', { year })
         .andWhere('pcl.typeName = :typeName', { typeName })
-        .setParameter('undergraduatePattern', '%本科%')
-        .setParameter('collegePattern', '%专科%')
-        .getRawOne();
+        .andWhere('pcl.convention_batch=:conventionBatch', { conventionBatch: true })
+        .orderBy('pcl.score', 'DESC')
+        .getRawMany();
 
-      if (!result) {
+      if (!results || results.length === 0) {
         this.logger.warn(
           `未找到省份控制线数据，province: ${province}, year: ${year}, typeName: ${typeName}`,
           'UsersService',
@@ -165,20 +162,20 @@ export class UsersService {
         return '未达到录取线';
       }
 
-      const undergraduateScore = parseInt(result.undergraduate_score) || 0;
-      const collegeScore = parseInt(result.college_score) || 0;
-
-      let enrollType: string;
-      if (userScore >= undergraduateScore) {
-        enrollType = '本科批';
-      } else if (userScore >= collegeScore) {
-        enrollType = '专科批';
-      } else {
-        enrollType = '未达到录取线';
+      console.log(results);
+      
+      // 找到用户分数能够达到的最高批次（按分数降序排列，找到第一个用户分数 >= 批次分数）
+      let enrollType: string = '未达到录取线';
+      for (const item of results) {
+        const batchScore = parseInt(item.pcl_score) || 0; 
+        if (userScore >= batchScore) {
+          enrollType = item.pcl_batch_name || '未达到录取线';
+          break;
+        }
       }
 
       this.logger.log(
-        `查询录取类型成功，userScore: ${userScore}, undergraduateScore: ${undergraduateScore}, collegeScore: ${collegeScore}, enrollType: ${enrollType}`,
+        `查询录取类型成功，userScore: ${userScore}, enrollType: ${enrollType}, 批次数据条数: ${results.length}`,
         'UsersService',
       );
       return enrollType;
