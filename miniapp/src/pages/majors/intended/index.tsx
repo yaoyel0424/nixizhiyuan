@@ -7,10 +7,13 @@ import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getStorage, setStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import { getCurrentUserDetail } from '@/services/user'
 import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine } from '@/services/enroll-plan'
+import { getChoices, deleteChoice, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, Direction } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
@@ -607,6 +610,10 @@ function ExamInfoDialog({
 }
 
 export default function IntendedMajorsPage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  
   const router = useRouter()
   const tabParam = router.params?.tab || '意向志愿'
   const activeTab = tabParam === '意向志愿' ? '意向志愿' : '专业赛道'
@@ -617,6 +624,7 @@ export default function IntendedMajorsPage() {
   const [wishlist, setWishlist] = useState<Set<string>>(new Set())
   const [wishlistItems, setWishlistItems] = useState<any[]>([])
   const [wishlistCounts, setWishlistCounts] = useState<Record<string, number>>({})
+  const [groupedChoices, setGroupedChoices] = useState<GroupedChoiceResponse | null>(null) // API返回的分组数据
   const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
   const [currentScore, setCurrentScore] = useState<number>(580)
   const [scoreRange, setScoreRange] = useState<[number, number]>([500, 650])
@@ -632,6 +640,13 @@ export default function IntendedMajorsPage() {
   const [groupDataList, setGroupDataList] = useState<any[]>([])
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 使用 ref 防止重复调用招生计划接口
   const fetchingEnrollmentPlansRef = useRef(false)
@@ -680,31 +695,102 @@ export default function IntendedMajorsPage() {
     }
   }, [])
 
-  // 加载志愿列表
-  useEffect(() => {
-    const loadWishlist = async () => {
-      try {
-        const saved = await getStorage<string[]>('school-wishlist')
-        if (saved) {
-          setWishlist(new Set(saved))
-        }
-        const savedItems = await getStorage<any[]>('wishlist-items')
-        if (savedItems) {
-          setWishlistItems(savedItems)
-          const counts: Record<string, number> = {}
-          savedItems.forEach((item: any) => {
-            if (item.majorCode) {
-              counts[item.majorCode] = (counts[item.majorCode] || 0) + 1
-            }
+  // 将API返回的分组数据转换为扁平化的列表
+  const convertGroupedChoicesToItems = (groupedData: GroupedChoiceResponse): any[] => {
+    const items: any[] = []
+    
+    // 按mgIndex排序
+    const sortedVolunteers = [...groupedData.volunteers].sort((a, b) => {
+      const aIndex = a.mgIndex ?? 999999
+      const bIndex = b.mgIndex ?? 999999
+      return aIndex - bIndex
+    })
+    
+    sortedVolunteers.forEach((volunteer) => {
+      volunteer.majorGroups.forEach((majorGroup) => {
+        // 按majorIndex排序
+        const sortedChoices = [...majorGroup.choices].sort((a, b) => {
+          const aIndex = a.majorIndex ?? 999999
+          const bIndex = b.majorIndex ?? 999999
+          return aIndex - bIndex
+        })
+        
+        sortedChoices.forEach((choice) => {
+          items.push({
+            id: choice.id,
+            key: `${choice.schoolCode}-${choice.majorGroupId || 'no-group'}-${choice.id}`,
+            majorCode: '', // API数据中没有majorCode，需要从其他地方获取
+            majorName: choice.enrollmentMajor || '',
+            schoolName: volunteer.school.name || '',
+            schoolCode: choice.schoolCode,
+            provinceName: volunteer.school.provinceName || '',
+            cityName: volunteer.school.cityName || '',
+            belong: volunteer.school.belong || '',
+            schoolFeature: volunteer.school.features || '',
+            schoolNature: volunteer.school.nature || 'public',
+            enrollmentRate: volunteer.school.enrollmentRate ? `${volunteer.school.enrollmentRate}` : '0',
+            employmentRate: volunteer.school.employmentRate ? `${volunteer.school.employmentRate}` : '0',
+            majorGroupName: majorGroup.majorGroup.mgName || choice.majorGroupInfo || null,
+            batch: choice.batch || null,
+            studyPeriod: choice.studyPeriod || null,
+            tuitionFee: choice.tuitionFee || null,
+            remark: choice.remark || null,
+            enrollmentMajor: choice.enrollmentMajor || null,
+            // 历史分数数据（从majorScores转换）
+            historyScore: choice.majorScores.length > 0 ? [{
+              year: choice.majorScores[0].year ? parseInt(choice.majorScores[0].year) : 2024,
+              historyScore: choice.majorScores.map(score => ({
+                [score.year || '2024']: `${score.minScore || ''},${score.minRank || ''},${score.admitCount || 0}`
+              })),
+              remark: choice.remark || '',
+              planNum: choice.majorScores[0]?.admitCount || 0,
+              batch: choice.batch || undefined,
+              majorGroupName: majorGroup.majorGroup.mgName || null,
+            }] : [],
+            mgIndex: volunteer.mgIndex,
+            majorIndex: choice.majorIndex,
           })
-          setWishlistCounts(counts)
+        })
+      })
+    })
+    
+    return items
+  }
+
+  // 加载志愿列表（从API）
+  const loadChoicesFromAPI = async () => {
+    try {
+      const groupedData = await getChoices()
+      setGroupedChoices(groupedData)
+      
+      // 转换为扁平化列表
+      const items = convertGroupedChoicesToItems(groupedData)
+      setWishlistItems(items)
+      
+      // 计算专业数量
+      const counts: Record<string, number> = {}
+      items.forEach((item: any) => {
+        if (item.majorCode) {
+          counts[item.majorCode] = (counts[item.majorCode] || 0) + 1
         }
-      } catch (error) {
-        console.error('加载志愿列表失败:', error)
+      })
+      setWishlistCounts(counts)
+    } catch (error) {
+      console.error('从API加载志愿列表失败:', error)
+      // 降级：从本地存储加载
+      const savedItems = await getStorage<any[]>('wishlist-items').catch(() => [])
+      if (savedItems && savedItems.length > 0) {
+        setWishlistItems(savedItems)
       }
     }
-    loadWishlist()
-  }, [])
+  }
+
+  // 加载志愿列表
+  useEffect(() => {
+    if (activeTab === '意向志愿') {
+      loadChoicesFromAPI()
+    }
+  }, [activeTab])
 
   // 获取省份最低省控线（通过 provincial-control-lines 接口）
   const getMinControlScore = async () => {
@@ -931,20 +1017,33 @@ export default function IntendedMajorsPage() {
     if (itemToDelete === null) return
     
     const deletedItem = wishlistItems[itemToDelete]
-    const newItems = wishlistItems.filter((_, i) => i !== itemToDelete)
     
     try {
-      await setStorage('wishlist-items', newItems)
-      setWishlistItems(newItems)
-      
-      if (deletedItem?.key) {
-        const newSet = new Set(wishlist)
-        newSet.delete(deletedItem.key)
-        setWishlist(newSet)
-        await setStorage('school-wishlist', Array.from(newSet))
+      // 调用API删除志愿
+      if (deletedItem?.id) {
+        await deleteChoice(deletedItem.id)
+        
+        // 重新加载志愿列表
+        await loadChoicesFromAPI()
+        
+        Taro.showToast({
+          title: '删除成功',
+          icon: 'success',
+          duration: 2000
+        })
+      } else {
+        // 降级：从本地存储删除
+        const newItems = wishlistItems.filter((_, i) => i !== itemToDelete)
+        await setStorage('wishlist-items', newItems)
+        setWishlistItems(newItems)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('删除志愿项失败:', error)
+      Taro.showToast({
+        title: error?.message || '删除失败，请重试',
+        icon: 'none',
+        duration: 2000
+      })
     }
     
     setDeleteConfirmOpen(false)
@@ -956,17 +1055,43 @@ export default function IntendedMajorsPage() {
     if (direction === 'up' && index === 0) return
     if (direction === 'down' && index === wishlistItems.length - 1) return
 
-    const newItems = [...wishlistItems]
-    const targetIndex = direction === 'up' ? index - 1 : index + 1
-    const temp = newItems[index]
-    newItems[index] = newItems[targetIndex]
-    newItems[targetIndex] = temp
+    const currentItem = wishlistItems[index]
+    const targetItem = wishlistItems[direction === 'up' ? index - 1 : index + 1]
 
     try {
-      await setStorage('wishlist-items', newItems)
-      setWishlistItems(newItems)
-    } catch (error) {
+      // 判断是移动专业组还是移动专业
+      // 如果mgIndex相同，则是移动专业（使用adjustMajorIndex）
+      // 如果mgIndex不同，则是移动专业组（使用adjustMgIndex）
+      if (currentItem.mgIndex === targetItem.mgIndex && currentItem.mgIndex !== null) {
+        // 移动专业：使用adjustMajorIndex
+        if (currentItem.id) {
+          await adjustMajorIndex(currentItem.id, { direction: direction as Direction })
+        }
+      } else {
+        // 移动专业组：使用adjustMgIndex
+        if (currentItem.mgIndex !== null) {
+          await adjustMgIndex({ 
+            mgIndex: currentItem.mgIndex, 
+            direction: direction as Direction 
+          })
+        }
+      }
+
+      // 重新加载志愿列表
+      await loadChoicesFromAPI()
+
+      Taro.showToast({
+        title: '移动成功',
+        icon: 'success',
+        duration: 1500
+      })
+    } catch (error: any) {
       console.error('移动志愿项失败:', error)
+      Taro.showToast({
+        title: error?.message || '移动失败，请重试',
+        icon: 'none',
+        duration: 2000
+      })
     }
   }
 
@@ -1140,37 +1265,61 @@ export default function IntendedMajorsPage() {
                           </View>
                           <View>
                             <Text className="intended-majors-page__wishlist-item-school">{item.schoolName}</Text>
-                            {item.schoolFeature && (
-                              <View className="intended-majors-page__wishlist-item-features">
-                                {item.schoolFeature.split(',').slice(0, 3).map((feature: string, i: number) => (
-                                  <Text key={i} className="intended-majors-page__wishlist-item-feature">
-                                    {feature}
-                                  </Text>
-                                ))}
-                              </View>
-                            )}
+                            {(() => {
+                              // 处理 features：可能是字符串、数组或空值
+                              let validFeatures: string[] = []
+                              if (item.schoolFeature) {
+                                // 如果是字符串，先检查是否是 "[]"
+                                const featureStr = String(item.schoolFeature).trim()
+                                if (featureStr && featureStr !== '[]' && featureStr !== 'null' && featureStr !== 'undefined') {
+                                  // 尝试解析为数组，如果不是数组则按逗号分割
+                                  try {
+                                    const parsed = JSON.parse(featureStr)
+                                    if (Array.isArray(parsed)) {
+                                      validFeatures = parsed.filter((f: any) => f && String(f).trim()).slice(0, 3)
+                                    } else {
+                                      validFeatures = featureStr.split(',').filter((f: string) => f.trim()).slice(0, 3)
+                                    }
+                                  } catch {
+                                    // 不是 JSON，按逗号分割
+                                    validFeatures = featureStr.split(',').filter((f: string) => f.trim()).slice(0, 3)
+                                  }
+                                }
+                              }
+                              return validFeatures.length > 0 ? (
+                                <View className="intended-majors-page__wishlist-item-features">
+                                  {validFeatures.map((feature: string, i: number) => (
+                                    <Text key={i} className="intended-majors-page__wishlist-item-feature">
+                                      {feature.trim()}
+                                    </Text>
+                                  ))}
+                                </View>
+                              ) : null
+                            })()}
                           </View>
                         </View>
                         <View className="intended-majors-page__wishlist-item-actions">
                           <View className="intended-majors-page__wishlist-item-move-buttons">
-                            <Button
-                              onClick={() => moveWishlistItem(idx, 'up')}
-                              className="intended-majors-page__wishlist-item-move-button"
-                              size="sm"
-                              variant="ghost"
-                              disabled={idx === 0}
-                            >
-                              ↑
-                            </Button>
-                            <Button
-                              onClick={() => moveWishlistItem(idx, 'down')}
-                              className="intended-majors-page__wishlist-item-move-button"
-                              size="sm"
-                              variant="ghost"
-                              disabled={idx === wishlistItems.length - 1}
-                            >
-                              ↓
-                            </Button>
+                            {idx > 0 && (
+                              <Button
+                                onClick={() => moveWishlistItem(idx, 'up')}
+                                className="intended-majors-page__wishlist-item-move-button intended-majors-page__wishlist-item-move-button--up"
+                                size="sm"
+                                variant="ghost"
+                              >
+                                <Text className="intended-majors-page__wishlist-item-move-text">上移</Text>
+                              </Button>
+                            )}
+                            {idx < wishlistItems.length - 1 && (
+                              <Button
+                                onClick={() => moveWishlistItem(idx, 'down')}
+                                className="intended-majors-page__wishlist-item-move-button intended-majors-page__wishlist-item-move-button--down"
+                                size="sm"
+                                variant="ghost"
+                              >
+                                <Text className="intended-majors-page__wishlist-item-move-text">下移</Text>
+                              </Button>
+                            )}
                           </View>
                           <Button
                             onClick={() => handleDeleteClick(idx)}
@@ -1178,15 +1327,16 @@ export default function IntendedMajorsPage() {
                             size="sm"
                             variant="ghost"
                           >
-                            🗑️
+                            <Text className="intended-majors-page__wishlist-item-delete-text">移除</Text>
                           </Button>
                         </View>
                       </View>
                       <View className="intended-majors-page__wishlist-item-info">
                         <Text className="intended-majors-page__wishlist-item-major">
-                          {item.majorName} ({item.majorCode})
+                          {item.majorName || item.enrollmentMajor || ''}
+                          {item.majorCode && item.majorCode.trim() ? ` (${item.majorCode})` : ''}
                         </Text>
-                        {item.majorGroupName && (
+                        {item.majorGroupName && item.majorGroupName.trim() && item.majorGroupName !== '()' && (
                           <Button
                             onClick={() => {
                               setSelectedGroupInfo({
@@ -1199,7 +1349,10 @@ export default function IntendedMajorsPage() {
                             size="sm"
                             variant="ghost"
                           >
-                            专业组: {item.majorGroupName}
+                            <Text className="intended-majors-page__wishlist-item-group-icon">📋</Text>
+                            <Text className="intended-majors-page__wishlist-item-group-text">
+                              专业组: {item.majorGroupName}
+                            </Text>
                           </Button>
                         )}
                         {item.score && (
@@ -1323,7 +1476,17 @@ export default function IntendedMajorsPage() {
                     <View className="intended-majors-page__major-item-content">
                       <View className="intended-majors-page__major-item-header">
                         <View>
-                          <Text className="intended-majors-page__major-item-name">{major.name}</Text>
+                          <Text 
+                            className="intended-majors-page__major-item-name"
+                            onClick={() => {
+                              // 跳转到专业详情页面
+                              Taro.navigateTo({
+                                url: `/pages/assessment/single-major/index?code=${majorCode}&name=${encodeURIComponent(major.name || '')}`
+                              })
+                            }}
+                          >
+                            {major.name}
+                          </Text>
                           <Text className="intended-majors-page__major-item-code">({major.code})</Text>
                           {wishlistCounts[majorCode] > 0 && (
                             <View className="intended-majors-page__major-item-badge">
@@ -1528,6 +1691,13 @@ export default function IntendedMajorsPage() {
           </View>
         </DialogContent>
       </Dialog>
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
     </View>
   )
 }

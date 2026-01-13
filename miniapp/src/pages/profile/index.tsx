@@ -5,24 +5,73 @@ import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearUserInfo } from '@/store/slices/userSlice'
 import { logout } from '@/services/auth'
+import { getUserRelatedDataCount } from '@/services/user'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
 import { ShareModal } from '@/components/ShareModal'
 import './index.less'
 
-// 模拟用户状态类型
+// 用户状态类型
 type AssessmentStatus = "not_started" | "in_progress" | "completed"
+
+// 量表总题数
+const TOTAL_QUESTIONS = 168
 
 export default function ProfilePage() {
   const dispatch = useAppDispatch()
   // 从 Redux store 中获取用户信息
   const { userInfo, isLogin } = useAppSelector((state) => state.user)
   
-  // 模拟数据 - 仅用于UI展示
-  const [assessmentStatus] = useState<AssessmentStatus>("in_progress") // 测评状态
-  const [progress] = useState(45) // 测评进度百分比
-  const [currentQuestion] = useState(76) // 当前题目编号（如果有未完成测评）
+  // 用户数据统计
+  const [scaleAnswersCount, setScaleAnswersCount] = useState(0) // 量表答案数量
+  const [majorFavoritesCount, setMajorFavoritesCount] = useState(0) // 专业收藏数量
+  const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0) // 省份收藏数量
+  const [alternativesCount, setAlternativesCount] = useState(0) // 备选方案数量
+  const [dataLoaded, setDataLoaded] = useState(false) // 数据是否已加载
+  
+  // 判断各个维度是否完成（大于0）
+  const hasScaleAnswers = scaleAnswersCount > 0
+  const hasMajorFavorites = majorFavoritesCount > 0
+  const hasProvinceFavorites = provinceFavoritesCount > 0
+  const hasAlternatives = alternativesCount > 0
+  
+  // 计算完成的维度数量（共4个维度）
+  const completedDimensions = [
+    hasScaleAnswers,
+    hasMajorFavorites,
+    hasProvinceFavorites,
+    hasAlternatives,
+  ].filter(Boolean).length
+  
+  // 判断是否所有维度都完成（所有字段都大于0）
+  const allDimensionsCompleted = 
+    hasScaleAnswers && 
+    hasMajorFavorites && 
+    hasProvinceFavorites && 
+    hasAlternatives
+  
+  // 判断是否未开始（所有字段都为0）
+  const allDimensionsEmpty = 
+    scaleAnswersCount === 0 && 
+    majorFavoritesCount === 0 && 
+    provinceFavoritesCount === 0 && 
+    alternativesCount === 0
+  
+  // 计算测评状态
+  const assessmentStatus: AssessmentStatus = 
+    allDimensionsEmpty 
+      ? "not_started" 
+      : allDimensionsCompleted 
+      ? "completed" 
+      : "in_progress"
+  
+  // 计算探索完成度百分比（基于完成的维度数量，每个维度占25%）
+  const progress = Math.min(Math.round((completedDimensions / 4) * 100), 100)
+  
+  // 计算当前题目编号（如果有未完成测评）
+  const currentQuestion = scaleAnswersCount > 0 ? scaleAnswersCount + 1 : 1
+  
   const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
   const [shareModalOpen, setShareModalOpen] = useState(false) // 分享弹窗显示状态
   
@@ -36,6 +85,32 @@ export default function ProfilePage() {
   useEffect(() => {
     setAvatarError(false)
   }, [userInfo?.avatar])
+
+  // 获取用户相关数据统计
+  useEffect(() => {
+    if (isLogin && userInfo) {
+      getUserRelatedDataCount()
+        .then((data) => {
+          setScaleAnswersCount(data.scaleAnswersCount || 0)
+          setMajorFavoritesCount(data.majorFavoritesCount || 0)
+          setProvinceFavoritesCount(data.provinceFavoritesCount || 0)
+          setAlternativesCount(data.alternativesCount || 0)
+          setDataLoaded(true)
+        })
+        .catch((error) => {
+          console.error('获取用户统计数据失败:', error)
+          // 失败时保持默认值（0）
+          setDataLoaded(false)
+        })
+    } else {
+      // 未登录时重置数据
+      setScaleAnswersCount(0)
+      setMajorFavoritesCount(0)
+      setProvinceFavoritesCount(0)
+      setAlternativesCount(0)
+      setDataLoaded(false)
+    }
+  }, [isLogin, userInfo])
 
   // 根据状态获取头部副标题和图标
   const getStatusInfo = () => {
@@ -65,12 +140,32 @@ export default function ProfilePage() {
   const handleRestartAssessment = () => {
     Taro.showModal({
       title: '提示',
-      content: '确定要重新开始测评吗？',
+      content: '确定要重新开始测评吗？之前的答题记录将被清空，需要重新完成168题。',
       success: (res) => {
         if (res.confirm) {
-          Taro.navigateTo({
-            url: '/pages/assessment/questionnaire/index'
-          })
+          try {
+            // 清空本地存储的问卷答案
+            Taro.removeStorageSync('questionnaire_answers')
+            Taro.removeStorageSync('questionnaire_previous_answers')
+            
+            // 跳转到168题问卷页面（不加载答案，从头开始）
+            Taro.navigateTo({
+              url: '/pages/assessment/all-majors/index?restart=true'
+            })
+            
+            Taro.showToast({
+              title: '已清空答题记录',
+              icon: 'success',
+              duration: 1500
+            })
+          } catch (error) {
+            console.error('清空答案失败:', error)
+            Taro.showToast({
+              title: '操作失败，请重试',
+              icon: 'none',
+              duration: 2000
+            })
+          }
         }
       }
     })

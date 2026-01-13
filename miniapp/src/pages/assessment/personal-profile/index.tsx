@@ -1,10 +1,12 @@
 // 个人特质报告页面
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, Text, Canvas } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import { BottomNav } from '@/components/BottomNav';
-import { getUserPortrait, Portrait } from '@/services/portraits';
-import './index.less';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { View, Text, Canvas } from '@tarojs/components'
+import Taro from '@tarojs/taro'
+import { BottomNav } from '@/components/BottomNav'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
+import { getUserPortrait, Portrait } from '@/services/portraits'
+import './index.less'
 
 // 七维度配置（对应7种颜色）
 const DIMENSIONS = ['看', '听', '说', '记', '想', '做', '运动'] as const;
@@ -490,9 +492,20 @@ function PortraitDetailCard({
 }
 
 export default function PersonalProfilePage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck();
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false);
+  
   const [portraits, setPortraits] = useState<Portrait[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDimension, setSelectedDimension] = useState<string | null>(null);
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true);
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted]);
 
   useEffect(() => {
     // 加载用户画像数据
@@ -631,6 +644,13 @@ export default function PersonalProfilePage() {
       </View>
 
       <BottomNav />
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
     </View>
   );
 }

@@ -1,7 +1,7 @@
 // 所有专业评估页面
 import React, { useState, useEffect, useMemo } from 'react'
 import { View, Text } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useRouter } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
@@ -111,6 +111,10 @@ function convertScaleToQuestion(scale: Scale): Question {
 }
 
 export default function AllMajorsPage() {
+  // 获取路由参数，判断是否是重新开始
+  const router = useRouter()
+  const isRestart = router.params?.restart === 'true'
+  
   // 从 Redux store 获取用户信息
   const userInfo = useAppSelector((state) => state.user.userInfo)
   
@@ -154,51 +158,85 @@ export default function AllMajorsPage() {
         // 设置 API 返回的答案
         setApiAnswers(result.answers || [])
         
-        // 将 API 答案转换为本地答案格式
-        // 注意：answer.scaleId 对应 question.id，answer.score 对应 option.optionValue
-        const apiAnswersMap: Record<number, number> = {}
-        if (result.answers && Array.isArray(result.answers)) {
-          result.answers.forEach((answer) => {
-            if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
-              // 确保 scaleId 和 score 都是数字类型
-              const scaleId = Number(answer.scaleId)
-              const score = Number(answer.score)
-              if (!isNaN(scaleId) && !isNaN(score)) {
-                apiAnswersMap[scaleId] = score
+        // 如果是重新开始，不加载任何答案，从头开始
+        if (isRestart) {
+          // 清空所有答案，从头开始
+          setAnswers({})
+          setPreviousAnswers({})
+          // 确保本地存储也被清空（双重保险）
+          Taro.removeStorageSync(STORAGE_KEY)
+          Taro.removeStorageSync(PREVIOUS_ANSWERS_KEY)
+        } else {
+          // 正常流程：加载答案
+          // 将 API 答案转换为本地答案格式
+          // 注意：answer.scaleId 对应 question.id，answer.score 对应 option.optionValue
+          const apiAnswersMap: Record<number, number> = {}
+          if (result.answers && Array.isArray(result.answers)) {
+            result.answers.forEach((answer) => {
+              if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
+                // 确保 scaleId 和 score 都是数字类型
+                const scaleId = Number(answer.scaleId)
+                const score = Number(answer.score)
+                if (!isNaN(scaleId) && !isNaN(score)) {
+                  apiAnswersMap[scaleId] = score
+                }
               }
-            }
-          })
+            })
+          }
+          
+          console.log('API 返回的答案数组:', result.answers)
+          console.log('API 答案映射:', apiAnswersMap)
+          
+          // 加载本地存储的答案
+          const storedAnswers = loadAnswersFromStorage()
+          const storedPreviousAnswers = loadPreviousAnswersFromStorage()
+          
+          console.log('本地存储的答案:', storedAnswers)
+          
+          // 合并 API 答案和本地答案（本地答案优先，用于未提交的答案）
+          // 注意：这里本地答案会覆盖 API 答案，因为本地可能有未提交的新答案
+          const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
+          console.log('合并后的答案:', mergedAnswers)
+          console.log('题目总数:', result.scales?.length || 0)
+          
+          setAnswers(mergedAnswers)
+          setPreviousAnswers(storedPreviousAnswers)
         }
-        
-        console.log('API 返回的答案数组:', result.answers)
-        console.log('API 答案映射:', apiAnswersMap)
-        
-        // 加载本地存储的答案
-        const storedAnswers = loadAnswersFromStorage()
-        const storedPreviousAnswers = loadPreviousAnswersFromStorage()
-        
-        console.log('本地存储的答案:', storedAnswers)
-        
-        // 合并 API 答案和本地答案（本地答案优先，用于未提交的答案）
-        // 注意：这里本地答案会覆盖 API 答案，因为本地可能有未提交的新答案
-        const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
-        console.log('合并后的答案:', mergedAnswers)
-        console.log('题目总数:', result.scales?.length || 0)
-        
-        setAnswers(mergedAnswers)
-        setPreviousAnswers(storedPreviousAnswers)
         
         // 如果有题目数据，初始化当前索引
         if (result.scales && result.scales.length > 0) {
           const questions = result.scales.map(convertScaleToQuestion)
           const sorted = sortQuestions(questions)
-          const firstUnanswered = findFirstUnansweredIndex(sorted, mergedAnswers)
-          setCurrentIndex(firstUnanswered)
           
-          // 检查完成状态
-          const answeredCount = Object.keys(mergedAnswers).length
-          if (answeredCount === sorted.length) {
-            setIsCompleted(true)
+          if (isRestart) {
+            // 重新开始：从第一题开始
+            setCurrentIndex(0)
+            setIsCompleted(false)
+          } else {
+            // 正常流程：找到第一个未答题的题目
+            // 需要重新获取合并后的答案（因为 setAnswers 是异步的）
+            const storedAnswers = loadAnswersFromStorage()
+            const apiAnswersMap: Record<number, number> = {}
+            if (result.answers && Array.isArray(result.answers)) {
+              result.answers.forEach((answer) => {
+                if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
+                  const scaleId = Number(answer.scaleId)
+                  const score = Number(answer.score)
+                  if (!isNaN(scaleId) && !isNaN(score)) {
+                    apiAnswersMap[scaleId] = score
+                  }
+                }
+              })
+            }
+            const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
+            const firstUnanswered = findFirstUnansweredIndex(sorted, mergedAnswers)
+            setCurrentIndex(firstUnanswered)
+            
+            // 检查完成状态
+            const answeredCount = Object.keys(mergedAnswers).length
+            if (answeredCount === sorted.length) {
+              setIsCompleted(true)
+            }
           }
         }
         
@@ -217,7 +255,7 @@ export default function AllMajorsPage() {
     }
 
     loadData()
-  }, [])
+  }, [isRestart])
 
   // 当题目切换时，清除闪烁状态
   useEffect(() => {

@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
 import { Input } from '@/components/ui/Input'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale } from '@/types/api'
@@ -175,6 +177,10 @@ function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFil
 }
 
 export default function PopularMajorsPage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedCategory, setSelectedCategory] = useState<'ben' | 'gz_ben' | 'zhuan'>('ben')
   const [loading, setLoading] = useState(true)
@@ -199,6 +205,13 @@ export default function PopularMajorsPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [total, setTotal] = useState(0)
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   useEffect(() => {
     const info = Taro.getSystemInfoSync()
@@ -901,6 +914,13 @@ export default function PopularMajorsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
     </PageContainer>
   )
 }

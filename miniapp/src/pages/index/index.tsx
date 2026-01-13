@@ -377,32 +377,46 @@ export default function IndexPage() {
                   className={`index-page__dialog-step ${!isStepLocked ? 'index-page__dialog-step--unlocked' : 'index-page__dialog-step--locked'}`}
                   onClick={() => handleStepClick(1, handleSelfInsight)}
                 >
-                  <Text className="index-page__dialog-step-icon">
-                    {isStepCompleted ? '✅' : isStepCurrent ? '📍' : '🔒'}
-                  </Text>
-                  <Text className={`index-page__dialog-step-badge ${
+                  <View className={`index-page__dialog-step-icon ${
                     isStepCompleted 
-                      ? 'index-page__dialog-step-badge--completed' 
+                      ? 'index-page__dialog-step-icon--completed' 
                       : isStepCurrent 
-                        ? 'index-page__dialog-step-badge--current'
-                        : 'index-page__dialog-step-badge--locked'
+                        ? 'index-page__dialog-step-icon--current'
+                        : 'index-page__dialog-step-icon--locked'
                   }`}>
-                    {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                  </Text>
-                  <View className="index-page__dialog-step-content">
-                    <View className="index-page__dialog-step-header">
-                      <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
-                        深度自我洞察
-                      </Text>
-                      {isClient && (
-                        <Text className="index-page__dialog-step-progress">
-                          ({step1AnswerCount}/{totalQuestions})
-                        </Text>
-                      )}
-                    </View>
-                    <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
-                      完成168题科学测评，解锁你的核心特质报告。
+                    {isStepCompleted ? (
+                      <View className="index-page__dialog-step-icon-checkmark" />
+                    ) : isStepCurrent ? (
+                      <View className="index-page__dialog-step-icon-dot" />
+                    ) : (
+                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
+                    )}
+                  </View>
+                  <View className="index-page__dialog-step-right">
+                    <Text className={`index-page__dialog-step-badge ${
+                      isStepCompleted 
+                        ? 'index-page__dialog-step-badge--completed' 
+                        : isStepCurrent 
+                          ? 'index-page__dialog-step-badge--current'
+                          : 'index-page__dialog-step-badge--locked'
+                    }`}>
+                      {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
                     </Text>
+                    <View className="index-page__dialog-step-content">
+                      <View className="index-page__dialog-step-header">
+                        <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
+                          深度自我洞察
+                        </Text>
+                        {isClient && (
+                          <Text className="index-page__dialog-step-progress">
+                            ({step1AnswerCount}/{totalQuestions})
+                          </Text>
+                        )}
+                      </View>
+                      <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
+                        完成168题科学测评，解锁你的核心特质报告。
+                      </Text>
+                    </View>
                   </View>
                 </View>
               )
@@ -419,27 +433,41 @@ export default function IndexPage() {
                   className={`index-page__dialog-step ${!isStepLocked ? 'index-page__dialog-step--unlocked' : 'index-page__dialog-step--locked'}`}
                   onClick={() => handleStepClick(2, handleMajorExploration)}
                 >
-                  <Text className="index-page__dialog-step-icon">
-                    {isStepCompleted ? '✅' : isStepCurrent ? '📍' : '🔒'}
-                  </Text>
-                  <Text className={`index-page__dialog-step-badge ${
+                  <View className={`index-page__dialog-step-icon ${
                     isStepCompleted 
-                      ? 'index-page__dialog-step-badge--completed' 
+                      ? 'index-page__dialog-step-icon--completed' 
                       : isStepCurrent 
-                        ? 'index-page__dialog-step-badge--current'
-                        : 'index-page__dialog-step-badge--locked'
+                        ? 'index-page__dialog-step-icon--current'
+                        : 'index-page__dialog-step-icon--locked'
                   }`}>
-                    {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                  </Text>
-                  <View className="index-page__dialog-step-content">
-                    <View className="index-page__dialog-step-header">
-                      <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
-                        发现契合专业
+                    {isStepCompleted ? (
+                      <View className="index-page__dialog-step-icon-checkmark" />
+                    ) : isStepCurrent ? (
+                      <View className="index-page__dialog-step-icon-dot" />
+                    ) : (
+                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
+                    )}
+                  </View>
+                  <View className="index-page__dialog-step-right">
+                    <Text className={`index-page__dialog-step-badge ${
+                      isStepCompleted 
+                        ? 'index-page__dialog-step-badge--completed' 
+                        : isStepCurrent 
+                          ? 'index-page__dialog-step-badge--current'
+                          : 'index-page__dialog-step-badge--locked'
+                    }`}>
+                      {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
+                    </Text>
+                    <View className="index-page__dialog-step-content">
+                      <View className="index-page__dialog-step-header">
+                        <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
+                          发现契合专业
+                        </Text>
+                      </View>
+                      <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
+                        基于你的特质报告，匹配最适合的专业方向。
                       </Text>
                     </View>
-                    <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
-                      基于你的特质报告，匹配最适合的专业方向。
-                    </Text>
                   </View>
                 </View>
               )
@@ -456,27 +484,41 @@ export default function IndexPage() {
                   className={`index-page__dialog-step ${!isStepLocked ? 'index-page__dialog-step--unlocked' : 'index-page__dialog-step--locked'}`}
                   onClick={() => handleStepClick(3, handleCityExploration)}
                 >
-                  <Text className="index-page__dialog-step-icon">
-                    {isStepCompleted ? '✅' : isStepCurrent ? '📍' : '🔒'}
-                  </Text>
-                  <Text className={`index-page__dialog-step-badge ${
+                  <View className={`index-page__dialog-step-icon ${
                     isStepCompleted 
-                      ? 'index-page__dialog-step-badge--completed' 
+                      ? 'index-page__dialog-step-icon--completed' 
                       : isStepCurrent 
-                        ? 'index-page__dialog-step-badge--current'
-                        : 'index-page__dialog-step-badge--locked'
+                        ? 'index-page__dialog-step-icon--current'
+                        : 'index-page__dialog-step-icon--locked'
                   }`}>
-                    {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                  </Text>
-                  <View className="index-page__dialog-step-content">
-                    <View className="index-page__dialog-step-header">
-                      <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
-                        圈定理想城市
+                    {isStepCompleted ? (
+                      <View className="index-page__dialog-step-icon-checkmark" />
+                    ) : isStepCurrent ? (
+                      <View className="index-page__dialog-step-icon-dot" />
+                    ) : (
+                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
+                    )}
+                  </View>
+                  <View className="index-page__dialog-step-right">
+                    <Text className={`index-page__dialog-step-badge ${
+                      isStepCompleted 
+                        ? 'index-page__dialog-step-badge--completed' 
+                        : isStepCurrent 
+                          ? 'index-page__dialog-step-badge--current'
+                          : 'index-page__dialog-step-badge--locked'
+                    }`}>
+                      {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
+                    </Text>
+                    <View className="index-page__dialog-step-content">
+                      <View className="index-page__dialog-step-header">
+                        <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
+                          圈定理想城市
+                        </Text>
+                      </View>
+                      <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
+                        结合你的偏好，找到理想的城市圈。
                       </Text>
                     </View>
-                    <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
-                      结合你的偏好，找到理想的城市圈。
-                    </Text>
                   </View>
                 </View>
               )
@@ -493,27 +535,41 @@ export default function IndexPage() {
                   className={`index-page__dialog-step ${!isStepLocked ? 'index-page__dialog-step--unlocked' : 'index-page__dialog-step--locked'}`}
                   onClick={() => handleStepClick(4, handleSchoolExploration)}
                 >
-                  <Text className="index-page__dialog-step-icon">
-                    {isStepCompleted ? '✅' : isStepCurrent ? '📍' : '🔒'}
-                  </Text>
-                  <Text className={`index-page__dialog-step-badge ${
+                  <View className={`index-page__dialog-step-icon ${
                     isStepCompleted 
-                      ? 'index-page__dialog-step-badge--completed' 
+                      ? 'index-page__dialog-step-icon--completed' 
                       : isStepCurrent 
-                        ? 'index-page__dialog-step-badge--current'
-                        : 'index-page__dialog-step-badge--locked'
+                        ? 'index-page__dialog-step-icon--current'
+                        : 'index-page__dialog-step-icon--locked'
                   }`}>
-                    {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                  </Text>
-                  <View className="index-page__dialog-step-content">
-                    <View className="index-page__dialog-step-header">
-                      <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
-                        锁定目标院校
+                    {isStepCompleted ? (
+                      <View className="index-page__dialog-step-icon-checkmark" />
+                    ) : isStepCurrent ? (
+                      <View className="index-page__dialog-step-icon-dot" />
+                    ) : (
+                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
+                    )}
+                  </View>
+                  <View className="index-page__dialog-step-right">
+                    <Text className={`index-page__dialog-step-badge ${
+                      isStepCompleted 
+                        ? 'index-page__dialog-step-badge--completed' 
+                        : isStepCurrent 
+                          ? 'index-page__dialog-step-badge--current'
+                          : 'index-page__dialog-step-badge--locked'
+                    }`}>
+                      {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
+                    </Text>
+                    <View className="index-page__dialog-step-content">
+                      <View className="index-page__dialog-step-header">
+                        <Text className={`index-page__dialog-step-title ${isStepLocked ? 'index-page__dialog-step-title--locked' : ''}`}>
+                          锁定目标院校
+                        </Text>
+                      </View>
+                      <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
+                        综合所有信息，生成你的个性化院校清单。
                       </Text>
                     </View>
-                    <Text className={`index-page__dialog-step-desc ${isStepLocked ? 'index-page__dialog-step-desc--locked' : ''}`}>
-                      综合所有信息，生成你的个性化院校清单。
-                    </Text>
                   </View>
                 </View>
               )

@@ -193,6 +193,22 @@
     }
   }
   
+  &--remove {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+    
+    &:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+    
+    &:active {
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+  }
+
   &:not(.schools-page__school-item-wishlist-button--active) {
     background: #1A4099;
     color: #fff;
@@ -414,3 +430,78 @@
   color: #ef4444;
 }
 
+.schools-page__group-section-remark {
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.schools-page__group-section-actions {
+  margin-top: 24rpx;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.schools-page__group-section-add-button {
+  font-weight: 600;
+  padding: 12rpx 32rpx;
+  border-radius: 8rpx;
+  transition: all 0.2s ease;
+  
+  &--active {
+    border: 1rpx solid #10b981;
+    color: #10b981;
+    background: #fff;
+    
+    &:hover {
+      background: #f0fdf4;
+      border-color: #10b981;
+    }
+  }
+  
+  &--remove {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+    
+    &:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+    
+    &:active {
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+  }
+
+  &:not(.schools-page__group-section-add-button--active) {
+    background: #1A4099;
+    color: #fff;
+    
+    &:hover {
+      background: rgba(26, 64, 153, 0.9);
+    }
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.schools-page__delete-button {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  
+  &:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+  }
+  
+  &:active {
+    background: #b91c1c;
+    border-color: #b91c1c;
+  }
+}

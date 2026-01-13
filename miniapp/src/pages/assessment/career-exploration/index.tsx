@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/Collapsible'
 import { BottomNav } from '@/components/BottomNav'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getMajorDetailByCode, unfavoriteMajor } from '@/services/majors'
 import { MajorDetailInfo } from '@/types/api'
 import questionnaireData from '@/data/questionnaire.json'
@@ -603,6 +605,10 @@ function MajorScoreDisplay({ majorData }: { majorData: any }) {
 }
 
 export default function CareerExplorationPage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  
   const router = useRouter()
   const majorCode = router.params?.code || ''
   const [majorName, setMajorName] = useState('')
@@ -611,6 +617,13 @@ export default function CareerExplorationPage() {
   const [activeTab, setActiveTab] = useState('passion')
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 加载专业详情
   useEffect(() => {
@@ -915,6 +928,13 @@ export default function CareerExplorationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
     </View>
   )
 }

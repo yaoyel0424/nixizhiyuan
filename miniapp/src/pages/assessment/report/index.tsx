@@ -1,11 +1,24 @@
 // 评估报告页面
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text } from '@tarojs/components'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import './index.less'
 
 export default function ReportPage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
+
   return (
     <PageContainer>
       <View className="report-page">
@@ -17,6 +30,13 @@ export default function ReportPage() {
           </Card>
         </View>
       </View>
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
     </PageContainer>
   )
 }

@@ -6,6 +6,8 @@ import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import {
   getProvinces,
   getFavoriteProvinces,
@@ -18,6 +20,10 @@ import { ProvinceResponse } from '@/types/api'
 import './index.less'
 
 export default function ProvincesPage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [favoriteProvinceIds, setFavoriteProvinceIds] = useState<Set<number>>(new Set())
@@ -25,6 +31,13 @@ export default function ProvincesPage() {
   const [showDetail, setShowDetail] = useState(false)
   const [selectedType, setSelectedType] = useState<string>('全部')
   const [favoriteCount, setFavoriteCount] = useState(0)
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 加载省份数据
   useEffect(() => {
@@ -392,6 +405,13 @@ export default function ProvincesPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* 问卷完成提示弹窗 */}
+        <QuestionnaireRequiredModal
+          open={showQuestionnaireModal}
+          onOpenChange={setShowQuestionnaireModal}
+          answerCount={answerCount}
+        />
       </View>
     </PageContainer>
   )
