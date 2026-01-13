@@ -22,7 +22,9 @@ import {
 import { ChoicesService } from './choices.service';
 import { CreateChoiceDto } from './dto/create-choice.dto';
 import { ChoiceResponseDto } from './dto/choice-response.dto';
-import { AdjustIndexDto } from './dto/adjust-index.dto';
+import { GroupedChoiceResponseDto, SchoolGroupDto } from './dto/grouped-choice-response.dto';
+import { AdjustDirectionDto } from './dto/adjust-direction.dto';
+import { AdjustMgIndexDto } from './dto/adjust-mg-index.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
@@ -72,13 +74,13 @@ export class ChoicesController {
   }
 
   /**
-   * 获取用户的志愿选择列表
+   * 获取用户的志愿选择列表（分组）
    * @param user 当前用户
    * @param year 年份（可选），如果不传则从配置中读取
-   * @returns 志愿选择列表
+   * @returns 分组后的志愿选择列表
    */
   @Get()
-  @ApiOperation({ summary: '获取用户的志愿选择列表' })
+  @ApiOperation({ summary: '获取用户的志愿选择列表（按学校和专业组分组）' })
   @ApiQuery({
     name: 'year',
     required: false,
@@ -87,8 +89,8 @@ export class ChoicesController {
   })
   @ApiResponse({
     status: 200,
-    description: '查询成功',
-    type: [ChoiceResponseDto],
+    description: '查询成功（返回数组，数组上附加 statistics 属性）',
+    type: [SchoolGroupDto],
   })
   @ApiResponse({
     status: 404,
@@ -97,7 +99,7 @@ export class ChoicesController {
   async findAll(
     @CurrentUser() user: any,
     @Query('year') year?: string,
-  ): Promise<ChoiceResponseDto[]> {
+  ): Promise<GroupedChoiceResponseDto> {
     this.logger.log(`用户 ${user.id} 查询志愿选择列表，年份: ${year || '从配置读取'}`);
     return await this.choicesService.findByUser(user.id, year);
   }
@@ -143,14 +145,56 @@ export class ChoicesController {
   }
 
   /**
-   * 调整索引（上移或下移）
+   * 调整 mg_index（专业组索引）
+   * @param user 当前用户
+   * @param adjustDirectionDto 调整方向的 DTO（包含 mgIndex, province, schoolCode, batch）
+   * @returns 更新后的记录数量
+   */
+  @Patch('adjust-mg-index')
+  @ApiOperation({ summary: '调整专业组索引（上移或下移）' })
+  @ApiResponse({
+    status: 200,
+    description: '调整成功',
+    schema: {
+      type: 'object',
+      properties: {
+        updated: { type: 'number', description: '更新的记录数量' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: '未找到对应的志愿选择记录',
+  })
+  @ApiResponse({
+    status: 400,
+    description: '已经是第一个或最后一个，无法调整',
+  })
+  async adjustMgIndex(
+    @CurrentUser() user: any,
+    @Body() adjustDirectionDto: AdjustMgIndexDto,
+  ): Promise<{ updated: number }> {
+    this.logger.log(
+      `用户 ${user.id} 调整 mg_index，mgIndex: ${adjustDirectionDto.mgIndex}，方向: ${adjustDirectionDto.direction}`,
+    );
+    return await this.choicesService.adjustMgIndex(
+      user.id,
+      adjustDirectionDto.mgIndex,
+      adjustDirectionDto.province,
+      adjustDirectionDto.batch,
+      adjustDirectionDto.direction,
+    );
+  }
+
+  /**
+   * 调整 major_index（专业索引）
    * @param user 当前用户
    * @param id 志愿选择ID
-   * @param adjustIndexDto 调整索引的 DTO
+   * @param adjustDirectionDto 调整方向的 DTO
    * @returns 更新后的志愿选择记录
    */
-  @Patch(':id/adjust-index')
-  @ApiOperation({ summary: '调整志愿索引（上移或下移）' })
+  @Patch(':id/adjust-major-index')
+  @ApiOperation({ summary: '调整专业索引（上移或下移）' })
   @ApiParam({
     name: 'id',
     description: '志愿选择ID',
@@ -170,19 +214,42 @@ export class ChoicesController {
     status: 400,
     description: '已经是第一个或最后一个，无法调整',
   })
-  async adjustIndex(
+  async adjustMajorIndex(
     @CurrentUser() user: any,
     @Param('id', ParseIntPipe) id: number,
-    @Body() adjustIndexDto: AdjustIndexDto,
+    @Body() adjustDirectionDto: AdjustDirectionDto,
   ): Promise<ChoiceResponseDto> {
     this.logger.log(
-      `用户 ${user.id} 调整志愿选择索引，ID: ${id}，类型: ${adjustIndexDto.indexType}，方向: ${adjustIndexDto.direction}`,
+      `用户 ${user.id} 调整志愿选择 major_index，ID: ${id}，方向: ${adjustDirectionDto.direction}`,
     );
-    return await this.choicesService.adjustIndex(
+    return await this.choicesService.adjustMajorIndex(
       user.id,
       id,
-      adjustIndexDto.indexType,
-      adjustIndexDto.direction,
+      adjustDirectionDto.direction,
     );
+  }
+
+  /**
+   * 修复所有记录的 mgIndex 和 majorIndex
+   * @returns 修复结果
+   */
+  @Post('fix-indexes')
+  @ApiOperation({ summary: '修复所有记录的 mgIndex 和 majorIndex' })
+  @ApiResponse({
+    status: 200,
+    description: '修复成功',
+    schema: {
+      type: 'object',
+      properties: {
+        fixed: {
+          type: 'number',
+          example: 10,
+        },
+      },
+    },
+  })
+  async fixAllIndexes(): Promise<{ fixed: number }> {
+    this.logger.log('开始修复所有记录的 mgIndex 和 majorIndex');
+    return await this.choicesService.fixAllIndexes();
   }
 }
