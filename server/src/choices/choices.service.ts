@@ -97,20 +97,32 @@ export class ChoicesService {
     }
 
     // 5. 确定 mg_index
-    // 规则：同一用户、同一省份、同一学校、同一批次下、同一专业组，其 mg_index 应该是一致的
-    // 查询是否存在相同的 user_id, province, school_code, batch, mg_id 组合
-    const sameGroupChoice = await this.choiceRepository.findOne({
-      where: {
-        userId,
-        province,
-        schoolCode: createChoiceDto.schoolCode ?? null,
-        batch: createChoiceDto.batch ?? null,
+    // 规则：同一用户、同一省份、同一首选科目、同一次选科目、同一年份下、同一专业组，其 mg_index 应该是一致的
+    // 查询是否存在相同的 user_id, province, preferred_subjects, secondary_subjects, year, mg_id 组合
+    // 注意：secondarySubjects 是数组，需要使用数组比较
+    // 按照索引顺序：userId, province, preferredSubjects, year
+    const sameGroupChoice = await this.choiceRepository
+      .createQueryBuilder('choice')
+      .where('choice.userId = :userId', { userId })
+      .andWhere('choice.province = :province', { province })
+      .andWhere('choice.preferredSubjects = :preferredSubjects', {
+        preferredSubjects: preferredSubjects ?? null,
+      })
+      .andWhere('choice.year = :year', { year })
+      // 索引字段之后的其他条件
+      .andWhere('choice.mgId = :mgId', {
         mgId: createChoiceDto.mgId ?? null,
-      },
-      order: {
-        mgIndex: 'ASC', // 获取第一个记录，用于获取 mg_index
-      },
-    });
+      })
+      .andWhere(
+        secondarySubjects && secondarySubjects.length > 0
+          ? 'choice.secondarySubjects = :secondarySubjects'
+          : '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+        secondarySubjects && secondarySubjects.length > 0
+          ? { secondarySubjects }
+          : { emptyArray: [] },
+      )
+      .orderBy('choice.mgIndex', 'ASC')
+      .getOne();
 
     let mgIndex: number;
     if (sameGroupChoice && sameGroupChoice.mgIndex !== null) {
@@ -120,19 +132,30 @@ export class ChoicesService {
         `用户 ${userId} 在相同专业组下创建志愿，复用 mg_index: ${mgIndex}`,
       );
     } else {
-      // 如果不存在，计算该组合（userId, province, schoolCode, batch）下的最大 mg_index
-      const maxMgIndexResult = await this.choiceRepository
+      // 如果不存在，计算该组合（userId, province, preferredSubjects, secondarySubjects, year）下的最大 mg_index
+      // 按照索引顺序：userId, province, preferredSubjects, year
+      const queryBuilder = this.choiceRepository
         .createQueryBuilder('choice')
         .select('MAX(choice.mgIndex)', 'max')
         .where('choice.userId = :userId', { userId })
         .andWhere('choice.province = :province', { province })
-        .andWhere('choice.schoolCode = :schoolCode', {
-          schoolCode: createChoiceDto.schoolCode ?? null,
+        .andWhere('choice.preferredSubjects = :preferredSubjects', {
+          preferredSubjects: preferredSubjects ?? null,
         })
-        .andWhere('choice.batch = :batch', {
-          batch: createChoiceDto.batch ?? null,
-        })
-        .getRawOne();
+        .andWhere('choice.year = :year', { year });
+
+      if (secondarySubjects && secondarySubjects.length > 0) {
+        queryBuilder.andWhere('choice.secondarySubjects = :secondarySubjects', {
+          secondarySubjects,
+        });
+      } else {
+        queryBuilder.andWhere(
+          '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+          { emptyArray: [] },
+        );
+      }
+
+      const maxMgIndexResult = await queryBuilder.getRawOne();
 
       const maxMgIndex = maxMgIndexResult?.max
         ? parseInt(maxMgIndexResult.max, 10)
@@ -145,12 +168,33 @@ export class ChoicesService {
 
     // 6. 确定 major_index
     // 基于已确定的 mg_index，查询该 mg_index 下的最大 major_index
-    const maxMajorIndexResult = await this.choiceRepository
+    // 需要在相同的分组条件下（userId, province, preferredSubjects, secondarySubjects, year）
+    // 按照索引顺序：userId, province, preferredSubjects, year
+    const majorIndexQueryBuilder = this.choiceRepository
       .createQueryBuilder('choice')
       .select('MAX(choice.majorIndex)', 'max')
       .where('choice.userId = :userId', { userId })
-      .andWhere('choice.mgIndex = :mgIndex', { mgIndex })
-      .getRawOne();
+      .andWhere('choice.province = :province', { province })
+      .andWhere('choice.preferredSubjects = :preferredSubjects', {
+        preferredSubjects: preferredSubjects ?? null,
+      })
+      .andWhere('choice.year = :year', { year })
+      // 索引字段之后的其他条件
+      .andWhere('choice.mgIndex = :mgIndex', { mgIndex });
+
+    if (secondarySubjects && secondarySubjects.length > 0) {
+      majorIndexQueryBuilder.andWhere(
+        'choice.secondarySubjects = :secondarySubjects',
+        { secondarySubjects },
+      );
+    } else {
+      majorIndexQueryBuilder.andWhere(
+        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+        { emptyArray: [] },
+      );
+    }
+
+    const maxMajorIndexResult = await majorIndexQueryBuilder.getRawOne();
 
     const maxMajorIndex = maxMajorIndexResult?.max
       ? parseInt(maxMajorIndexResult.max, 10)
@@ -158,12 +202,32 @@ export class ChoicesService {
     const majorIndex = maxMajorIndex + 1;
 
     // 6.1 检查该 mg_index 下是否已经有 6 个专业
-    const existingChoicesCount = await this.choiceRepository.count({
-      where: {
-        userId,
-        mgIndex,
-      },
-    });
+    // 需要在相同的分组条件下（userId, province, preferredSubjects, secondarySubjects, year）
+    // 按照索引顺序：userId, province, preferredSubjects, year
+    const countQueryBuilder = this.choiceRepository
+      .createQueryBuilder('choice')
+      .where('choice.userId = :userId', { userId })
+      .andWhere('choice.province = :province', { province })
+      .andWhere('choice.preferredSubjects = :preferredSubjects', {
+        preferredSubjects: preferredSubjects ?? null,
+      })
+      .andWhere('choice.year = :year', { year })
+      // 索引字段之后的其他条件
+      .andWhere('choice.mgIndex = :mgIndex', { mgIndex });
+
+    if (secondarySubjects && secondarySubjects.length > 0) {
+      countQueryBuilder.andWhere(
+        'choice.secondarySubjects = :secondarySubjects',
+        { secondarySubjects },
+      );
+    } else {
+      countQueryBuilder.andWhere(
+        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+        { emptyArray: [] },
+      );
+    }
+
+    const existingChoicesCount = await countQueryBuilder.getCount();
 
     if (existingChoicesCount >= 6) {
       this.logger.warn(
@@ -292,28 +356,72 @@ export class ChoicesService {
     // 2. 确定年份
     const queryYear = year || this.configService.get<string>('CURRENT_YEAR') || '2025';
 
-    // 3. 查询用户的志愿选择列表
-    const choices = await this.choiceRepository.find({
-      where: {
-        userId,
-        year: queryYear,
-      },
-      order: {
-        createdAt: 'DESC', // 按创建时间倒序排列，最新的在前
-      },
-    });
+    // 3. 准备查询条件
+    // 从用户信息中获取：province, enrollType (对应 batch), preferredSubjects, secondarySubjects
+    const province = user.province || null;
+    const batch = user.enrollType || null; // enrollType 对应 batch
+    const preferredSubjects = user.preferredSubjects || null;
+    // secondarySubjects 在 user 中是字符串（逗号分隔），需要转换为数组
+    const secondarySubjects = user.secondarySubjects
+      ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
+      : null;
+
+    // 4. 构建查询条件：按照索引顺序 userId, province, preferredSubjects, year
+    // 索引顺序：['userId', 'province', 'preferredSubjects', 'year']
+    const queryBuilder = this.choiceRepository
+      .createQueryBuilder('choice')
+      .where('choice.userId = :userId', { userId });
+
+    // 按照索引顺序添加条件
+    if (province) {
+      queryBuilder.andWhere('choice.province = :province', { province });
+    }
+
+    if (preferredSubjects) {
+      queryBuilder.andWhere('choice.preferredSubjects = :preferredSubjects', {
+        preferredSubjects,
+      });
+    }
+
+    queryBuilder.andWhere('choice.year = :year', { year: queryYear });
+
+    // 索引字段之后的其他条件
+    if (batch) {
+      queryBuilder.andWhere('choice.batch = :batch', { batch });
+    }
+
+    // secondarySubjects 是数组类型，需要特殊处理
+    if (secondarySubjects && secondarySubjects.length > 0) {
+      queryBuilder.andWhere('choice.secondarySubjects = :secondarySubjects', {
+        secondarySubjects,
+      });
+    } else {
+      queryBuilder.andWhere(
+        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+        { emptyArray: [] },
+      );
+    }
+
+    // 5. 查询用户的志愿选择列表
+    const choices = await queryBuilder
+      .orderBy('choice.createdAt', 'DESC') // 按创建时间倒序排列，最新的在前
+      .getMany();
 
     if (choices.length === 0) {
       this.logger.log(`用户 ${userId} 在 ${queryYear} 年没有志愿选择记录`);
       // 返回空数据，但包含统计信息
       const provinceCode = user.province ? PROVINCE_NAME_TO_CODE[user.province] : null;
       const totalCount = provinceCode ? (PROVINCE_CODE_TO_VOLUNTEER_COUNT[provinceCode] || 0) : 0;
-      const emptyData = [] as any;
-      emptyData.statistics = {
-        selected: 0,
-        total: totalCount,
+      const emptyResponse = {
+        volunteers: [],
+        statistics: {
+          selected: 0,
+          total: totalCount,
+        },
       };
-      return emptyData as GroupedChoiceResponseDto;
+      return plainToInstance(GroupedChoiceResponseDto, emptyResponse, {
+        excludeExtraneousValues: true,
+      });
     }
 
     // 4. 查询所有关联的专业组信息
@@ -652,11 +760,16 @@ export class ChoicesService {
       excludeExtraneousValues: true,
     });
 
-    // 12. 将统计信息作为扩展属性添加到数组上
-    (groupedData as any).statistics = statistics;
+    // 12. 构建包含数据和统计信息的响应对象
+    const responseData = {
+      volunteers: groupedData,
+      statistics,
+    };
 
-    // 13. 返回分组后的数据（包含统计信息）
-    return groupedData as GroupedChoiceResponseDto;
+    // 13. 转换为响应 DTO
+    return plainToInstance(GroupedChoiceResponseDto, responseData, {
+      excludeExtraneousValues: true,
+    });
   }
 
   /**
@@ -699,27 +812,62 @@ export class ChoicesService {
    * 调整 mg_index（专业组索引）
    * @param userId 用户ID
    * @param mgIndex 专业组索引
-   * @param province 省份
-   * @param batch 批次
    * @param direction 调整方向：up（上移）或 down（下移）
    * @returns 更新后的记录数量
    */
   async adjustMgIndex(
     userId: number,
     mgIndex: number,
-    province: string,
-    batch: string,
     direction: 'up' | 'down',
   ): Promise<{ updated: number }> {
-    // 1. 查找当前 mg_index 下的所有记录（在 province 和 batch 内）
-    const currentChoices = await this.choiceRepository.find({
-      where: {
-        userId,
-        province,
-        batch,
-        mgIndex,
-      },
+    // 1. 获取用户信息
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
     });
+
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    // 2. 从用户信息中获取字段
+    const province = user.province || null;
+    const preferredSubjects = user.preferredSubjects || null;
+    const secondarySubjects = user.secondarySubjects
+      ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
+      : null;
+    const year = this.configService.get<string>('CURRENT_YEAR') || '2025';
+
+    if (!province) {
+      throw new BadRequestException('用户未设置省份信息');
+    }
+
+    if (!preferredSubjects) {
+      throw new BadRequestException('用户未设置首选科目信息');
+    }
+    // 1. 查找当前 mg_index 下的所有记录（在 userId, province, preferredSubjects, secondarySubjects, year 内）
+    const currentChoicesQueryBuilder = this.choiceRepository
+      .createQueryBuilder('choice')
+      .where('choice.userId = :userId', { userId })
+      .andWhere('choice.province = :province', { province })
+      .andWhere('choice.preferredSubjects = :preferredSubjects', {
+        preferredSubjects: preferredSubjects ?? null,
+      })
+      .andWhere('choice.year = :year', { year })
+      .andWhere('choice.mgIndex = :mgIndex', { mgIndex });
+
+    if (secondarySubjects && secondarySubjects.length > 0) {
+      currentChoicesQueryBuilder.andWhere(
+        'choice.secondarySubjects = :secondarySubjects',
+        { secondarySubjects },
+      );
+    } else {
+      currentChoicesQueryBuilder.andWhere(
+        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+        { emptyArray: [] },
+      );
+    }
+
+    const currentChoices = await currentChoicesQueryBuilder.getMany();
 
     if (currentChoices.length === 0) {
       throw new NotFoundException('未找到对应的志愿选择记录');
@@ -733,15 +881,32 @@ export class ChoicesService {
       throw new BadRequestException('已经是第一个，无法上移');
     }
 
-    // 3. 查找目标 mg_index 下的所有记录（在 province 和 batch 内）
-    const targetChoices = await this.choiceRepository.find({
-      where: {
-        userId,
-        province,
-        batch,
-        mgIndex: targetMgIndex,
-      },
-    });
+    // 3. 查找目标 mg_index 下的所有记录（在 userId, province, preferredSubjects, secondarySubjects, year 内）
+    // 按照索引顺序：userId, province, preferredSubjects, year
+    const targetChoicesQueryBuilder = this.choiceRepository
+      .createQueryBuilder('choice')
+      .where('choice.userId = :userId', { userId })
+      .andWhere('choice.province = :province', { province })
+      .andWhere('choice.preferredSubjects = :preferredSubjects', {
+        preferredSubjects: preferredSubjects ?? null,
+      })
+      .andWhere('choice.year = :year', { year })
+      // 索引字段之后的其他条件
+      .andWhere('choice.mgIndex = :targetMgIndex', { targetMgIndex });
+
+    if (secondarySubjects && secondarySubjects.length > 0) {
+      targetChoicesQueryBuilder.andWhere(
+        'choice.secondarySubjects = :secondarySubjects',
+        { secondarySubjects },
+      );
+    } else {
+      targetChoicesQueryBuilder.andWhere(
+        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+        { emptyArray: [] },
+      );
+    }
+
+    const targetChoices = await targetChoicesQueryBuilder.getMany();
 
     if (targetChoices.length === 0) {
       throw new BadRequestException(
@@ -920,20 +1085,20 @@ export class ChoicesService {
   /**
    * 修复所有记录的 mgIndex 和 majorIndex
    * 规则：
-   * 1. mgIndex：按照 userId, province, schoolCode, batch 分组，在每组内按照 mgId 分配递增的 mgIndex（同一 mgId 使用相同的 mgIndex）
+   * 1. mgIndex：按照 userId, province, preferredSubjects, secondarySubjects, year 分组，在每组内按照 mgId 分配递增的 mgIndex（同一 mgId 使用相同的 mgIndex）
    * 2. majorIndex：在同一个 mgIndex 下，按照创建时间递增分配 majorIndex
    * @returns 修复的记录数量
    */
   async fixAllIndexes(): Promise<{ fixed: number }> {
     this.logger.log('开始修复所有记录的 mgIndex 和 majorIndex');
 
-    // 1. 查询所有记录，按 userId, province, schoolCode, batch 分组
+    // 1. 查询所有记录，按 userId, province, preferredSubjects, secondarySubjects, year 分组
     const allChoices = await this.choiceRepository.find({
       order: {
         userId: 'ASC',
         province: 'ASC',
-        schoolCode: 'ASC',
-        batch: 'ASC',
+        preferredSubjects: 'ASC',
+        year: 'ASC',
         createdAt: 'ASC', // 按创建时间排序，确保顺序一致
       },
     });
@@ -943,20 +1108,25 @@ export class ChoicesService {
       return { fixed: 0 };
     }
 
-    // 2. 按 userId, province, schoolCode, batch 分组
-    const groupedByUserProvinceSchoolBatch = new Map<string, Choice[]>();
+    // 2. 按 userId, province, preferredSubjects, secondarySubjects, year 分组
+    // 注意：secondarySubjects 是数组，需要特殊处理用于分组键
+    const groupedByUserProvincePreferredSecondaryYear = new Map<string, Choice[]>();
     for (const choice of allChoices) {
-      const key = `${choice.userId}_${choice.province}_${choice.schoolCode || 'null'}_${choice.batch || 'null'}`;
-      if (!groupedByUserProvinceSchoolBatch.has(key)) {
-        groupedByUserProvinceSchoolBatch.set(key, []);
+      // 将 secondarySubjects 数组转换为排序后的字符串用于分组
+      const secondarySubjectsKey = choice.secondarySubjects
+        ? [...choice.secondarySubjects].sort().join(',')
+        : 'null';
+      const key = `${choice.userId}_${choice.province}_${choice.preferredSubjects || 'null'}_${secondarySubjectsKey}_${choice.year || 'null'}`;
+      if (!groupedByUserProvincePreferredSecondaryYear.has(key)) {
+        groupedByUserProvincePreferredSecondaryYear.set(key, []);
       }
-      groupedByUserProvinceSchoolBatch.get(key)!.push(choice);
+      groupedByUserProvincePreferredSecondaryYear.get(key)!.push(choice);
     }
 
     let fixedCount = 0;
 
     // 3. 对每个分组进行处理
-    for (const [key, choices] of groupedByUserProvinceSchoolBatch.entries()) {
+    for (const [key, choices] of groupedByUserProvincePreferredSecondaryYear.entries()) {
       // 3.1 按 mgId 分组，分配 mgIndex（同一 mgId 使用相同的 mgIndex）
       const mgIndexMap = new Map<number | null, number>();
       let currentMgIndex = 1;

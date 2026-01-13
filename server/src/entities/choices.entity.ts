@@ -19,7 +19,9 @@ import { School } from './school.entity';
 @Index(['userId']) // 用户ID索引，提高查询性能
 @Index(['mgId']) // 专业组ID索引
 @Index(['schoolCode']) // 学校代码索引
-@Index(['userId', 'schoolCode', 'mgId']) // 复合索引：用户ID、学校代码、专业组ID
+@Index(['userId', 'province', 'preferredSubjects', 'year']) // 复合索引：用户ID、省份、首选科目、年份
+// 注意：secondarySubjects 是数组类型，不能直接用于 B-tree 复合索引
+// 如果需要查询 secondarySubjects，建议单独创建 GIN 索引
 export class Choice {
   /**
    * 选择记录唯一标识符 (自增长ID)

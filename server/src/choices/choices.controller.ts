@@ -89,8 +89,8 @@ export class ChoicesController {
   })
   @ApiResponse({
     status: 200,
-    description: '查询成功（返回数组，数组上附加 statistics 属性）',
-    type: [SchoolGroupDto],
+    description: '查询成功（返回包含 data 和 statistics 的对象）',
+    type: GroupedChoiceResponseDto,
   })
   @ApiResponse({
     status: 404,
@@ -180,8 +180,6 @@ export class ChoicesController {
     return await this.choicesService.adjustMgIndex(
       user.id,
       adjustDirectionDto.mgIndex,
-      adjustDirectionDto.province,
-      adjustDirectionDto.batch,
       adjustDirectionDto.direction,
     );
   }

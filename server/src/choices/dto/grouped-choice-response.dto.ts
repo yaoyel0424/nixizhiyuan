@@ -109,8 +109,14 @@ export class VolunteerStatisticsDto {
 }
 
 /**
- * 分组后的志愿选择响应 DTO（直接返回数组，统计信息通过扩展属性添加）
+ * 分组后的志愿选择响应 DTO（包含数据和统计信息）
  */
-export type GroupedChoiceResponseDto = SchoolGroupDto[] & {
-  statistics?: VolunteerStatisticsDto;
-};
+export class GroupedChoiceResponseDto {
+  @Expose()
+  @Type(() => SchoolGroupDto)
+  volunteers: SchoolGroupDto[];
+
+  @Expose()
+  @Type(() => VolunteerStatisticsDto)
+  statistics: VolunteerStatisticsDto;
+}

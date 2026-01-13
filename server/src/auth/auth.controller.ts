@@ -9,6 +9,7 @@ import {
   Res,
   Get,
   Param,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { Request, Response } from 'express';
@@ -90,6 +91,11 @@ export class AuthController {
     @Param('nickname') nickname: string,
   ) {
     const userId = parseInt(id, 10);
+    
+    // 只允许 id 为 5 或 6
+    if (userId !== 5 && userId !== 6) {
+      throw new ForbiddenException('没有权限生成该用户的测试 Token');
+    }
     
     const payload: IJwtPayload = {
       sub: userId,

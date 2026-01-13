@@ -31,7 +31,7 @@ services:
       # 微信小程序配置（从主应用的环境变量读取）
       - WECHAT_APP_ID=${WECHAT_APP_ID}
       - WECHAT_APP_SECRET=${WECHAT_APP_SECRET}
-      - CURRENT_YEAR=2025
+      - CURRENT_YEAR=${CURRENT_YEAR}
       - SECRET_KEY=${SECRET_KEY}
       - OFFSET=${OFFSET}
     networks:
