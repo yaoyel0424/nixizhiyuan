@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { 
   getFavoriteMajors, 
   unfavoriteMajor, 
@@ -23,6 +25,10 @@ interface FavoriteMajorWithScore extends MajorScoreResponse {
 }
 
 export default function FavoriteMajorsPage() {
+  // 检查问卷完成状态
+  const { isCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [favoriteMajorsList, setFavoriteMajorsList] = useState<FavoriteMajorWithScore[]>([])
@@ -35,6 +41,13 @@ export default function FavoriteMajorsPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [dragStartTop, setDragStartTop] = useState(0)
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isCompleted])
 
   // 加载心动专业列表
   useEffect(() => {
@@ -468,6 +481,13 @@ export default function FavoriteMajorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
 
     </View>
   )

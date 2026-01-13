@@ -4,6 +4,8 @@ import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getAllScores } from '@/services/scores'
 import { 
   getFavoriteMajors, 
@@ -20,6 +22,10 @@ import './index.less'
 const PAGE_SIZE = 30
 
 export default function MajorsPage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  
   const [activeTab, setActiveTab] = useState<string>("本科")
   // 存储所有数据（缓存）
   const [allMajors, setAllMajors] = useState<MajorScoreResponse[]>([])
@@ -45,6 +51,13 @@ export default function MajorsPage() {
   // 引导相关状态
   const [showGuide, setShowGuide] = useState(false)
   const [guideStep, setGuideStep] = useState<1 | 2 | null>(null) // 1: 收藏专业, 2: 查看心动专业
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 教育层次映射：页面标签 -> API 参数
   const eduLevelMap: Record<string, string> = {
@@ -438,7 +451,7 @@ export default function MajorsPage() {
                           <Text className="majors-page__major-rank-text">{rank}</Text>
                         </View>
                         <View className="majors-page__major-info">
-                          <Text 
+                          <View 
                             className="majors-page__major-name majors-page__major-name--clickable"
                             onClick={() => {
                               Taro.navigateTo({
@@ -446,8 +459,8 @@ export default function MajorsPage() {
                               })
                             }}
                           >
-                            {major.majorName}
-                          </Text>
+                            <Text>{major.majorName}</Text>
+                          </View>
                           <Text className="majors-page__major-code">专业代码：{major.majorCode}</Text>
                         </View>
                         <View className="majors-page__major-score">
@@ -603,6 +616,13 @@ export default function MajorsPage() {
       )}
 
       <BottomNav />
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
     </View>
   )
 }
