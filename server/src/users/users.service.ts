@@ -13,6 +13,7 @@ import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { MajorFavorite } from '@/entities/major-favorite.entity';
 import { ProvinceFavorite } from '@/entities/province-favorite.entity';
 import { Alternative } from '@/entities/alternative.entity';
+import { Choice } from '@/entities/choices.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -43,6 +44,8 @@ export class UsersService {
     private readonly provinceFavoriteRepository: Repository<ProvinceFavorite>,
     @InjectRepository(Alternative)
     private readonly alternativeRepository: Repository<Alternative>,
+    @InjectRepository(Choice)
+    private readonly choiceRepository: Repository<Choice>,
     private readonly usersRepository: UsersRepository,
     private readonly configService: ConfigService,
   ) {}
@@ -241,7 +244,6 @@ export class UsersService {
         'scaleAnswers.scale', // 加载 scaleAnswers 的 scale 关联
         'majorFavorites',
         'provinceFavorites',
-        'alternatives',
       ],
     });
 
@@ -259,10 +261,53 @@ export class UsersService {
     const scaleAnswersCount = uniqueScales.size;
     const majorFavoritesCount = user.majorFavorites?.length || 0;
     const provinceFavoritesCount = user.provinceFavorites?.length || 0;
-    const alternativesCount = user.alternatives?.length || 0;
+
+    // 根据 user 的 id, province, preferredSubjects, secondarySubjects, enrollType (对应 batch), year 查询 mgIndex 的数量
+    const year = this.configService.get<string>('CURRENT_YEAR') || '2025';
+    const province = user.province || null;
+    const preferredSubjects = user.preferredSubjects || null;
+    const secondarySubjects = user.secondarySubjects
+      ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
+      : null;
+    const batch = user.enrollType || null;
+
+    // 查询符合条件的 choices，统计不重复的 mgIndex 数量
+    // 按照索引顺序：userId, province, preferredSubjects, year
+    let choicesCount = 0;
+    if (province && preferredSubjects) {
+      const choicesQueryBuilder = this.choiceRepository
+        .createQueryBuilder('choice')
+        .select('DISTINCT choice.mgIndex', 'mgIndex')
+        .where('choice.userId = :userId', { userId })
+        .andWhere('choice.province = :province', { province })
+        .andWhere('choice.preferredSubjects = :preferredSubjects', {
+          preferredSubjects,
+        })
+        .andWhere('choice.year = :year', { year })
+        .andWhere('choice.mgIndex IS NOT NULL');
+
+      if (batch) {
+        choicesQueryBuilder.andWhere('choice.batch = :batch', { batch });
+      }
+
+      if (secondarySubjects && secondarySubjects.length > 0) {
+        choicesQueryBuilder.andWhere(
+          'choice.secondarySubjects = :secondarySubjects',
+          { secondarySubjects },
+        );
+      } else {
+        choicesQueryBuilder.andWhere(
+          '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+          { emptyArray: [] },
+        );
+      }
+
+      const distinctMgIndexes = await choicesQueryBuilder.getRawMany();
+      choicesCount = distinctMgIndexes.length;
+    }
 
     this.logger.log(
-      `用户 ${userId} 相关数据统计：scaleAnswers=${scaleAnswersCount}, majorFavorites=${majorFavoritesCount}, provinceFavorites=${provinceFavoritesCount}, alternatives=${alternativesCount}`,
+      `用户 ${userId} 相关数据统计：scaleAnswers=${scaleAnswersCount}, majorFavorites=${majorFavoritesCount}, provinceFavorites=${provinceFavoritesCount}, choices=${choicesCount}`,
     );
 
     return plainToInstance(
@@ -271,7 +316,7 @@ export class UsersService {
         scaleAnswersCount,
         majorFavoritesCount,
         provinceFavoritesCount,
-        alternativesCount,
+        choicesCount,
       },
       {
         excludeExtraneousValues: true,

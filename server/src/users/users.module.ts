@@ -9,6 +9,7 @@ import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { MajorFavorite } from '@/entities/major-favorite.entity';
 import { ProvinceFavorite } from '@/entities/province-favorite.entity';
 import { Alternative } from '@/entities/alternative.entity';
+import { Choice } from '@/entities/choices.entity';
 import { UsersRepository } from './repositories/users.repository';
 
 /**
@@ -23,6 +24,7 @@ import { UsersRepository } from './repositories/users.repository';
       MajorFavorite,
       ProvinceFavorite,
       Alternative,
+      Choice,
     ]),
     ConfigModule,
   ],

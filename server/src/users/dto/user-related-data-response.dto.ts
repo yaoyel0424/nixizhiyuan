@@ -14,6 +14,6 @@ export class UserRelatedDataResponseDto {
   provinceFavoritesCount: number;
 
   @Expose()
-  alternativesCount: number;
+  choicesCount: number;
 }
 
