@@ -27,21 +27,21 @@ export default function ProfilePage() {
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0) // 量表答案数量
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0) // 专业收藏数量
   const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0) // 省份收藏数量
-  const [alternativesCount, setAlternativesCount] = useState(0) // 备选方案数量
+  const [choicesCount, setChoicesCount] = useState(0) // 备选方案数量
   const [dataLoaded, setDataLoaded] = useState(false) // 数据是否已加载
   
   // 判断各个维度是否完成（大于0）
   const hasScaleAnswers = scaleAnswersCount > 0
   const hasMajorFavorites = majorFavoritesCount > 0
   const hasProvinceFavorites = provinceFavoritesCount > 0
-  const hasAlternatives = alternativesCount > 0
+  const hasChoices = choicesCount > 0
   
   // 计算完成的维度数量（共4个维度）
   const completedDimensions = [
     hasScaleAnswers,
     hasMajorFavorites,
     hasProvinceFavorites,
-    hasAlternatives,
+    hasChoices,
   ].filter(Boolean).length
   
   // 判断是否所有维度都完成（所有字段都大于0）
@@ -49,14 +49,14 @@ export default function ProfilePage() {
     hasScaleAnswers && 
     hasMajorFavorites && 
     hasProvinceFavorites && 
-    hasAlternatives
+    hasChoices
   
   // 判断是否未开始（所有字段都为0）
   const allDimensionsEmpty = 
     scaleAnswersCount === 0 && 
     majorFavoritesCount === 0 && 
     provinceFavoritesCount === 0 && 
-    alternativesCount === 0
+    choicesCount === 0
   
   // 计算测评状态
   const assessmentStatus: AssessmentStatus = 
@@ -94,7 +94,7 @@ export default function ProfilePage() {
           setScaleAnswersCount(data.scaleAnswersCount || 0)
           setMajorFavoritesCount(data.majorFavoritesCount || 0)
           setProvinceFavoritesCount(data.provinceFavoritesCount || 0)
-          setAlternativesCount(data.alternativesCount || 0)
+          setChoicesCount(data.choicesCount || 0)
           setDataLoaded(true)
         })
         .catch((error) => {
@@ -107,7 +107,7 @@ export default function ProfilePage() {
       setScaleAnswersCount(0)
       setMajorFavoritesCount(0)
       setProvinceFavoritesCount(0)
-      setAlternativesCount(0)
+      setChoicesCount(0)
       setDataLoaded(false)
     }
   }, [isLogin, userInfo])

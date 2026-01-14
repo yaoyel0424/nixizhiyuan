@@ -95,13 +95,16 @@
 
 .ui-dialog-footer {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: row;
   gap: 16rpx;
   margin-top: 48rpx;
+  justify-content: flex-end;
+  align-items: center;
   
-  @media (min-width: 640px) {
-    flex-direction: row;
-    justify-content: flex-end;
+  // 确保按钮水平排列，取消在左，确定在右
+  button {
+    flex: 0 0 auto;
+    min-width: 120rpx;
   }
 }
 

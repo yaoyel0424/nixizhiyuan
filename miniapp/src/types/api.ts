@@ -381,5 +381,5 @@ export interface UserRelatedDataResponse {
   scaleAnswersCount: number
   majorFavoritesCount: number
   provinceFavoritesCount: number
-  alternativesCount: number
+  choicesCount: number
 }

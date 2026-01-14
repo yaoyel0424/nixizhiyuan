@@ -91,31 +91,79 @@ export default function IntendedMajorsSchoolsPage() {
 
   // 对话框打开时，重新加载志愿状态
   useEffect(() => {
-    if (groupDialogOpen) {
+    if (groupDialogOpen && selectedSchoolData && selectedGroupInfo) {
       const reloadChoices = async () => {
         try {
           // 重新从API加载志愿列表
           const choicesData = await getChoices()
           setGroupedChoices(choicesData)
           
-          // 更新choiceId映射
+          // 更新choiceId映射（支持多种key格式）
           const idMap = new Map<string, number>()
           choicesData.volunteers.forEach((volunteer) => {
             volunteer.majorGroups.forEach((majorGroup) => {
               majorGroup.choices.forEach((choice) => {
-                const key = `${choice.schoolCode}-${choice.majorGroupId || 'no-group'}`
-                idMap.set(key, choice.id)
+                // 优先使用 choice.majorGroupId，如果没有则使用 majorGroup.majorGroup.mgId
+                const mgId = choice.majorGroupId ?? majorGroup.majorGroup?.mgId
+                
+                if (mgId !== null && mgId !== undefined) {
+                  // 添加多种key格式，确保能匹配到（数字、字符串格式）
+                  const keys = [
+                    `${choice.schoolCode}-${mgId}`,
+                    `${choice.schoolCode}-${Number(mgId)}`,
+                    `${choice.schoolCode}-${String(mgId)}`
+                  ]
+                  keys.forEach(key => {
+                    idMap.set(key, choice.id)
+                  })
+                  
+                  // 调试日志：记录每个choice的映射
+                  console.log('📝 构建choiceIdMap:', {
+                    schoolCode: choice.schoolCode,
+                    mgId,
+                    choiceId: choice.id,
+                    keys
+                  })
+                } else {
+                  idMap.set(`${choice.schoolCode}-no-group`, choice.id)
+                }
               })
             })
           })
           setChoiceIdMap(idMap)
+          
+          // 调试日志
+          console.log('📊 已加载志愿列表:', {
+            volunteersCount: choicesData.volunteers.length,
+            choiceIdMapSize: idMap.size
+          })
+          
+          // 详细日志：打印所有志愿信息
+          choicesData.volunteers.forEach((volunteer, idx) => {
+            console.log(`📋 Volunteer ${idx}:`, {
+              schoolName: volunteer.school.name,
+              schoolCode: volunteer.school.code,
+              majorGroupsCount: volunteer.majorGroups.length
+            })
+            volunteer.majorGroups.forEach((mg, mgIdx) => {
+              console.log(`  📦 MajorGroup ${mgIdx}:`, {
+                majorGroupMgId: mg.majorGroup?.mgId,
+                choicesCount: mg.choices.length,
+                choices: mg.choices.map(c => ({
+                  id: c.id,
+                  majorGroupId: c.majorGroupId,
+                  schoolCode: c.schoolCode
+                }))
+              })
+            })
+          })
         } catch (error) {
           console.error('重新加载志愿列表失败:', error)
         }
       }
       reloadChoices()
     }
-  }, [groupDialogOpen])
+  }, [groupDialogOpen, selectedSchoolData, selectedGroupInfo])
 
   // 将 API 返回的数据转换为页面需要的格式
   const convertApiDataToSchoolList = (apiData: EnrollmentPlanWithScores[], majorCode: string): IntentionMajor | null => {
@@ -617,24 +665,163 @@ export default function IntendedMajorsSchoolsPage() {
 
   // 判断plan是否已加入志愿
   const isPlanInWishlist = (plan: MajorGroupInfo): { isIn: boolean; choiceId?: number } => {
-    if (!selectedSchoolData || !apiData.length || !choiceIdMap.size) {
+    if (!selectedSchoolData || !selectedGroupInfo) {
       return { isIn: false }
     }
     
-    // 从apiData中找到学校代码
-    const apiSchoolData = apiData.find(item => item.school.name === selectedSchoolData.schoolName)
-    if (!apiSchoolData) {
+    // 获取目标 mgId（从 selectedGroupInfo 中获取）
+    const targetMgId = selectedGroupInfo.majorGroupId
+    
+    if (!targetMgId) {
       return { isIn: false }
     }
     
-    const schoolCode = apiSchoolData.school.code
-    const mgId = selectedGroupInfo?.majorGroupId || selectedPlanData?.majorGroupId
+    // 获取学校代码（优先从apiData中获取）
+    let schoolCode: string | undefined
+    if (apiData.length > 0) {
+      const apiSchoolData = apiData.find(item => item.school.name === selectedSchoolData.schoolName)
+      schoolCode = apiSchoolData?.school.code
+    }
     
-    // 构建key：schoolCode-majorGroupId
-    const key = `${schoolCode}-${mgId || 'no-group'}`
-    const choiceId = choiceIdMap.get(key)
+    // 调试日志
+    console.log('🔍 判断是否在志愿列表中:', {
+      schoolName: selectedSchoolData.schoolName,
+      schoolCode,
+      targetMgId,
+      groupedChoicesLength: groupedChoices?.volunteers.length || 0
+    })
     
-    return { isIn: choiceId !== undefined, choiceId }
+    // 优先从 groupedChoices 中查找（最准确，直接从API返回的数据判断）
+    if (groupedChoices && groupedChoices.volunteers.length > 0) {
+      // 遍历所有志愿者，查找匹配的学校
+      for (const volunteer of groupedChoices.volunteers) {
+        // 匹配学校：优先通过学校代码，其次通过学校名称
+        const isSchoolMatch = 
+          (schoolCode && volunteer.school.code === schoolCode) ||
+          volunteer.school.name === selectedSchoolData.schoolName ||
+          volunteer.school.name?.trim() === selectedSchoolData.schoolName?.trim()
+        
+        if (isSchoolMatch) {
+          console.log('✅ 找到匹配的学校:', volunteer.school.name, '专业组数量:', volunteer.majorGroups.length)
+          
+          // 如果找到了匹配的学校，检查该学校下是否有任何 choice
+          // 由于同一个学校可能有多个专业组，我们检查该学校下是否有 choice
+          // 如果有，说明该学校已经加入了志愿（可能是不同的专业组）
+          // 但为了更精确，我们还是尝试匹配专业组ID
+          
+          // 遍历该学校下的所有专业组
+          for (const majorGroup of volunteer.majorGroups) {
+            console.log('🔍 检查专业组:', {
+              majorGroupMgId: majorGroup.majorGroup?.mgId,
+              choicesCount: majorGroup.choices.length,
+              choices: majorGroup.choices.map(c => ({
+                id: c.id,
+                majorGroupId: c.majorGroupId,
+                schoolCode: c.schoolCode
+              }))
+            })
+            
+            // 遍历该专业组下的所有 choice
+            for (const choice of majorGroup.choices) {
+              const choiceMgId = choice.majorGroupId
+              
+              // 同时检查 majorGroup.majorGroup.mgId（如果存在）
+              const majorGroupMgId = majorGroup.majorGroup?.mgId
+              
+              // 使用 choice.majorGroupId 或 majorGroup.majorGroup.mgId 进行匹配
+              const volunteerMgId = choiceMgId ?? majorGroupMgId
+              
+              console.log('🔍 比较:', {
+                targetMgId,
+                volunteerMgId,
+                choiceMgId,
+                majorGroupMgId,
+                choiceId: choice.id
+              })
+              
+              if (volunteerMgId !== null && volunteerMgId !== undefined) {
+                // 转换为数字进行比较（处理类型不一致的问题）
+                const targetNum = Number(targetMgId)
+                const volunteerNum = Number(volunteerMgId)
+                
+                // 如果都是有效数字，进行数值比较
+                if (!isNaN(targetNum) && !isNaN(volunteerNum) && targetNum === volunteerNum) {
+                  console.log('✅ 找到匹配的专业组!', {
+                    targetMgId,
+                    volunteerMgId,
+                    choiceId: choice.id,
+                    choiceMgId,
+                    majorGroupMgId
+                  })
+                  return { isIn: true, choiceId: choice.id }
+                }
+                
+                // 如果数值比较失败，尝试字符串比较
+                if (String(targetMgId) === String(volunteerMgId)) {
+                  console.log('✅ 找到匹配的专业组（字符串匹配）!', {
+                    targetMgId,
+                    volunteerMgId,
+                    choiceId: choice.id
+                  })
+                  return { isIn: true, choiceId: choice.id }
+                }
+              }
+            }
+            
+            // 如果该学校有 choice，但 mgId 不匹配，可能是因为 ID 编码问题
+            // 在这种情况下，如果学校代码匹配且该学校下有 choice，我们也认为已加入
+            // 但这样可能不够精确，所以先注释掉
+            // if (majorGroup.choices.length > 0 && schoolCode && volunteer.school.code === schoolCode) {
+            //   console.log('⚠️ 学校匹配但mgId不匹配，返回第一个choice')
+            //   return { isIn: true, choiceId: majorGroup.choices[0].id }
+            // }
+          }
+          
+          // 如果学校匹配，但专业组ID不匹配，检查是否该学校下有任何 choice
+          // 如果有，说明该学校已经加入了志愿（可能是通过其他方式加入的）
+          // 为了更精确，我们只检查学校代码是否匹配
+          if (schoolCode && volunteer.school.code === schoolCode) {
+            // 检查该学校下是否有任何 choice
+            const hasAnyChoice = volunteer.majorGroups.some(mg => mg.choices.length > 0)
+            if (hasAnyChoice) {
+              // 返回第一个找到的 choice ID
+              for (const majorGroup of volunteer.majorGroups) {
+                if (majorGroup.choices.length > 0) {
+                  console.log('✅ 学校匹配，返回第一个choice（mgId不匹配但学校已加入）:', {
+                    schoolCode,
+                    targetMgId,
+                    foundChoiceId: majorGroup.choices[0].id,
+                    foundMgId: majorGroup.choices[0].majorGroupId
+                  })
+                  return { isIn: true, choiceId: majorGroup.choices[0].id }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 如果 groupedChoices 中没有找到，尝试从 choiceIdMap 中查找
+    if (schoolCode) {
+      // 尝试多种key格式
+      const keys = [
+        `${schoolCode}-${targetMgId}`,
+        `${schoolCode}-${Number(targetMgId)}`,
+        `${schoolCode}-${String(targetMgId)}`
+      ]
+      
+      for (const key of keys) {
+        const choiceId = choiceIdMap.get(key)
+        if (choiceId !== undefined) {
+          console.log('✅ 从choiceIdMap中找到，key:', key, 'choiceId:', choiceId)
+          return { isIn: true, choiceId }
+        }
+      }
+    }
+    
+    console.log('❌ 未找到匹配的志愿')
+    return { isIn: false }
   }
 
   // 处理plan加入志愿
@@ -1089,26 +1276,36 @@ export default function IntendedMajorsSchoolsPage() {
                     })
                   : []
                 
+                // 获取选科要求
+                const subjectSelectionMode = selectedPlanData?.subjectSelectionMode || selectedGroupInfo?.majorGroupId ? 
+                  (groupedChoices?.volunteers
+                    .find(v => v.school.name === selectedGroupInfo?.schoolName)
+                    ?.majorGroups.find(mg => mg.majorGroup.mgId === selectedGroupInfo?.majorGroupId)?.majorGroup.subjectSelectionMode || '') : ''
+                
                 return (
                   <View key={planIdx} className="schools-page__group-section">
                     {lowestScoreMajors.length > 0 && (
                       <View className="schools-page__group-warning">
-                        <Text className="schools-page__group-warning-title">⚠️ 提醒</Text>
-                        <Text className="schools-page__group-warning-text">
-                          该专业组中包含热爱能量低的专业，选择该专业组可能会被调剂到这些专业，请谨慎选择。
-                        </Text>
+                        <Text className="schools-page__group-warning-icon">⚠️</Text>
+                        <View className="schools-page__group-warning-content">
+                          <Text className="schools-page__group-warning-title">提醒</Text>
+                          <Text className="schools-page__group-warning-text">
+                            该专业组中包含热爱能量低的专业,选择该专业组可能会被调剂到这些专业,请谨慎选择。
+                          </Text>
+                        </View>
                       </View>
                     )}
-                    {plan.enrollmentMajor && (
-                      <Text className="schools-page__group-section-title">{plan.enrollmentMajor}</Text>
-                    )}
-                    {plan.remark && (
-                      <Text className="schools-page__group-section-remark">{plan.remark}</Text>
+                    {subjectSelectionMode && (
+                      <View className="schools-page__group-subject-requirement">
+                        <Text>{subjectSelectionMode}</Text>
+                      </View>
                     )}
                     <View className="schools-page__group-table">
                       <View className="schools-page__group-table-header">
                         <Text>专业</Text>
+                        <Text>批次</Text>
                         <Text>招生人数</Text>
+                        <Text>学费</Text>
                         <Text>学制</Text>
                         <Text>热爱能量</Text>
                       </View>
@@ -1126,13 +1323,15 @@ export default function IntendedMajorsSchoolsPage() {
                               <Text className="schools-page__group-table-major-name">{score.majorName}</Text>
                               <Text className="schools-page__group-table-major-code">{score.majorCode}</Text>
                             </View>
+                            <Text>{selectedPlanData?.batch || '-'}</Text>
                             <Text>{plan.enrollmentQuota || '-'}</Text>
+                            <Text>{selectedPlanData?.tuitionFee ? `${selectedPlanData.tuitionFee}元` : '-'}</Text>
                             <Text>{plan.studyPeriod || '-'}</Text>
                             <View className="schools-page__group-table-score">
                               <Text className={isLowest ? 'schools-page__group-table-score--low' : ''}>
                                 {loveEnergy !== null ? loveEnergy : '-'}
                               </Text>
-                              {isLowest && <Text>⚠️</Text>}
+                              {isLowest && <Text className="schools-page__group-table-score-warning">⚠️</Text>}
                             </View>
                           </View>
                         )
@@ -1142,6 +1341,7 @@ export default function IntendedMajorsSchoolsPage() {
                     <View className="schools-page__group-section-actions">
                       {(() => {
                         const { isIn, choiceId } = isPlanInWishlist(plan)
+                        // 如果已加入志愿，显示移除按钮（红色）
                         if (isIn && choiceId) {
                           return (
                             <Button
@@ -1154,6 +1354,7 @@ export default function IntendedMajorsSchoolsPage() {
                             </Button>
                           )
                         }
+                        // 如果未加入志愿，显示加入按钮（蓝色）
                         return (
                           <Button
                             onClick={() => handleAddPlanToWishlist(plan)}
