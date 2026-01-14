@@ -1,10 +1,12 @@
-import { Entity, PrimaryGeneratedColumn,OneToMany, Column, ManyToOne,JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn,OneToMany, Column, ManyToOne,JoinColumn, Index } from 'typeorm';
 import { Element } from './element.entity';
 import { ScaleOption } from './scale-option.entity';
 import { ScaleAnswer } from './scale-answer.entity';
 import { PopularMajorAnswer } from './popular-major-answer.entity';
 
 @Entity('scales')
+@Index(['elementId']) // 用于优化 JOIN: INNER JOIN scales s ON s.element_id = e.id
+@Index(['id', 'elementId']) // 用于优化查询 WHERE s.id > 112 和 JOIN
 export class Scale {
   @PrimaryGeneratedColumn()
   id: number;

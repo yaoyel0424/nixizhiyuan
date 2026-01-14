@@ -3,6 +3,7 @@ import { Scale } from './scale.entity';
 import { User } from './user.entity';
 
 @Entity('scale_answers')
+@Index(['userId', 'scaleId']) // 复合索引：用于优化查询 WHERE user_id = ? AND scale_id > 112
 export class ScaleAnswer {
   @PrimaryGeneratedColumn()
   id: number;

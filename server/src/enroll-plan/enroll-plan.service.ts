@@ -420,6 +420,7 @@ export class EnrollPlanService {
          AND "ep"."batch" = "ms"."batch"::varchar
          AND "ep"."subject_selection_mode" = "ms"."subject_selection_mode"::varchar
          AND "ep"."enrollment_major"="ms"."enrollment_major"
+         AND  "ep"."enrollment_type"="ms"."enrollment_type"
          AND "ep"."key_words"="ms"."key_words" 
          AND (
            ("ep"."level3_major_id" && ARRAY[:majorId]::integer[] 

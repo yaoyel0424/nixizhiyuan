@@ -7,6 +7,7 @@ import {
   OneToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { MajorDetail } from './major-detail.entity';
 import { PopularMajorAnswer } from './popular-major-answer.entity';
@@ -16,6 +17,7 @@ import { PopularMajorAnswer } from './popular-major-answer.entity';
  * 与专业详情表通过专业代码进行一对一关联
  */
 @Entity('popular_majors')
+@Index(['code']) // 用于优化 JOIN: INNER JOIN popular_majors pm ON pm.code = md.code
 export class PopularMajor {
   /**
    * 热门专业唯一标识符 (自增长ID)

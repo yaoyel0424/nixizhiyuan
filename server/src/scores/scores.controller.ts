@@ -18,7 +18,7 @@ import { ScoreResponseDto } from './dto/score-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { plainToInstance } from 'class-transformer';
 import { LoggerService } from '@/logger/logger.service';
-
+import { Cache } from '@/common/decorators/cache.decorator';
 /**
  * 专业分数控制器
  */
@@ -91,6 +91,7 @@ export class ScoresController {
     type: ScoreResponseDto,
     isArray: true,
   })
+  @Cache(600)
   async getAllScores(
     @Query('eduLevel') eduLevel?: string,
     @CurrentUser() user?: any,

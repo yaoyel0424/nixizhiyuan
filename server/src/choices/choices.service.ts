@@ -632,8 +632,15 @@ export class ChoicesService {
         });
 
         // 转换为 ChoiceInGroupDto
-        const choicesInGroupDto = plainToInstance(ChoiceInGroupDto, choicesInGroup, {
+        // 注意：需要先将 DTO 实例转换为普通对象，以便 @Transform 装饰器能够生效
+        const plainChoices = choicesInGroup.map((choice) => {
+          // 将 DTO 实例转换为普通对象
+          return JSON.parse(JSON.stringify(choice));
+        });
+        
+        const choicesInGroupDto = plainToInstance(ChoiceInGroupDto, plainChoices, {
           excludeExtraneousValues: true,
+          enableImplicitConversion: true, // 启用隐式转换，使 @Transform 装饰器生效
         });
 
         majorGroups.push({
@@ -712,8 +719,15 @@ export class ChoicesService {
         return choiceWithoutGroup;
       });
 
-      const choicesInGroupDto = plainToInstance(ChoiceInGroupDto, choicesInGroup, {
+      // 注意：需要先将 DTO 实例转换为普通对象，以便 @Transform 装饰器能够生效
+      const plainChoices = choicesInGroup.map((choice) => {
+        // 将 DTO 实例转换为普通对象
+        return JSON.parse(JSON.stringify(choice));
+      });
+      
+      const choicesInGroupDto = plainToInstance(ChoiceInGroupDto, plainChoices, {
         excludeExtraneousValues: true,
+        enableImplicitConversion: true, // 启用隐式转换，使 @Transform 装饰器生效
       });
 
       grouped.push({

@@ -10,6 +10,7 @@ import {
   Check,
   Unique,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { MajorDetail } from './major-detail.entity';
 import { MajorFavorite } from './major-favorite.entity';
@@ -32,6 +33,7 @@ export enum MajorType {
 @Entity('majors')
 @Unique(['code', 'level']) // 确保同一层级下的代码不重复
 @Check(`"level" IN (1, 2, 3)`) // 限制层级只能是1、2、3
+@Index(['code', 'eduLevel']) // 用于优化 JOIN 和 WHERE 条件：INNER JOIN majors m ON m.code = md.code AND m.edu_level = ?
 export class Major {
   /**
    * 专业唯一标识符 (自增长ID)

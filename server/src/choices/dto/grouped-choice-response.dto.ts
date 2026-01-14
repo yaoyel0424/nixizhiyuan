@@ -18,7 +18,12 @@ export class ChoiceInGroupDto {
   schoolCode: string;
 
   @Expose()
-  @Transform(({ value }) => IdTransformUtil.encode(value))
+  @Transform(({ value }) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    return IdTransformUtil.encode(value);
+  }, { toPlainOnly: true })
   majorGroupId: number | null;
 
   @Expose()

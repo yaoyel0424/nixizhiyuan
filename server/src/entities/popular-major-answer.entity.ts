@@ -17,6 +17,8 @@ import { User } from './user.entity';
  */
 @Entity('popular_major_answers')
 @Index(['userId', 'popularMajorId', 'scaleId'], { unique: true }) // 确保同一用户对同一专业的同一题目只能有一个答案
+@Index(['userId', 'scaleId']) // 用于优化查询 WHERE user_id = ? AND scale_id > 112
+@Index(['scaleId', 'popularMajorId']) // 用于优化 LEFT JOIN user_answers ua ON ua.scale_id = s.id AND ua.popular_major_id = pm.id
 export class PopularMajorAnswer {
   /**
    * 答案唯一标识符
