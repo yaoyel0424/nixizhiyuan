@@ -65,7 +65,7 @@ export default function IndexPage() {
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0)
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0)
   const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0)
-  const [alternativesCount, setAlternativesCount] = useState(0)
+  const [choicesCount, setChoicesCount] = useState(0)
   // 标记是否成功获取了 API 数据
   const [apiDataLoaded, setApiDataLoaded] = useState(false)
   // 降级使用的本地数据（API 失败时使用）
@@ -97,7 +97,7 @@ export default function IndexPage() {
           setScaleAnswersCount(data.scaleAnswersCount || 0)
           setMajorFavoritesCount(data.majorFavoritesCount || 0)
           setProvinceFavoritesCount(data.provinceFavoritesCount || 0)
-          setAlternativesCount(data.alternativesCount || 0)
+          setChoicesCount(data.choicesCount || 0)
           setApiDataLoaded(true)
         })
         .catch((error) => {
@@ -161,11 +161,11 @@ export default function IndexPage() {
   const isUnlocked = isClient && step1AnswerCount >= UNLOCK_THRESHOLD
   
   // 步骤2：发现契合专业 - 已解锁且访问过专业页面
-  // 使用 API 的 majorFavoritesCount 或 alternativesCount 判断是否访问过专业页面
+  // 使用 API 的 majorFavoritesCount 或 choicesCount 判断是否访问过专业页面
   // 如果降级，使用 hasVisitedMajors
   const step2Completed = isUnlocked && (
     useApiData 
-      ? (majorFavoritesCount > 0 || alternativesCount > 0)
+      ? (majorFavoritesCount > 0 || choicesCount > 0)
       : hasVisitedMajors
   )
   

@@ -193,23 +193,25 @@
     }
   }
   
+  // 移除按钮样式（红色背景，优先级最高）
   &--remove {
-    background: #ef4444;
-    color: #fff;
-    border-color: #ef4444;
+    background: #ef4444 !important;
+    color: #fff !important;
+    border-color: #ef4444 !important;
     
     &:hover {
-      background: #dc2626;
-      border-color: #dc2626;
+      background: #dc2626 !important;
+      border-color: #dc2626 !important;
     }
     
     &:active {
-      background: #b91c1c;
-      border-color: #b91c1c;
+      background: #b91c1c !important;
+      border-color: #b91c1c !important;
     }
   }
 
-  &:not(.schools-page__school-item-wishlist-button--active) {
+  // 默认样式（蓝色背景，加入志愿按钮）
+  &:not(.schools-page__school-item-wishlist-button--active):not(.schools-page__school-item-wishlist-button--remove) {
     background: #1A4099;
     color: #fff;
     
@@ -460,23 +462,25 @@
     }
   }
   
+  // 移除按钮样式（红色背景，优先级最高）
   &--remove {
-    background: #ef4444;
-    color: #fff;
-    border-color: #ef4444;
+    background: #ef4444 !important;
+    color: #fff !important;
+    border-color: #ef4444 !important;
     
     &:hover {
-      background: #dc2626;
-      border-color: #dc2626;
+      background: #dc2626 !important;
+      border-color: #dc2626 !important;
     }
     
     &:active {
-      background: #b91c1c;
-      border-color: #b91c1c;
+      background: #b91c1c !important;
+      border-color: #b91c1c !important;
     }
   }
 
-  &:not(.schools-page__group-section-add-button--active) {
+  // 默认样式（蓝色背景，加入志愿按钮）
+  &:not(.schools-page__group-section-add-button--active):not(.schools-page__group-section-add-button--remove) {
     background: #1A4099;
     color: #fff;
     
