@@ -81,6 +81,7 @@ export default function IntendedMajorsSchoolsPage() {
   const [planWishlistKeys, setPlanWishlistKeys] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [choiceToDelete, setChoiceToDelete] = useState<{ choiceId: number; schoolData: School } | null>(null)
+  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set()) // 展开的 plan 索引
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -117,13 +118,6 @@ export default function IntendedMajorsSchoolsPage() {
                     idMap.set(key, choice.id)
                   })
                   
-                  // 调试日志：记录每个choice的映射
-                  console.log('📝 构建choiceIdMap:', {
-                    schoolCode: choice.schoolCode,
-                    mgId,
-                    choiceId: choice.id,
-                    keys
-                  })
                 } else {
                   idMap.set(`${choice.schoolCode}-no-group`, choice.id)
                 }
@@ -132,31 +126,6 @@ export default function IntendedMajorsSchoolsPage() {
           })
           setChoiceIdMap(idMap)
           
-          // 调试日志
-          console.log('📊 已加载志愿列表:', {
-            volunteersCount: choicesData.volunteers.length,
-            choiceIdMapSize: idMap.size
-          })
-          
-          // 详细日志：打印所有志愿信息
-          choicesData.volunteers.forEach((volunteer, idx) => {
-            console.log(`📋 Volunteer ${idx}:`, {
-              schoolName: volunteer.school.name,
-              schoolCode: volunteer.school.code,
-              majorGroupsCount: volunteer.majorGroups.length
-            })
-            volunteer.majorGroups.forEach((mg, mgIdx) => {
-              console.log(`  📦 MajorGroup ${mgIdx}:`, {
-                majorGroupMgId: mg.majorGroup?.mgId,
-                choicesCount: mg.choices.length,
-                choices: mg.choices.map(c => ({
-                  id: c.id,
-                  majorGroupId: c.majorGroupId,
-                  schoolCode: c.schoolCode
-                }))
-              })
-            })
-          })
         } catch (error) {
           console.error('重新加载志愿列表失败:', error)
         }
@@ -293,10 +262,8 @@ export default function IntendedMajorsSchoolsPage() {
       try {
         // 如果有 majorId，优先从 API 获取数据
         if (majorId && majorCode) {
-          console.log('从 API 加载院校列表数据，majorId:', majorId, 'majorCode:', majorCode)
           try {
             const apiData = await getEnrollmentPlansByMajorId(majorId)
-            console.log('API 返回的数据:', apiData)
             
             if (apiData && apiData.length > 0) {
               // 保存原始API数据
@@ -306,7 +273,6 @@ export default function IntendedMajorsSchoolsPage() {
               setMajorName(majorNameFromApi)
               
               const convertedData = convertApiDataToSchoolList(apiData, majorCode)
-              console.log('转换后的数据:', convertedData)
               setData(convertedData)
               setLoading(false)
               return
@@ -319,7 +285,6 @@ export default function IntendedMajorsSchoolsPage() {
         }
 
         // 降级：从静态 JSON 文件加载数据
-        console.log('从静态 JSON 加载数据，majorCode:', majorCode)
         const allData = intentionData as IntentionMajor[]
         const majorData = allData.find((item) => item.major.code === majorCode)
         setData(majorData || null)
@@ -333,9 +298,7 @@ export default function IntendedMajorsSchoolsPage() {
     const loadGroupData = async () => {
       try {
         const groupJson = groupData as any
-        console.log('group.json 加载结果:', groupJson)
         if (groupJson.data && Array.isArray(groupJson.data)) {
-          console.log('设置 groupData，数量:', groupJson.data.length)
           setGroupDataList(groupJson.data)
         } else {
           console.warn('group.json 数据格式不正确:', groupJson)
@@ -663,16 +626,20 @@ export default function IntendedMajorsSchoolsPage() {
     }
   }
 
-  // 判断plan是否已加入志愿
+  // 判断plan是否已加入志愿（根据专业组名称和备注匹配）
   const isPlanInWishlist = (plan: MajorGroupInfo): { isIn: boolean; choiceId?: number } => {
     if (!selectedSchoolData || !selectedGroupInfo) {
       return { isIn: false }
     }
     
-    // 获取目标 mgId（从 selectedGroupInfo 中获取）
-    const targetMgId = selectedGroupInfo.majorGroupId
+    // 获取目标专业组信息
+    const targetMajorGroupName = selectedGroupInfo.majorGroupName
+    // 从 selectedGroupInfo 或 selectedPlanData 获取 majorGroupId
+    const targetMajorGroupId = selectedGroupInfo.majorGroupId || selectedPlanData?.majorGroupId || selectedPlanData?.majorGroup?.mgId || null
+    const targetRemark = selectedPlanData?.remark || plan.remark || null
+    const targetEnrollmentMajor = plan.enrollmentMajor || selectedPlanData?.enrollmentMajor || null
     
-    if (!targetMgId) {
+    if (!targetMajorGroupName && !targetMajorGroupId) {
       return { isIn: false }
     }
     
@@ -683,13 +650,6 @@ export default function IntendedMajorsSchoolsPage() {
       schoolCode = apiSchoolData?.school.code
     }
     
-    // 调试日志
-    console.log('🔍 判断是否在志愿列表中:', {
-      schoolName: selectedSchoolData.schoolName,
-      schoolCode,
-      targetMgId,
-      groupedChoicesLength: groupedChoices?.volunteers.length || 0
-    })
     
     // 优先从 groupedChoices 中查找（最准确，直接从API返回的数据判断）
     if (groupedChoices && groupedChoices.volunteers.length > 0) {
@@ -702,125 +662,88 @@ export default function IntendedMajorsSchoolsPage() {
           volunteer.school.name?.trim() === selectedSchoolData.schoolName?.trim()
         
         if (isSchoolMatch) {
-          console.log('✅ 找到匹配的学校:', volunteer.school.name, '专业组数量:', volunteer.majorGroups.length)
-          
-          // 如果找到了匹配的学校，检查该学校下是否有任何 choice
-          // 由于同一个学校可能有多个专业组，我们检查该学校下是否有 choice
-          // 如果有，说明该学校已经加入了志愿（可能是不同的专业组）
-          // 但为了更精确，我们还是尝试匹配专业组ID
           
           // 遍历该学校下的所有专业组
           for (const majorGroup of volunteer.majorGroups) {
-            console.log('🔍 检查专业组:', {
-              majorGroupMgId: majorGroup.majorGroup?.mgId,
-              choicesCount: majorGroup.choices.length,
-              choices: majorGroup.choices.map(c => ({
-                id: c.id,
-                majorGroupId: c.majorGroupId,
-                schoolCode: c.schoolCode
-              }))
-            })
-            
             // 遍历该专业组下的所有 choice
             for (const choice of majorGroup.choices) {
-              const choiceMgId = choice.majorGroupId
+              // 获取志愿中的专业组信息
+              const choiceMajorGroupName = choice.majorGroupInfo || majorGroup.majorGroup?.mgName || null
+              const choiceMajorGroupId = choice.majorGroupId || majorGroup.majorGroup?.mgId || null
+              const choiceRemark = choice.remark || null
+              const choiceEnrollmentMajor = choice.enrollmentMajor || null
               
-              // 同时检查 majorGroup.majorGroup.mgId（如果存在）
-              const majorGroupMgId = majorGroup.majorGroup?.mgId
               
-              // 使用 choice.majorGroupId 或 majorGroup.majorGroup.mgId 进行匹配
-              const volunteerMgId = choiceMgId ?? majorGroupMgId
+              // 优先使用 majorGroupId 匹配（最准确）
+              let isGroupMatch = false
+              if (targetMajorGroupId && choiceMajorGroupId) {
+                isGroupMatch = (targetMajorGroupId === choiceMajorGroupId)
+              } else if (targetMajorGroupName && choiceMajorGroupName) {
+                // 如果没有 majorGroupId，则使用名称匹配（精确匹配）
+                isGroupMatch = (
+                  choiceMajorGroupName === targetMajorGroupName ||
+                  choiceMajorGroupName.trim() === targetMajorGroupName.trim()
+                )
+              }
               
-              console.log('🔍 比较:', {
-                targetMgId,
-                volunteerMgId,
-                choiceMgId,
-                majorGroupMgId,
-                choiceId: choice.id
-              })
+              if (!isGroupMatch) {
+                // 如果专业组不匹配，直接跳过
+                continue
+              }
               
-              if (volunteerMgId !== null && volunteerMgId !== undefined) {
-                // 转换为数字进行比较（处理类型不一致的问题）
-                const targetNum = Number(targetMgId)
-                const volunteerNum = Number(volunteerMgId)
-                
-                // 如果都是有效数字，进行数值比较
-                if (!isNaN(targetNum) && !isNaN(volunteerNum) && targetNum === volunteerNum) {
-                  console.log('✅ 找到匹配的专业组!', {
-                    targetMgId,
-                    volunteerMgId,
-                    choiceId: choice.id,
-                    choiceMgId,
-                    majorGroupMgId
-                  })
-                  return { isIn: true, choiceId: choice.id }
-                }
-                
-                // 如果数值比较失败，尝试字符串比较
-                if (String(targetMgId) === String(volunteerMgId)) {
-                  console.log('✅ 找到匹配的专业组（字符串匹配）!', {
-                    targetMgId,
-                    volunteerMgId,
-                    choiceId: choice.id
-                  })
-                  return { isIn: true, choiceId: choice.id }
-                }
+              // 匹配备注（必须精确匹配）
+              // 如果目标备注和choice备注都存在，必须完全匹配
+              // 如果都不存在，认为匹配
+              // 如果只有一个存在，认为不匹配
+              let isRemarkMatch = false
+              if (!targetRemark && !choiceRemark) {
+                // 都不存在，认为匹配
+                isRemarkMatch = true
+              } else if (targetRemark && choiceRemark) {
+                // 都存在，必须精确匹配
+                isRemarkMatch = (
+                  choiceRemark === targetRemark ||
+                  choiceRemark.trim() === targetRemark.trim()
+                )
+              } else {
+                // 只有一个存在，不匹配
+                isRemarkMatch = false
+              }
+              
+              // 匹配招生专业（必须精确匹配）
+              // 招生专业是区分不同志愿的关键字段，必须严格匹配
+              // 如果目标招生专业存在，choice招生专业也必须存在且完全匹配
+              // 如果目标招生专业不存在，choice招生专业也必须不存在
+              let isEnrollmentMajorMatch = false
+              
+              // 处理空字符串的情况（空字符串视为不存在）
+              const targetMajor = targetEnrollmentMajor?.trim() || null
+              const choiceMajor = choiceEnrollmentMajor?.trim() || null
+              
+              if (!targetMajor && !choiceMajor) {
+                // 都不存在，认为匹配
+                isEnrollmentMajorMatch = true
+              } else if (targetMajor && choiceMajor) {
+                // 都存在，必须精确匹配
+                isEnrollmentMajorMatch = (choiceMajor === targetMajor)
+              } else {
+                // 只有一个存在，不匹配（这是关键：如果目标有招生专业，choice必须有且匹配）
+                isEnrollmentMajorMatch = false
+              }
+              
+              
+              // 只有当专业组名称匹配，且备注和招生专业都匹配时，才认为已加入志愿
+              if (isRemarkMatch && isEnrollmentMajorMatch) {
+                return { isIn: true, choiceId: choice.id }
+              } else {
               }
             }
-            
-            // 如果该学校有 choice，但 mgId 不匹配，可能是因为 ID 编码问题
-            // 在这种情况下，如果学校代码匹配且该学校下有 choice，我们也认为已加入
-            // 但这样可能不够精确，所以先注释掉
-            // if (majorGroup.choices.length > 0 && schoolCode && volunteer.school.code === schoolCode) {
-            //   console.log('⚠️ 学校匹配但mgId不匹配，返回第一个choice')
-            //   return { isIn: true, choiceId: majorGroup.choices[0].id }
-            // }
           }
           
-          // 如果学校匹配，但专业组ID不匹配，检查是否该学校下有任何 choice
-          // 如果有，说明该学校已经加入了志愿（可能是通过其他方式加入的）
-          // 为了更精确，我们只检查学校代码是否匹配
-          if (schoolCode && volunteer.school.code === schoolCode) {
-            // 检查该学校下是否有任何 choice
-            const hasAnyChoice = volunteer.majorGroups.some(mg => mg.choices.length > 0)
-            if (hasAnyChoice) {
-              // 返回第一个找到的 choice ID
-              for (const majorGroup of volunteer.majorGroups) {
-                if (majorGroup.choices.length > 0) {
-                  console.log('✅ 学校匹配，返回第一个choice（mgId不匹配但学校已加入）:', {
-                    schoolCode,
-                    targetMgId,
-                    foundChoiceId: majorGroup.choices[0].id,
-                    foundMgId: majorGroup.choices[0].majorGroupId
-                  })
-                  return { isIn: true, choiceId: majorGroup.choices[0].id }
-                }
-              }
-            }
-          }
         }
       }
     }
     
-    // 如果 groupedChoices 中没有找到，尝试从 choiceIdMap 中查找
-    if (schoolCode) {
-      // 尝试多种key格式
-      const keys = [
-        `${schoolCode}-${targetMgId}`,
-        `${schoolCode}-${Number(targetMgId)}`,
-        `${schoolCode}-${String(targetMgId)}`
-      ]
-      
-      for (const key of keys) {
-        const choiceId = choiceIdMap.get(key)
-        if (choiceId !== undefined) {
-          console.log('✅ 从choiceIdMap中找到，key:', key, 'choiceId:', choiceId)
-          return { isIn: true, choiceId }
-        }
-      }
-    }
-    
-    console.log('❌ 未找到匹配的志愿')
     return { isIn: false }
   }
 
@@ -1241,6 +1164,7 @@ export default function IntendedMajorsSchoolsPage() {
             setSelectedSchoolData(null)
             setSelectedPlanData(null)
             setLoadingGroupInfo(false)
+            setExpandedPlans(new Set()) // 清空展开状态
           }
         }}
       >
@@ -1261,20 +1185,32 @@ export default function IntendedMajorsSchoolsPage() {
                 <Text className="schools-page__group-dialog-empty-desc">数据未加载或为空</Text>
               </View>
             ) : (
-              groupInfoData.map((plan, planIdx) => {
-                // 找出最低的热爱能量分数
-                const scores = plan.scores
-                  .map(s => s.loveEnergy)
-                  .filter(s => s !== null && s > 0) as number[]
-                const minScore = scores.length > 0 ? Math.min(...scores) : null
+              (() => {
+                // 处理热爱能量值：如果值在0-1之间，乘以100取整
+                const normalizeLoveEnergy = (value: number | null): number | null => {
+                  if (value === null || value === undefined) return null
+                  if (value > 0 && value < 1) {
+                    return Math.floor(value * 100)
+                  }
+                  return value
+                }
                 
-                // 找出所有最低分数的专业（包括并列最低的，如51和52都是最低时）
-                const lowestScoreMajors = minScore !== null 
-                  ? plan.scores.filter(s => {
-                      return s.loveEnergy !== null && s.loveEnergy > 0 && 
-                        (s.loveEnergy === minScore || s.loveEnergy === minScore + 1)
-                    })
-                  : []
+                // 热爱能量低分的阈值（低于此值才认为是低分）
+                const LOW_ENERGY_THRESHOLD = 70
+                
+                // 检查整个专业组是否有低分专业（只检查一次）
+                let hasLowEnergyMajor = false
+                for (const plan of groupInfoData) {
+                  const scores = plan.scores
+                    .map(s => normalizeLoveEnergy(s.loveEnergy))
+                    .filter(s => s !== null && s > 0) as number[]
+                  const minScore = scores.length > 0 ? Math.min(...scores) : null
+                  
+                  if (minScore !== null && minScore < LOW_ENERGY_THRESHOLD) {
+                    hasLowEnergyMajor = true
+                    break
+                  }
+                }
                 
                 // 获取选科要求
                 const subjectSelectionMode = selectedPlanData?.subjectSelectionMode || selectedGroupInfo?.majorGroupId ? 
@@ -1283,8 +1219,9 @@ export default function IntendedMajorsSchoolsPage() {
                     ?.majorGroups.find(mg => mg.majorGroup.mgId === selectedGroupInfo?.majorGroupId)?.majorGroup.subjectSelectionMode || '') : ''
                 
                 return (
-                  <View key={planIdx} className="schools-page__group-section">
-                    {lowestScoreMajors.length > 0 && (
+                  <>
+                    {/* 整个专业组只显示一次提醒 */}
+                    {hasLowEnergyMajor && (
                       <View className="schools-page__group-warning">
                         <Text className="schools-page__group-warning-icon">⚠️</Text>
                         <View className="schools-page__group-warning-content">
@@ -1300,76 +1237,154 @@ export default function IntendedMajorsSchoolsPage() {
                         <Text>{subjectSelectionMode}</Text>
                       </View>
                     )}
-                    <View className="schools-page__group-table">
-                      <View className="schools-page__group-table-header">
-                        <Text>专业</Text>
-                        <Text>批次</Text>
-                        <Text>招生人数</Text>
-                        <Text>学费</Text>
-                        <Text>学制</Text>
-                        <Text>热爱能量</Text>
-                      </View>
-                      {plan.scores.map((score, idx) => {
-                        const loveEnergy = score.loveEnergy
-                        const isLowest = minScore !== null && loveEnergy !== null && loveEnergy > 0 && 
-                          (loveEnergy === minScore || loveEnergy === minScore + 1)
-                        
-                        return (
-                          <View 
-                            key={idx} 
-                            className={`schools-page__group-table-row ${isLowest ? 'schools-page__group-table-row--warning' : ''}`}
-                          >
-                            <View className="schools-page__group-table-major">
-                              <Text className="schools-page__group-table-major-name">{score.majorName}</Text>
-                              <Text className="schools-page__group-table-major-code">{score.majorCode}</Text>
+                    {groupInfoData.map((plan, planIdx) => {
+                      // 找出最低的热爱能量分数（使用标准化后的值）
+                      const scores = plan.scores
+                        .map(s => normalizeLoveEnergy(s.loveEnergy))
+                        .filter(s => s !== null && s > 0) as number[]
+                      const minScore = scores.length > 0 ? Math.min(...scores) : null
+                      
+                      const isExpanded = expandedPlans.has(planIdx)
+                      
+                      return (
+                        <View key={planIdx} className="schools-page__group-section">
+                          {/* 专业组基本信息（默认显示） */}
+                          <View className="schools-page__group-basic-info">
+                            {plan.enrollmentMajor && (
+                              <View className="schools-page__group-basic-info-item">
+                                <Text className="schools-page__group-basic-info-label">招生专业：</Text>
+                                <Text className="schools-page__group-basic-info-value">{plan.enrollmentMajor}</Text>
+                              </View>
+                            )}
+                            <View className="schools-page__group-basic-info-item">
+                              <Text className="schools-page__group-basic-info-label">学制：</Text>
+                              <Text className="schools-page__group-basic-info-value">{plan.studyPeriod || '-'}</Text>
                             </View>
-                            <Text>{selectedPlanData?.batch || '-'}</Text>
-                            <Text>{plan.enrollmentQuota || '-'}</Text>
-                            <Text>{selectedPlanData?.tuitionFee ? `${selectedPlanData.tuitionFee}元` : '-'}</Text>
-                            <Text>{plan.studyPeriod || '-'}</Text>
-                            <View className="schools-page__group-table-score">
-                              <Text className={isLowest ? 'schools-page__group-table-score--low' : ''}>
-                                {loveEnergy !== null ? loveEnergy : '-'}
-                              </Text>
-                              {isLowest && <Text className="schools-page__group-table-score-warning">⚠️</Text>}
+                            <View className="schools-page__group-basic-info-item">
+                              <Text className="schools-page__group-basic-info-label">招生人数：</Text>
+                              <Text className="schools-page__group-basic-info-value">{plan.enrollmentQuota || '-'}</Text>
                             </View>
+                            {plan.remark && (
+                              <View className="schools-page__group-basic-info-item">
+                                <Text className="schools-page__group-basic-info-label">备注：</Text>
+                                <Text className="schools-page__group-basic-info-value">{plan.remark}</Text>
+                              </View>
+                            )}
                           </View>
-                        )
-                      })}
-                    </View>
-                    {/* 加入/移除志愿按钮 */}
-                    <View className="schools-page__group-section-actions">
-                      {(() => {
-                        const { isIn, choiceId } = isPlanInWishlist(plan)
-                        // 如果已加入志愿，显示移除按钮（红色）
-                        if (isIn && choiceId) {
-                          return (
-                            <Button
-                              onClick={() => handleAddPlanToWishlist(plan)}
-                              className="schools-page__group-section-add-button schools-page__group-section-add-button--remove"
-                              size="sm"
-                              variant="default"
+                          
+                          {/* 展开/收起按钮 */}
+                          {plan.scores && plan.scores.length > 0 && (
+                            <View 
+                              className="schools-page__group-expand-toggle"
+                              onClick={() => {
+                                setExpandedPlans((prev) => {
+                                  const newSet = new Set(prev)
+                                  if (isExpanded) {
+                                    newSet.delete(planIdx)
+                                  } else {
+                                    newSet.add(planIdx)
+                                  }
+                                  return newSet
+                                })
+                              }}
                             >
-                              移除志愿
-                            </Button>
-                          )
-                        }
-                        // 如果未加入志愿，显示加入按钮（蓝色）
-                        return (
-                          <Button
-                            onClick={() => handleAddPlanToWishlist(plan)}
-                            className="schools-page__group-section-add-button"
-                            size="sm"
-                            variant="default"
-                          >
-                            加入志愿
-                          </Button>
-                        )
-                      })()}
-                    </View>
-                  </View>
+                              <Text className="schools-page__group-expand-toggle-text">
+                                {isExpanded ? '收起' : '展开查看专业详情信息'}
+                              </Text>
+                              <Text className={`schools-page__group-expand-toggle-arrow ${isExpanded ? 'schools-page__group-expand-toggle-arrow--expanded' : ''}`}>
+                                {isExpanded ? '^' : '▼'}
+                              </Text>
+                            </View>
+                          )}
+                          
+                          {/* 展开后显示的专业列表表格 */}
+                          {isExpanded && plan.scores && plan.scores.length > 0 && (
+                            <View className="schools-page__group-table">
+                              <View className="schools-page__group-table-header">
+                                <Text>专业</Text>
+                                <Text>批次</Text>
+                                <Text>招生人数</Text>
+                                <Text>学费</Text>
+                                <Text>学制</Text>
+                                <Text>热爱能量</Text>
+                              </View>
+                              {plan.scores.map((score, idx) => {
+                                // 使用相同的标准化函数处理热爱能量值
+                                const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
+                                // 判断是否为低分：必须同时满足：1. 最低分低于阈值 2. 当前分数低于阈值 3. 是最低分或次低分
+                                const isLowest = minScore !== null && minScore < LOW_ENERGY_THRESHOLD &&
+                                  loveEnergy !== null && loveEnergy > 0 && 
+                                  loveEnergy < LOW_ENERGY_THRESHOLD &&
+                                  (loveEnergy === minScore || loveEnergy === minScore + 1)
+                                
+                                return (
+                                  <View 
+                                    key={idx} 
+                                    className={`schools-page__group-table-row ${isLowest ? 'schools-page__group-table-row--warning' : ''}`}
+                                  >
+                                    <View className="schools-page__group-table-major">
+                                      <Text className="schools-page__group-table-major-name">{score.majorName}</Text>
+                                    </View>
+                                    <Text>{selectedPlanData?.batch || '-'}</Text>
+                                    <Text>{plan.enrollmentQuota || '-'}</Text>
+                                    <Text>{selectedPlanData?.tuitionFee ? `${selectedPlanData.tuitionFee}元` : '-'}</Text>
+                                    <Text>{plan.studyPeriod || '-'}</Text>
+                                    <View className="schools-page__group-table-score">
+                                      <Text className={isLowest ? 'schools-page__group-table-score--low' : ''}>
+                                        {loveEnergy !== null ? loveEnergy : '-'}
+                                      </Text>
+                                      {isLowest && <Text className="schools-page__group-table-score-warning">⚠️</Text>}
+                                    </View>
+                                  </View>
+                                )
+                              })}
+                            </View>
+                          )}
+                          
+                          {/* 加入/移除志愿按钮 */}
+                          <View className="schools-page__group-section-actions">
+                            {(() => {
+                              const { isIn, choiceId } = isPlanInWishlist(plan)
+                              
+                              // 调试日志
+                              
+                              // 如果已加入志愿，显示移除按钮（红色）
+                              if (isIn && choiceId) {
+                                return (
+                                  <>
+                                    <View className="schools-page__group-added-tip">
+                                      <Text className="schools-page__group-added-tip-text">您已添加了该志愿</Text>
+                                    </View>
+                                    <Button
+                                      onClick={() => handleAddPlanToWishlist(plan)}
+                                      className="schools-page__group-section-add-button schools-page__group-section-add-button--remove"
+                                      size="sm"
+                                      variant="default"
+                                    >
+                                      移除志愿
+                                    </Button>
+                                  </>
+                                )
+                              }
+                              // 如果未加入志愿，显示加入按钮（蓝色）
+                              return (
+                                <Button
+                                  onClick={() => handleAddPlanToWishlist(plan)}
+                                  className="schools-page__group-section-add-button"
+                                  size="sm"
+                                  variant="default"
+                                >
+                                  加入志愿
+                                </Button>
+                              )
+                            })()}
+                          </View>
+                        </View>
+                      )
+                    })}
+                  </>
                 )
-              })
+              })()
             )}
           </View>
         </DialogContent>

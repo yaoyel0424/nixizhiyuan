@@ -1494,73 +1494,82 @@ export default function IntendedMajorsPage() {
                                 <Text>加载中...</Text>
                       </View>
                             ) : groupInfoData.length > 0 ? (
-                              groupInfoData.map((plan: MajorGroupInfo, planIdx: number) => {
-                                // 找出最低的热爱能量分数
-                                const scores = plan.scores
-                                  .map(s => s.loveEnergy)
-                                  .filter(s => s !== null && s > 0) as number[]
+                              // 只显示用户已选择的专业（group.items），而不是专业组中的所有专业
+                              group.items.map((item: any, itemIdx: number) => {
+                                // 从groupInfoData中找到对应的plan信息
+                                const matchedPlan = groupInfoData.find((plan: MajorGroupInfo) => 
+                                  plan.enrollmentMajor === item.enrollmentMajor ||
+                                  plan.remark === item.remark
+                                ) || groupInfoData[0]
+                                
+                                // 从matchedPlan.scores中找到对应的score信息
+                                const matchedScore = matchedPlan?.scores.find((score: any) => 
+                                  score.majorName === item.enrollmentMajor ||
+                                  score.majorName === item.majorName ||
+                                  item.enrollmentMajor === score.majorName
+                                ) || matchedPlan?.scores[0]
+                                
+                                // 标准化热爱能量值：如果值在0-1之间，乘以100取整
+                                const normalizeLoveEnergy = (value: number | null): number | null => {
+                                  if (value === null || value === undefined) return null
+                                  if (value > 0 && value < 1) {
+                                    return Math.floor(value * 100)
+                                  }
+                                  return value
+                                }
+                                
+                                // 找出最低的热爱能量分数（基于matchedPlan的所有scores，使用标准化后的值）
+                                const scores = matchedPlan?.scores
+                                  .map((s: any) => normalizeLoveEnergy(s.loveEnergy))
+                                  .filter((s: any) => s !== null && s > 0) as number[] || []
                                 const minScore = scores.length > 0 ? Math.min(...scores) : null
                                 
-                                // 将plan.scores转换为专业列表显示
-                                return plan.scores.map((score, scoreIdx) => {
-                                  const loveEnergy = score.loveEnergy
-                                  const isLowest = minScore !== null && loveEnergy !== null && loveEnergy > 0 && 
-                                    (loveEnergy === minScore || loveEnergy === minScore + 1)
-                                  
-                                  // 从group.items中找到对应的item，获取历史分数等信息
-                                  const matchedItem = group.items.find((item: any) => 
-                                    item.enrollmentMajor === plan.enrollmentMajor || 
-                                    item.majorName === score.majorName ||
-                                    item.enrollmentMajor === score.majorName
-                                  ) || group.items[scoreIdx] || group.items[0]
-                                  
-                                  const historyScoreKey = `${groupKey}-history-api-${planIdx}-${scoreIdx}`
-                                  const isHistoryExpanded = expandedHistoryScores.has(historyScoreKey)
-                                  
-                                  return (
-                                    <View key={scoreIdx} className="intended-majors-page__wishlist-item-group-plan-item">
-                                      {/* 专业编号（绿色圆圈） */}
-                                      <View className="intended-majors-page__wishlist-item-group-plan-item-number">
-                                        <Text>{scoreIdx + 1}</Text>
-                                      </View>
+                                const loveEnergy = normalizeLoveEnergy(matchedScore?.loveEnergy || null)
+                                const isLowest = minScore !== null && loveEnergy !== null && loveEnergy > 0 && 
+                                  (loveEnergy === minScore || loveEnergy === minScore + 1)
+                                
+                                const historyScoreKey = `${groupKey}-history-${itemIdx}`
+                                const isHistoryExpanded = expandedHistoryScores.has(historyScoreKey)
+                                
+                                return (
+                                  <View key={itemIdx} className="intended-majors-page__wishlist-item-group-plan-item">
+                                    {/* 专业编号（绿色圆圈）- 基于已选择的专业序号 */}
+                                    <View className="intended-majors-page__wishlist-item-group-plan-item-number">
+                                      <Text>{itemIdx + 1}</Text>
+                                    </View>
                                       
                                       {/* 专业信息 */}
                                       <View className="intended-majors-page__wishlist-item-group-plan-item-content">
                                         {/* 专业名称和代码 */}
                                         <View className="intended-majors-page__wishlist-item-group-plan-item-header">
                                           <Text className="intended-majors-page__wishlist-item-group-plan-item-major">
-                                            {score.majorName}
-                                            {plan.enrollmentMajor && plan.enrollmentMajor !== score.majorName ? ` (${plan.enrollmentMajor})` : ''}
+                                            {item.enrollmentMajor || item.majorName || matchedScore?.majorName || '未知专业'}
+                                            {matchedPlan?.enrollmentMajor && matchedPlan.enrollmentMajor !== (item.enrollmentMajor || item.majorName) ? ` (${matchedPlan.enrollmentMajor})` : ''}
                                           </Text>
-                                          {score.majorCode && (
-                                            <Text className="intended-majors-page__wishlist-item-group-plan-item-code">
-                                              {score.majorCode}
-                                            </Text>
-                                          )}
                                         </View>
                                         
                                         {/* 专业详情 - 显示全面信息 */}
                                         <View className="intended-majors-page__wishlist-item-group-plan-item-details">
-                                          {firstItem.batch && (
-                                            <Text>批次: {firstItem.batch}</Text>
+                                          {item.batch && (
+                                            <Text>批次: {item.batch}</Text>
                                           )}
-                                          {plan.studyPeriod && (
-                                            <Text>学制: {plan.studyPeriod}</Text>
+                                          {matchedPlan?.studyPeriod && (
+                                            <Text>学制: {matchedPlan.studyPeriod}</Text>
                                           )}
-                                          {plan.enrollmentQuota && (
-                                            <Text>招生人数: {plan.enrollmentQuota}</Text>
+                                          {matchedPlan?.enrollmentQuota && (
+                                            <Text>招生人数: {matchedPlan.enrollmentQuota}</Text>
                                           )}
-                                          {(firstItem.tuitionFee || matchedItem.tuitionFee) && (
+                                          {item.tuitionFee && (
                                             <Text>学费: {(() => {
-                                              const fee = firstItem.tuitionFee || matchedItem.tuitionFee
+                                              const fee = item.tuitionFee
                                               return fee.includes('元') ? fee : `${fee}元`
                                             })()}</Text>
                                           )}
-                                          {(firstItem.subjectSelectionMode || matchedItem.subjectSelectionMode) && (
-                                            <Text>选科要求: {firstItem.subjectSelectionMode || matchedItem.subjectSelectionMode}</Text>
+                                          {item.subjectSelectionMode && (
+                                            <Text>选科要求: {item.subjectSelectionMode}</Text>
                                           )}
-                                          {(firstItem.majorGroupInfo || matchedItem.majorGroupInfo) && (
-                                            <Text>专业组信息: {firstItem.majorGroupInfo || matchedItem.majorGroupInfo}</Text>
+                                          {item.majorGroupInfo && (
+                                            <Text>专业组信息: {item.majorGroupInfo}</Text>
                                           )}
                                           {loveEnergy !== null && loveEnergy > 0 && (
                                             <Text className={isLowest ? 'intended-majors-page__wishlist-item-group-plan-item-love-energy--low' : ''}>
@@ -1568,15 +1577,15 @@ export default function IntendedMajorsPage() {
                                               {isLowest && ' ⚠️'}
                                             </Text>
                                           )}
-                                          {(plan.remark || matchedItem.remark) && (
+                                          {(matchedPlan?.remark || item.remark) && (
                                             <Text className="intended-majors-page__wishlist-item-group-plan-item-remark">
-                                              备注: {plan.remark || matchedItem.remark}
+                                              备注: {matchedPlan?.remark || item.remark}
                                             </Text>
                                           )}
                                         </View>
                                         
                                         {/* 历年分数（如果有） */}
-                                        {matchedItem.historyScore && matchedItem.historyScore.length > 0 && (
+                                        {item.historyScore && item.historyScore.length > 0 && (
                                           <>
                                             <View 
                                               className="intended-majors-page__wishlist-item-group-plan-item-history"
@@ -1608,7 +1617,7 @@ export default function IntendedMajorsPage() {
                                                     <Text>最低位次</Text>
                                                     <Text>招生人数</Text>
                                                   </View>
-                                                  {matchedItem.historyScore[0].historyScore.map((score: any, scoreIdx: number) => {
+                                                  {item.historyScore[0].historyScore.map((score: any, scoreIdx: number) => {
                                                     const [year, data] = Object.entries(score)[0]
                                                     const [minScore, minRank, planNum] = String(data).split(',')
                                                     return (
@@ -1621,9 +1630,9 @@ export default function IntendedMajorsPage() {
                                                     )
                                                   })}
                                                 </View>
-                                                {matchedItem.historyScore[0].batch && (
+                                                {item.historyScore[0].batch && (
                                                   <View className="intended-majors-page__wishlist-item-group-plan-item-history-batch">
-                                                    <Text>{matchedItem.historyScore[0].batch}</Text>
+                                                    <Text>{item.historyScore[0].batch}</Text>
                                                   </View>
                                                 )}
                           </View>
@@ -1632,13 +1641,13 @@ export default function IntendedMajorsPage() {
                         )}
                         
                         {/* 移除按钮 */}
-                        {matchedItem.id && (
+                        {item.id && (
                           <View className="intended-majors-page__wishlist-item-group-plan-item-actions">
                             <Button
                               onClick={() => {
                                 setChoiceToDelete({
-                                  choiceId: matchedItem.id,
-                                  majorName: score.majorName || plan.enrollmentMajor || '该专业'
+                                  choiceId: item.id,
+                                  majorName: item.enrollmentMajor || item.majorName || matchedScore?.majorName || '该专业'
                                 })
                                 setDeleteConfirmOpen(true)
                               }}
@@ -1650,11 +1659,10 @@ export default function IntendedMajorsPage() {
                             </Button>
                           </View>
                         )}
-                      </View>
-                      </View>
+                                      </View>
+                                    </View>
                                   )
                                 })
-                              }).flat()
                             ) : group.items.length > 0 ? (
                               // 如果API没有返回数据，使用group.items中的数据
                               group.items.map((item: any, itemIdx: number) => {
@@ -1675,11 +1683,6 @@ export default function IntendedMajorsPage() {
                                         {item.enrollmentMajor && (
                                           <Text className="intended-majors-page__wishlist-item-group-plan-item-major">
                                             {item.enrollmentMajor}
-                                          </Text>
-                                        )}
-                                        {item.majorCode && (
-                                          <Text className="intended-majors-page__wishlist-item-group-plan-item-code">
-                                            {item.majorCode}
                                           </Text>
                                         )}
                                       </View>
@@ -1951,20 +1954,20 @@ export default function IntendedMajorsPage() {
                           <Text className="intended-majors-page__major-item-score-label">热爱能量:</Text>
                           <Text className="intended-majors-page__major-item-score-value">
                             {(() => {
+                              // 标准化热爱能量值：如果值在0-1之间，乘以100取整
+                              const normalizeLoveEnergy = (value: number | string | null | undefined): number | null => {
+                                if (value === null || value === undefined) return null
+                                const numValue = typeof value === 'string' ? parseFloat(value) : Number(value)
+                                if (isNaN(numValue)) return null
+                                if (numValue > 0 && numValue < 1) {
+                                  return Math.floor(numValue * 100)
+                                }
+                                return Math.round(numValue)
+                              }
+                              
                               // 处理 score 值：可能是数字或字符串
-                              if (plan.score === null || plan.score === undefined) {
-                                return '-'
-                              }
-                              // 转换为数字（支持字符串类型）
-                              const scoreNum = typeof plan.score === 'string' 
-                                ? parseFloat(plan.score) 
-                                : Number(plan.score)
-                              // 检查是否为有效数字
-                              if (isNaN(scoreNum)) {
-                                return '-'
-                              }
-                              // 四舍五入到整数
-                              return Math.round(scoreNum).toString()
+                              const normalizedScore = normalizeLoveEnergy(plan.score)
+                              return normalizedScore !== null ? normalizedScore.toString() : '-'
                             })()}
                           </Text>
                         </View>
@@ -2060,15 +2063,26 @@ export default function IntendedMajorsPage() {
                 }, {} as Record<string, typeof groupDataList>)
 
                 return Object.entries(groupedByInfo).map(([groupInfo, majors]) => {
+                  // 标准化热爱能量值：如果值在0-1之间，乘以100取整
+                  const normalizeLoveEnergy = (value: any): number | null => {
+                    if (value === null || value === undefined) return null
+                    const numValue = typeof value === 'string' ? parseFloat(value) : Number(value)
+                    if (isNaN(numValue)) return null
+                    if (numValue > 0 && numValue < 1) {
+                      return Math.floor(numValue * 100)
+                    }
+                    return Math.round(numValue)
+                  }
+                  
                   const majorsList = majors as any[]
                   const scores = majorsList
-                    .map((m: any) => parseInt(m.developmentPotential || '0'))
-                    .filter((s: number) => s > 0)
+                    .map((m: any) => normalizeLoveEnergy(m.developmentPotential))
+                    .filter((s: number | null): s is number => s !== null && s > 0)
                   const minScore = scores.length > 0 ? Math.min(...scores) : null
                   const lowestScoreMajors = minScore !== null 
                     ? majorsList.filter((m: any) => {
-                        const score = parseInt(m.developmentPotential || '0')
-                        return score > 0 && (score === minScore || score === minScore + 1)
+                        const score = normalizeLoveEnergy(m.developmentPotential)
+                        return score !== null && score > 0 && (score === minScore || score === minScore + 1)
                       })
                     : []
                   
@@ -2093,8 +2107,8 @@ export default function IntendedMajorsPage() {
                           <Text>热爱能量</Text>
                         </View>
                         {majorsList.map((major: any, idx: number) => {
-                          const score = parseInt(major.developmentPotential || '0')
-                          const isLowest = minScore !== null && score > 0 && (score === minScore || score === minScore + 1)
+                          const score = normalizeLoveEnergy(major.developmentPotential)
+                          const isLowest = minScore !== null && score !== null && score > 0 && (score === minScore || score === minScore + 1)
                           
                           return (
                             <View 
@@ -2103,7 +2117,6 @@ export default function IntendedMajorsPage() {
                             >
                               <View>
                                 <Text className="intended-majors-page__group-table-major-name">{major.majorName}</Text>
-                                <Text className="intended-majors-page__group-table-major-code">{major.majorCode}</Text>
                               </View>
                               <Text>{major.batch || '-'}</Text>
                               <Text>{major.num || '-'}</Text>
@@ -2111,7 +2124,7 @@ export default function IntendedMajorsPage() {
                               <Text>{major.studyPeriod || '-'}</Text>
                               <View className="intended-majors-page__group-table-score">
                                 <Text className={isLowest ? 'intended-majors-page__group-table-score--low' : ''}>
-                                  {major.developmentPotential || '-'}
+                                  {score !== null ? score : '-'}
                                 </Text>
                                 {isLowest && <Text>⚠️</Text>}
                               </View>

@@ -369,6 +369,70 @@
   display: block;
 }
 
+// 专业组基本信息
+.schools-page__group-basic-info {
+  padding: 24rpx;
+  background: #f9fafb;
+  border-radius: 8rpx;
+  margin-bottom: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.schools-page__group-basic-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.schools-page__group-basic-info-label {
+  color: #666;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.schools-page__group-basic-info-value {
+  color: #333;
+  flex: 1;
+}
+
+// 展开/收起按钮
+.schools-page__group-expand-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background: #fff;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 8rpx;
+  margin-bottom: 16rpx;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:active {
+    background: #f9fafb;
+  }
+}
+
+.schools-page__group-expand-toggle-text {
+  font-size: 26rpx;
+  color: #1A4099;
+  font-weight: 500;
+}
+
+.schools-page__group-expand-toggle-arrow {
+  font-size: 24rpx;
+  color: #1A4099;
+  transition: transform 0.2s ease;
+  
+  &--expanded {
+    transform: rotate(180deg);
+  }
+}
+
 .schools-page__group-table {
   border: 1rpx solid #e5e7eb;
   border-radius: 8rpx;
@@ -442,7 +506,23 @@
 .schools-page__group-section-actions {
   margin-top: 24rpx;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12rpx;
+}
+
+// 已添加提示
+.schools-page__group-added-tip {
+  padding: 8rpx 16rpx;
+  background: #f0f9ff;
+  border: 1rpx solid #bae6fd;
+  border-radius: 6rpx;
+  align-self: flex-end;
+}
+
+.schools-page__group-added-tip-text {
+  font-size: 24rpx;
+  color: #0369a1;
 }
 
 .schools-page__group-section-add-button {
