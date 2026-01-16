@@ -93,16 +93,14 @@ export const checkToken = (): Promise<any> => {
 /**
  * 微信登录
  * @param code 微信授权码
- * @param encryptedData 加密的用户信息（可选，用于手机号登录）
- * @param iv 初始向量（可选，用于手机号登录）
- * @param usePhoneAsNickname 是否将手机号作为昵称（可选，默认为 false）
+ * @param encryptedData 加密的用户信息（可选）
+ * @param iv 初始向量（可选）
  * @returns 登录响应
  */
 export const wechatLogin = async (
   code: string,
   encryptedData?: string,
   iv?: string,
-  usePhoneAsNickname: boolean = false,
 ): Promise<any> => {
   // 构建请求参数
   const params: any = {
@@ -115,21 +113,12 @@ export const wechatLogin = async (
     params.iv = iv;
   }
 
-  // 如果指定将手机号作为昵称，添加标志
-  if (usePhoneAsNickname) {
-    params.usePhoneAsNickname = true;
-  }
-
   // 使用 POST 请求，code 放在 body 中（后端支持从 query 或 body 获取）
   // 注意：响应拦截器可能返回原始数据或 BaseResponse 格式
   const requestBody: any = { code };
   if (encryptedData && iv) {
     requestBody.encryptedData = encryptedData;
     requestBody.iv = iv;
-  }
-  // 如果指定将手机号作为昵称，添加标志
-  if (usePhoneAsNickname) {
-    requestBody.usePhoneAsNickname = true;
   }
   
   const response: any = await post<any>('/auth/wechat/login', requestBody);
