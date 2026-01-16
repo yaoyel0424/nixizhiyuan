@@ -189,7 +189,7 @@ const Login: React.FC = () => {
 
         {/* 底部 Footer */}
         <View className="login-page__footer">
-          <Text className="login-page__footer-text">专业院校信息全部来自官网权威可靠</Text>
+          <Text className="login-page__footer-text">本系统的信息仅供参考，数据请以学校官网或考试院公布为准。</Text>
           <View className="login-page__footer-agreement">
             <Text className="login-page__footer-text">登录即代表同意</Text>
             <Text

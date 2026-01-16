@@ -220,18 +220,6 @@ export default function ProvincesPage() {
   return (
     <PageContainer>
       <View className="provinces-page">
-        {/* 顶部标题区域 */}
-        <View className="provinces-page__header">
-          <View className="provinces-page__header-content">
-            <View className="provinces-page__header-title">
-              <Text className="provinces-page__header-title-text">省份探索</Text>
-              <Text className="provinces-page__header-title-subtitle">设置意向省份</Text>
-            </View>
-          </View>
-          {/* 波浪效果 */}
-          <View className="provinces-page__header-wave" />
-        </View>
-
         <ScrollView className="provinces-page__content" scrollY>
           {/* 类型筛选标签 */}
           <View className="provinces-page__filters">

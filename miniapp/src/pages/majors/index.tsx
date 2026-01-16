@@ -1,8 +1,9 @@
 // 专业探索页面
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Card } from '@/components/ui/Card'
+import { Input } from '@/components/ui/Input'
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
@@ -51,6 +52,8 @@ export default function MajorsPage() {
   // 引导相关状态
   const [showGuide, setShowGuide] = useState(false)
   const [guideStep, setGuideStep] = useState<1 | 2 | null>(null) // 1: 收藏专业, 2: 查看心动专业
+  // 搜索关键词
+  const [searchQuery, setSearchQuery] = useState('')
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function MajorsPage() {
   // 教育层次映射：页面标签 -> API 参数
   const eduLevelMap: Record<string, string> = {
     '本科': 'ben',
-    '高职本科': 'gao_ben',
+    '本科(职业)': 'gao_ben',
     '专科': 'zhuan'
   }
 
@@ -390,6 +393,21 @@ export default function MajorsPage() {
     return numScore.toFixed(2)
   }
 
+  // 根据搜索关键词过滤专业列表
+  const filteredMajors = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return displayedMajors
+    }
+    
+    const query = searchQuery.trim().toLowerCase()
+    return displayedMajors.filter(major => {
+      // 搜索专业名称或代码
+      const nameMatch = major.majorName?.toLowerCase().includes(query) || false
+      const codeMatch = major.majorCode?.toLowerCase().includes(query) || false
+      return nameMatch || codeMatch
+    })
+  }, [displayedMajors, searchQuery])
+
   return (
     <View className="majors-page">
       
@@ -401,9 +419,20 @@ export default function MajorsPage() {
           </View>
           <Text className="majors-page__subtitle">发现适合你的专业方向</Text>
 
+          {/* 搜索框 */}
+          <View className="majors-page__search">
+            <View className="majors-page__search-icon">🔍</View>
+            <Input
+              className="majors-page__search-input"
+              placeholder="搜索专业名称或代码..."
+              value={searchQuery}
+              onInput={(e) => setSearchQuery(e.detail.value)}
+            />
+          </View>
+
           {/* 标签页 */}
           <View className="majors-page__tabs">
-            {["本科", "高职本科", "专科"].map((tab) => (
+            {["本科", "本科(职业)", "专科"].map((tab) => (
               <View
                 key={tab}
                 className={`majors-page__tab ${activeTab === tab ? 'majors-page__tab--active' : ''}`}
@@ -436,10 +465,15 @@ export default function MajorsPage() {
               <Text className="majors-page__empty-text">暂无专业数据</Text>
               <Text className="majors-page__empty-desc">请先完成专业测评问卷</Text>
             </View>
+          ) : filteredMajors.length === 0 ? (
+            <View className="majors-page__empty">
+              <Text className="majors-page__empty-text">未找到匹配的专业</Text>
+              <Text className="majors-page__empty-desc">请尝试其他搜索关键词</Text>
+            </View>
           ) : (
             <>
               <View className="majors-page__majors-list">
-                {displayedMajors.map((major, index) => {
+                {filteredMajors.map((major, index) => {
                   // 计算全局排名（在所有数据中的位置）
                   const globalIndex = allMajors.findIndex(m => m.majorCode === major.majorCode)
                   const rank = globalIndex >= 0 ? globalIndex + 1 : index + 1
@@ -551,7 +585,7 @@ export default function MajorsPage() {
               )}
               
               {/* 没有更多数据提示 */}
-              {!hasMore && displayedMajors.length > 0 && (
+              {!hasMore && displayedMajors.length > 0 && !searchQuery.trim() && (
                 <View className="majors-page__no-more">
                   <Text className="majors-page__no-more-text">
                     已加载全部 {allMajors.length} 条数据

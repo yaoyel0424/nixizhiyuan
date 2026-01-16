@@ -66,6 +66,9 @@ interface IntentionMajor {
   schools: School[]
 }
 
+// 3+3模式省份列表（提交时 preferredSubjects 统一填写"综合"）
+const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '海南', '西藏', '新疆']
+
 // 高考信息对话框组件
 function ExamInfoDialog({ 
   open, 
@@ -262,8 +265,13 @@ function ExamInfoDialog({
       return
     }
     
+    // 判断是否为3+3模式省份
+    const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
+    // 3+3模式省份使用"综合"，其他模式需要 firstChoice
+    const subjectType = is3Plus3Mode ? '综合' : firstChoice
+    
     // 检查必要参数是否齐全
-    if (!selectedProvince || !firstChoice) {
+    if (!selectedProvince || !subjectType) {
       return
     }
     
@@ -285,7 +293,7 @@ function ExamInfoDialog({
       // 调用API获取排名信息
       const scoreRangeInfo = await getScoreRange(
         selectedProvince,
-        firstChoice,
+        subjectType,
         score
       )
       
@@ -324,9 +332,13 @@ function ExamInfoDialog({
     
     // 更新高考信息中的省份
     try {
+      // 判断是否为3+3模式省份
+      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(province)
+      
       const updatedInfo: ExamInfo = {
         province,
-        preferredSubjects: firstChoice || undefined,
+        // 3+3模式省份：preferredSubjects 统一填写"综合"，选科信息放在 secondarySubjects
+        preferredSubjects: is3Plus3Mode ? '综合' : (firstChoice || undefined),
         secondarySubjects: optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined,
         score: totalScore ? parseInt(totalScore, 10) : undefined,
         rank: ranking ? parseInt(ranking, 10) : undefined,
@@ -356,10 +368,14 @@ function ExamInfoDialog({
     try {
       setLoading(true)
       
+      // 判断是否为3+3模式省份
+      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
+      
       // 准备更新数据
       const updateData: ExamInfo = {
         province: selectedProvince,
-        preferredSubjects: firstChoice || undefined,
+        // 3+3模式省份：preferredSubjects 统一填写"综合"，选科信息放在 secondarySubjects
+        preferredSubjects: is3Plus3Mode ? '综合' : (firstChoice || undefined),
         secondarySubjects: optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined,
         score: totalScore ? parseInt(totalScore, 10) : undefined,
         rank: ranking ? parseInt(ranking, 10) : undefined,
@@ -370,8 +386,10 @@ function ExamInfoDialog({
 
       // 同时保存到本地存储（作为备份）
       await setStorage('examProvince', selectedProvince)
-      if (firstChoice) {
-        await setStorage('examFirstChoice', firstChoice)
+      // 3+3模式省份保存"综合"，其他模式保存 firstChoice
+      const savedFirstChoice = is3Plus3Mode ? '综合' : firstChoice
+      if (savedFirstChoice) {
+        await setStorage('examFirstChoice', savedFirstChoice)
       }
       await setStorage('examOptionalSubjects', Array.from(optionalSubjects))
       await setStorage('examTotalScore', totalScore)
@@ -1940,11 +1958,11 @@ export default function IntendedMajorsPage() {
                         <View className="intended-majors-page__major-item-tag">
                           <Text>
                             {(() => {
-                              // 教育层次映射：ben -> 本科, zhuan -> 专科, gao_ben -> 高职本科
+                              // 教育层次映射：ben -> 本科, zhuan -> 专科, gao_ben -> 本科(职业)
                               const eduLevelMap: Record<string, string> = {
                                 'ben': '本科',
                                 'zhuan': '专科',
-                                'gao_ben': '高职本科'
+                                'gao_ben': '本科(职业)'
                               }
                               return eduLevelMap[major.eduLevel || ''] || '本科'
                             })()}

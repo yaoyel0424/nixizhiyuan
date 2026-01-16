@@ -34,7 +34,7 @@ const SECTION_ORDER = ['studyContent', 'academicDevelopment']
 // 学历转换映射
 const EDUCATION_LEVEL_MAP: Record<string, string> = {
   'ben': '本科',
-  'gao_ben': '高职本科',
+  'gao_ben': '本科(职业)',
   'zhuan': '专科',
 }
 

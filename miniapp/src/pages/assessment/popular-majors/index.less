@@ -201,7 +201,7 @@
   padding: 0 32rpx;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 24rpx !important;
 }
 
 .popular-majors-page__major-card {
@@ -213,6 +213,7 @@
   overflow: visible;
   display: flex;
   flex-direction: column;
+  gap: 24rpx !important;
 }
 
 .popular-majors-page__major-card:active {
@@ -300,6 +301,12 @@
   min-width: 200rpx;
   position: relative;
   z-index: 2;
+}
+
+.popular-majors-page__major-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .popular-majors-page__major-result {

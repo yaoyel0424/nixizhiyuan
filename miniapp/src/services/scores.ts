@@ -3,7 +3,7 @@ import { MajorScoreResponse } from '@/types/api'
 
 /**
  * 获取所有专业分数
- * @param eduLevel 教育层次（可选）：ben-本科, zhuan-专科, gao_ben-高职本科。不传则查询所有教育层次
+ * @param eduLevel 教育层次（可选）：ben-本科, zhuan-专科, gao_ben-本科(职业)
  * @returns 专业分数列表
  */
 export const getAllScores = async (
