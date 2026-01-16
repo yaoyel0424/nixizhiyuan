@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image, Button } from '@tarojs/components';
 import { useAppDispatch } from '@/store/hooks';
 import { setUserInfo, setLoginLoading } from '@/store/slices/userSlice';
@@ -12,23 +12,72 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   // 使用 ref 来防止重复点击（同步检查）
   const isLoggingInRef = React.useRef(false);
+  // 用于存储定时器 ID，以便在组件卸载时清理
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // 用于标记组件是否已卸载
+  const isMountedRef = useRef(true);
 
   /**
-   * 处理微信登录按钮点击
-   * 直接使用微信登录，不通过插件
+   * 处理获取手机号授权（微信一键登录使用手机号登录逻辑）
+   * 使用微信官方组件获取手机号进行登录
+   * @param e 事件对象，包含 encryptedData 和 iv
    */
-  const handleWechatLogin = () => {
+  const handleGetPhoneNumber = async (e: any) => {
     // 防止重复点击
     if (isLoggingInRef.current || loading) {
       return;
     }
-    performLogin();
+
+    // 用户拒绝授权
+    if (e.detail.errMsg && e.detail.errMsg.includes('deny')) {
+      Taro.showToast({
+        title: '需要授权手机号才能登录',
+        icon: 'none',
+        duration: 2000,
+      });
+      return;
+    }
+
+    // 获取加密数据
+    const { encryptedData, iv } = e.detail;
+    
+    if (!encryptedData || !iv) {
+      Taro.showToast({
+        title: '获取手机号失败，请重试',
+        icon: 'none',
+        duration: 2000,
+      });
+      return;
+    }
+
+    // 执行手机号登录流程
+    performPhoneLogin(encryptedData, iv);
   };
 
+  // 组件卸载时清理定时器和重置状态
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // 清理定时器
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      // 重置状态
+      isLoggingInRef.current = false;
+      setLoading(false);
+      dispatch(setLoginLoading(false));
+    };
+  }, [dispatch]);
+
+
   /**
-   * 执行登录流程
+   * 执行手机号登录流程
+   * @param encryptedData 加密的手机号数据
+   * @param iv 初始向量
    */
-  const performLogin = async () => {
+  const performPhoneLogin = async (encryptedData: string, iv: string) => {
     // 立即设置防重复点击标志
     isLoggingInRef.current = true;
     setLoading(true);
@@ -46,15 +95,15 @@ const Login: React.FC = () => {
         });
         setLoading(false);
         dispatch(setLoginLoading(false));
+        isLoggingInRef.current = false;
         return;
       }
 
-      // 2. 调用后端接口进行微信登录
-      // 不传递 encryptedData 和 iv，只使用 code 登录
-      const response = await wechatLogin(loginCode, undefined, undefined);
+      // 2. 调用后端接口进行微信登录（带手机号）
+      // 传递 usePhoneAsNickname: true，告诉后端将手机号作为昵称保存
+      const response = await wechatLogin(loginCode, encryptedData, iv, true);
 
-      // 3. 处理响应数据，适配不同的响应格式
-      // 后端返回格式：{ user: {...}, accessToken: "...", refreshToken: "..." }
+      // 3. 处理响应数据
       const responseUserInfo = response.user || response.userInfo || response;
       const token = response.accessToken || response.token || responseUserInfo?.accessToken;
       const refreshToken = response.refreshToken || responseUserInfo?.refreshToken;
@@ -75,13 +124,14 @@ const Login: React.FC = () => {
             responseUserInfo.avatarUrl ||
             responseUserInfo.avatar ||
             '',
-          phone: responseUserInfo.phone || '',
+          phone: responseUserInfo.phone || responseUserInfo.phoneNumber || '',
           email: responseUserInfo.email || '',
           token: token || '',
         };
 
         dispatch(setUserInfo(formattedUserInfo));
 
+        // 保存 token 和 refreshToken
         if (token) {
           Taro.setStorageSync('token', token);
         }
@@ -89,36 +139,41 @@ const Login: React.FC = () => {
           Taro.setStorageSync('refreshToken', refreshToken);
         }
 
+        // 保存用户信息和手机号到本地，用于下次自动登录
+        Taro.setStorageSync('userInfo', formattedUserInfo);
+        if (formattedUserInfo.phone) {
+          Taro.setStorageSync('userPhone', formattedUserInfo.phone);
+        }
+
         Taro.showToast({
           title: '登录成功',
           icon: 'success',
         });
 
-        setTimeout(() => {
-          Taro.reLaunch({
-            url: '/pages/index/index',
-          });
+        // 清理之前的定时器
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+        
+        // 设置新的定时器，并在执行前检查组件是否仍然挂载
+        timerRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            Taro.reLaunch({
+              url: '/pages/index/index',
+            });
+          }
         }, 1500);
       } else {
         throw new Error('登录失败：未获取到用户信息');
       }
     } catch (error: any) {
-      console.error('微信登录失败:', error);
+      console.error('手机号登录失败:', error);
       const errorMessage = error?.message || '登录失败，请稍后重试';
-      // 对于 404 错误，给出更明确的提示
-      if (errorMessage.includes('Not Found') || errorMessage.includes('404')) {
-        Taro.showToast({
-          title: '登录接口不存在，请检查网络或联系客服',
-          icon: 'none',
-          duration: 3000,
-        });
-      } else {
-        Taro.showToast({
-          title: errorMessage,
-          icon: 'none',
-          duration: 2000,
-        });
-      }
+      Taro.showToast({
+        title: errorMessage,
+        icon: 'none',
+        duration: 2000,
+      });
     } finally {
       // 重置防重复点击标志
       isLoggingInRef.current = false;
@@ -126,6 +181,7 @@ const Login: React.FC = () => {
       dispatch(setLoginLoading(false));
     }
   };
+
 
   return (
     <View className="login-page">
@@ -159,8 +215,13 @@ const Login: React.FC = () => {
 
         {/* 登录按钮区域 */}
         <View className="login-page__actions">
-          {/* 微信一键登录按钮 */}
-          <Button className="login-page__wechat-btn" onClick={handleWechatLogin} disabled={loading}>
+          {/* 微信一键登录按钮（使用手机号登录逻辑） */}
+          <Button
+            className="login-page__wechat-btn"
+            openType="getPhoneNumber"
+            onGetPhoneNumber={handleGetPhoneNumber}
+            disabled={loading}
+          >
             <Image
               className="login-page__wechat-icon"
               src={require('@/assets/images/wechat_logo.png')}
@@ -171,20 +232,6 @@ const Login: React.FC = () => {
 
           {/* 微信登录描述 */}
           <Text className="login-page__wechat-desc">微信一键登录,安全便捷</Text>
-
-          {/* 本地手机号一键登录 */}
-          {/* <View
-            className="login-page__phone-btn"
-            onClick={() => {
-              Taro.showToast({
-                title: '手机号登录功能开发中',
-                icon: 'none',
-              });
-            }}
-          >
-            <Text className="login-page__phone-icon">📱</Text>
-            <Text className="login-page__phone-text">本地手机号一键登录</Text>
-          </View> */}
         </View>
 
         {/* 底部 Footer */}
