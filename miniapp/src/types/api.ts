@@ -135,18 +135,19 @@ export interface CreateScaleAnswerParams {
 
 // 热门专业相关类型定义
 /**
+ * 元素信息
+ */
+export interface ElementInfo {
+  elementName: string
+  score: number | null
+}
+
+/**
  * 专业元素分析
  */
 export interface MajorElementAnalysis {
-  element?: {
-    id: number
-    name: string
-    status?: string
-  }
-  type?: string
-  summary?: string
-  matchReason?: string
-  originalIndex?: number
+  type: 'lexue' | 'shanxue' | 'yanxue' | 'tiaozhan'
+  elements: ElementInfo[]
 }
 
 /**
@@ -211,6 +212,8 @@ export interface PopularMajorResponse {
   majorDetail?: MajorDetailInfo
   progress?: ProgressInfo
   score?: ScoreInfo | null
+  // 元素分析数据（在根级别）
+  elementAnalyses?: MajorElementAnalysis[] | null
   // 从 majorDetail 中提取的字段，方便使用
   name?: string
   code?: string

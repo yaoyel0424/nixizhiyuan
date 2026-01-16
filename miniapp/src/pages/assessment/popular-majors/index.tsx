@@ -1,5 +1,5 @@
 // 热门专业评估页面
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { PageContainer } from '@/components/PageContainer'
@@ -11,7 +11,7 @@ import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredMo
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
 import { getScalesByPopularMajorId } from '@/services/scales'
-import { PopularMajorResponse, Scale } from '@/types/api'
+import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
@@ -40,6 +40,8 @@ interface Major {
     yanxueDeduction: number
     tiaozhanDeduction: number
   } | null
+  // 元素分析数据
+  elementAnalyses?: MajorElementAnalysis[] | null
 }
 
 interface Question {
@@ -73,6 +75,74 @@ const scaleToQuestion = (scale: Scale): Question => {
 
 const STORAGE_KEY = 'popularMajorsResults'
 
+// 元素分析类型配置
+const ELEMENT_ANALYSIS_TYPES = {
+  lexue: { label: '乐学', icon: '😊', color: '#4CAF50' },
+  shanxue: { label: '善学', icon: '⭐', color: '#2196F3' },
+  yanxue: { label: '厌学', icon: '😞', color: '#FF9800' },
+  tiaozhan: { label: '阻学', icon: '⚠️', color: '#F44336' },
+} as const
+
+// 元素分析显示组件（简化版，对话框在父组件中管理）
+function ElementAnalysesDisplay({ 
+  analyses, 
+  majorName,
+  onTypeClick
+}: { 
+  analyses: MajorElementAnalysis[] | null | undefined
+  majorName: string
+  onTypeClick: (type: string, analyses: MajorElementAnalysis[], majorName: string) => void
+}) {
+  if (!analyses || analyses.length === 0) {
+    return null
+  }
+
+  // 按类型统计元素数量
+  const typeCounts = analyses.reduce((acc, analysis) => {
+    const type = analysis.type
+    if (type && (type === 'lexue' || type === 'shanxue' || type === 'yanxue' || type === 'tiaozhan')) {
+      acc[type] = (analysis.elements?.length || 0)
+    }
+    return acc
+  }, {} as Record<string, number>)
+
+  const handleClick = (type: string, e?: any) => {
+    if (e) {
+      e.stopPropagation()
+    }
+    onTypeClick(type, analyses, majorName)
+  }
+
+  return (
+    <View className="popular-majors-page__element-analyses">
+      {Object.entries(ELEMENT_ANALYSIS_TYPES).map(([type, config]) => {
+        const count = typeCounts[type] || 0
+        if (count === 0) return null
+        
+        return (
+          <View
+            key={type}
+            className="popular-majors-page__element-analysis-item"
+            onClick={(e) => handleClick(type, e)}
+          >
+            <Text className="popular-majors-page__element-analysis-icon">
+              {config.icon}
+            </Text>
+            <View className="popular-majors-page__element-analysis-info">
+              <Text className="popular-majors-page__element-analysis-label">
+                {config.label}
+              </Text>
+              <Text className="popular-majors-page__element-analysis-count">
+                {count}项
+              </Text>
+            </View>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
 // 判断专业是理科还是文科
 // 理科：07 理学、08 工学、09 农学、10 医学
 // 文科：01 哲学、02 经济学、03 法学、04 教育学、05 文学、06 历史学、12 管理学、13 艺术学
@@ -101,6 +171,11 @@ export default function PopularMajorsPage() {
   const [majorResults, setMajorResults] = useState<Record<string, number>>({})
   // 学科过滤：all-全部, science-理科, liberal-文科
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all')
+  // 元素分析对话框状态
+  const [showElementDialog, setShowElementDialog] = useState(false)
+  const [selectedElementType, setSelectedElementType] = useState<string | null>(null)
+  const [selectedElementMajorName, setSelectedElementMajorName] = useState<string>('')
+  const [selectedElementAnalyses, setSelectedElementAnalyses] = useState<MajorElementAnalysis[] | null>(null)
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -123,6 +198,8 @@ export default function PopularMajorsPage() {
       // 保留接口返回的测评进度和分数数据
       progress: apiData.progress,
       score: apiData.score,
+      // 元素分析数据（在根级别，不在 majorDetail 中）
+      elementAnalyses: apiData.elementAnalyses || null,
     }
   }
 
@@ -485,17 +562,6 @@ export default function PopularMajorsPage() {
               const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
               const hasProgress = completedCount > 0 && totalCount > 0
               
-              // 调试信息
-              if (major.progress) {
-                console.log(`专业 ${major.name} 进度:`, {
-                  rawCompletedCount: major.progress.completedCount,
-                  rawTotalCount: major.progress.totalCount,
-                  completedCount,
-                  totalCount,
-                  hasProgress,
-                  progressPercent
-                })
-              }
 
               return (
                 <Card key={major.id} className="popular-majors-page__major-card">
@@ -508,14 +574,6 @@ export default function PopularMajorsPage() {
                       <View className="popular-majors-page__major-tags">
                         {major.degree && (
                           <Text className="popular-majors-page__major-tag">{major.degree}</Text>
-                        )}
-                        {major.limit_year && (
-                          <Text className="popular-majors-page__major-tag">{major.limit_year}</Text>
-                        )}
-                        {major.salaryavg && (
-                          <Text className="popular-majors-page__major-tag">
-                            平均薪资: {major.salaryavg}
-                          </Text>
                         )}
                       </View>
                     </View>
@@ -572,6 +630,27 @@ export default function PopularMajorsPage() {
                       )}
                     </View>
                   </View>
+                  {/* 元素分析显示 */}
+                  {major.elementAnalyses && major.elementAnalyses.length > 0 && (
+                    <View 
+                      className="popular-majors-page__major-element-analyses-wrapper"
+                      onClick={(e) => {
+                        // 阻止事件冒泡到 Card
+                        e.stopPropagation()
+                      }}
+                    >
+                      <ElementAnalysesDisplay 
+                        analyses={major.elementAnalyses} 
+                        majorName={major.name}
+                        onTypeClick={(type, analyses, majorName) => {
+                          setSelectedElementType(type)
+                          setSelectedElementAnalyses(analyses)
+                          setSelectedElementMajorName(majorName)
+                          setShowElementDialog(true)
+                        }}
+                      />
+                    </View>
+                  )}
                   {/* 专业简介单独一行，占据全宽 */}
                   <View className="popular-majors-page__major-desc-wrapper">
                     <Text className="popular-majors-page__major-desc">
@@ -600,13 +679,6 @@ export default function PopularMajorsPage() {
             <DialogTitle className="popular-majors-page__dialog-title">
               {selectedMajor?.name} - 专业匹配度测评
             </DialogTitle>
-            <DialogDescription>
-              <Text className="popular-majors-page__dialog-desc">
-                {isCompleted
-                  ? '测评完成'
-                  : `共 ${questions.length} 道题，当前第 ${currentQuestionIndex + 1} 题`}
-              </Text>
-            </DialogDescription>
           </DialogHeader>
 
           {isCompleted ? (
@@ -661,9 +733,6 @@ export default function PopularMajorsPage() {
 
                   {/* 题目信息 */}
                   <View className="popular-majors-page__question-header">
-                    <Text className="popular-majors-page__question-meta">
-                      {currentQuestion.dimension} · {currentQuestion.type}
-                    </Text>
                     <Text className="popular-majors-page__question-content">
                       {currentQuestion.content}
                     </Text>
@@ -720,6 +789,68 @@ export default function PopularMajorsPage() {
               </View>
             </View>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 元素分析详情对话框 */}
+      <Dialog open={showElementDialog} onOpenChange={setShowElementDialog}>
+        <DialogContent className="popular-majors-page__element-dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedElementType && ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.label} - {selectedElementMajorName}
+            </DialogTitle>
+          </DialogHeader>
+          <View className="popular-majors-page__element-dialog-content">
+            {(() => {
+              if (!selectedElementType || !selectedElementAnalyses) {
+                return (
+                  <View className="popular-majors-page__element-dialog-empty">
+                    <Text>暂无数据</Text>
+                  </View>
+                )
+              }
+              const analysis = selectedElementAnalyses.find(a => a.type === selectedElementType)
+              const elements = analysis?.elements || []
+              
+              if (elements.length === 0) {
+                return (
+                  <View className="popular-majors-page__element-dialog-empty">
+                    <Text>暂无数据</Text>
+                  </View>
+                )
+              }
+              
+              return (
+                <View className="popular-majors-page__element-dialog-list">
+                  {elements.map((element, index) => (
+                    <View key={index} className="popular-majors-page__element-dialog-item">
+                      <Text className="popular-majors-page__element-dialog-item-name">
+                        {element.elementName}
+                      </Text>
+                      {element.score !== null && (
+                        <View className="popular-majors-page__element-dialog-item-score">
+                          <Text className="popular-majors-page__element-dialog-item-score-label">
+                            得分：
+                          </Text>
+                          <Text className="popular-majors-page__element-dialog-item-score-value">
+                            {element.score}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )
+            })()}
+          </View>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowElementDialog(false)}
+              className="popular-majors-page__element-dialog-button"
+            >
+              关闭
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
