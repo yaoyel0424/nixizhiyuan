@@ -10,12 +10,11 @@ import {
   Get,
   Param,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam,ApiBearerAuth } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import { AuthService } from './auth.service'; 
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -24,15 +23,18 @@ import { WechatAuthGuard } from './guards/wechat-auth.guard';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { IJwtPayload } from './interfaces/jwt-payload.interface';
+import { UsersService } from '../users/users.service';
 
 /**
  * 认证控制器
  */
 @ApiTags('认证授权')
-@Controller('auth')
+@Controller('auth') 
+@ApiBearerAuth()
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -42,6 +44,31 @@ export class AuthController {
   @ApiOperation({ summary: '刷新令牌' })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
     return this.authService.refreshToken(refreshTokenDto);
+  }
+
+  @Get('check-token') 
+  @ApiOperation({ summary: '检查 Token 是否有效' })
+  async checkToken(@CurrentUser() user: any) {
+    // JwtAuthGuard 已经验证了 token，如果 token 无效会抛出 401 错误
+    // 如果执行到这里，说明 token 有效，返回用户信息
+    const userInfo = await this.usersService.findOne(user.id);
+    
+    if (!userInfo) {
+      throw new UnauthorizedException('用户不存在');
+    }
+
+    // 返回用户信息，格式与登录接口保持一致
+    return {
+      valid: true,
+      user: {
+        id: userInfo.id,
+        username: '',
+        nickname: userInfo.nickname,
+        avatar:   '',
+        phone: '',
+        email:  '',
+      },
+    };
   }
 
   @Post('logout')
