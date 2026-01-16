@@ -15,186 +15,77 @@ export class ScoresService {
   ) {}
 
   /**
-   * 查询原始数据（不进行计算）
+   * 查询热门专业原始数据（不进行计算）
    * @param userId 用户ID
-   * @param options 查询选项
+   * @param popularMajorIds 热门专业ID列表（可选）
    * @returns 原始数据列表
    */
-  private async queryRawData(
+  private async queryRawDataForPopularMajors(
     userId: number,
-    options: {
-      usePopularMajorAnswers: boolean;
-      eduLevel?: string;
-      majorCodes?: string[];
-      popularMajorIds?: number[];
-    },
+    popularMajorIds?: number[],
   ): Promise<any[]> {
-    const {
-      usePopularMajorAnswers,
-      eduLevel,
-      majorCodes,
-      popularMajorIds,
-    } = options;
-
     // 构建 WHERE 条件
     let whereCondition = '';
     const queryParams: any[] = [userId];
     let paramIndex = 2;
 
-    if (usePopularMajorAnswers) {
-      // 热门专业查询：添加 popular_major_id 过滤条件
-      if (popularMajorIds && popularMajorIds.length > 0) {
-        const placeholders = popularMajorIds
-          .map(() => `$${paramIndex++}`)
-          .join(', ');
-        whereCondition = `AND m.edu_level IS NOT NULL AND pm.id IN (${placeholders})`;
-        queryParams.push(...popularMajorIds);
-      } else {
-        whereCondition = `AND m.edu_level IS NOT NULL`;
-      }
+    if (popularMajorIds && popularMajorIds.length > 0) {
+      const placeholders = popularMajorIds
+        .map(() => `$${paramIndex++}`)
+        .join(', ');
+      whereCondition = `AND m.edu_level IS NOT NULL AND pm.id IN (${placeholders})`;
+      queryParams.push(...popularMajorIds);
     } else {
-      // 普通专业查询：添加 edu_level 和 major_code 过滤条件
-      if (eduLevel) {
-        whereCondition = `AND m.edu_level = $${paramIndex} AND m.edu_level IS NOT NULL`;
-        queryParams.push(eduLevel);
-        paramIndex++;
-      } else {
-        whereCondition = `AND m.edu_level IS NOT NULL`;
-      }
-
-      if (majorCodes && majorCodes.length > 0) {
-        const placeholders = majorCodes
-          .map(() => `$${paramIndex++}`)
-          .join(', ');
-        whereCondition += ` AND m.code IN (${placeholders})`;
-        queryParams.push(...majorCodes);
-      }
+      whereCondition = `AND m.edu_level IS NOT NULL`;
     }
 
     // 构建 user_answers CTE
-    const userAnswersCte = usePopularMajorAnswers
-      ? `WITH user_answers AS (
-        SELECT 
-          s.id as scale_id,
-          pma.score as score,
-          s.action,
-          pma.popular_major_id
-        FROM scales s
-        INNER JOIN popular_major_answers pma ON pma.scale_id = s.id
-        WHERE pma.user_id = $1 AND s.id > 112
-      )`
-      : `WITH user_answers AS (
-        SELECT 
-          s.id as scale_id,
-          sa.score as score,
-          s.action
-        FROM scales s
-        INNER JOIN scale_answers sa ON sa.scale_id = s.id
-        WHERE sa.user_id = $1 AND sa.scale_id > 112
-      )`;
+    const userAnswersCte = `WITH user_answers AS (
+      SELECT 
+        s.id as scale_id,
+        pma.score as score,
+        s.action,
+        pma.popular_major_id
+      FROM scales s
+      INNER JOIN popular_major_answers pma ON pma.scale_id = s.id
+      WHERE pma.user_id = $1 
+    )`;
 
     // 构建 major_base_data CTE
-    const majorBaseDataCte = usePopularMajorAnswers
-      ? `major_base_data AS (
-        SELECT 
-          pm.id as popular_major_id,
-          pm.code as major_code, 
-          pm.name as major_name,
-          m.edu_level as edu_level,
-          md.major_brief, 
-          md.academic_development_score,
-          md.career_development_score,
-          md.growth_potential_score,
-          md.industry_prospects_score,
-          mea.type,
-          mea.potential_conversion_value,
-          mea.weight,
-          ua.score,
-          ua.action,
-          CASE WHEN ua.score IS NULL THEN 0 ELSE ua.score * mea.weight END as weighted_score,
-          mea.weight * 2 as total_possible_score
-        FROM popular_majors pm
-        INNER JOIN major_details md ON md.code = pm.code
-        INNER JOIN majors m ON m.code = md.code
-        INNER JOIN major_element_analysis mea ON mea.major_id = md.id
-        INNER JOIN elements e ON e.id = mea.element_id
-        INNER JOIN scales s ON s.element_id = e.id
-        LEFT JOIN user_answers ua ON ua.scale_id = s.id AND ua.popular_major_id = pm.id
-        WHERE s.id > 112 ${whereCondition}
-      )`
-      : `major_base_data AS (
-        SELECT 
-          md.code as major_code, 
-          m.name as major_name,
-          m.edu_level as edu_level,
-          md.major_brief, 
-          md.academic_development_score,
-          md.career_development_score,
-          md.growth_potential_score,
-          md.industry_prospects_score,
-          mea.type,
-          mea.potential_conversion_value,
-          mea.weight,
-          ua.score,
-          ua.action,
-          CASE WHEN ua.score IS NULL THEN 0 ELSE ua.score * mea.weight END as weighted_score,
-          mea.weight * 2 as total_possible_score
-        FROM major_details md
-        INNER JOIN majors m ON m.code = md.code
-        INNER JOIN major_element_analysis mea ON mea.major_id = md.id
-        INNER JOIN elements e ON e.id = mea.element_id
-        INNER JOIN scales s ON s.element_id = e.id
-        LEFT JOIN user_answers ua ON ua.scale_id = s.id
-        WHERE s.id > 112 ${whereCondition}
-      )`;
-
-    // 构建 type_scores CTE（根据是否有 popular_major_id 调整）
-    const typeScoresGroupBy = usePopularMajorAnswers
-      ? 'popular_major_id, major_code, major_name, edu_level, major_brief, academic_development_score, career_development_score, growth_potential_score, industry_prospects_score, type, potential_conversion_value'
-      : 'major_code, major_name, edu_level, major_brief, academic_development_score, career_development_score, growth_potential_score, industry_prospects_score, type, potential_conversion_value';
-
-    const typeScoresSelect = usePopularMajorAnswers
-      ? 'popular_major_id,'
-      : '';
-
-    // 构建 study_scores CTE（根据是否有 popular_major_id 调整）
-    const studyScoresGroupBy = usePopularMajorAnswers
-      ? 'popular_major_id, major_code, major_name, edu_level, major_brief, academic_development_score, career_development_score, growth_potential_score, industry_prospects_score'
-      : 'major_code, major_name, edu_level, major_brief, academic_development_score, career_development_score, growth_potential_score, industry_prospects_score';
-
-    const studyScoresSelect = usePopularMajorAnswers
-      ? 'popular_major_id,'
-      : '';
-
-    // 构建 deduction_scores CTE（根据是否有 popular_major_id 调整）
-    const deductionScoresGroupBy = usePopularMajorAnswers
-      ? 'ts.popular_major_id, ts.major_code'
-      : 'ts.major_code';
-
-    const deductionScoresSelect = usePopularMajorAnswers
-      ? 'ts.popular_major_id,'
-      : '';
-
-    // 构建 final_scores CTE（根据是否有 popular_major_id 调整）
-    const finalScoresJoin = usePopularMajorAnswers
-      ? 'JOIN deduction_scores ds ON ds.popular_major_id = ss.popular_major_id AND ds.major_code = ss.major_code'
-      : 'JOIN deduction_scores ds ON ds.major_code = ss.major_code';
-
-    const finalScoresSelect = usePopularMajorAnswers
-      ? 'ss.popular_major_id,'
-      : '';
-
-    // 构建最终 SELECT（根据是否有 popular_major_id 调整）
-    const finalSelectPopularMajorId = usePopularMajorAnswers
-      ? 'fs.popular_major_id as "popularMajorId",'
-      : '';
+    const majorBaseDataCte = `major_base_data AS (
+      SELECT 
+        pm.id as popular_major_id,
+        pm.code as major_code, 
+        pm.name as major_name,
+        m.edu_level as edu_level,
+        md.major_brief, 
+        md.academic_development_score,
+        md.career_development_score,
+        md.growth_potential_score,
+        md.industry_prospects_score,
+        mea.type,
+        mea.potential_conversion_value,
+        mea.weight,
+        ua.score,
+        ua.action,
+        CASE WHEN ua.score IS NULL THEN 0 ELSE ua.score * mea.weight END as weighted_score,
+        mea.weight * 2 as total_possible_score
+      FROM popular_majors pm
+      INNER JOIN major_details md ON md.code = pm.code
+      INNER JOIN majors m ON m.code = md.code
+      INNER JOIN major_element_analysis mea ON mea.major_id = md.id
+      INNER JOIN elements e ON e.id = mea.element_id
+      INNER JOIN scales s ON s.element_id = e.id
+      LEFT JOIN user_answers ua ON ua.scale_id = s.id AND ua.popular_major_id = pm.id
+      WHERE s.id > 112 ${whereCondition}
+    )`;
 
     // SQL 只查询原始数据，不进行计算
     const sql = `
       ${userAnswersCte},
       ${majorBaseDataCte}
       SELECT 
-        ${usePopularMajorAnswers ? 'popular_major_id as "popularMajorId",' : ''}
+        popular_major_id as "popularMajorId",
         major_code as "majorCode",
         major_name as "majorName",
         edu_level as "eduLevel",
@@ -218,6 +109,136 @@ export class ScoresService {
     );
 
     return rawData;
+  }
+
+  /**
+   * 查询普通专业原始数据（不进行计算）
+   * @param userId 用户ID
+   * @param eduLevel 教育层次（可选）
+   * @param majorCodes 专业代码列表（可选）
+   * @returns 原始数据列表
+   */
+  private async queryRawDataForMajors(
+    userId: number,
+    eduLevel?: string,
+    majorCodes?: string[],
+  ): Promise<any[]> {
+    // 构建 WHERE 条件
+    let whereCondition = '';
+    const queryParams: any[] = [userId];
+    let paramIndex = 2;
+
+    if (eduLevel) {
+      whereCondition = `AND m.edu_level = $${paramIndex} AND m.edu_level IS NOT NULL`;
+      queryParams.push(eduLevel);
+      paramIndex++;
+    } else {
+      whereCondition = `AND m.edu_level IS NOT NULL`;
+    }
+
+    if (majorCodes && majorCodes.length > 0) {
+      const placeholders = majorCodes
+        .map(() => `$${paramIndex++}`)
+        .join(', ');
+      whereCondition += ` AND m.code IN (${placeholders})`;
+      queryParams.push(...majorCodes);
+    }
+
+    // 构建 user_answers CTE
+    const userAnswersCte = `WITH user_answers AS (
+      SELECT 
+        s.id as scale_id,
+        sa.score as score,
+        s.action
+      FROM scales s
+      INNER JOIN scale_answers sa ON sa.scale_id = s.id
+      WHERE sa.user_id = $1 AND sa.scale_id > 112
+    )`;
+
+    // 构建 major_base_data CTE
+    const majorBaseDataCte = `major_base_data AS (
+      SELECT 
+        md.code as major_code, 
+        m.name as major_name,
+        m.edu_level as edu_level,
+        md.major_brief, 
+        md.academic_development_score,
+        md.career_development_score,
+        md.growth_potential_score,
+        md.industry_prospects_score,
+        mea.type,
+        mea.potential_conversion_value,
+        mea.weight,
+        ua.score,
+        ua.action,
+        CASE WHEN ua.score IS NULL THEN 0 ELSE ua.score * mea.weight END as weighted_score,
+        mea.weight * 2 as total_possible_score
+      FROM major_details md
+      INNER JOIN majors m ON m.code = md.code
+      INNER JOIN major_element_analysis mea ON mea.major_id = md.id
+      INNER JOIN elements e ON e.id = mea.element_id
+      INNER JOIN scales s ON s.element_id = e.id
+      LEFT JOIN user_answers ua ON ua.scale_id = s.id
+      WHERE s.id > 112 ${whereCondition}
+    )`;
+
+    // SQL 只查询原始数据，不进行计算
+    const sql = `
+      ${userAnswersCte},
+      ${majorBaseDataCte}
+      SELECT 
+        major_code as "majorCode",
+        major_name as "majorName",
+        edu_level as "eduLevel",
+        major_brief as "majorBrief",
+        academic_development_score as "academicDevelopmentScore",
+        career_development_score as "careerDevelopmentScore",
+        growth_potential_score as "growthPotentialScore",
+        industry_prospects_score as "industryProspectsScore",
+        type,
+        potential_conversion_value as "potentialConversionValue",
+        score,
+        weight,
+        weighted_score as "weightedScore",
+        total_possible_score as "totalPossibleScore"
+      FROM major_base_data
+    `;
+
+    const rawData = await this.popularMajorRepository.manager.query(
+      sql,
+      queryParams,
+    );
+
+    return rawData;
+  }
+
+  /**
+   * 查询原始数据（不进行计算）
+   * @param userId 用户ID
+   * @param options 查询选项
+   * @returns 原始数据列表
+   */
+  private async queryRawData(
+    userId: number,
+    options: {
+      usePopularMajorAnswers: boolean;
+      eduLevel?: string;
+      majorCodes?: string[];
+      popularMajorIds?: number[];
+    },
+  ): Promise<any[]> {
+    const {
+      usePopularMajorAnswers,
+      eduLevel,
+      majorCodes,
+      popularMajorIds,
+    } = options;
+
+    if (usePopularMajorAnswers) {
+      return this.queryRawDataForPopularMajors(userId, popularMajorIds);
+    } else {
+      return this.queryRawDataForMajors(userId, eduLevel, majorCodes);
+    }
   }
 
   /**
@@ -275,16 +296,33 @@ export class ScoresService {
         string,
         { typeScore: number; totalScore: number; ratio: number }
       >();
-      for (const [typeKey, typeRows] of typeGroups.entries()) {
+      for (const [typeKey, typeRows] of typeGroups.entries()) { 
+
         const typeScore = typeRows.reduce(
-          (sum, r) => sum + (r.weightedScore || 0),
+          (sum, r) => {
+            const ws = Number(r.weightedScore) || 0;
+            if (isNaN(ws)) {
+             
+              return sum;
+            } 
+            return sum + ws;
+          },
           0,
         );
         const totalScore = typeRows.reduce(
-          (sum, r) => sum + (r.totalPossibleScore || 0),
+          (sum, r) => {
+            const tps = Number(r.totalPossibleScore) || 0;
+            if (isNaN(tps)) { 
+              return sum;
+            }
+     
+            return sum + tps;
+          },
           0,
-        );
-        const ratio = totalScore > 0 ? typeScore / totalScore : 0;
+        ); 
+
+        const ratio = totalScore > 0 ? typeScore / totalScore : 0; 
+
         typeScores.set(typeKey, {
           typeScore,
           totalScore,
@@ -302,7 +340,9 @@ export class ScoresService {
         typeScore: 0,
         totalScore: 0,
         ratio: 0,
-      };
+      }; 
+ 
+
       const lexueScore =
         lexueData.totalScore > 0
           ? Math.round((lexueData.ratio * 0.5) * 100) / 100
@@ -311,7 +351,7 @@ export class ScoresService {
         shanxueData.totalScore > 0
           ? Math.round((shanxueData.ratio * 0.5) * 100) / 100
           : 0;
-
+  
       // 计算扣分
       let tiaozhanDeduction = 0;
       let yanxueDeduction = 0;

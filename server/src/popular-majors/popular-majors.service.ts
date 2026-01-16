@@ -43,62 +43,39 @@ export class PopularMajorsService {
    */
   async findAll(queryDto: QueryPopularMajorDto, userId?: number) {
     const {
-      page = 1,
-      limit = 10,
-      sortBy = 'id',
-      sortOrder = 'ASC',
+      // 参数保留，暂时不使用
+      // page = 1,
+      // limit = 10,
+      // sortBy = 'id',
+      // sortOrder = 'ASC',
       level1,
-      name,
-      code,
+      // name,
+      // code,
     } = queryDto;
 
-    const skip = (page - 1) * limit;
-
-    // 构建查询条件
-    const where: any = {};
-
-    if (level1) {
-      where.level1 = level1;
+    // 只根据 level1 进行查询，直接将 level1 传入 addProgressAndScore
+    if (!level1) {
+      return {
+        items: [],
+        meta: {
+          total: 0,
+          page: 1,
+          limit: 0,
+          totalPages: 0,
+        },
+      };
     }
 
-    if (name) {
-      where.name = Like(`%${name}%`);
-    }
-
-    if (code) {
-      where.code = code;
-    }
-
-    // 执行查询
-    const [items, total] = await this.popularMajorRepository.findAndCount({
-      where,
-      relations: ['majorDetail', 'majorDetail.major'],
-      order: {
-        [sortBy]: sortOrder,
-      },
-      skip,
-      take: limit,
-    });
-
-    // 如果有 userId，计算每个专业的进度和分数
-    await this.addProgressAndScore(items, userId);
-
-    // 将 majorDetail.major.name 映射到 majorDetail.name，以便 DTO 正确序列化
-    items.forEach((item) => {
-      if (item.majorDetail?.major?.name) {
-        (item.majorDetail as any).name = item.majorDetail.major.name;
-      }
-    });
-
-    const totalPages = Math.ceil(total / limit);
+    // 直接调用 addProgressAndScoreByLevel1，在内部一次性查询所有数据
+    const result = await this.addProgressAndScoreByLevel1(level1, userId);
 
     return {
-      items,
+      items: result.items,
       meta: {
-        total,
-        page,
-        limit,
-        totalPages,
+        total: result.total,
+        page: 1,
+        limit: result.total,
+        totalPages: 1,
       },
     };
   }
@@ -128,7 +105,7 @@ export class PopularMajorsService {
     }
 
     // 如果有 userId，计算进度和分数
-    await this.addProgressAndScore([popularMajor], userId);
+    await this.addProgressAndScoreForItems([popularMajor], userId);
 
     return popularMajor;
   }
@@ -155,7 +132,7 @@ export class PopularMajorsService {
     }
 
     // 如果有 userId，计算进度和分数
-    await this.addProgressAndScore([popularMajor], userId);
+    await this.addProgressAndScoreForItems([popularMajor], userId);
 
     return popularMajor;
   }
@@ -183,83 +160,55 @@ export class PopularMajorsService {
     });
 
     // 如果有 userId，计算进度和分数
-    await this.addProgressAndScore(popularMajors, userId);
+    await this.addProgressAndScoreForItems(popularMajors, userId);
 
     return popularMajors;
   }
 
   /**
-   * 为热门专业列表添加进度和分数信息（辅助方法）
+   * 为热门专业列表添加进度和分数信息（基于传入的 items 列表）
    * @param items 热门专业列表
    * @param userId 用户ID（可选）
    */
-  private async addProgressAndScore(
+  private async addProgressAndScoreForItems(
     items: PopularMajor[],
     userId?: number,
   ): Promise<void> {
-    if (!userId || items.length === 0) {
+    if (!items || items.length === 0) {
       return;
     }
 
-    // 获取所有专业详情ID
+    // 如果没有 userId，只需要映射 name 并返回
+    if (!userId) {
+      this.mapMajorDetailName(items);
+      return;
+    }
+
+    // 获取所有专业详情ID和热门专业ID列表
     const majorDetailIds = items
       .map((item) => item.majorDetail?.id)
-      .filter((id) => id !== undefined);
+      .filter((id) => id !== undefined) as number[];
 
     if (majorDetailIds.length === 0) {
       return;
     }
 
-    // 查询每个专业关联的元素分析
-    const analyses = await this.majorElementAnalysisRepository.find({
-      where: { majorDetailId: In(majorDetailIds) },
-      select: ['majorDetailId', 'elementId'],
-    });
-
-    // 获取所有元素ID
-    const elementIds = [...new Set(analyses.map((a) => a.elementId))];
-
-    if (elementIds.length === 0) {
-      return;
-    }
-
-    // 获取热门专业ID列表和 majorDetailId 到 popularMajorId 的映射
     const popularMajorIds = items.map((item) => item.id);
-    const majorDetailToPopularMajorMap = new Map<number, number>();
-    items.forEach((item) => {
-      if (item.majorDetail?.id) {
-        majorDetailToPopularMajorMap.set(item.majorDetail.id, item.id);
-      }
-    });
 
-    // 查询这些元素关联的所有量表（direction = '168'）
-    const scales = await this.scaleRepository.find({
-      where: {
-        elementId: In(elementIds),
-        direction: '168',
-      },
-      select: ['id', 'elementId'],
-    });
-
-    const scaleIds = scales.map((s) => s.id);
-
-    // 使用一个 SQL 查询同时获取：每个专业的问卷总数和用户已填写的答案
+    // 构建参数占位符
     const majorDetailPlaceholders = majorDetailIds
       .map((_, index) => `$${index + 1}`)
       .join(', ');
     const popularMajorPlaceholders = popularMajorIds
       .map((_, index) => `$${majorDetailIds.length + 2 + index}`)
       .join(', ');
-    const scalePlaceholders = scaleIds.length > 0
-      ? scaleIds.map((_, index) => `$${majorDetailIds.length + 2 + popularMajorIds.length + index}`).join(', ')
-      : 'NULL';
 
+    // 构建简化的 SQL 查询：只计算进度数据（在一个 SQL 中完成）
     const sql = `
       WITH major_scales AS (
         SELECT 
           mea.major_id as major_detail_id,
-          s.id as scale_id,
-          s.element_id
+          s.id as scale_id
         FROM major_element_analysis mea
         INNER JOIN elements e ON e.id = mea.element_id
         INNER JOIN scales s ON s.element_id = e.id
@@ -274,25 +223,17 @@ export class PopularMajorsService {
         FROM major_scales
         GROUP BY major_detail_id
       ),
-      user_answers AS (
-        SELECT 
-          pma.popular_major_id,
-          pma.scale_id
-        FROM popular_major_answers pma
-        WHERE pma.user_id = $${majorDetailIds.length + 1}
-          AND pma.popular_major_id IN (${popularMajorPlaceholders})
-          ${scaleIds.length > 0 ? `AND pma.scale_id IN (${scalePlaceholders})` : ''}
-      ),
       answered_counts AS (
         SELECT 
           md.id as major_detail_id,
           pm.id as popular_major_id,
-          COUNT(DISTINCT ua.scale_id) as completed_count
+          COUNT(DISTINCT pma.scale_id) as completed_count
         FROM major_details md
         INNER JOIN popular_majors pm ON pm.code = md.code
         INNER JOIN major_scales ms ON ms.major_detail_id = md.id
-        LEFT JOIN user_answers ua ON ua.scale_id = ms.scale_id 
-          AND ua.popular_major_id = pm.id
+        LEFT JOIN popular_major_answers pma ON pma.scale_id = ms.scale_id 
+          AND pma.popular_major_id = pm.id
+          AND pma.user_id = $${majorDetailIds.length + 1}
         WHERE md.id IN (${majorDetailPlaceholders})
           AND pm.id IN (${popularMajorPlaceholders})
         GROUP BY md.id, pm.id
@@ -310,7 +251,6 @@ export class PopularMajorsService {
       ...majorDetailIds,
       userId,
       ...popularMajorIds,
-      ...(scaleIds.length > 0 ? scaleIds : []),
     ];
 
     const progressResults = await this.popularMajorRepository.manager.query(
@@ -318,32 +258,307 @@ export class PopularMajorsService {
       queryParams,
     );
 
-    // 构建映射
+    // 使用公共方法处理进度和分数
+    await this.enrichItemsWithProgressAndScore(
+      items,
+      userId,
+      progressResults,
+      popularMajorIds,
+    );
+  }
+
+  /**
+   * 为热门专业列表添加进度和分数信息（基于 level1 参数查询）
+   * @param level1 教育层次
+   * @param userId 用户ID（可选）
+   * @returns 热门专业列表和总数
+   */
+  private async addProgressAndScoreByLevel1(
+    level1: string,
+    userId?: number,
+  ): Promise<{ items: PopularMajor[]; total: number }> {
+    // 如果没有 userId，只需要查询 items 并返回
+    if (!userId) {
+      const items = await this.popularMajorRepository.find({
+        where: { level1 },
+        relations: [
+          'majorDetail',
+          'majorDetail.major',
+          'majorDetail.majorElementAnalyses',
+          'majorDetail.majorElementAnalyses.element',
+        ],
+        order: {
+          id: 'ASC',
+        },
+      });
+
+      if (!items || items.length === 0) {
+        return { items: [], total: 0 };
+      }
+
+      this.mapMajorDetailName(items);
+      return { items, total: items.length };
+    }
+
+    // 在一个 SQL 中查询所有需要的数据：PopularMajor、MajorDetail、Major、MajorElementAnalyses、进度数据
+    const sql = `
+      WITH filtered_popular_majors AS (
+        SELECT id, code, name, degree, limit_year, average_salary
+        FROM popular_majors
+        WHERE level1 = $1
+      ),
+      filtered_major_details AS (
+        SELECT md.id, md.code, md.education_level, md.study_period, md.awarded_degree, md.major_brief
+        FROM major_details md
+        INNER JOIN filtered_popular_majors pm ON pm.code = md.code
+      ),
+      major_scales AS (
+        SELECT 
+          mea.major_id as major_detail_id,
+          s.id as scale_id
+        FROM major_element_analysis mea
+        INNER JOIN elements e ON e.id = mea.element_id
+        INNER JOIN scales s ON s.element_id = e.id
+        INNER JOIN filtered_major_details fmd ON fmd.id = mea.major_id
+        WHERE s.direction = '168'
+          AND s.id > 112
+      ),
+      scale_counts AS (
+        SELECT 
+          major_detail_id,
+          COUNT(DISTINCT scale_id) as total_count
+        FROM major_scales
+        GROUP BY major_detail_id
+      ),
+      answered_counts AS (
+        SELECT 
+          md.id as major_detail_id,
+          pm.id as popular_major_id,
+          COUNT(DISTINCT pma.scale_id) as completed_count
+        FROM major_details md
+        INNER JOIN filtered_popular_majors pm ON pm.code = md.code
+        INNER JOIN major_scales ms ON ms.major_detail_id = md.id
+        LEFT JOIN popular_major_answers pma ON pma.scale_id = ms.scale_id 
+          AND pma.popular_major_id = pm.id
+          AND pma.user_id = $2
+        GROUP BY md.id, pm.id
+      ),
+      progress_data AS (
+        SELECT 
+          sc.major_detail_id,
+          COALESCE(sc.total_count, 0) as total_count,
+          COALESCE(ac.completed_count, 0) as completed_count,
+          ac.popular_major_id
+        FROM scale_counts sc
+        LEFT JOIN answered_counts ac ON ac.major_detail_id = sc.major_detail_id
+      ),
+      element_scores AS (
+        SELECT 
+          pm.id as popular_major_id,
+          mea.element_id,
+          Sum(pma.score) as element_score
+        FROM filtered_popular_majors pm
+        INNER JOIN major_details md ON md.code = pm.code
+        INNER JOIN major_element_analysis mea ON mea.major_id = md.id
+        INNER JOIN elements e ON e.id = mea.element_id
+        INNER JOIN scales s ON s.element_id = e.id
+        LEFT JOIN popular_major_answers pma ON pma.scale_id = s.id 
+          AND pma.popular_major_id = pm.id
+          AND pma.user_id = $2
+        WHERE s.direction = '168'
+          AND s.id > 112
+          AND pma.score IS NOT NULL
+        GROUP BY pm.id, mea.element_id
+      )
+      SELECT 
+        pm.id as popular_major_id,
+        pm.name,
+        pm.code, 
+        md.id as major_detail_id,
+        md.code as major_detail_code,
+        md.education_level,
+        md.study_period,
+        md.awarded_degree,
+        md.major_brief,
+        m.name as major_name,
+        mea.id as element_analysis_id,
+        mea.type as element_analysis_type,
+        mea.element_id,
+        e.name as element_name,
+        pd.total_count,
+        pd.completed_count,
+        es.element_score
+      FROM filtered_popular_majors pm
+      LEFT JOIN major_details md ON md.code = pm.code
+      LEFT JOIN majors m ON m.code = md.code
+      LEFT JOIN major_element_analysis mea ON mea.major_id = md.id
+      LEFT JOIN elements e ON e.id = mea.element_id
+      LEFT JOIN progress_data pd ON pd.popular_major_id = pm.id
+      LEFT JOIN element_scores es ON es.popular_major_id = pm.id AND es.element_id = mea.element_id
+      ORDER BY pm.id ASC, mea.id ASC
+    `;
+
+    const results = await this.popularMajorRepository.manager.query(
+      sql,
+      [level1, userId],
+    );
+
+    if (results.length === 0) {
+      return { items: [], total: 0 };
+    }
+
+    // 按 popularMajorId 分组构建 items
+    const itemsMap = new Map<number, any>();
+    const popularMajorIds: number[] = [];
+
+    results.forEach((row: any) => {
+      const popularMajorId = row.popular_major_id;
+      
+      if (!itemsMap.has(popularMajorId)) {
+        // 创建 PopularMajor 对象
+        const item: any = {
+          id: row.popular_major_id,
+          name: row.name,
+          code: row.code,
+          degree: row.degree,
+          limitYear: row.limit_year,
+          averageSalary: row.average_salary,
+          majorDetail: row.major_detail_id ? {
+            id: row.major_detail_id,
+            code: row.major_detail_code,
+            educationLevel: row.education_level,
+            studyPeriod: row.study_period,
+            awardedDegree: row.awarded_degree,
+            majorBrief: row.major_brief,
+            name: row.major_name, // 映射 major.name 到 majorDetail.name
+            major: row.major_name ? { name: row.major_name } : null,
+            majorElementAnalyses: [],
+          } : null,
+        };
+        itemsMap.set(popularMajorId, item);
+        popularMajorIds.push(popularMajorId);
+      }
+
+      // 添加 majorElementAnalyses（如果有）
+      const item = itemsMap.get(popularMajorId);
+      if (item.majorDetail && row.element_analysis_id) {
+        const existing = item.majorDetail.majorElementAnalyses.find(
+          (ea: any) => ea.id === row.element_analysis_id,
+        );
+        if (!existing) {
+          item.majorDetail.majorElementAnalyses.push({
+            id: row.element_analysis_id,
+            type: row.element_analysis_type,
+            elementId: row.element_id,
+            element: row.element_name ? { name: row.element_name } : null,
+            elementScore:
+              row.element_score !== null && row.element_score !== undefined
+                ? parseFloat(row.element_score)
+                : null,
+          });
+        }
+      }
+    });
+
+    const items = Array.from(itemsMap.values()) as PopularMajor[];
+
+    // 构建进度映射
     const majorScaleCountMap = new Map<number, number>();
     const majorAnsweredCountMap = new Map<number, number>();
-    const answeredScaleIdsByMajor = new Map<number, Set<number>>();
 
-    // 获取用户答案用于构建 answeredScaleIdsByMajor（只需要一次查询）
-    const userAnswers = await this.popularMajorAnswerRepository.find({
-      where: {
-        userId,
-        popularMajorId: In(popularMajorIds),
-        ...(scaleIds.length > 0 ? { scaleId: In(scaleIds) } : {}),
-      },
-      select: ['scaleId', 'popularMajorId'],
+    results.forEach((row: any) => {
+      if (row.major_detail_id) {
+        majorScaleCountMap.set(row.major_detail_id, row.total_count || 0);
+        if (row.popular_major_id) {
+          majorAnsweredCountMap.set(row.major_detail_id, row.completed_count || 0);
+        }
+      }
     });
 
-    userAnswers.forEach((answer) => {
-      if (!answeredScaleIdsByMajor.has(answer.popularMajorId)) {
-        answeredScaleIdsByMajor.set(
-          answer.popularMajorId,
-          new Set<number>(),
+    // 获取分数
+    const scores = await this.scoresService.calculatePopularMajorScores(
+      userId,
+      popularMajorIds,
+    );
+
+    const scoreMap = new Map<number, any>();
+    scores.forEach((score) => {
+      if (score.popularMajorId) {
+        scoreMap.set(score.popularMajorId, score);
+      }
+    });
+
+    // 添加进度、分数和 elementAnalyses 分组
+    items.forEach((item) => {
+      const majorDetailId = item.majorDetail?.id;
+      if (majorDetailId) {
+        const totalCount = majorScaleCountMap.get(majorDetailId) || 0;
+        const completedCount = majorAnsweredCountMap.get(majorDetailId) || 0;
+        const scoreInfo = scoreMap.get(item.id);
+
+        (item as any).progress = {
+          completedCount,
+          totalCount,
+          isCompleted: completedCount === totalCount && totalCount > 0,
+        };
+
+        (item as any).score = scoreInfo ? {
+          score: scoreInfo.score,
+          lexueScore: scoreInfo.lexueScore,
+          shanxueScore: scoreInfo.shanxueScore,
+          yanxueDeduction: scoreInfo.yanxueDeduction,
+          tiaozhanDeduction: scoreInfo.tiaozhanDeduction,
+        } : null;
+      }
+
+      // 处理 elementAnalyses 分组（包含元素分数）
+      if (item.majorDetail?.majorElementAnalyses?.length > 0) {
+        const groupedByType = new Map<
+          string,
+          Array<{ elementName: string; score: number | null }>
+        >();
+        item.majorDetail.majorElementAnalyses.forEach((analysis: any) => {
+          if (analysis.element?.name) {
+            const type = analysis.type;
+            if (!groupedByType.has(type)) {
+              groupedByType.set(type, []);
+            }
+            groupedByType.get(type)!.push({
+              elementName: analysis.element.name,
+              score: analysis.elementScore ?? null,
+            });
+          }
+        });
+        (item as any).elementAnalyses = Array.from(groupedByType.entries()).map(
+          ([type, elements]) => ({
+            type,
+            elements: elements,
+          }),
         );
       }
-      answeredScaleIdsByMajor.get(answer.popularMajorId)!.add(answer.scaleId);
     });
 
-    // 处理查询结果
+    return { items, total: items.length };
+  }
+
+  /**
+   * 将进度和分数信息添加到热门专业列表（公共方法）
+   * @param items 热门专业列表
+   * @param userId 用户ID
+   * @param progressResults SQL 查询结果
+   * @param popularMajorIds 热门专业ID列表
+   */
+  private async enrichItemsWithProgressAndScore(
+    items: PopularMajor[],
+    userId: number,
+    progressResults: any[],
+    popularMajorIds: number[],
+  ): Promise<void> {
+    // 构建进度映射
+    const majorScaleCountMap = new Map<number, number>();
+    const majorAnsweredCountMap = new Map<number, number>();
+
+    // 从 SQL 查询结果中提取进度数据
     progressResults.forEach((row: any) => {
       if (row.major_detail_id) {
         majorScaleCountMap.set(row.major_detail_id, row.total_count || 0);
@@ -356,7 +571,48 @@ export class PopularMajorsService {
       }
     });
 
-    // 获取每个热门专业的分数
+    // 查询元素分数
+    const elementScoresSql = `
+      SELECT 
+        pm.id as popular_major_id,
+        mea.element_id,
+        AVG(pma.score) as element_score
+      FROM popular_majors pm
+      INNER JOIN major_details md ON md.code = pm.code
+      INNER JOIN major_element_analysis mea ON mea.major_id = md.id
+      INNER JOIN elements e ON e.id = mea.element_id
+      INNER JOIN scales s ON s.element_id = e.id
+      LEFT JOIN popular_major_answers pma ON pma.scale_id = s.id 
+        AND pma.popular_major_id = pm.id
+        AND pma.user_id = $1
+      WHERE s.direction = '168'
+        AND s.id > 112
+        AND pma.score IS NOT NULL
+        AND pm.id = ANY($2::int[])
+      GROUP BY pm.id, mea.element_id
+    `;
+    const elementScoresResults = await this.popularMajorRepository.manager.query(
+      elementScoresSql,
+      [userId, popularMajorIds],
+    );
+
+    // 构建元素分数映射：popularMajorId -> elementId -> score
+    const elementScoreMap = new Map<number, Map<number, number>>();
+    elementScoresResults.forEach((row: any) => {
+      if (!elementScoreMap.has(row.popular_major_id)) {
+        elementScoreMap.set(row.popular_major_id, new Map());
+      }
+      elementScoreMap
+        .get(row.popular_major_id)!
+        .set(
+          row.element_id,
+          row.element_score !== null && row.element_score !== undefined
+            ? parseFloat(row.element_score)
+            : null,
+        );
+    });
+
+    // 获取每个热门专业的分数（直接调用，内部会处理所有计算）
     const scores = await this.scoresService.calculatePopularMajorScores(
       userId,
       popularMajorIds,
@@ -365,7 +621,9 @@ export class PopularMajorsService {
     // 使用 popularMajorId 作为 key 创建分数映射
     const scoreMap = new Map<number, any>();
     scores.forEach((score) => {
-      scoreMap.set(score.popularMajorId, score);
+      if (score.popularMajorId) {
+        scoreMap.set(score.popularMajorId, score);
+      }
     });
 
     // 将进度和分数信息添加到每个专业
@@ -393,6 +651,75 @@ export class PopularMajorsService {
         } else {
           (item as any).score = null;
         }
+      }
+
+      // 为 majorElementAnalyses 添加元素分数
+      if (item.majorDetail?.majorElementAnalyses) {
+        const itemElementScoreMap = elementScoreMap.get(item.id);
+        item.majorDetail.majorElementAnalyses.forEach((analysis: any) => {
+          if (analysis.elementId && itemElementScoreMap) {
+            (analysis as any).elementScore =
+              itemElementScoreMap.get(analysis.elementId) ?? null;
+          } else {
+            (analysis as any).elementScore = null;
+          }
+        });
+      }
+    });
+
+    // 将 majorDetail.major.name 映射到 majorDetail.name，以便 DTO 正确序列化
+    // 同时处理元素分析信息，按 type 分组
+    this.mapMajorDetailNameAndElementAnalyses(items);
+  }
+
+  /**
+   * 映射 majorDetail.major.name 到 majorDetail.name，并处理元素分析信息
+   * @param items 热门专业列表
+   */
+  private mapMajorDetailNameAndElementAnalyses(items: PopularMajor[]): void {
+    items.forEach((item) => {
+      if (item.majorDetail?.major?.name) {
+        (item.majorDetail as any).name = item.majorDetail.major.name;
+      }
+
+      // 处理元素分析信息，按 type 分组（包含元素分数）
+      if (item.majorDetail?.majorElementAnalyses) {
+        const groupedByType = new Map<
+          string,
+          Array<{ elementName: string; score: number | null }>
+        >();
+        item.majorDetail.majorElementAnalyses.forEach((analysis: any) => {
+          if (analysis.element?.name) {
+            const type = analysis.type;
+            if (!groupedByType.has(type)) {
+              groupedByType.set(type, []);
+            }
+            groupedByType.get(type)!.push({
+              elementName: analysis.element.name,
+              score: analysis.elementScore ?? null,
+            });
+          }
+        });
+
+        // 转换为数组格式
+        (item as any).elementAnalyses = Array.from(groupedByType.entries()).map(
+          ([type, elements]) => ({
+            type,
+            elements: elements,
+          }),
+        );
+      }
+    });
+  }
+
+  /**
+   * 映射 majorDetail.major.name 到 majorDetail.name（简单版本，不处理元素分析）
+   * @param items 热门专业列表
+   */
+  private mapMajorDetailName(items: PopularMajor[]): void {
+    items.forEach((item) => {
+      if (item.majorDetail?.major?.name) {
+        (item.majorDetail as any).name = item.majorDetail.major.name;
       }
     });
   }

@@ -88,6 +88,33 @@ export class ScoreDto {
 }
 
 /**
+ * 元素分析信息 DTO
+ */
+export class ElementAnalysisDto {
+  @ApiProperty({ description: '元素名称' })
+  @Expose()
+  elementName: string;
+
+  @ApiProperty({ description: '元素分数', nullable: true })
+  @Expose()
+  score: number | null;
+}
+
+/**
+ * 按类型分组的元素分析响应 DTO
+ */
+export class GroupedElementAnalysisDto {
+  @ApiProperty({ description: '分析类型（lexue: 乐学, shanxue: 善学, yanxue: 厌学, tiaozhan: 挑战）' })
+  @Expose()
+  type: string;
+
+  @ApiProperty({ description: '元素列表', type: [ElementAnalysisDto] })
+  @Expose()
+  @Type(() => ElementAnalysisDto)
+  elements: ElementAnalysisDto[];
+}
+
+/**
  * 热门专业响应 DTO
  * 使用 class-transformer 进行序列化
  */
@@ -99,16 +126,7 @@ export class PopularMajorResponseDto {
   name: string;
 
   @Expose()
-  code: string;
-
-  @Expose()
-  degree: string | null;
-
-  @Expose()
-  limitYear: string | null;
-
-  @Expose()
-  averageSalary: string | null; 
+  code: string; 
 
   @Expose()
   @Type(() => MajorDetailInfoDto)
@@ -132,5 +150,14 @@ export class PopularMajorResponseDto {
   @Expose()
   @Type(() => ScoreDto)
   score?: ScoreDto | null;
+
+  @ApiProperty({
+    description: '元素分析信息（按类型分组）',
+    type: [GroupedElementAnalysisDto],
+    required: false,
+  })
+  @Expose()
+  @Type(() => GroupedElementAnalysisDto)
+  elementAnalyses?: GroupedElementAnalysisDto[];
 }
 
