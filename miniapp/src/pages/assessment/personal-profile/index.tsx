@@ -612,14 +612,6 @@ export default function PersonalProfilePage() {
         }
       }}
     >
-      {/* 头部区域 */}
-      <View className="personal-profile-page__header">
-        <View className="personal-profile-page__header-content">
-          <Text className="personal-profile-page__header-title">个人特质分析</Text>
-        </View>
-        <View className="personal-profile-page__header-wave" />
-      </View>
-
       {/* 内容区域 */}
       <View className="personal-profile-page__content">
         {/* 七维度可视化图表 */}

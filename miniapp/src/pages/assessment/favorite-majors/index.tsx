@@ -307,16 +307,6 @@ export default function FavoriteMajorsPage() {
 
   return (
     <View className="favorite-majors-page">
-      
-      {/* 头部 */}
-      <View className="favorite-majors-page__header">
-        <View className="favorite-majors-page__header-content">
-          <Text className="favorite-majors-page__title">心动专业列表</Text>
-          <Text className="favorite-majors-page__subtitle">共 {favoriteCount} 个心动专业</Text>
-        </View>
-        <View className="favorite-majors-page__wave" />
-      </View>
-
       {/* 内容区域 */}
       <View className="favorite-majors-page__content">
         {/* 搜索框 */}

@@ -746,16 +746,6 @@ export default function CareerExplorationPage() {
 
   return (
     <View className="career-exploration-page">
-      {/* 头部 */}
-      <View className="career-exploration-page__header">
-        <View className="career-exploration-page__header-content">
-          <Text className="career-exploration-page__title">
-            深度探索 <Text className="career-exploration-page__title-sub">{majorName}</Text>
-          </Text>
-        </View>
-        <View className="career-exploration-page__wave" />
-      </View>
-
       {/* 内容区域 */}
       <ScrollView className="career-exploration-page__scroll" scrollY>
         <View className="career-exploration-page__content">

@@ -68,7 +68,7 @@ export function buildHierarchy(majors: Major[]): Major[] {
 }
 
 export const EDU_LEVEL_LABELS: Record<string, string> = {
-  gao_ben: "高职本科",
+  gao_ben: "本科(职业)",
   zhuan_ke: "专科",
   ben_ke: "本科",
 }

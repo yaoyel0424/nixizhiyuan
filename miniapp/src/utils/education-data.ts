@@ -26,7 +26,7 @@ export function getEducationLevelLabel(level: string): string {
     case "ben":
       return "本科"
     case "gao_ben":
-      return "高职本科"
+      return "本科(职业)"
     case "zhuan":
       return "专科"
     default:

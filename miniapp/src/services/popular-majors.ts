@@ -36,7 +36,7 @@ export const getPopularMajors = async (
 
 /**
  * 根据教育层次获取热门专业列表（路径参数接口）
- * @param level1 教育层次：ben-本科, zhuan-专科, gao_ben-高职本科
+ * @param level1 教育层次：ben-本科, zhuan-专科, gao_ben-本科(职业)
  * @param params 其他查询参数（可选）
  * @returns 热门专业列表及分页信息
  */

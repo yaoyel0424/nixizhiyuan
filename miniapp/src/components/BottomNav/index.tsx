@@ -67,6 +67,9 @@ export function BottomNav() {
   const isSchoolExplorationPage = 
     (currentPath === '/pages/majors/intended/index' && currentTab === '专业赛道') ||
     currentPath === '/pages/majors/intended/schools/index'
+  
+  // 判断是否为专业探索页面（热门专业评估页面）
+  const isPopularMajorsPage = currentPath === '/pages/assessment/popular-majors/index'
 
   return (
     <View className="bottom-nav">
@@ -76,13 +79,15 @@ export function BottomNav() {
             const baseHref = item.href.split("?")[0]
             // 特殊处理：探索成果tab，所有 /pages/assessment 下的页面都激活
             // 以及院校探索相关的页面（专业赛道tab和院校列表页面）
+            // 但是专业探索页面（popular-majors）应该激活主页 tab
             let isActive: boolean
             if (baseHref === "/pages/index/index") {
-              isActive = currentPath === "/pages/index/index"
+              // 主页 tab：主页本身或专业探索页面都激活
+              isActive = currentPath === "/pages/index/index" || isPopularMajorsPage
             } else if (baseHref === "/pages/assessment/index") {
-              // 探索成果tab：所有 assessment 下的页面都激活
+              // 探索成果tab：所有 assessment 下的页面都激活（除了专业探索页面）
               // 以及院校探索相关的页面
-              isActive = currentPath.startsWith("/pages/assessment") || isSchoolExplorationPage
+              isActive = (currentPath.startsWith("/pages/assessment") && !isPopularMajorsPage) || isSchoolExplorationPage
             } else if (baseHref === "/pages/majors/intended/index") {
               // 志愿方案tab：只有意向志愿tab激活，院校探索相关页面不激活
               isActive = currentPath.startsWith(baseHref) && !isSchoolExplorationPage

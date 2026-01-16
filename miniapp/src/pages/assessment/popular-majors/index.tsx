@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
-import { Input } from '@/components/ui/Input'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
@@ -83,99 +82,6 @@ const isScienceMajor = (code: string): boolean => {
   return sciencePrefixes.includes(prefix)
 }
 
-// 自定义导航栏组件
-function SystemNavBar({ searchQuery, onSearchChange, subjectFilter, onSubjectFilterChange, onHeightChange }: {
-  searchQuery: string
-  onSearchChange: (value: string) => void
-  subjectFilter: 'all' | 'science' | 'liberal'
-  onSubjectFilterChange: (filter: 'all' | 'science' | 'liberal') => void
-  onHeightChange?: (height: number) => void
-}) {
-  const [systemInfo, setSystemInfo] = useState<any>(null)
-  const [navBarHeight, setNavBarHeight] = useState<number>(0)
-
-  useEffect(() => {
-    const info = Taro.getSystemInfoSync()
-    setSystemInfo(info)
-    
-    // 计算导航栏总高度并通知父组件
-    if (info) {
-      const statusBarHeight = info.statusBarHeight || 0
-      const navigationBarHeight = 44 // 微信导航栏标准高度（px）
-      // 搜索框高度 72rpx + 上margin 40rpx + 下margin 16rpx = 128rpx（过滤标签已隐藏）
-      // rpx 转 px: 1rpx = screenWidth / 750
-      const screenWidth = info.screenWidth || 375
-      const rpxToPx = screenWidth / 750
-      const searchHeight = 128 * rpxToPx // 搜索框区域高度（过滤标签已隐藏）
-      const totalHeight = statusBarHeight + navigationBarHeight + searchHeight
-      setNavBarHeight(totalHeight)
-      onHeightChange?.(totalHeight)
-    }
-  }, [onHeightChange])
-
-  if (!systemInfo) return null
-
-  const statusBarHeight = systemInfo.statusBarHeight || 0
-  const navigationBarHeight = 44 // 微信导航栏标准高度（px）
-  const screenWidth = systemInfo.screenWidth || 375
-  const rpxToPx = screenWidth / 750
-  const searchHeight = 128 * rpxToPx // 搜索框区域高度（过滤标签已隐藏）
-
-  return (
-    <View 
-      className="popular-majors-nav-bar"
-      style={{ 
-        height: `${statusBarHeight + navigationBarHeight + searchHeight}px`, // 搜索框区域高度（过滤标签已隐藏）
-        paddingTop: `${statusBarHeight}px`,
-        backgroundColor: '#f0f7ff'
-      }}
-    >
-      <View className="popular-majors-nav-bar__content">
-        <View className="popular-majors-nav-bar__header">
-          <View className="popular-majors-nav-bar__back" onClick={() => Taro.navigateBack()}>
-            <Text className="popular-majors-nav-bar__back-icon">←</Text>
-          </View>
-          <View className="popular-majors-nav-bar__title">热门专业</View>
-          <View className="popular-majors-nav-bar__placeholder"></View>
-        </View>
-        
-        {/* 搜索框 */}
-        <View className="popular-majors-nav-bar__search">
-          <View className="popular-majors-nav-bar__search-icon">🔍</View>
-          <Input
-            className="popular-majors-nav-bar__search-input"
-            placeholder="搜索专业名称或代码..."
-            value={searchQuery}
-            onInput={(e) => onSearchChange(e.detail.value)}
-          />
-        </View>
-
-        {/* 理科/文科过滤标签 */}
-        {/* <View className="popular-majors-nav-bar__filters">
-          <View
-            className={`popular-majors-nav-bar__filter ${subjectFilter === 'all' ? 'popular-majors-nav-bar__filter--active' : ''}`}
-            onClick={() => onSubjectFilterChange('all')}
-          >
-            <Text className="popular-majors-nav-bar__filter-text">全部</Text>
-          </View>
-          <View
-            className={`popular-majors-nav-bar__filter ${subjectFilter === 'science' ? 'popular-majors-nav-bar__filter--active' : ''}`}
-            onClick={() => onSubjectFilterChange('science')}
-          >
-            <Text className="popular-majors-nav-bar__filter-text">理科</Text>
-          </View>
-          <View
-            className={`popular-majors-nav-bar__filter ${subjectFilter === 'liberal' ? 'popular-majors-nav-bar__filter--active' : ''}`}
-            onClick={() => onSubjectFilterChange('liberal')}
-          >
-            <Text className="popular-majors-nav-bar__filter-text">文科</Text>
-          </View>
-        </View> */}
-      </View>
-    </View>
-  )
-}
-
 export default function PopularMajorsPage() {
   // 检查问卷完成状态
   const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
@@ -193,18 +99,8 @@ export default function PopularMajorsPage() {
   const [loveEnergy, setLoveEnergy] = useState<number | null>(null)
   // 保存每个专业的测评结果 { majorCode: loveEnergy }
   const [majorResults, setMajorResults] = useState<Record<string, number>>({})
-  // 搜索关键词
-  const [searchQuery, setSearchQuery] = useState('')
   // 学科过滤：all-全部, science-理科, liberal-文科
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all')
-  // 导航栏高度，用于计算页面内容的 padding-top
-  const [navBarHeight, setNavBarHeight] = useState(0)
-  // 系统信息，用于rpx转px
-  const [systemInfo, setSystemInfo] = useState<any>(null)
-  // 分页相关
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const [total, setTotal] = useState(0)
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -212,11 +108,6 @@ export default function PopularMajorsPage() {
       setShowQuestionnaireModal(true)
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
-
-  useEffect(() => {
-    const info = Taro.getSystemInfoSync()
-    setSystemInfo(info)
-  }, [])
 
   // 将 API 响应数据转换为页面使用的格式
   const transformMajorData = (apiData: PopularMajorResponse): Major => {
@@ -235,19 +126,15 @@ export default function PopularMajorsPage() {
     }
   }
 
-  // 加载热门专业数据
+  // 加载热门专业数据（一次性加载所有数据）
   const loadMajors = useCallback(async (
-    pageNum: number = 1,
-    reset: boolean = false,
-    category?: 'ben' | 'gz_ben' | 'zhuan',
-    query?: string
+    category?: 'ben' | 'gz_ben' | 'zhuan'
   ) => {
     try {
       setLoading(true)
       
       // 使用传入的参数或当前状态
       const currentCategory = category ?? selectedCategory
-      const currentQuery = query ?? searchQuery
       
       // 映射分类到 API 的 level1 参数
       const level1Map: Record<string, string> = {
@@ -256,40 +143,19 @@ export default function PopularMajorsPage() {
         'zhuan': 'zhuan',
       }
       
+      // 一次性加载所有数据，设置 limit 为 100（足够覆盖30条左右的数据）
       const params: any = {
-        page: pageNum,
-        limit: 20, // 每页20条
+        limit: 100,
         level1: level1Map[currentCategory],
-      }
-
-      // 如果有搜索关键词，添加到参数中
-      if (currentQuery.trim()) {
-        // 判断是专业名称还是代码
-        if (/^\d+$/.test(currentQuery.trim())) {
-          params.code = currentQuery.trim()
-        } else {
-          params.name = currentQuery.trim()
-        }
       }
 
       const response = await getPopularMajors(params)
       
       if (response && response.items) {
         const transformedMajors = response.items.map(transformMajorData)
-        
-        if (reset) {
-          setMajors(transformedMajors)
-        } else {
-          setMajors(prev => [...prev, ...transformedMajors])
-        }
-        
-        setTotal(response.meta.total)
-        setHasMore(pageNum < response.meta.totalPages)
+        setMajors(transformedMajors)
       } else {
-        if (reset) {
-          setMajors([])
-        }
-        setHasMore(false)
+        setMajors([])
       }
     } catch (error) {
       console.error('加载热门专业数据失败:', error)
@@ -297,33 +163,17 @@ export default function PopularMajorsPage() {
         title: '加载数据失败',
         icon: 'none'
       })
-      if (reset) {
-        setMajors([])
-      }
+      setMajors([])
     } finally {
       setLoading(false)
     }
-  }, [selectedCategory, searchQuery])
+  }, [selectedCategory])
 
   // 当分类改变时，重新加载数据
   useEffect(() => {
-    setPage(1)
-    setHasMore(true)
-    loadMajors(1, true, selectedCategory, searchQuery)
+    loadMajors(selectedCategory)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory])
-
-  // 搜索防抖处理
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1)
-      setHasMore(true)
-      loadMajors(1, true, selectedCategory, searchQuery)
-    }, 500) // 500ms 防抖
-
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery])
 
   // 从本地存储加载已保存的测评结果
   useEffect(() => {
@@ -339,7 +189,7 @@ export default function PopularMajorsPage() {
 
   const categories = [
     { key: 'ben' as const, label: '本科' },
-    { key: 'gz_ben' as const, label: '高职本科' },
+    { key: 'gz_ben' as const, label: '本科(职业)' },
     { key: 'zhuan' as const, label: '专科' },
   ]
 
@@ -358,14 +208,6 @@ export default function PopularMajorsPage() {
     return filtered
   }, [majors, subjectFilter])
 
-  // 加载更多数据
-  const loadMore = useCallback(() => {
-    if (!loading && hasMore) {
-      const nextPage = page + 1
-      setPage(nextPage)
-      loadMajors(nextPage, false, selectedCategory, searchQuery)
-    }
-  }, [page, hasMore, loading, selectedCategory, searchQuery, loadMajors])
 
   // 随机选择8道题目（从本地问卷数据）
   const loadRandomQuestions = async () => {
@@ -541,9 +383,9 @@ export default function PopularMajorsPage() {
       }
 
       // 答案已经在每答一题时同步到数据库，这里只需要刷新列表数据
-      // 刷新当前页数据以获取最新的 progress 和 score
+      // 刷新数据以获取最新的 progress 和 score
       try {
-        loadMajors(page, true, selectedCategory, searchQuery)
+        loadMajors(selectedCategory)
       } catch (error) {
         console.error('刷新列表数据失败:', error)
       }
@@ -581,21 +423,7 @@ export default function PopularMajorsPage() {
 
   return (
     <PageContainer>
-      {/* 自定义导航栏 */}
-      <SystemNavBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        subjectFilter={subjectFilter}
-        onSubjectFilterChange={setSubjectFilter}
-        onHeightChange={setNavBarHeight}
-      />
-      
-      <View 
-        className="popular-majors-page"
-        style={{ 
-          paddingTop: navBarHeight > 0 ? `${navBarHeight}px` : '0'
-        }}
-      >
+      <View className="popular-majors-page">
         {/* 头部横幅 */}
         <View className="popular-majors-page__header">
           <View className="popular-majors-page__header-content">
@@ -692,30 +520,32 @@ export default function PopularMajorsPage() {
                       </View>
                     </View>
                     <View className="popular-majors-page__major-actions">
-                      {/* 显示测评结果：优先使用接口返回的分数，否则使用本地存储的数据 */}
-                      {isCompleted && (score !== undefined && score !== null) ? (
-                        <View className="popular-majors-page__major-result">
-                          <Text className="popular-majors-page__major-result-icon">⚡</Text>
-                          <Text className="popular-majors-page__major-result-value">
-                            {Number(score).toFixed(2)}
-                          </Text>
-                        </View>
-                      ) : hasLocalResult ? (
-                        <View className="popular-majors-page__major-result">
-                          <Text className="popular-majors-page__major-result-icon">⚡</Text>
-                          <Text className="popular-majors-page__major-result-value">
-                            {localResultEnergy.toFixed(2)}
-                          </Text>
-                        </View>
-                      ) : null}
                       {isCompleted || hasLocalResult ? (
-                        <Button
-                          size="sm"
-                          className="popular-majors-page__major-button popular-majors-page__major-button--retake"
-                          onClick={() => handleStartAssessment(major)}
-                        >
-                          🔄 重新测评
-                        </Button>
+                        <View className="popular-majors-page__major-actions-row">
+                          {/* 显示测评结果：优先使用接口返回的分数，否则使用本地存储的数据 */}
+                          {isCompleted && (score !== undefined && score !== null) ? (
+                            <View className="popular-majors-page__major-result">
+                              <Text className="popular-majors-page__major-result-icon">⚡</Text>
+                              <Text className="popular-majors-page__major-result-value">
+                                {Number(score).toFixed(2)}
+                              </Text>
+                            </View>
+                          ) : hasLocalResult ? (
+                            <View className="popular-majors-page__major-result">
+                              <Text className="popular-majors-page__major-result-icon">⚡</Text>
+                              <Text className="popular-majors-page__major-result-value">
+                                {localResultEnergy.toFixed(2)}
+                              </Text>
+                            </View>
+                          ) : null}
+                          <Button
+                            size="sm"
+                            className="popular-majors-page__major-button popular-majors-page__major-button--retake"
+                            onClick={() => handleStartAssessment(major)}
+                          >
+                            🔄 重测
+                          </Button>
+                        </View>
                       ) : (
                         <Button
                           size="sm"
@@ -757,29 +587,7 @@ export default function PopularMajorsPage() {
         {!loading && filteredMajors.length === 0 && (
           <View className="popular-majors-page__empty">
             <Text className="popular-majors-page__empty-text">
-              {searchQuery || subjectFilter !== 'all' ? '未找到匹配的专业' : '暂无数据'}
-            </Text>
-          </View>
-        )}
-
-        {/* 加载更多 */}
-        {!loading && hasMore && filteredMajors.length > 0 && (
-          <View className="popular-majors-page__load-more">
-            <Button
-              variant="outline"
-              onClick={loadMore}
-              className="popular-majors-page__load-more-button"
-            >
-              加载更多
-            </Button>
-          </View>
-        )}
-
-        {/* 没有更多数据提示 */}
-        {!loading && !hasMore && filteredMajors.length > 0 && (
-          <View className="popular-majors-page__no-more">
-            <Text className="popular-majors-page__no-more-text">
-              已加载全部 {total} 条数据
+              {subjectFilter !== 'all' ? '未找到匹配的专业' : '暂无数据'}
             </Text>
           </View>
         )}
