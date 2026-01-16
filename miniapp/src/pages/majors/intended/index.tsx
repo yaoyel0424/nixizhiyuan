@@ -1942,9 +1942,10 @@ export default function IntendedMajorsPage() {
                         </View>
                         <Button
                           onClick={() => {
-                            // 传递 majorId 和 majorCode，院校列表页面可以根据 majorId 调用 API
+                            // 传递 majorId、majorCode 和 majorName，院校列表页面可以根据 majorId 调用 API
+                            const majorNameParam = encodeURIComponent(major.name || '')
                             Taro.navigateTo({
-                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}`
+                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}&majorName=${majorNameParam}`
                             })
                           }}
                           className="intended-majors-page__major-item-link"

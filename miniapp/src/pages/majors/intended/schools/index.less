@@ -86,12 +86,25 @@
   min-width: 0;
 }
 
+.schools-page__school-item-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
 .schools-page__school-item-name {
   font-size: 32rpx;
   font-weight: 600;
   color: #000;
-  margin-bottom: 8rpx;
-  display: block;
+  display: inline-block;
+}
+
+.schools-page__school-item-location-inline {
+  font-size: 24rpx;
+  color: #666;
+  display: inline-block;
 }
 
 .schools-page__school-item-group-button {
@@ -148,35 +161,6 @@
   align-items: flex-end;
   gap: 8rpx;
   flex-shrink: 0;
-}
-
-.schools-page__school-item-rank {
-  display: flex;
-  align-items: center;
-  gap: 4rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  
-  &--positive {
-    color: #10b981;
-  }
-  
-  &--negative {
-    color: #ef4444;
-  }
-}
-
-.schools-page__school-item-rank-text {
-  font-size: 24rpx;
-}
-
-.schools-page__school-item-rank-icon {
-  font-size: 24rpx;
-}
-
-.schools-page__school-item-rank-value {
-  font-size: 24rpx;
-  font-weight: 600;
 }
 
 .schools-page__school-item-wishlist-button {
@@ -239,6 +223,131 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx;
+  margin-top: 8rpx;
+}
+
+.schools-page__school-item-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e5e7eb;
+  width: calc(100% + 48rpx);
+  margin-left: -24rpx;
+  margin-right: -24rpx;
+  padding-left: 24rpx;
+  padding-right: 24rpx;
+  box-sizing: border-box;
+}
+
+.schools-page__school-item-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 12rpx;
+  background: #f9fafb;
+  border-radius: 8rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.schools-page__school-item-plan-major {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 28rpx;
+}
+
+.schools-page__school-item-plan-major-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.schools-page__school-item-plan-major-value {
+  color: #000;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.schools-page__school-item-plan-major-action {
+  cursor: pointer;
+  font-size: 24rpx;
+  color: #1A4099;
+  display: inline-block;
+  margin-left: 8rpx;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.schools-page__school-item-plan-major-action--active {
+  opacity: 1;
+  color: #1A4099;
+}
+
+.schools-page__school-item-plan-remark {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+.schools-page__school-item-plan-remark-text {
+  color: #666;
+}
+
+.schools-page__school-item-plan-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 24rpx;
+  color: #666;
+  width: 100%;
+  box-sizing: border-box;
+  margin-left: -12rpx;
+  margin-right: -12rpx;
+  padding-left: 12rpx;
+  padding-right: 12rpx;
+  flex-wrap: wrap;
+}
+
+.schools-page__school-item-plan-info-text {
+  color: #666;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.schools-page__school-item-plan-info-group {
+  cursor: pointer;
+  color: #1A4099;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.schools-page__school-item-plan-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.schools-page__school-item-plan-score {
+  display: flex;
+  gap: 16rpx;
+  font-size: 24rpx;
+}
+
+.schools-page__school-item-plan-score-text {
+  color: #1A4099;
+  font-weight: 500;
 }
 
 .schools-page__school-item-feature {
