@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '@/redis/redis.service';
 import { CACHE_KEY, CACHE_TTL_KEY } from '../decorators/cache.decorator';
@@ -32,6 +32,7 @@ export class CacheInterceptor implements NestInterceptor {
     next: CallHandler,
   ): Promise<Observable<any>> {
     const request = context.switchToHttp().getRequest<Request>();
+    const response = context.switchToHttp().getResponse<Response>();
     const handler = context.getHandler();
     const controller = context.getClass();
 
@@ -73,10 +74,19 @@ export class CacheInterceptor implements NestInterceptor {
       return next.handle().pipe(
         tap(async (data) => {
           try {
+            // 检查 HTTP 状态码，只有成功状态（2xx）才缓存
+            const statusCode = response.statusCode;
+            if (statusCode < 200 || statusCode >= 300) {
+              this.logger.debug(
+                `状态码 ${statusCode} 不在成功范围（2xx），跳过缓存: ${cacheKey}`,
+              );
+              return;
+            }
+
             // 将响应数据序列化为 JSON 并存入 Redis
             const serializedData = JSON.stringify(data);
             await this.redisService.set(cacheKey, serializedData, ttl);
-            this.logger.debug(`缓存已设置: ${cacheKey}, TTL: ${ttl}秒`);
+            this.logger.debug(`缓存已设置: ${cacheKey}, TTL: ${ttl}秒, 状态码: ${statusCode}`);
           } catch (error) {
             // 缓存失败不影响正常响应
             this.logger.warn(`缓存设置失败: ${cacheKey}`, error);

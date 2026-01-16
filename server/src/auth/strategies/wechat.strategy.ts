@@ -28,6 +28,7 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
     const encryptedData = req.body?.encryptedData;
     const iv = req.body?.iv;
     const rawData = req.body?.rawData; // 原始 JSON 字符串，无需解密
+    const usePhoneAsNickname = req.body?.usePhoneAsNickname === true; // 是否将手机号作为昵称
 
     // 调试日志：检查接收到的数据
     console.log('微信登录请求数据:', {
@@ -35,6 +36,7 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
       hasRawData: !!rawData,
       hasEncryptedData: !!encryptedData,
       hasIv: !!iv,
+      usePhoneAsNickname,
       rawDataLength: rawData?.length || 0,
     });
 
@@ -92,22 +94,48 @@ export class WechatStrategy extends PassportStrategy(Strategy, 'wechat') {
             iv,
             sessionData.session_key,
           );
-          console.log('解密成功，用户信息:', {
-            nickName: decryptedData.nickName,
-            avatarUrl: decryptedData.avatarUrl,
-            unionId: decryptedData.unionId,
-          });
-          userInfo = {
-            ...userInfo,
-            nickname: decryptedData.nickName || decryptedData.nickname,
-            headimgurl: decryptedData.avatarUrl || decryptedData.headimgurl,
-            sex: decryptedData.gender || decryptedData.sex,
-            province: decryptedData.province,
-            city: decryptedData.city,
-            country: decryptedData.country,
-            // 如果解密数据中有 unionId，优先使用（因为更可靠）
-            unionid: decryptedData.unionId || decryptedData.unionid || userInfo.unionid,
-          };
+          
+          // 检查是否是手机号数据（手机号数据有 phoneNumber 字段）
+          if (decryptedData.phoneNumber) {
+            // 这是手机号数据
+            console.log('解密成功，手机号信息:', {
+              phoneNumber: decryptedData.phoneNumber,
+              purePhoneNumber: decryptedData.purePhoneNumber,
+              countryCode: decryptedData.countryCode,
+            });
+            
+            // 如果指定将手机号作为昵称，则使用手机号作为昵称
+            if (usePhoneAsNickname) {
+              userInfo = {
+                ...userInfo,
+                nickname: decryptedData.phoneNumber || decryptedData.purePhoneNumber, 
+              };
+              console.log('已将手机号设置为昵称:', userInfo.nickname);
+            } else {
+              // 只保存手机号，不设置为昵称
+              userInfo = {
+                ...userInfo, 
+              };
+            }
+          } else {
+            // 这是用户信息数据（头像、昵称等）
+            console.log('解密成功，用户信息:', {
+              nickName: decryptedData.nickName,
+              avatarUrl: decryptedData.avatarUrl,
+              unionId: decryptedData.unionId,
+            });
+            userInfo = {
+              ...userInfo,
+              nickname: decryptedData.nickName || decryptedData.nickname,
+              headimgurl: decryptedData.avatarUrl || decryptedData.headimgurl,
+              sex: decryptedData.gender || decryptedData.sex,
+              province: decryptedData.province,
+              city: decryptedData.city,
+              country: decryptedData.country,
+              // 如果解密数据中有 unionId，优先使用（因为更可靠）
+              unionid: decryptedData.unionId || decryptedData.unionid || userInfo.unionid,
+            };
+          }
         } catch (error) {
           // 解密失败不影响登录，只是没有用户详细信息
           console.warn('解密用户信息失败:', error);

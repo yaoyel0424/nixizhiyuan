@@ -19,6 +19,7 @@ import { GroupedChoiceResponseDto, SchoolGroupDto, MajorGroupGroupDto, ChoiceInG
 import { SchoolSimpleDto } from '@/enroll-plan/dto/enrollment-plan-with-scores.dto';
 import { PROVINCE_NAME_TO_CODE, PROVINCE_CODE_TO_VOLUNTEER_COUNT } from '@/config/province';
 import { plainToInstance } from 'class-transformer';
+import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
  * 志愿选择服务
@@ -67,7 +68,7 @@ export class ChoicesService {
 
     // 3. 从用户信息中获取字段
     const province = user.province || null;
-    const enrollmentType = user.enrollType || null;
+    const enrollmentType = "普通类";
     const score = user.score || null;
     const preferredSubjects = user.preferredSubjects || null;
     const secondarySubjects = user.secondarySubjects
@@ -402,7 +403,13 @@ export class ChoicesService {
       );
     }
 
-    // 5. 查询用户的志愿选择列表
+    // 5. 关联查询所有相关数据（专业组、学校、学校详情）
+    queryBuilder
+      .leftJoinAndSelect('choice.majorGroup', 'majorGroup')
+      .leftJoinAndSelect('choice.school', 'school')
+      .leftJoinAndSelect('school.schoolDetail', 'schoolDetail');
+
+    // 6. 查询用户的志愿选择列表（包含关联数据）
     const choices = await queryBuilder
       .orderBy('choice.createdAt', 'DESC') // 按创建时间倒序排列，最新的在前
       .getMany();
@@ -424,366 +431,165 @@ export class ChoicesService {
       });
     }
 
-    // 4. 查询所有关联的专业组信息
-    const mgIds = choices
-      .map((c) => c.mgId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    const majorGroupsMap = new Map<number, MajorGroup>();
-    if (mgIds.length > 0) {
-      const majorGroups = await this.majorGroupRepository.find({
-        where: { mgId: In(mgIds) },
-      });
-      majorGroups.forEach((mg) => {
-        if (mg.mgId !== null) {
-          majorGroupsMap.set(mg.mgId, mg);
-        }
-      });
-    }
-
-    // 5. 查询所有关联的学校信息
-    const schoolCodes = choices
-      .map((c) => c.schoolCode)
-      .filter((code): code is string => code !== null && code !== undefined);
-
-    const schoolsMap = new Map<string, School>();
-    const schoolDetailsMap = new Map<string, SchoolDetail>();
-    if (schoolCodes.length > 0) {
-      const schools = await this.schoolRepository.find({
-        where: { code: In(schoolCodes) },
-      });
-      schools.forEach((school) => {
-        schoolsMap.set(school.code, school);
-      });
-
-      const schoolDetails = await this.schoolDetailRepository.find({
-        where: { code: In(schoolCodes) },
-      });
-      schoolDetails.forEach((detail) => {
-        schoolDetailsMap.set(detail.code, detail);
-      });
-    }
-
-    // 6. 构建响应数据
-    const responseDataList = choices.map((choice) => {
-      const majorGroup = choice.mgId ? majorGroupsMap.get(choice.mgId) || null : null;
-      const school = choice.schoolCode ? schoolsMap.get(choice.schoolCode) || null : null;
-      const schoolDetail = choice.schoolCode
-        ? schoolDetailsMap.get(choice.schoolCode) || null
-        : null;
-
-      return {
-        ...choice,
-        userId: choice.userId,
-        majorGroupId: choice.mgId,
-        majorGroup: majorGroup
-          ? {
-              schoolCode: majorGroup.schoolCode,
-              province: majorGroup.province,
-              year: majorGroup.year,
-              subjectSelectionMode: majorGroup.subjectSelectionMode,
-              batch: majorGroup.batch,
-              mgId: majorGroup.mgId,
-              mgName: majorGroup.mgName,
-              mgInfo: majorGroup.mgInfo,
-            }
-          : null,
-        majorScores: choice.majorScores || [],
-        school: school
-          ? {
-              code: school.code,
-              name: school.name,
-              nature: school.nature,
-              level: school.level,
-              belong: school.belong,
-              categories: school.categories,
-              features: school.features,
-              provinceName: school.provinceName,
-              cityName: school.cityName,
-              enrollmentRate: schoolDetail?.enrollmentRate ?? null,
-              employmentRate: schoolDetail?.employmentRate ?? null,
-            }
-          : null,
-      };
+    // 7. 定义数据转换辅助函数（用于将实体转换为 DTO 格式，手动处理 ID 编码）
+    const buildChoiceInGroup = (choice: Choice) => ({
+      id: choice.id,
+      userId: choice.userId,
+      schoolCode: choice.schoolCode || '',
+      majorGroupId: choice.mgId ? IdTransformUtil.encode(choice.mgId) : null,
+      mgIndex: choice.mgIndex,
+      majorIndex: choice.majorIndex,
+      majorGroupInfo: choice.majorGroupInfo,
+      province: choice.province,
+      year: choice.year,
+      batch: choice.batch,
+      subjectSelectionMode: choice.subjectSelectionMode,
+      studyPeriod: choice.studyPeriod,
+      enrollmentQuota: choice.enrollmentQuota,
+      enrollmentType: choice.enrollmentType,
+      remark: choice.remark,
+      tuitionFee: choice.tuitionFee,
+      enrollmentMajor: choice.enrollmentMajor,
+      curUnit: choice.curUnit,
+      majorScores: (choice.majorScores || []).map((score) => ({
+        schoolCode: score.schoolCode,
+        province: score.province,
+        year: score.year,
+        subjectSelectionMode: score.subjectSelectionMode,
+        batch: score.batch,
+        minScore: score.minScore,
+        minRank: score.minRank,
+        admitCount: score.admitCount,
+        enrollmentType: score.enrollmentType,
+      })),
     });
 
-    // 7. 转换为响应 DTO 列表
-    const choiceResponseList = plainToInstance(ChoiceResponseDto, responseDataList, {
-      excludeExtraneousValues: true,
+    const buildMajorGroupSimple = (majorGroup: MajorGroup) => ({
+      schoolCode: majorGroup.schoolCode,
+      province: majorGroup.province,
+      year: majorGroup.year,
+      subjectSelectionMode: majorGroup.subjectSelectionMode,
+      batch: majorGroup.batch,
+      mgId: majorGroup.mgId ? IdTransformUtil.encode(majorGroup.mgId) : null,
+      mgName: majorGroup.mgName,
+      mgInfo: majorGroup.mgInfo,
     });
 
-    // 8. 对结果进行分组：按照 mgIndex 分组
-    const grouped: SchoolGroupDto[] = [];
+    const buildSchoolSimple = (school: School, schoolDetail: SchoolDetail | null) => ({
+      code: school.code,
+      name: school.name,
+      nature: school.nature,
+      level: school.level,
+      belong: school.belong,
+      categories: school.categories,
+      features: school.features,
+      provinceName: school.provinceName,
+      cityName: school.cityName,
+      enrollmentRate: schoolDetail?.enrollmentRate ?? null,
+      employmentRate: schoolDetail?.employmentRate ?? null,
+    });
 
-    // 8.1 分离有 majorGroup 和没有 majorGroup 的数据
-    const withMajorGroup = choiceResponseList.filter((choice) => choice.majorGroup !== null);
-    const withoutMajorGroup = choiceResponseList.filter((choice) => choice.majorGroup === null);
+    // 8. 按 mgIndex 分组并构建响应结构（同时计算统计信息）
+    // 8.1 将所有 choices 按 mgIndex 分组（统一处理，不区分是否有 majorGroup）
+    const mgIndexGroupsMap = new Map<number, Choice[]>();
+    const uniqueMgIndexes = new Set<number>();
 
-    // 8.2 对有 majorGroup 的数据，按照 mgIndex 进行分组
-    // 使用 mgIndex 作为分组依据
-    const mgIndexGroupsMap = new Map<number, ChoiceResponseDto[]>();
-
-    for (const choice of withMajorGroup) {
-      if (!choice.majorGroup || choice.mgIndex === null || choice.mgIndex === undefined) {
-        continue;
-      }
-
-      const mgIndex = choice.mgIndex;
-
-      if (!mgIndexGroupsMap.has(mgIndex)) {
-        mgIndexGroupsMap.set(mgIndex, []);
-      }
-
-      mgIndexGroupsMap.get(mgIndex)!.push(choice);
-    }
-
-    // 8.3 构建分组结构（按 mgIndex）
-    for (const [mgIndex, choices] of mgIndexGroupsMap.entries()) {
-      if (choices.length === 0) {
-        continue;
-      }
-
-      // 从第一个 choice 中获取 schoolCode 和 school 信息
-      const firstChoice = choices[0];
-      const schoolCode = firstChoice.schoolCode;
-
-      if (!schoolCode) {
-        continue;
-      }
-
-      // 从 schoolsMap 中获取 school 信息
-      const school = schoolsMap.get(schoolCode);
-      const schoolDetail = schoolDetailsMap.get(schoolCode);
-
-      if (!school) {
-        continue;
-      }
-
-      // 构建 school 对象
-      const schoolDto: SchoolSimpleDto = {
-        code: school.code,
-        name: school.name,
-        nature: school.nature,
-        level: school.level,
-        belong: school.belong,
-        categories: school.categories,
-        features: school.features,
-        provinceName: school.provinceName,
-        cityName: school.cityName,
-        enrollmentRate: schoolDetail?.enrollmentRate ?? null,
-        employmentRate: schoolDetail?.employmentRate ?? null,
-      };
-
-      // 按 majorGroupId 对 choices 进行二级分组
-      // 注意：同一个 mgIndex 下的 choices 应该有相同的 majorGroupId，但为了兼容性，仍然按 majorGroupId 分组
-      const majorGroupsMap = new Map<number | null, ChoiceResponseDto[]>();
-      for (const choice of choices) {
-        // 使用 majorGroupId 进行分组（这是已编码的值，但同一个专业组的 majorGroupId 应该相同）
-        const majorGroupId = choice.majorGroupId;
-        if (majorGroupId === null || majorGroupId === undefined) {
-          this.logger.warn(
-            `mgIndex ${mgIndex} 下的 choice ${choice.id} 的 majorGroupId 为空`,
-          );
-          continue;
-        }
-        if (!majorGroupsMap.has(majorGroupId)) {
-          majorGroupsMap.set(majorGroupId, []);
-        }
-        majorGroupsMap.get(majorGroupId)!.push(choice);
-      }
-
-      this.logger.debug(
-        `mgIndex ${mgIndex} 下的 choices 数量: ${choices.length}, majorGroupsMap 大小: ${majorGroupsMap.size}`,
-      );
-
-      const majorGroups: MajorGroupGroupDto[] = [];
-      for (const [majorGroupId, mgChoices] of majorGroupsMap.entries()) {
-        if (mgChoices.length === 0) {
-          continue;
-        }
-        
-        const firstChoiceInGroup = mgChoices[0];
-        // 由于 withMajorGroup 已经过滤了 majorGroup !== null 的数据，这里应该总是有 majorGroup
-        if (!firstChoiceInGroup) {
-          continue;
-        }
-
-        // 检查 majorGroup 是否存在
-        if (!firstChoiceInGroup.majorGroup) {
-          this.logger.warn(
-            `mgIndex ${mgIndex}, majorGroupId ${majorGroupId} 下的 choice ${firstChoiceInGroup.id} 没有 majorGroup，但 majorGroupId 为 ${firstChoiceInGroup.majorGroupId}`,
-          );
-          continue;
-        }
-
-        this.logger.debug(
-          `mgIndex ${mgIndex}, majorGroupId ${majorGroupId} 下的 choices 数量: ${mgChoices.length}`,
-        );
-
-        // 对 choices 按照 majorIndex 排序
-        mgChoices.sort((a, b) => {
-          return (a.majorIndex || 0) - (b.majorIndex || 0);
-        });
-
-        // 移除 choices 中的 school 和 majorGroup 信息
-        const choicesInGroup = mgChoices.map((choice) => {
-          const { school, majorGroup, ...choiceWithoutGroup } = choice;
-          return choiceWithoutGroup;
-        });
-
-        // 转换为 ChoiceInGroupDto
-        // 注意：需要先将 DTO 实例转换为普通对象，以便 @Transform 装饰器能够生效
-        const plainChoices = choicesInGroup.map((choice) => {
-          // 将 DTO 实例转换为普通对象
-          return JSON.parse(JSON.stringify(choice));
-        });
-        
-        const choicesInGroupDto = plainToInstance(ChoiceInGroupDto, plainChoices, {
-          excludeExtraneousValues: true,
-          enableImplicitConversion: true, // 启用隐式转换，使 @Transform 装饰器生效
-        });
-
-        majorGroups.push({
-          majorGroup: firstChoiceInGroup.majorGroup,
-          choices: choicesInGroupDto,
-        });
-      }
-
-      // 对 majorGroups 按照 majorGroupId 排序（使用第一个 choice 的 majorGroupId）
-      majorGroups.sort((a, b) => {
-        // 由于 mgId 可能被 @Exclude 排除，我们无法直接访问
-        // 但我们可以通过比较 majorGroup 的其他字段来排序，或者使用 mgChoices 中的 majorGroupId
-        // 为了简单，我们按照第一个 choice 的 majorGroupId 排序
-        const mgIdA = a.majorGroup?.mgId || 0;
-        const mgIdB = b.majorGroup?.mgId || 0;
-        return mgIdA - mgIdB;
-      });
-
-      grouped.push({
-        mgIndex, // 添加 mgIndex
-        school: schoolDto,
-        majorGroups,
-      });
-    }
-
-    // 8.4 处理没有 majorGroup 的数据，按 mgIndex 分组
-    const ungroupedMgIndexMap = new Map<number, ChoiceResponseDto[]>();
-    for (const choice of withoutMajorGroup) {
+    for (const choice of choices) {
       if (choice.mgIndex === null || choice.mgIndex === undefined) {
         continue;
       }
       const mgIndex = choice.mgIndex;
-      if (!ungroupedMgIndexMap.has(mgIndex)) {
-        ungroupedMgIndexMap.set(mgIndex, []);
+      uniqueMgIndexes.add(mgIndex);
+      if (!mgIndexGroupsMap.has(mgIndex)) {
+        mgIndexGroupsMap.set(mgIndex, []);
       }
-      ungroupedMgIndexMap.get(mgIndex)!.push(choice);
+      mgIndexGroupsMap.get(mgIndex)!.push(choice);
     }
 
-    // 为没有 majorGroup 的数据创建分组
-    for (const [mgIndex, choices] of ungroupedMgIndexMap.entries()) {
-      if (choices.length === 0) {
-        continue;
-      }
+    // 8.2 构建分组结构：按 mgIndex 排序后，每个 mgIndex 下按 mgId 分组，再按 majorIndex 排序
+    const grouped = Array.from(mgIndexGroupsMap.entries())
+      .sort(([mgIndexA], [mgIndexB]) => (mgIndexA || 0) - (mgIndexB || 0))
+      .map(([mgIndex, mgChoices]) => {
+        const firstChoice = mgChoices[0];
+        if (!firstChoice.school) {
+          return null;
+        }
 
-      const firstChoice = choices[0];
-      const schoolCode = firstChoice.schoolCode;
+        const schoolDto = buildSchoolSimple(
+          firstChoice.school,
+          firstChoice.school.schoolDetail || null,
+        );
 
-      if (!schoolCode) {
-        continue;
-      }
+        // 按 mgId 进行二级分组（有 majorGroup 的情况）
+        if (firstChoice.majorGroup) {
+          const majorGroupsMap = new Map<number, Choice[]>();
+          for (const choice of mgChoices) {
+            if (!choice.mgId) {
+              this.logger.warn(`mgIndex ${mgIndex} 下的 choice ${choice.id} 的 mgId 为空`);
+              continue;
+            }
+            if (!majorGroupsMap.has(choice.mgId)) {
+              majorGroupsMap.set(choice.mgId, []);
+            }
+            majorGroupsMap.get(choice.mgId)!.push(choice);
+          }
 
-      const school = schoolsMap.get(schoolCode);
-      const schoolDetail = schoolDetailsMap.get(schoolCode);
+          // 按 mgId 排序后构建 majorGroups
+          const majorGroups = Array.from(majorGroupsMap.entries())
+            .sort(([mgIdA], [mgIdB]) => (mgIdA || 0) - (mgIdB || 0))
+            .map(([mgId, groupChoices]) => {
+              const firstChoiceInGroup = groupChoices[0];
+              if (!firstChoiceInGroup.majorGroup) {
+                return null;
+              }
+              // 按 majorIndex 排序
+              groupChoices.sort((a, b) => (a.majorIndex || 0) - (b.majorIndex || 0));
+              return {
+                majorGroup: buildMajorGroupSimple(firstChoiceInGroup.majorGroup),
+                choices: groupChoices.map(buildChoiceInGroup),
+              };
+            })
+            .filter((item): item is any => item !== null);
 
-      if (!school) {
-        continue;
-      }
+          return {
+            mgIndex,
+            school: schoolDto,
+            majorGroups,
+          };
+        } else {
+          // 没有 majorGroup 的情况
+          return {
+            mgIndex,
+            school: schoolDto,
+            majorGroups: [
+              {
+                majorGroup: null,
+                choices: mgChoices.map(buildChoiceInGroup),
+              },
+            ],
+          };
+        }
+      })
+      .filter((item): item is any => item !== null);
 
-      const schoolDto: SchoolSimpleDto = {
-        code: school.code,
-        name: school.name,
-        nature: school.nature,
-        level: school.level,
-        belong: school.belong,
-        categories: school.categories,
-        features: school.features,
-        provinceName: school.provinceName,
-        cityName: school.cityName,
-        enrollmentRate: schoolDetail?.enrollmentRate ?? null,
-        employmentRate: schoolDetail?.employmentRate ?? null,
-      };
-
-      // 移除 choices 中的 school 和 majorGroup 信息
-      const choicesInGroup = choices.map((choice) => {
-        const { school, majorGroup, ...choiceWithoutGroup } = choice;
-        return choiceWithoutGroup;
-      });
-
-      // 注意：需要先将 DTO 实例转换为普通对象，以便 @Transform 装饰器能够生效
-      const plainChoices = choicesInGroup.map((choice) => {
-        // 将 DTO 实例转换为普通对象
-        return JSON.parse(JSON.stringify(choice));
-      });
-      
-      const choicesInGroupDto = plainToInstance(ChoiceInGroupDto, plainChoices, {
-        excludeExtraneousValues: true,
-        enableImplicitConversion: true, // 启用隐式转换，使 @Transform 装饰器生效
-      });
-
-      grouped.push({
-        mgIndex, // 添加 mgIndex
-        school: schoolDto,
-        majorGroups: [
-          {
-            majorGroup: null as any, // 没有 majorGroup，但为了结构一致，设置为 null
-            choices: choicesInGroupDto,
-          },
-        ],
-      });
-    }
-
-    // 7.5 对 grouped 按照 mgIndex 排序
-    grouped.sort((a, b) => {
-      const mgIndexA = a.mgIndex || 0;
-      const mgIndexB = b.mgIndex || 0;
-      return mgIndexA - mgIndexB;
-    });
-
-    // 8. 计算统计信息
-    // 8.1 获取已选择的志愿数量（根据 mgIndex 的唯一数量）
-    const uniqueMgIndexes = new Set<number>();
-    for (const choice of choices) {
-      if (choice.mgIndex !== null && choice.mgIndex !== undefined) {
-        uniqueMgIndexes.add(choice.mgIndex);
-      }
-    }
-    const selectedCount = uniqueMgIndexes.size;
-
-    // 9.2 根据用户省份获取最大志愿数量
+    // 9. 构建最终响应（包含分组数据和统计信息）
     const provinceCode = user.province ? PROVINCE_NAME_TO_CODE[user.province] : null;
     const totalCount = provinceCode ? (PROVINCE_CODE_TO_VOLUNTEER_COUNT[provinceCode] || 0) : 0;
 
-    // 10. 构建响应对象
-    const statistics: VolunteerStatisticsDto = {
-      selected: selectedCount,
-      total: totalCount,
-    };
-
-    // 11. 转换分组数据
-    const groupedData = plainToInstance(SchoolGroupDto, grouped, {
-      excludeExtraneousValues: true,
-    });
-
-    // 12. 构建包含数据和统计信息的响应对象
-    const responseData = {
-      volunteers: groupedData,
-      statistics,
-    };
-
-    // 13. 转换为响应 DTO
-    return plainToInstance(GroupedChoiceResponseDto, responseData, {
-      excludeExtraneousValues: true,
-    });
+    return plainToInstance(
+      GroupedChoiceResponseDto,
+      {
+        volunteers: grouped,
+        statistics: {
+          selected: uniqueMgIndexes.size,
+          total: totalCount,
+        },
+      },
+      {
+        excludeExtraneousValues: true,
+        enableImplicitConversion: true,
+      },
+    );
   }
 
   /**
