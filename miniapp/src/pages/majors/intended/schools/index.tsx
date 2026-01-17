@@ -78,7 +78,40 @@ export default function IntendedMajorsSchoolsPage() {
   const [planWishlistKeys, setPlanWishlistKeys] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [choiceToDelete, setChoiceToDelete] = useState<{ choiceId: number; schoolData: School } | null>(null)
-  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set()) // 展开的 plan 索引
+  const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set()) // 展开的 plan 索引（用于旧结构，保留兼容）
+  const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null) // 选中的省份
+
+  // 从 apiData 中提取并去重省份列表
+  const provinces = React.useMemo(() => {
+    if (!apiData || apiData.length === 0) return []
+    const provinceSet = new Set<string>()
+    apiData.forEach((item) => {
+      if (item.school?.provinceName) {
+        provinceSet.add(item.school.provinceName)
+      }
+    })
+    return Array.from(provinceSet).sort()
+  }, [apiData])
+
+  // 根据选中的省份筛选数据
+  const filteredData = React.useMemo(() => {
+    if (!data) return null
+
+    let filteredSchools = data.schools
+
+    // 按省份筛选
+    if (selectedProvince) {
+      filteredSchools = filteredSchools.filter(
+        (school) => school.provinceName === selectedProvince
+      )
+    }
+
+    return {
+      ...data,
+      schools: filteredSchools,
+    }
+  }, [data, selectedProvince])
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -877,6 +910,9 @@ export default function IntendedMajorsSchoolsPage() {
     )
   }
 
+  // 使用筛选后的数据
+  const displayData = filteredData || data
+
   return (
     <View className="schools-page">
       
@@ -890,17 +926,40 @@ export default function IntendedMajorsSchoolsPage() {
         <View className="schools-page__wave" />
       </View>
 
+      {/* 省份筛选 */}
+      {provinces.length > 0 && (
+        <View className="schools-page__province-filter">
+          <View className="schools-page__province-filter-item" onClick={() => setSelectedProvince(null)}>
+            <Text className={`schools-page__province-filter-text ${selectedProvince === null ? 'schools-page__province-filter-text--active' : ''}`}>
+              全部
+            </Text>
+          </View>
+          {provinces.map((province) => (
+            <View
+              key={province}
+              className="schools-page__province-filter-item"
+              onClick={() => setSelectedProvince(province)}
+            >
+              <Text className={`schools-page__province-filter-text ${selectedProvince === province ? 'schools-page__province-filter-text--active' : ''}`}>
+                {province}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* 内容 */}
       <View className="schools-page__content">
         <View className="schools-page__schools-list">
-          {data.schools.map((school, idx) => {
-            const schoolKey = `${majorCode}-${school.schoolName}`
-            const { isIn: isInWishlist, choiceId } = isSchoolInWishlist(school)
+          {displayData.schools.length > 0 ? (
+            displayData.schools.map((school, idx) => {
+              const schoolKey = `${majorCode}-${school.schoolName}`
+              const { isIn: isInWishlist, choiceId } = isSchoolInWishlist(school)
 
-            return (
-              <Card key={idx} className="schools-page__school-item">
-                <View className="schools-page__school-item-content">
-                  <View className="schools-page__school-item-header">
+              return (
+                <Card key={idx} className="schools-page__school-item">
+                  <View className="schools-page__school-item-content">
+                    <View className="schools-page__school-item-header">
                     <View className="schools-page__school-item-header-left">
                       <View className="schools-page__school-item-name-row">
                         <Text className="schools-page__school-item-name">{school.schoolName}</Text>
@@ -1186,9 +1245,14 @@ export default function IntendedMajorsSchoolsPage() {
                     </View>
                   </View>
                 </View>
-              </Card>
-            )
-          })}
+                </Card>
+              )
+            })
+          ) : (
+            <View className="schools-page__empty">
+              <Text>暂无符合条件的院校</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -1234,6 +1298,7 @@ export default function IntendedMajorsSchoolsPage() {
             setSelectedPlanData(null)
             setLoadingGroupInfo(false)
             setExpandedPlans(new Set()) // 清空展开状态
+            setExpandedScores(new Set()) // 清空 scores 展开状态
           }
         }}
       >
@@ -1254,7 +1319,7 @@ export default function IntendedMajorsSchoolsPage() {
                 <Text className="schools-page__group-dialog-empty-desc">数据未加载或为空</Text>
               </View>
             ) : (
-              (() => {
+              groupInfoData.map((plan, planIdx) => {
                 // 处理热爱能量值：如果值在0-1之间，乘以100取整
                 const normalizeLoveEnergy = (value: number | null): number | null => {
                   if (value === null || value === undefined) return null
@@ -1263,197 +1328,101 @@ export default function IntendedMajorsSchoolsPage() {
                   }
                   return value
                 }
+
+                const isScoresExpanded = expandedScores.has(planIdx)
+                const scoresCount = plan.scores?.length || 0
+                const isSingleScore = scoresCount === 1
                 
-                // 热爱能量低分的阈值（低于此值才认为是低分）
-                const LOW_ENERGY_THRESHOLD = 70
-                
-                // 检查整个专业组是否有低分专业（只检查一次）
-                let hasLowEnergyMajor = false
-                for (const plan of groupInfoData) {
-                  const scores = plan.scores
-                    .map(s => normalizeLoveEnergy(s.loveEnergy))
-                    .filter(s => s !== null && s > 0) as number[]
-                  const minScore = scores.length > 0 ? Math.min(...scores) : null
-                  
-                  if (minScore !== null && minScore < LOW_ENERGY_THRESHOLD) {
-                    hasLowEnergyMajor = true
-                    break
-                  }
-                }
-                
-                // 获取选科要求
-                const subjectSelectionMode = selectedPlanData?.subjectSelectionMode || selectedGroupInfo?.majorGroupId ? 
-                  (groupedChoices?.volunteers
-                    .find(v => v.school.name === selectedGroupInfo?.schoolName)
-                    ?.majorGroups.find(mg => mg.majorGroup.mgId === selectedGroupInfo?.majorGroupId)?.majorGroup.subjectSelectionMode || '') : ''
-                
+                // 单个 score 时，获取热爱能量值
+                const singleLoveEnergy = isSingleScore && plan.scores?.[0] 
+                  ? normalizeLoveEnergy(plan.scores[0].loveEnergy) 
+                  : null
+
                 return (
-                  <>
-                    {/* 整个专业组只显示一次提醒 */}
-                    {hasLowEnergyMajor && (
-                      <View className="schools-page__group-warning">
-                        <Text className="schools-page__group-warning-icon">⚠️</Text>
-                        <View className="schools-page__group-warning-content">
-                          <Text className="schools-page__group-warning-title">提醒</Text>
-                          <Text className="schools-page__group-warning-text">
-                            该专业组中包含热爱能量低的专业,选择该专业组可能会被调剂到这些专业,请谨慎选择。
-                          </Text>
+                  <View key={planIdx} className="schools-page__group-section-new">
+                    {/* 第一行：enrollmentMajor + 加入志愿/删除志愿按钮 */}
+                    {plan.enrollmentMajor && (
+                      <View className="schools-page__group-major-row">
+                        <View className="schools-page__group-major-name-wrapper">
+                          <Text className="schools-page__group-major-name">{plan.enrollmentMajor}</Text>
+                          {/* 如果只有一个 score，在 enrollmentMajor 后面显示热爱能量 */}
+                          {isSingleScore && singleLoveEnergy !== null && (
+                            <Text className="schools-page__group-major-energy">
+                              热爱能量：{singleLoveEnergy}
+                            </Text>
+                          )}
                         </View>
+                        {(() => {
+                          const { isIn, choiceId } = isPlanInWishlist(plan)
+                          if (isIn && choiceId) {
+                            return (
+                              <Text
+                                className="schools-page__group-major-action schools-page__group-major-action--remove"
+                                onClick={() => handleAddPlanToWishlist(plan)}
+                              >
+                                移除志愿
+                              </Text>
+                            )
+                          }
+                          return (
+                            <Text
+                              className="schools-page__group-major-action"
+                              onClick={() => handleAddPlanToWishlist(plan)}
+                            >
+                              加入志愿
+                            </Text>
+                          )
+                        })()}
                       </View>
                     )}
-                    {subjectSelectionMode && (
-                      <View className="schools-page__group-subject-requirement">
-                        <Text>{subjectSelectionMode}</Text>
+
+                    {/* 第二行：remark */}
+                    {plan.remark && (
+                      <View className="schools-page__group-remark">
+                        <Text>{plan.remark}</Text>
                       </View>
                     )}
-                    {groupInfoData.map((plan, planIdx) => {
-                      // 找出最低的热爱能量分数（使用标准化后的值）
-                      const scores = plan.scores
-                        .map(s => normalizeLoveEnergy(s.loveEnergy))
-                        .filter(s => s !== null && s > 0) as number[]
-                      const minScore = scores.length > 0 ? Math.min(...scores) : null
-                      
-                      const isExpanded = expandedPlans.has(planIdx)
-                      
-                      return (
-                        <View key={planIdx} className="schools-page__group-section">
-                          {/* 专业组基本信息（默认显示） */}
-                          <View className="schools-page__group-basic-info">
-                            {plan.enrollmentMajor && (
-                              <View className="schools-page__group-basic-info-item">
-                                <Text className="schools-page__group-basic-info-label">招生专业：</Text>
-                                <Text className="schools-page__group-basic-info-value">{plan.enrollmentMajor}</Text>
+
+                    {/* 多个 scores 时，在 remark 下面显示 */}
+                    {!isSingleScore && plan.scores && plan.scores.length > 0 && (
+                      <View className="schools-page__group-scores-multiple">
+                        <View className={`schools-page__group-scores-row ${isScoresExpanded ? 'schools-page__group-scores-row--expanded' : ''}`}>
+                          {plan.scores.map((score, idx) => {
+                            const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
+                            return (
+                              <View key={idx} className="schools-page__group-score-item-inline">
+                                <Text className="schools-page__group-score-major">{score.majorName}</Text>
+                                <Text className="schools-page__group-score-energy">：{loveEnergy !== null ? loveEnergy : '-'}</Text>
                               </View>
-                            )}
-                            <View className="schools-page__group-basic-info-item">
-                              <Text className="schools-page__group-basic-info-label">学制：</Text>
-                              <Text className="schools-page__group-basic-info-value">{plan.studyPeriod || '-'}</Text>
-                            </View>
-                            <View className="schools-page__group-basic-info-item">
-                              <Text className="schools-page__group-basic-info-label">招生人数：</Text>
-                              <Text className="schools-page__group-basic-info-value">{plan.enrollmentQuota || '-'}</Text>
-                            </View>
-                            {plan.remark && (
-                              <View className="schools-page__group-basic-info-item">
-                                <Text className="schools-page__group-basic-info-label">备注：</Text>
-                                <Text className="schools-page__group-basic-info-value">{plan.remark}</Text>
-                              </View>
-                            )}
-                          </View>
-                          
-                          {/* 展开/收起按钮 */}
-                          {plan.scores && plan.scores.length > 0 && (
-                            <View 
-                              className="schools-page__group-expand-toggle"
+                            )
+                          })}
+                          {/* 未展开时，在行末显示向下箭头 */}
+                          {!isScoresExpanded && (
+                            <View
+                              className="schools-page__group-scores-arrow"
                               onClick={() => {
-                                setExpandedPlans((prev) => {
+                                setExpandedScores((prev) => {
                                   const newSet = new Set(prev)
-                                  if (isExpanded) {
-                                    newSet.delete(planIdx)
-                                  } else {
-                                    newSet.add(planIdx)
-                                  }
+                                  newSet.add(planIdx)
                                   return newSet
                                 })
                               }}
                             >
-                              <Text className="schools-page__group-expand-toggle-text">
-                                {isExpanded ? '收起' : '展开查看专业详情信息'}
-                              </Text>
-                              <Text className={`schools-page__group-expand-toggle-arrow ${isExpanded ? 'schools-page__group-expand-toggle-arrow--expanded' : ''}`}>
-                                {isExpanded ? '^' : '▼'}
-                              </Text>
+                              <Text className="schools-page__group-scores-arrow-icon">▼</Text>
                             </View>
                           )}
-                          
-                          {/* 展开后显示的专业列表表格 */}
-                          {isExpanded && plan.scores && plan.scores.length > 0 && (
-                            <View className="schools-page__group-table">
-                              <View className="schools-page__group-table-header">
-                                <Text>专业</Text>
-                                <Text>批次</Text>
-                                <Text>招生人数</Text>
-                                <Text>学费</Text>
-                                <Text>学制</Text>
-                                <Text>热爱能量</Text>
-                              </View>
-                              {plan.scores.map((score, idx) => {
-                                // 使用相同的标准化函数处理热爱能量值
-                                const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
-                                // 判断是否为低分：必须同时满足：1. 最低分低于阈值 2. 当前分数低于阈值 3. 是最低分或次低分
-                                const isLowest = minScore !== null && minScore < LOW_ENERGY_THRESHOLD &&
-                                  loveEnergy !== null && loveEnergy > 0 && 
-                                  loveEnergy < LOW_ENERGY_THRESHOLD &&
-                                  (loveEnergy === minScore || loveEnergy === minScore + 1)
-                                
-                                return (
-                                  <View 
-                                    key={idx} 
-                                    className={`schools-page__group-table-row ${isLowest ? 'schools-page__group-table-row--warning' : ''}`}
-                                  >
-                                    <View className="schools-page__group-table-major">
-                                      <Text className="schools-page__group-table-major-name">{score.majorName}</Text>
-                                    </View>
-                                    <Text>{selectedPlanData?.batch || '-'}</Text>
-                                    <Text>{plan.enrollmentQuota || '-'}</Text>
-                                    <Text>{selectedPlanData?.tuitionFee ? `${selectedPlanData.tuitionFee}元` : '-'}</Text>
-                                    <Text>{plan.studyPeriod || '-'}</Text>
-                                    <View className="schools-page__group-table-score">
-                                      <Text className={isLowest ? 'schools-page__group-table-score--low' : ''}>
-                                        {loveEnergy !== null ? loveEnergy : '-'}
-                                      </Text>
-                                      {isLowest && <Text className="schools-page__group-table-score-warning">⚠️</Text>}
-                                    </View>
-                                  </View>
-                                )
-                              })}
-                            </View>
-                          )}
-                          
-                          {/* 加入/移除志愿按钮 */}
-                          <View className="schools-page__group-section-actions">
-                            {(() => {
-                              const { isIn, choiceId } = isPlanInWishlist(plan)
-                              
-                              // 调试日志
-                              
-                              // 如果已加入志愿，显示移除按钮（红色）
-                              if (isIn && choiceId) {
-                                return (
-                                  <>
-                                    <View className="schools-page__group-added-tip">
-                                      <Text className="schools-page__group-added-tip-text">您已添加了该志愿</Text>
-                                    </View>
-                                    <Button
-                                      onClick={() => handleAddPlanToWishlist(plan)}
-                                      className="schools-page__group-section-add-button schools-page__group-section-add-button--remove"
-                                      size="sm"
-                                      variant="default"
-                                    >
-                                      移除志愿
-                                    </Button>
-                                  </>
-                                )
-                              }
-                              // 如果未加入志愿，显示加入按钮（蓝色）
-                              return (
-                                <Button
-                                  onClick={() => handleAddPlanToWishlist(plan)}
-                                  className="schools-page__group-section-add-button"
-                                  size="sm"
-                                  variant="default"
-                                >
-                                  加入志愿
-                                </Button>
-                              )
-                            })()}
-                          </View>
                         </View>
-                      )
-                    })}
-                  </>
+                      </View>
+                    )}
+
+                    {/* 第三行：学制：studyPeriod 招生人数：enrollmentQuota */}
+                    <View className="schools-page__group-info-row">
+                      <Text>学制：{plan.studyPeriod || '-'}</Text>
+                      <Text>招生人数：{plan.enrollmentQuota || '-'}</Text>
+                    </View>
+                  </View>
                 )
-              })()
+              })
             )}
           </View>
         </DialogContent>
