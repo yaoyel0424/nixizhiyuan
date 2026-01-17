@@ -1881,80 +1881,12 @@ export default function IntendedMajorsPage() {
                                               <Text className="intended-majors-page__wishlist-item-plan-remark-text">{choice.remark}</Text>
                                             </View>
                                           )}
-                                          {/* 招生人数/专业组（不显示选科） */}
-                                          {(choice.enrollmentQuota || majorGroupName) && (
+                                          {/* 招生人数 */}
+                                          {choice.enrollmentQuota && (
                                             <View className="intended-majors-page__wishlist-item-plan-info">
-                                              {choice.enrollmentQuota && (
-                                                <Text className="intended-majors-page__wishlist-item-plan-info-text">
-                                                  招生人数: {choice.enrollmentQuota}
-                                                </Text>
-                                              )}
-                                              {majorGroupName && mgId && (
-                                                <Text 
-                                                  className="intended-majors-page__wishlist-item-plan-info-text intended-majors-page__wishlist-item-plan-info-group" 
-                                                  data-major-group-button="true"
-                                                  onClick={async (e) => {
-                                                    e.stopPropagation()
-                                                    try {
-                                                      setLoadingGroupInfo(true)
-                                                      setSelectedGroupInfo({
-                                                        schoolName: school?.name || '',
-                                                        majorGroupName: majorGroupName,
-                                                        majorGroupId: mgId,
-                                                      })
-                                                      setSelectedSchoolData({
-                                                        schoolName: school?.name || '',
-                                                        schoolNature: school?.nature || 'public',
-                                                        rankDiffPer: 0,
-                                                        group: 0,
-                                                        historyScores: [],
-                                                        schoolFeature: schoolFeatures,
-                                                        belong: belong,
-                                                        provinceName: provinceName,
-                                                        cityName: cityName,
-                                                        enrollmentRate: enrollmentRate,
-                                                        employmentRate: employmentRate,
-                                                        majorGroupName: majorGroupName,
-                                                        majorGroupId: mgId,
-                                                      })
-                                                      setSelectedPlanData({
-                                                        enrollmentMajor: choice.enrollmentMajor || null,
-                                                        remark: choice.remark || null,
-                                                        subjectSelectionMode: choice.subjectSelectionMode || null,
-                                                        enrollmentQuota: choice.enrollmentQuota || null,
-                                                        studyPeriod: choice.studyPeriod || null,
-                                                        tuitionFee: choice.tuitionFee || null,
-                                                        batch: choice.batch || null,
-                                                        majorGroupId: mgId,
-                                                      } as any)
-                                                      
-                                                      // 调用 API 获取专业组信息
-                                                      // 确保 mgId 是数字类型
-                                                      const mgIdNumber = typeof mgId === 'string' ? parseInt(mgId, 10) : mgId
-                                                      if (!mgIdNumber || isNaN(mgIdNumber)) {
-                                                        Taro.showToast({
-                                                          title: '专业组ID无效',
-                                                          icon: 'none'
-                                                        })
-                                                        return
-                                                      }
-                                                      const groupInfo = await getMajorGroupInfo(mgIdNumber)
-                                                      setGroupInfoData(groupInfo)
-                                                      setGroupDialogOpen(true)
-                                                    } catch (error) {
-                                                      console.error('获取专业组信息失败:', error)
-                                                      Taro.showToast({
-                                                        title: '获取专业组信息失败',
-                                                        icon: 'none',
-                                                      })
-                                                    } finally {
-                                                      setLoadingGroupInfo(false)
-                                                    }
-                                                  }}
-                                                >
-                                                  {choice.enrollmentQuota ? ' · ' : ''}专业组{majorGroupName ? `: ${majorGroupName}` : ''} 👁️
-                                                </Text>
-                                              )}
+                                              <Text className="intended-majors-page__wishlist-item-plan-info-text">
+                                                招生人数: {choice.enrollmentQuota}
+                                              </Text>
                                             </View>
                                           )}
                                           {/* 分数信息 */}
