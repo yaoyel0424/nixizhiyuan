@@ -1678,6 +1678,7 @@ export default function IntendedMajorsPage() {
                           {/* 先显示 majorGroups */}
                           {volunteer.majorGroups.map((majorGroup, mgIdx) => {
                             const majorGroupName = majorGroup.majorGroup?.mgName || ''
+                            // 使用 majorGroup.majorGroup.mgId 作为专业组ID
                             const mgId = majorGroup.majorGroup?.mgId
                             const majorGroupInfo = majorGroup.choices[0]?.majorGroupInfo || majorGroup.majorGroup?.mgInfo || ''
                             const groupKey = `${volunteer.mgIndex}-${mgId}-${mgIdx}`
@@ -1740,8 +1741,17 @@ export default function IntendedMajorsPage() {
                                               } as any)
                                               
                                               // 调用 API 获取专业组信息
-                                              console.log('准备获取专业组信息，mgId:', mgId)
-                                              const groupInfo = await getMajorGroupInfo(mgId)
+                                              // 确保 mgId 是数字类型
+                                              const mgIdNumber = typeof mgId === 'string' ? parseInt(mgId, 10) : mgId
+                                              if (!mgIdNumber || isNaN(mgIdNumber)) {
+                                                Taro.showToast({
+                                                  title: '专业组ID无效',
+                                                  icon: 'none'
+                                                })
+                                                return
+                                              }
+                                              console.log('准备获取专业组信息，mgId:', mgIdNumber)
+                                              const groupInfo = await getMajorGroupInfo(mgIdNumber)
                                               console.log('获取到的专业组信息:', groupInfo)
                                               setGroupInfoData(groupInfo)
                                               setGroupDialogOpen(true)
@@ -1919,7 +1929,16 @@ export default function IntendedMajorsPage() {
                                                       } as any)
                                                       
                                                       // 调用 API 获取专业组信息
-                                                      const groupInfo = await getMajorGroupInfo(mgId)
+                                                      // 确保 mgId 是数字类型
+                                                      const mgIdNumber = typeof mgId === 'string' ? parseInt(mgId, 10) : mgId
+                                                      if (!mgIdNumber || isNaN(mgIdNumber)) {
+                                                        Taro.showToast({
+                                                          title: '专业组ID无效',
+                                                          icon: 'none'
+                                                        })
+                                                        return
+                                                      }
+                                                      const groupInfo = await getMajorGroupInfo(mgIdNumber)
                                                       setGroupInfoData(groupInfo)
                                                       setGroupDialogOpen(true)
                                                     } catch (error) {
