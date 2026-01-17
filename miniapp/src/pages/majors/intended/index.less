@@ -401,14 +401,15 @@
   box-sizing: border-box;
   overflow: hidden;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 8rpx;
 }
 
-.intended-majors-page__wishlist-item-header {
+.intended-majors-page__wishlist-item-header-row {
   display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-  position: relative;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
 }
 
 .intended-majors-page__wishlist-item-volunteer-badge {
@@ -423,6 +424,13 @@
   box-shadow: 0 2rpx 8rpx rgba(255, 127, 80, 0.3);
 }
 
+.intended-majors-page__wishlist-item-volunteer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
 .intended-majors-page__wishlist-item-volunteer-text {
   color: #fff;
   font-size: 26rpx;
@@ -430,20 +438,13 @@
   line-height: 1.4;
 }
 
-.intended-majors-page__wishlist-item-main {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-  flex: 1;
-  position: relative;
-}
-
-.intended-majors-page__wishlist-item-title-section {
+.intended-majors-page__wishlist-item-school-section {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 4rpx;
   flex: 1;
   min-width: 0;
+  margin-bottom: 4rpx;
 }
 
 .intended-majors-page__wishlist-item-school {
@@ -516,7 +517,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx;
-  margin-top: 8rpx;
+  margin-top: 4rpx;
 }
 
 .intended-majors-page__wishlist-item-feature {
@@ -700,6 +701,7 @@
   gap: 24rpx;
   font-size: 24rpx;
   color: #666;
+  margin-top: 4rpx;
 }
 
 .intended-majors-page__wishlist-item-history {
@@ -1240,6 +1242,142 @@
   color: #ef4444;
 }
 
+// 新的专业组弹框样式（与 schools/index.tsx 一致）
+.intended-majors-page__group-section-new {
+  margin-bottom: 8rpx;
+  padding-bottom: 8rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+  
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.intended-majors-page__group-major-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4rpx;
+  gap: 8rpx;
+}
+
+.intended-majors-page__group-major-name-wrapper {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6rpx;
+  flex: 1;
+}
+
+.intended-majors-page__group-major-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #000;
+}
+
+.intended-majors-page__group-major-energy {
+  font-size: 26rpx;
+  color: #1A4099;
+  font-weight: 500;
+}
+
+.intended-majors-page__group-major-action {
+  font-size: 24rpx;
+  color: #1A4099;
+  cursor: pointer;
+  padding: 8rpx 16rpx;
+  border-radius: 4rpx;
+  white-space: nowrap;
+  
+  &:active {
+    opacity: 0.7;
+  }
+  
+  &--remove {
+    color: #ef4444;
+  }
+}
+
+.intended-majors-page__group-remark {
+  margin-bottom: 4rpx;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+.intended-majors-page__group-info-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 4rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.intended-majors-page__group-scores-multiple {
+  margin-bottom: 4rpx;
+}
+
+.intended-majors-page__group-scores-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  font-size: 26rpx;
+  position: relative;
+  line-height: 40rpx;
+  
+  &:not(&--expanded) {
+    max-height: 40rpx;
+    overflow: hidden;
+  }
+  
+  &--expanded {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.intended-majors-page__group-score-item-inline {
+  display: flex;
+  align-items: center;
+  color: #333;
+}
+
+.intended-majors-page__group-score-major {
+  font-weight: 500;
+}
+
+.intended-majors-page__group-score-energy {
+  color: #1A4099;
+  font-weight: 500;
+}
+
+.intended-majors-page__group-scores-arrow {
+  cursor: pointer;
+  padding: 4rpx 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  
+  &:active {
+    opacity: 0.7;
+    
+    .intended-majors-page__group-scores-arrow-icon {
+      transform: translateY(2rpx);
+    }
+  }
+}
+
+.intended-majors-page__group-scores-arrow-icon {
+  font-size: 24rpx;
+  color: #1A4099;
+  transition: transform 0.2s ease;
+}
+
 // 返回顶部按钮
 .intended-majors-page__back-to-top {
   position: fixed;
@@ -1676,4 +1814,390 @@
   color: #ef4444;
   font-size: 26rpx;
   font-weight: 500;
+}
+
+// 样式标记：专业组
+[data-major-group="true"] {
+  // 专业组容器标记
+}
+
+[data-major-group-name="true"] {
+  // 专业组名称标记
+  font-weight: 600;
+  color: #1A4099;
+}
+
+[data-major-group-button="true"] {
+  // 专业组按钮标记
+  cursor: pointer;
+  color: #1A4099;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// 样式标记：招生专业 (enrollment_major)
+[data-enrollment-major="true"] {
+  // 招生专业标记
+  font-weight: 600;
+  color: #000;
+}
+
+// 样式标记：移除志愿
+[data-remove-wishlist="true"] {
+  // 移除志愿按钮标记
+  color: #ef4444;
+  font-size: 24rpx;
+  cursor: pointer;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+// 样式标记：分数
+[data-scores="true"] {
+  // 分数容器标记
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  margin-top: 8rpx;
+  padding-top: 8rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+[data-score="true"] {
+  // 分数文本标记
+  color: #1A4099;
+  font-weight: 500;
+  font-size: 24rpx;
+}
+
+// 新增样式：专业组信息显示
+.intended-majors-page__wishlist-item-major-group {
+  margin-bottom: 8rpx;
+  padding-bottom: 8rpx;
+  border-bottom: 1rpx solid #e5e7eb;
+  
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+}
+
+.intended-majors-page__wishlist-item-major-group-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 6rpx;
+  padding: 8rpx;
+  background: #f0f7ff;
+  border-radius: 8rpx;
+}
+
+.intended-majors-page__wishlist-item-major-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.intended-majors-page__wishlist-item-major-group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.intended-majors-page__wishlist-item-major-group-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A4099;
+  cursor: pointer;
+  
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.intended-majors-page__wishlist-item-major-group-subject {
+  font-size: 24rpx;
+  color: #666;
+}
+
+
+.intended-majors-page__wishlist-item-major-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  color: #1A4099;
+  cursor: pointer;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.intended-majors-page__wishlist-item-major-group-arrow {
+  font-size: 20rpx;
+  transition: transform 0.3s ease;
+  
+  &--expanded {
+    transform: rotate(180deg);
+  }
+}
+
+.intended-majors-page__wishlist-item-major-group-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.intended-majors-page__wishlist-item-major-group-delete {
+  padding: 8rpx 16rpx;
+  min-width: auto;
+  height: 56rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2rpx solid #fecaca;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #fef2f2;
+    border-color: #ef4444;
+  }
+  
+  &:active {
+    background: #fee2e2;
+  }
+}
+
+.intended-majors-page__wishlist-item-major-group-delete-text {
+  font-size: 24rpx;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.intended-majors-page__wishlist-item-major-group-move {
+  padding: 8rpx 16rpx;
+  min-width: auto;
+  height: 56rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2rpx solid #e5e7eb;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: #f0f7ff;
+    border-color: #1A4099;
+  }
+  
+  &:active:not(:disabled) {
+    background: #e8f0ff;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+}
+
+.intended-majors-page__wishlist-item-major-group-move-text {
+  font-size: 24rpx;
+  color: #1A4099;
+  font-weight: 500;
+}
+
+// 新增样式：招生专业和移除志愿
+.intended-majors-page__wishlist-item-plan-major {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8rpx;
+  font-size: 28rpx;
+  margin-bottom: 4rpx;
+  flex-wrap: wrap;
+}
+
+.intended-majors-page__wishlist-item-plan-major-value {
+  color: #000;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.intended-majors-page__wishlist-item-plan-major-action {
+  cursor: pointer;
+  font-size: 24rpx;
+  color: #1A4099;
+  display: inline-block;
+  margin-left: 8rpx;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+  
+  &--active {
+    opacity: 1;
+    color: #ef4444;
+  }
+}
+
+.intended-majors-page__wishlist-item-plan-remark {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 4rpx;
+}
+
+.intended-majors-page__wishlist-item-plan-remark-text {
+  color: #666;
+}
+
+.intended-majors-page__wishlist-item-plan-info-text {
+  color: #666;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.intended-majors-page__wishlist-item-plan-info-group {
+  cursor: pointer;
+  color: #1A4099;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.intended-majors-page__wishlist-item-plan-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  margin-top: 4rpx;
+  padding-top: 4rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.intended-majors-page__wishlist-item-plan-score {
+  display: flex;
+  gap: 16rpx;
+  font-size: 24rpx;
+}
+
+.intended-majors-page__wishlist-item-plan-score-text {
+  color: #1A4099;
+  font-weight: 500;
+}
+
+// 志愿项操作按钮（内联，跟在 enrollmentMajor 后面，靠右显示）
+.intended-majors-page__wishlist-item-plan-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+// 志愿项操作按钮（底部，已废弃，保留以防其他地方使用）
+.intended-majors-page__wishlist-item-plan-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.intended-majors-page__wishlist-item-plan-action {
+  padding: 8rpx 16rpx;
+  min-width: auto;
+  height: 56rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2rpx solid #e5e7eb;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #f0f7ff;
+    border-color: #1A4099;
+  }
+  
+  &:active {
+    background: #e8f0ff;
+  }
+  
+  &--remove {
+    border-color: #fecaca;
+    
+    &:hover {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    
+    &:active {
+      background: #fee2e2;
+    }
+  }
+  
+  &--move {
+    border-color: #e5e7eb;
+    
+    &:hover {
+      background: #f0f7ff;
+      border-color: #1A4099;
+    }
+    
+    &:active {
+      background: #e8f0ff;
+    }
+  }
+}
+
+.intended-majors-page__wishlist-item-plan-action-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  
+  .intended-majors-page__wishlist-item-plan-action--remove & {
+    color: #ef4444;
+  }
+  
+  .intended-majors-page__wishlist-item-plan-action--move & {
+    color: #1A4099;
+  }
+}
+
+.intended-majors-page__wishlist-item-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+
+.intended-majors-page__wishlist-item-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 12rpx;
+  background: #f9fafb;
+  border-radius: 8rpx;
 }

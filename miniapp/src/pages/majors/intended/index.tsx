@@ -13,7 +13,7 @@ import { getStorage, setStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import { getCurrentUserDetail } from '@/services/user'
 import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo } from '@/services/enroll-plan'
-import { getChoices, deleteChoice, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, Direction } from '@/services/choices'
+import { getChoices, deleteChoice, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
@@ -59,6 +59,7 @@ interface School {
   enrollmentRate: string
   employmentRate: string
   majorGroupName?: string | null
+  majorGroupId?: number
 }
 
 interface IntentionMajor {
@@ -662,8 +663,12 @@ export default function IntendedMajorsPage() {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
   const [expandedMajorGroups, setExpandedMajorGroups] = useState<Set<string>>(new Set()) // 展开的专业组
-  const [groupInfoData, setGroupInfoData] = useState<any[]>([]) // 专业组详细信息
+  const [groupInfoData, setGroupInfoData] = useState<MajorGroupInfo[]>([]) // 专业组详细信息
   const [loadingGroupInfo, setLoadingGroupInfo] = useState(false)
+  const [selectedSchoolData, setSelectedSchoolData] = useState<School | null>(null)
+  const [selectedPlanData, setSelectedPlanData] = useState<any | null>(null) // 保存选中的plan数据
+  const [expandedChoicesInGroup, setExpandedChoicesInGroup] = useState<Set<string>>(new Set()) // 展开的专业组内的志愿列表
+  const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1163,6 +1168,199 @@ export default function IntendedMajorsPage() {
     })
   }
 
+  // 判断plan是否已加入志愿（根据专业组名称和备注匹配）
+  const isPlanInWishlist = (plan: MajorGroupInfo): { isIn: boolean; choiceId?: number } => {
+    if (!selectedSchoolData || !selectedGroupInfo) {
+      return { isIn: false }
+    }
+    
+    // 获取目标专业组信息
+    const targetMajorGroupName = selectedGroupInfo.majorGroupName
+    // 从 selectedGroupInfo 或 selectedPlanData 获取 majorGroupId
+    const targetMajorGroupId = selectedGroupInfo.majorGroupId || selectedPlanData?.majorGroupId || selectedPlanData?.majorGroup?.mgId || null
+    const targetRemark = selectedPlanData?.remark || plan.remark || null
+    const targetEnrollmentMajor = plan.enrollmentMajor || selectedPlanData?.enrollmentMajor || null
+    
+    if (!targetMajorGroupName && !targetMajorGroupId) {
+      return { isIn: false }
+    }
+    
+    // 获取学校代码（从 groupedChoices 中获取）
+    let schoolCode: string | undefined
+    if (groupedChoices && groupedChoices.volunteers.length > 0) {
+      const volunteer = groupedChoices.volunteers.find(v => v.school.name === selectedSchoolData.schoolName)
+      schoolCode = volunteer?.school.code
+    }
+    
+    // 优先从 groupedChoices 中查找（最准确，直接从API返回的数据判断）
+    if (groupedChoices && groupedChoices.volunteers.length > 0) {
+      // 遍历所有志愿者，查找匹配的学校
+      for (const volunteer of groupedChoices.volunteers) {
+        // 匹配学校：优先通过学校代码，其次通过学校名称
+        const isSchoolMatch = 
+          (schoolCode && volunteer.school.code === schoolCode) ||
+          volunteer.school.name === selectedSchoolData.schoolName ||
+          volunteer.school.name?.trim() === selectedSchoolData.schoolName?.trim()
+        
+        if (isSchoolMatch) {
+          // 遍历该学校下的所有专业组
+          for (const majorGroup of volunteer.majorGroups) {
+            // 遍历该专业组下的所有 choice
+            for (const choice of majorGroup.choices) {
+              // 获取志愿中的专业组信息
+              const choiceMajorGroupName = choice.majorGroupInfo || majorGroup.majorGroup?.mgName || null
+              const choiceMajorGroupId = choice.majorGroupId || majorGroup.majorGroup?.mgId || null
+              const choiceRemark = choice.remark || null
+              const choiceEnrollmentMajor = choice.enrollmentMajor || null
+              
+              // 优先使用 majorGroupId 匹配（最准确）
+              let isGroupMatch = false
+              if (targetMajorGroupId && choiceMajorGroupId) {
+                isGroupMatch = (targetMajorGroupId === choiceMajorGroupId)
+              } else if (targetMajorGroupName && choiceMajorGroupName) {
+                // 如果没有 majorGroupId，则使用名称匹配（精确匹配）
+                isGroupMatch = (
+                  choiceMajorGroupName === targetMajorGroupName ||
+                  choiceMajorGroupName.trim() === targetMajorGroupName.trim()
+                )
+              }
+              
+              if (!isGroupMatch) {
+                // 如果专业组不匹配，直接跳过
+                continue
+              }
+              
+              // 匹配备注（必须精确匹配）
+              let isRemarkMatch = false
+              if (!targetRemark && !choiceRemark) {
+                isRemarkMatch = true
+              } else if (targetRemark && choiceRemark) {
+                isRemarkMatch = (
+                  choiceRemark === targetRemark ||
+                  choiceRemark.trim() === targetRemark.trim()
+                )
+              } else {
+                isRemarkMatch = false
+              }
+              
+              // 匹配招生专业（必须精确匹配）
+              let isEnrollmentMajorMatch = false
+              const targetMajor = targetEnrollmentMajor?.trim() || null
+              const choiceMajor = choiceEnrollmentMajor?.trim() || null
+              
+              if (!targetMajor && !choiceMajor) {
+                isEnrollmentMajorMatch = true
+              } else if (targetMajor && choiceMajor) {
+                isEnrollmentMajorMatch = (choiceMajor === targetMajor)
+              } else {
+                isEnrollmentMajorMatch = false
+              }
+              
+              // 只有当专业组名称匹配，且备注和招生专业都匹配时，才认为已加入志愿
+              if (isRemarkMatch && isEnrollmentMajorMatch) {
+                return { isIn: true, choiceId: choice.id }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return { isIn: false }
+  }
+
+  // 处理plan加入志愿
+  const handleAddPlanToWishlist = async (plan: MajorGroupInfo) => {
+    if (!selectedSchoolData || !selectedGroupInfo) {
+      Taro.showToast({
+        title: '学校信息缺失',
+        icon: 'none'
+      })
+      return
+    }
+
+    const { isIn, choiceId } = isPlanInWishlist(plan)
+    
+    if (isIn && choiceId) {
+      // 移除志愿（显示确认框）
+      setChoiceToDelete({
+        choiceId,
+        majorName: plan.enrollmentMajor || '该专业'
+      })
+      setDeleteConfirmOpen(true)
+      return
+    }
+
+    try {
+      // 找到对应的plan数据
+      let matchedPlan: any = selectedPlanData
+      
+      if (!matchedPlan) {
+        // 如果没有 selectedPlanData，尝试从 groupedChoices 中获取信息
+        // 或者使用 plan 数据本身
+        matchedPlan = {
+          majorGroupId: selectedGroupInfo.majorGroupId || null,
+          schoolCode: groupedChoices?.volunteers.find(v => v.school.name === selectedSchoolData.schoolName)?.school.code || null,
+          enrollmentMajor: plan.enrollmentMajor || null,
+          batch: null,
+          majorGroupInfo: null,
+          subjectSelectionMode: null,
+          studyPeriod: plan.studyPeriod || null,
+          enrollmentQuota: plan.enrollmentQuota || null,
+          remark: plan.remark || null,
+          tuitionFee: null,
+          curUnit: null,
+          majorScores: null,
+        }
+      }
+
+      // 构建创建志愿的DTO
+      const createChoiceDto: CreateChoiceDto = {
+        mgId: matchedPlan.majorGroupId || selectedGroupInfo.majorGroupId || null,
+        schoolCode: matchedPlan.schoolCode || groupedChoices?.volunteers.find(v => v.school.name === selectedSchoolData.schoolName)?.school.code || null,
+        enrollmentMajor: plan.enrollmentMajor || matchedPlan.enrollmentMajor || null,
+        batch: matchedPlan.batch || null,
+        majorGroupInfo: matchedPlan.majorGroupInfo || null,
+        subjectSelectionMode: matchedPlan.subjectSelectionMode || null,
+        studyPeriod: plan.studyPeriod || matchedPlan.studyPeriod || null,
+        enrollmentQuota: plan.enrollmentQuota || matchedPlan.enrollmentQuota || null,
+        remark: plan.remark || matchedPlan.remark || null,
+        tuitionFee: matchedPlan.tuitionFee || null,
+        curUnit: matchedPlan.curUnit || null,
+        majorScores: matchedPlan.majorScores?.map((score: any) => ({
+          schoolCode: score.schoolCode,
+          province: score.province,
+          year: score.year,
+          subjectSelectionMode: score.subjectSelectionMode,
+          batch: score.batch,
+          minScore: score.minScore,
+          minRank: score.minRank,
+          admitCount: score.admitCount,
+          enrollmentType: score.enrollmentType,
+        })) || null,
+      }
+
+      // 调用API创建志愿
+      await createChoice(createChoiceDto)
+
+      // 重新加载志愿列表
+      await loadChoicesFromAPI()
+
+      Taro.showToast({
+        title: '已加入志愿',
+        icon: 'success',
+        duration: 2000
+      })
+    } catch (error: any) {
+      console.error('加入志愿失败:', error)
+      Taro.showToast({
+        title: error?.message || '加入志愿失败，请重试',
+        icon: 'none',
+        duration: 2000
+      })
+    }
+  }
+
   const pageTitle = activeTab === '意向志愿' ? '志愿填报' : '院校探索'
   const pageDescription = activeTab === '意向志愿' 
     ? '基于天赋匹配的智能志愿推荐' 
@@ -1313,580 +1511,471 @@ export default function IntendedMajorsPage() {
             </View>
           ) : (
             <View className="intended-majors-page__wishlist">
-                            {(() => {
-                // 按专业组分组：同一个学校+专业组ID的组合只算一个志愿
-                const groupedByMajorGroup = new Map<string, any[]>()
-                
-                wishlistItems.forEach((item) => {
-                  // 优先使用 schoolCode + majorGroupId 作为key（更可靠）
-                  // 如果没有majorGroupId，再使用schoolCode + majorGroupName
-                  let groupKey: string
-                  if (item.majorGroupId) {
-                    groupKey = `${item.schoolCode || item.schoolName}-${item.majorGroupId}`
-                  } else if (item.majorGroupName && item.majorGroupName.trim() && item.majorGroupName !== '()') {
-                    groupKey = `${item.schoolCode || item.schoolName}-${item.majorGroupName}`
-                  } else {
-                    // 如果没有专业组信息，使用 schoolCode + id 作为唯一标识
-                    groupKey = `${item.schoolCode || item.schoolName}-no-group-${item.id}`
-                  }
-                  
-                  if (!groupedByMajorGroup.has(groupKey)) {
-                    groupedByMajorGroup.set(groupKey, [])
-                  }
-                  groupedByMajorGroup.get(groupKey)!.push(item)
-                })
-                
-                // 转换为数组并按mgIndex排序，过滤掉没有专业组信息的项
-                const groupedArray = Array.from(groupedByMajorGroup.entries())
-                  .map(([key, items]) => {
-                    // 取第一个item作为代表（它们属于同一个专业组）
-                    const firstItem = items[0]
-                    return {
-                      key,
-                      items,
-                      mgIndex: firstItem.mgIndex ?? 999999,
-                      schoolName: firstItem.schoolName,
-                      schoolCode: firstItem.schoolCode,
-                      majorGroupName: firstItem.majorGroupName || items.find((i: any) => i.majorGroupName)?.majorGroupName,
-                      majorGroupId: firstItem.majorGroupId || items.find((i: any) => i.majorGroupId)?.majorGroupId,
-                      school: groupedChoices?.volunteers.find(v => v.school.name === firstItem.schoolName || v.school.code === firstItem.schoolCode)?.school,
-                      majorGroup: groupedChoices?.volunteers
-                        .find(v => v.school.name === firstItem.schoolName || v.school.code === firstItem.schoolCode)
-                        ?.majorGroups.find(mg => {
-                          // 优先通过majorGroupId匹配
-                          if (firstItem.majorGroupId) {
-                            return mg.majorGroup.mgId === firstItem.majorGroupId || 
-                                   mg.choices.some(c => c.majorGroupId === firstItem.majorGroupId)
+              {groupedChoices && groupedChoices.volunteers.length > 0 ? (
+                // 直接使用 groupedChoices 的数据结构，按照 volunteers -> majorGroups -> choices 的顺序显示
+                groupedChoices.volunteers
+                  .sort((a, b) => (a.mgIndex ?? 999999) - (b.mgIndex ?? 999999))
+                  .map((volunteer, volunteerIdx) => {
+                    const volunteerNumber = volunteerIdx + 1
+                    const school = volunteer.school
+                    const schoolFeatures = school?.features || ''
+                    const provinceName = school?.provinceName || ''
+                    const cityName = school?.cityName || ''
+                    const belong = school?.belong || ''
+                    const enrollmentRate = school?.enrollmentRate ? `${school.enrollmentRate}` : '0'
+                    const employmentRate = school?.employmentRate ? `${school.employmentRate}` : '0'
+                    
+                    // 处理学校特征标签
+                    let validFeatures: string[] = []
+                    if (schoolFeatures) {
+                      const featureStr = String(schoolFeatures).trim()
+                      if (featureStr && featureStr !== '[]' && featureStr !== 'null' && featureStr !== 'undefined') {
+                        try {
+                          const parsed = JSON.parse(featureStr)
+                          if (Array.isArray(parsed)) {
+                            validFeatures = parsed.filter((f: any) => f && String(f).trim())
+                          } else {
+                            validFeatures = featureStr.split(',').filter((f: string) => f.trim())
                           }
-                          // 如果没有majorGroupId，通过majorGroupName匹配
-                          return mg.majorGroup.mgName === firstItem.majorGroupName
-                        })?.majorGroup,
-                    }
-                  })
-                  .filter(group => {
-                    // 过滤掉没有专业组信息的项
-                    // 如果有majorGroupId，就显示；如果没有majorGroupId，但有有效的majorGroupName，也显示
-                    const hasMajorGroupId = group.majorGroupId !== null && group.majorGroupId !== undefined
-                    const hasMajorGroupName = group.majorGroupName && group.majorGroupName.trim() && group.majorGroupName !== '()'
-                    return hasMajorGroupId || hasMajorGroupName
-                  })
-                  .sort((a, b) => a.mgIndex - b.mgIndex)
-                
-                return groupedArray.map((group, idx) => {
-                  const volunteerNumber = idx + 1
-                  const school = group.school
-                  const majorGroup = group.majorGroup
-                  const groupKey = `${group.key}-${idx}`
-                  const isExpanded = expandedMajorGroups.has(groupKey)
-                  
-                  const firstItem = group.items[0]
-                  const schoolFeatures = school?.features || firstItem.schoolFeature || ''
-                  const provinceName = school?.provinceName || firstItem.provinceName || ''
-                  const cityName = school?.cityName || firstItem.cityName || ''
-                  const belong = school?.belong || firstItem.belong || ''
-                  const schoolCode = school?.code || firstItem.schoolCode || ''
-                  const nature = school?.nature || firstItem.schoolNature || ''
-                  
-                  // 处理学校特征标签
-                              let validFeatures: string[] = []
-                  if (schoolFeatures) {
-                    const featureStr = String(schoolFeatures).trim()
-                                if (featureStr && featureStr !== '[]' && featureStr !== 'null' && featureStr !== 'undefined') {
-                                  try {
-                                    const parsed = JSON.parse(featureStr)
-                                    if (Array.isArray(parsed)) {
-                          validFeatures = parsed.filter((f: any) => f && String(f).trim())
-                                    } else {
+                        } catch {
                           validFeatures = featureStr.split(',').filter((f: string) => f.trim())
-                                    }
-                                  } catch {
-                        validFeatures = featureStr.split(',').filter((f: string) => f.trim())
+                        }
                       }
                     }
-                  }
-                  
-                  // 获取专业组信息
-                  const mgId = majorGroup?.mgId || group.majorGroupId
-                  const majorGroupName = majorGroup?.mgName || group.majorGroupName || ''
-                  const subjectSelectionMode = majorGroup?.subjectSelectionMode || firstItem.subjectSelectionMode || ''
-                  
-                  return (
-                    <Card key={groupKey} className="intended-majors-page__wishlist-item">
-                      <View className="intended-majors-page__wishlist-item-content">
-                        {/* 志愿编号和学校名称 */}
-                        <View className="intended-majors-page__wishlist-item-header">
-                          <View className="intended-majors-page__wishlist-item-volunteer-badge">
-                            <Text className="intended-majors-page__wishlist-item-volunteer-text">志愿{volunteerNumber}</Text>
+                    
+                    return (
+                      <Card key={`volunteer-${volunteer.mgIndex}`} className="intended-majors-page__wishlist-item">
+                        <View className="intended-majors-page__wishlist-item-content">
+                          {/* 志愿编号和操作按钮（删除、上移、下移）- 同一行 */}
+                          <View className="intended-majors-page__wishlist-item-header-row">
+                            <View className="intended-majors-page__wishlist-item-volunteer-badge">
+                              <Text className="intended-majors-page__wishlist-item-volunteer-text">志愿{volunteerNumber}</Text>
+                            </View>
+                            {/* 专业组的删除、上移、下移按钮 - 放到志愿编号同一行的右侧 */}
+                            <View className="intended-majors-page__wishlist-item-volunteer-actions">
+                              {/* 删除按钮：删除整个志愿（所有 majorGroups） */}
+                              <Button
+                                onClick={async () => {
+                                  // 收集所有 choices
+                                  const allChoices = volunteer.majorGroups.flatMap(mg => mg.choices)
+                                  setGroupToDelete({
+                                    items: allChoices.map(c => ({ id: c.id, enrollmentMajor: c.enrollmentMajor })),
+                                    schoolName: school?.name || '',
+                                    majorGroupName: '该志愿'
+                                  })
+                                  setDeleteConfirmOpen(true)
+                                }}
+                                className="intended-majors-page__wishlist-item-major-group-delete"
+                                size="sm"
+                                variant="ghost"
+                              >
+                                <Text className="intended-majors-page__wishlist-item-major-group-delete-text">删除</Text>
+                              </Button>
+                              {/* 上移按钮：移动整个志愿 - 始终显示 */}
+                              {(() => {
+                                const currentVolunteerIndex = groupedChoices?.volunteers.findIndex(v => v.mgIndex === volunteer.mgIndex) ?? -1
+                                const canMoveUp = currentVolunteerIndex > 0
+                                
+                                return (
+                                  <Button
+                                    onClick={async () => {
+                                      if (!canMoveUp || volunteer.mgIndex === null) return
+                                      await adjustMgIndex({ 
+                                        mgIndex: volunteer.mgIndex, 
+                                        direction: 'up' as Direction 
+                                      })
+                                      await loadChoicesFromAPI()
+                                      Taro.showToast({
+                                        title: '移动成功',
+                                        icon: 'success',
+                                        duration: 1500
+                                      })
+                                    }}
+                                    className="intended-majors-page__wishlist-item-major-group-move"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={!canMoveUp || volunteer.mgIndex === null}
+                                  >
+                                    <Text className="intended-majors-page__wishlist-item-major-group-move-text">上移</Text>
+                                  </Button>
+                                )
+                              })()}
+                              {/* 下移按钮：移动整个志愿 - 始终显示 */}
+                              {(() => {
+                                const currentVolunteerIndex = groupedChoices?.volunteers.findIndex(v => v.mgIndex === volunteer.mgIndex) ?? -1
+                                const canMoveDown = currentVolunteerIndex < (groupedChoices?.volunteers.length ?? 0) - 1
+                                
+                                return (
+                                  <Button
+                                    onClick={async () => {
+                                      if (!canMoveDown || volunteer.mgIndex === null) return
+                                      await adjustMgIndex({ 
+                                        mgIndex: volunteer.mgIndex, 
+                                        direction: 'down' as Direction 
+                                      })
+                                      await loadChoicesFromAPI()
+                                      Taro.showToast({
+                                        title: '移动成功',
+                                        icon: 'success',
+                                        duration: 1500
+                                      })
+                                    }}
+                                    className="intended-majors-page__wishlist-item-major-group-move"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={!canMoveDown || volunteer.mgIndex === null}
+                                  >
+                                    <Text className="intended-majors-page__wishlist-item-major-group-move-text">下移</Text>
+                                  </Button>
+                                )
+                              })()}
+                            </View>
                           </View>
-                          <View className="intended-majors-page__wishlist-item-main">
-                            <View className="intended-majors-page__wishlist-item-title-section">
+                          
+                          {/* 学校相关信息 - 放到志愿编号下面 */}
+                          <View className="intended-majors-page__wishlist-item-school-section">
+                            {/* 学校名称 + 省份/城市/归属（同一行） */}
+                            <View className="intended-majors-page__wishlist-item-name-row">
                               <Text className="intended-majors-page__wishlist-item-school">
-                                {group.schoolName}
-                                {majorGroupName ? ` [${majorGroupName}]` : ''}
-                                    </Text>
-                              <View className="intended-majors-page__wishlist-item-school-info">
-                                <Text>{provinceName}</Text>
-                                {validFeatures.length > 0 && (
-                                  <>
-                                    {validFeatures.map((feature, i) => (
-                                      <Text key={i}>{feature}</Text>
-                                    ))}
-                                  </>
-                                )}
-                                {nature && <Text>{nature === 'public' ? '公办' : '民办'}</Text>}
-                                </View>
-                          </View>
-                            {/* 冲稳保标签暂时隐藏，等待数据 */}
-                            {/* <View className="intended-majors-page__wishlist-item-probability">
-                              <View className="intended-majors-page__wishlist-item-probability-box">
-                                <Text className="intended-majors-page__wishlist-item-probability-percent">23%</Text>
-                                <Text className="intended-majors-page__wishlist-item-probability-label">冲</Text>
-                        </View>
-                          </View> */}
-                          </View>
-                        </View>
-                        
-                        {/* 计划信息 */}
-                        <View className="intended-majors-page__wishlist-item-plan-info">
-                          <Text>25年计划{firstItem.enrollmentQuota || group.items.length}人</Text>
-                          {schoolCode && <Text>院校代码 {schoolCode}</Text>}
-                          {subjectSelectionMode && <Text>选科要求{subjectSelectionMode}</Text>}
-                        </View>
-                        
-                        {/* 专业组展开按钮 */}
-                        {majorGroupName && (
-                          <View 
-                            className={`intended-majors-page__wishlist-item-group-toggle ${isExpanded ? 'intended-majors-page__wishlist-item-group-toggle--expanded' : ''}`}
-                            onClick={async () => {
-                              if (isExpanded) {
-                                setExpandedMajorGroups((prev) => {
-                                  const newSet = new Set(prev)
-                                  newSet.delete(groupKey)
-                                  return newSet
-                                })
-                                setGroupInfoData([])
-                              } else {
-                                setExpandedMajorGroups((prev) => {
-                                  const newSet = new Set(prev)
-                                  newSet.add(groupKey)
-                                  return newSet
-                                })
+                                {school?.name || ''}
+                              </Text>
+                              {(() => {
+                                const locationParts: string[] = []
+                                if (provinceName) locationParts.push(provinceName)
+                                if (cityName) locationParts.push(cityName)
+                                if (belong) locationParts.push(belong)
                                 
-                                // 加载专业组详细信息
-                                if (mgId) {
-                                  try {
-                                    setLoadingGroupInfo(true)
-                                    const groupInfo = await getMajorGroupInfo(mgId)
-                                    setGroupInfoData(groupInfo)
-                                  } catch (error) {
-                                    console.error('获取专业组信息失败:', error)
-                                    Taro.showToast({
-                                      title: '获取专业组信息失败',
-                                      icon: 'none'
-                                    })
-                                  } finally {
-                                    setLoadingGroupInfo(false)
-                                  }
-                                }
-                              }
-                            }}
-                          >
-                            <Text className="intended-majors-page__wishlist-item-group-text">
-                              专业组{majorGroupName}
-                            </Text>
-                            <Text className="intended-majors-page__wishlist-item-group-info">
-                              {subjectSelectionMode ? `${subjectSelectionMode}, ` : ''}
-                              已选中{group.items.length}个专业
-                            </Text>
-                            <Text className={`intended-majors-page__wishlist-item-group-arrow ${isExpanded ? 'intended-majors-page__wishlist-item-group-arrow--expanded' : ''}`}>
-                              {isExpanded ? '^' : '▼'}
-                            </Text>
-                        </View>
-                        )}
-                        
-                        {/* 展开的专业组内容 */}
-                        {isExpanded && (
-                          <View className="intended-majors-page__wishlist-item-group-content">
-                            {loadingGroupInfo ? (
-                              <View className="intended-majors-page__wishlist-item-group-loading">
-                                <Text>加载中...</Text>
-                      </View>
-                            ) : groupInfoData.length > 0 ? (
-                              // 只显示用户已选择的专业（group.items），而不是专业组中的所有专业
-                              group.items.map((item: any, itemIdx: number) => {
-                                // 从groupInfoData中找到对应的plan信息
-                                const matchedPlan = groupInfoData.find((plan: MajorGroupInfo) => 
-                                  plan.enrollmentMajor === item.enrollmentMajor ||
-                                  plan.remark === item.remark
-                                ) || groupInfoData[0]
-                                
-                                // 从matchedPlan.scores中找到对应的score信息
-                                const matchedScore = matchedPlan?.scores.find((score: any) => 
-                                  score.majorName === item.enrollmentMajor ||
-                                  score.majorName === item.majorName ||
-                                  item.enrollmentMajor === score.majorName
-                                ) || matchedPlan?.scores[0]
-                                
-                                // 标准化热爱能量值：如果值在0-1之间，乘以100取整
-                                const normalizeLoveEnergy = (value: number | null): number | null => {
-                                  if (value === null || value === undefined) return null
-                                  if (value > 0 && value < 1) {
-                                    return Math.floor(value * 100)
-                                  }
-                                  return value
-                                }
-                                
-                                // 找出最低的热爱能量分数（基于matchedPlan的所有scores，使用标准化后的值）
-                                const scores = matchedPlan?.scores
-                                  .map((s: any) => normalizeLoveEnergy(s.loveEnergy))
-                                  .filter((s: any) => s !== null && s > 0) as number[] || []
-                                const minScore = scores.length > 0 ? Math.min(...scores) : null
-                                
-                                const loveEnergy = normalizeLoveEnergy(matchedScore?.loveEnergy || null)
-                                const isLowest = minScore !== null && loveEnergy !== null && loveEnergy > 0 && 
-                                  (loveEnergy === minScore || loveEnergy === minScore + 1)
-                                
-                                const historyScoreKey = `${groupKey}-history-${itemIdx}`
-                                const isHistoryExpanded = expandedHistoryScores.has(historyScoreKey)
-                                
-                                return (
-                                  <View key={itemIdx} className="intended-majors-page__wishlist-item-group-plan-item">
-                                    {/* 专业编号（绿色圆圈）- 基于已选择的专业序号 */}
-                                    <View className="intended-majors-page__wishlist-item-group-plan-item-number">
-                                      <Text>{itemIdx + 1}</Text>
-                                    </View>
-                                      
-                                      {/* 专业信息 */}
-                                      <View className="intended-majors-page__wishlist-item-group-plan-item-content">
-                                        {/* 专业名称和代码 */}
-                                        <View className="intended-majors-page__wishlist-item-group-plan-item-header">
-                                          <Text className="intended-majors-page__wishlist-item-group-plan-item-major">
-                                            {item.enrollmentMajor || item.majorName || matchedScore?.majorName || '未知专业'}
-                                            {matchedPlan?.enrollmentMajor && matchedPlan.enrollmentMajor !== (item.enrollmentMajor || item.majorName) ? ` (${matchedPlan.enrollmentMajor})` : ''}
-                                          </Text>
-                                        </View>
-                                        
-                                        {/* 专业详情 - 显示全面信息 */}
-                                        <View className="intended-majors-page__wishlist-item-group-plan-item-details">
-                                          {item.batch && (
-                                            <Text>批次: {item.batch}</Text>
-                                          )}
-                                          {matchedPlan?.studyPeriod && (
-                                            <Text>学制: {matchedPlan.studyPeriod}</Text>
-                                          )}
-                                          {matchedPlan?.enrollmentQuota && (
-                                            <Text>招生人数: {matchedPlan.enrollmentQuota}</Text>
-                                          )}
-                                          {item.tuitionFee && (
-                                            <Text>学费: {(() => {
-                                              const fee = item.tuitionFee
-                                              return fee.includes('元') ? fee : `${fee}元`
-                                            })()}</Text>
-                                          )}
-                                          {item.subjectSelectionMode && (
-                                            <Text>选科要求: {item.subjectSelectionMode}</Text>
-                                          )}
-                                          {item.majorGroupInfo && (
-                                            <Text>专业组信息: {item.majorGroupInfo}</Text>
-                                          )}
-                                          {loveEnergy !== null && loveEnergy > 0 && (
-                                            <Text className={isLowest ? 'intended-majors-page__wishlist-item-group-plan-item-love-energy--low' : ''}>
-                                              热爱能量: {loveEnergy}
-                                              {isLowest && ' ⚠️'}
-                                            </Text>
-                                          )}
-                                          {(matchedPlan?.remark || item.remark) && (
-                                            <Text className="intended-majors-page__wishlist-item-group-plan-item-remark">
-                                              备注: {matchedPlan?.remark || item.remark}
-                                            </Text>
-                                          )}
-                                        </View>
-                                        
-                                        {/* 历年分数（如果有） */}
-                                        {item.historyScore && item.historyScore.length > 0 && (
-                                          <>
-                                            <View 
-                                              className="intended-majors-page__wishlist-item-group-plan-item-history"
-                            onClick={() => {
-                                                setExpandedHistoryScores((prev) => {
-                                                  const newSet = new Set(prev)
-                                                  if (isHistoryExpanded) {
-                                                    newSet.delete(historyScoreKey)
-                                                  } else {
-                                                    newSet.add(historyScoreKey)
-                                                  }
-                                                  return newSet
-                                                })
-                                              }}
-                                            >
-                                              <Text>历年分数</Text>
-                                              <Text className={`intended-majors-page__wishlist-item-group-plan-item-history-arrow ${isHistoryExpanded ? 'intended-majors-page__wishlist-item-group-plan-item-history-arrow--expanded' : ''}`}>
-                                                ▼
-                            </Text>
-                                            </View>
-                                            
-                                            {/* 历年分数详细内容 */}
-                                            {isHistoryExpanded && (
-                                              <View className="intended-majors-page__wishlist-item-group-plan-item-history-content">
-                                                <View className="intended-majors-page__wishlist-item-group-plan-item-history-table">
-                                                  <View className="intended-majors-page__wishlist-item-group-plan-item-history-header">
-                                                    <Text>年份</Text>
-                                                    <Text>最低分数</Text>
-                                                    <Text>最低位次</Text>
-                                                    <Text>招生人数</Text>
-                                                  </View>
-                                                  {item.historyScore[0].historyScore.map((score: any, scoreIdx: number) => {
-                                                    const [year, data] = Object.entries(score)[0]
-                                                    const [minScore, minRank, planNum] = String(data).split(',')
-                                                    return (
-                                                      <View key={scoreIdx} className="intended-majors-page__wishlist-item-group-plan-item-history-row">
-                                                        <Text>{year}</Text>
-                                                        <Text>{minScore || '-'}</Text>
-                                                        <Text>{minRank || '-'}</Text>
-                                                        <Text>{planNum || '-'}</Text>
-                                                      </View>
-                                                    )
-                                                  })}
-                                                </View>
-                                                {item.historyScore[0].batch && (
-                                                  <View className="intended-majors-page__wishlist-item-group-plan-item-history-batch">
-                                                    <Text>{item.historyScore[0].batch}</Text>
-                                                  </View>
-                                                )}
-                          </View>
-                                            )}
-                                          </>
-                        )}
-                        
-                        {/* 移除按钮 */}
-                        {item.id && (
-                          <View className="intended-majors-page__wishlist-item-group-plan-item-actions">
-                            <Button
-                              onClick={() => {
-                                setChoiceToDelete({
-                                  choiceId: item.id,
-                                  majorName: item.enrollmentMajor || item.majorName || matchedScore?.majorName || '该专业'
-                                })
-                                setDeleteConfirmOpen(true)
-                              }}
-                              className="intended-majors-page__wishlist-item-group-plan-item-remove-button"
-                              size="sm"
-                              variant="ghost"
-                            >
-                              <Text className="intended-majors-page__wishlist-item-group-plan-item-remove-text">移除</Text>
-                            </Button>
-                          </View>
-                        )}
-                                      </View>
-                                    </View>
-                                  )
-                                })
-                            ) : group.items.length > 0 ? (
-                              // 如果API没有返回数据，使用group.items中的数据
-                              group.items.map((item: any, itemIdx: number) => {
-                                const historyScoreKey = `${groupKey}-history-${itemIdx}`
-                                const isHistoryExpanded = expandedHistoryScores.has(historyScoreKey)
-                                
-                                return (
-                                  <View key={itemIdx} className="intended-majors-page__wishlist-item-group-plan-item">
-                                    {/* 专业编号（绿色圆圈） */}
-                                    <View className="intended-majors-page__wishlist-item-group-plan-item-number">
-                                      <Text>{itemIdx + 1}</Text>
-                                    </View>
-                                    
-                                    {/* 专业信息 */}
-                                    <View className="intended-majors-page__wishlist-item-group-plan-item-content">
-                                      {/* 专业名称和代码 */}
-                                      <View className="intended-majors-page__wishlist-item-group-plan-item-header">
-                                        {item.enrollmentMajor && (
-                                          <Text className="intended-majors-page__wishlist-item-group-plan-item-major">
-                                            {item.enrollmentMajor}
-                                          </Text>
-                                        )}
-                                      </View>
-                                      
-                                      {/* 专业详情 - 显示全面信息 */}
-                                      <View className="intended-majors-page__wishlist-item-group-plan-item-details">
-                                        {item.batch && (
-                                          <Text>批次: {item.batch}</Text>
-                                        )}
-                                        {item.studyPeriod && (
-                                          <Text>学制: {item.studyPeriod}</Text>
-                                        )}
-                                        {item.enrollmentQuota && (
-                                          <Text>招生人数: {item.enrollmentQuota}</Text>
-                                        )}
-                                        {item.tuitionFee && (
-                                          <Text>学费: {item.tuitionFee.includes('元') ? item.tuitionFee : `${item.tuitionFee}元`}</Text>
-                                        )}
-                                        {item.subjectSelectionMode && (
-                                          <Text>选科要求: {item.subjectSelectionMode}</Text>
-                                        )}
-                                        {item.majorGroupInfo && (
-                                          <Text>专业组信息: {item.majorGroupInfo}</Text>
-                                        )}
-                                        {item.remark && (
-                                          <Text className="intended-majors-page__wishlist-item-group-plan-item-remark">
-                                            备注: {item.remark}
-                                          </Text>
-                                        )}
-                                      </View>
-                                      
-                                      {/* 历年分数（如果有） */}
-                                      {item.historyScore && item.historyScore.length > 0 && (
-                                        <>
-                                          <View 
-                                            className="intended-majors-page__wishlist-item-group-plan-item-history"
-                            onClick={() => {
-                              setExpandedHistoryScores((prev) => {
-                                const newSet = new Set(prev)
-                                                if (isHistoryExpanded) {
-                                                  newSet.delete(historyScoreKey)
-                                } else {
-                                                  newSet.add(historyScoreKey)
-                                }
-                                return newSet
-                              })
-                            }}
-                          >
-                            <Text>历年分数</Text>
-                                            <Text className={`intended-majors-page__wishlist-item-group-plan-item-history-arrow ${isHistoryExpanded ? 'intended-majors-page__wishlist-item-group-plan-item-history-arrow--expanded' : ''}`}>
-                              ▼
-                            </Text>
-                                          </View>
-                                          
-                                          {/* 历年分数详细内容 */}
-                                          {isHistoryExpanded && (
-                                            <View className="intended-majors-page__wishlist-item-group-plan-item-history-content">
-                                              <View className="intended-majors-page__wishlist-item-group-plan-item-history-table">
-                                                <View className="intended-majors-page__wishlist-item-group-plan-item-history-header">
-                                  <Text>年份</Text>
-                                                  <Text>最低分数</Text>
-                                  <Text>最低位次</Text>
-                                                  <Text>招生人数</Text>
-                                </View>
-                                                {item.historyScore[0].historyScore.map((score: any, scoreIdx: number) => {
-                                  const [year, data] = Object.entries(score)[0]
-                                  const [minScore, minRank, planNum] = String(data).split(',')
-                                  return (
-                                                    <View key={scoreIdx} className="intended-majors-page__wishlist-item-group-plan-item-history-row">
-                                      <Text>{year}</Text>
-                                                      <Text>{minScore || '-'}</Text>
-                                                      <Text>{minRank || '-'}</Text>
-                                                      <Text>{planNum || '-'}</Text>
-                                    </View>
-                                  )
-                                })}
+                                return locationParts.length > 0 ? (
+                                  <Text className="intended-majors-page__wishlist-item-location-inline">
+                                    {locationParts.join(' · ')}
+                                  </Text>
+                                ) : null
+                              })()}
+                            </View>
+                            {/* features（下一行，如果有） */}
+                            {validFeatures.length > 0 && (
+                              <View className="intended-majors-page__wishlist-item-features">
+                                {validFeatures.map((feature, i) => (
+                                  <Text key={i} className="intended-majors-page__wishlist-item-feature">
+                                    {feature.trim()}
+                                  </Text>
+                                ))}
                               </View>
-                                  {item.historyScore[0].batch && (
-                                                <View className="intended-majors-page__wishlist-item-group-plan-item-history-batch">
-                                                  <Text>{item.historyScore[0].batch}</Text>
-                                                </View>
-                                  )}
-                                </View>
-                                          )}
-                                        </>
-                                      )}
-                                      
-                                      {/* 移除按钮 */}
-                                      {item.id && (
-                                        <View className="intended-majors-page__wishlist-item-group-plan-item-actions">
-                                          <Button
-                                            onClick={() => {
-                                              setChoiceToDelete({
-                                                choiceId: item.id,
-                                                majorName: item.enrollmentMajor || item.majorName || '该专业'
+                            )}
+                            {/* 升学率/就业率（下一行） */}
+                            <View className="intended-majors-page__wishlist-item-rates">
+                              <View className="intended-majors-page__wishlist-item-rate">
+                                <Text className="intended-majors-page__wishlist-item-rate-label">升学率:</Text>
+                                <Text className="intended-majors-page__wishlist-item-rate-value">{enrollmentRate}%</Text>
+                              </View>
+                              <View className="intended-majors-page__wishlist-item-rate">
+                                <Text className="intended-majors-page__wishlist-item-rate-label">就业率:</Text>
+                                <Text className="intended-majors-page__wishlist-item-rate-value">{employmentRate}%</Text>
+                              </View>
+                            </View>
+                          </View>
+                          
+                          {/* 先显示 majorGroups */}
+                          {volunteer.majorGroups.map((majorGroup, mgIdx) => {
+                            const majorGroupName = majorGroup.majorGroup?.mgName || ''
+                            const mgId = majorGroup.majorGroup?.mgId
+                            const majorGroupInfo = majorGroup.choices[0]?.majorGroupInfo || majorGroup.majorGroup?.mgInfo || ''
+                            const groupKey = `${volunteer.mgIndex}-${mgId}-${mgIdx}`
+                            const isChoicesExpanded = expandedChoicesInGroup.has(groupKey)
+                            const choicesCount = majorGroup.choices.length
+                            const sortedChoices = [...majorGroup.choices].sort((a, b) => (a.majorIndex ?? 999999) - (b.majorIndex ?? 999999))
+                            
+                            return (
+                              <View key={`majorGroup-${mgIdx}`} className="intended-majors-page__wishlist-item-major-group" data-major-group="true">
+                                {/* majorGroup 信息显示区域 - 专业组和选科同一行 */}
+                                {majorGroup.majorGroup && (
+                                  <View className="intended-majors-page__wishlist-item-major-group-info">
+                                    <View className="intended-majors-page__wishlist-item-major-group-header">
+                                      <View className="intended-majors-page__wishlist-item-major-group-header-left">
+                                        <Text 
+                                          className="intended-majors-page__wishlist-item-major-group-name" 
+                                          data-major-group-name="true"
+                                          onClick={async (e) => {
+                                            e.stopPropagation()
+                                            if (!mgId) {
+                                              Taro.showToast({
+                                                title: '专业组ID缺失',
+                                                icon: 'none'
                                               })
-                                              setDeleteConfirmOpen(true)
-                                            }}
-                                            className="intended-majors-page__wishlist-item-group-plan-item-remove-button"
-                                            size="sm"
-                                            variant="ghost"
-                                          >
-                                            <Text className="intended-majors-page__wishlist-item-group-plan-item-remove-text">移除</Text>
-                                          </Button>
-                                        </View>
-                                      )}
+                                              return
+                                            }
+                                            try {
+                                              setLoadingGroupInfo(true)
+                                              setSelectedGroupInfo({
+                                                schoolName: school?.name || '',
+                                                majorGroupName: majorGroupName,
+                                                majorGroupId: mgId,
+                                              })
+                                              setSelectedSchoolData({
+                                                schoolName: school?.name || '',
+                                                schoolNature: school?.nature || 'public',
+                                                rankDiffPer: 0,
+                                                group: 0,
+                                                historyScores: [],
+                                                schoolFeature: schoolFeatures,
+                                                belong: belong,
+                                                provinceName: provinceName,
+                                                cityName: cityName,
+                                                enrollmentRate: enrollmentRate,
+                                                employmentRate: employmentRate,
+                                                majorGroupName: majorGroupName,
+                                                majorGroupId: mgId,
+                                              })
+                                              // 使用第一个 choice 的数据作为 selectedPlanData
+                                              const firstChoice = majorGroup.choices[0]
+                                              setSelectedPlanData({
+                                                enrollmentMajor: firstChoice?.enrollmentMajor || null,
+                                                remark: firstChoice?.remark || null,
+                                                subjectSelectionMode: firstChoice?.subjectSelectionMode || null,
+                                                enrollmentQuota: firstChoice?.enrollmentQuota || null,
+                                                studyPeriod: firstChoice?.studyPeriod || null,
+                                                tuitionFee: firstChoice?.tuitionFee || null,
+                                                batch: firstChoice?.batch || null,
+                                                majorGroupId: mgId,
+                                              } as any)
+                                              
+                                              // 调用 API 获取专业组信息
+                                              console.log('准备获取专业组信息，mgId:', mgId)
+                                              const groupInfo = await getMajorGroupInfo(mgId)
+                                              console.log('获取到的专业组信息:', groupInfo)
+                                              setGroupInfoData(groupInfo)
+                                              setGroupDialogOpen(true)
+                                              console.log('设置弹框打开，groupDialogOpen:', true)
+                                            } catch (error) {
+                                              console.error('获取专业组信息失败:', error)
+                                              Taro.showToast({
+                                                title: '获取专业组信息失败',
+                                                icon: 'none',
+                                              })
+                                            } finally {
+                                              setLoadingGroupInfo(false)
+                                            }
+                                          }}
+                                        >
+                                          专业组: {majorGroupName}
+                                        </Text>
+                                        {majorGroupInfo && (
+                                          <Text className="intended-majors-page__wishlist-item-major-group-subject">
+                                            选科: {majorGroupInfo}
+                                          </Text>
+                                        )}
+                                      </View>
+                                      {/* 折叠/展开按钮 - 放到同一行右侧 */}
+                                      <Text 
+                                        className="intended-majors-page__wishlist-item-major-group-toggle"
+                                        onClick={() => {
+                                          setExpandedChoicesInGroup((prev) => {
+                                            const newSet = new Set(prev)
+                                            if (isChoicesExpanded) {
+                                              newSet.delete(groupKey)
+                                            } else {
+                                              newSet.add(groupKey)
+                                            }
+                                            return newSet
+                                          })
+                                        }}
+                                      >
+                                        {isChoicesExpanded ? '收起' : '展开'} ({choicesCount})
+                                        <Text className={`intended-majors-page__wishlist-item-major-group-arrow ${isChoicesExpanded ? 'intended-majors-page__wishlist-item-major-group-arrow--expanded' : ''}`}>
+                                          ▼
+                                        </Text>
+                                      </Text>
                                     </View>
                                   </View>
-                                )
-                              })
-                            ) : (
-                              <View className="intended-majors-page__wishlist-item-group-empty">
-                                <Text>暂无专业组信息</Text>
-                            </View>
-                          )}
+                                )}
+                                
+                                {/* 然后在下面显示 choices（可折叠） */}
+                                {isChoicesExpanded && (
+                                  <View className="intended-majors-page__wishlist-item-plans">
+                                    {sortedChoices.map((choice, choiceIdx) => {
+                                      return (
+                                        <View key={choiceIdx} className="intended-majors-page__wishlist-item-plan">
+                                          {/* enrollmentMajor + 操作按钮（移除、上移、下移） */}
+                                          {choice.enrollmentMajor && (
+                                            <View className="intended-majors-page__wishlist-item-plan-major">
+                                              <Text className="intended-majors-page__wishlist-item-plan-major-value" data-enrollment-major="true">
+                                                {choice.enrollmentMajor}
+                                              </Text>
+                                              {/* 操作按钮：移除、上移、下移 */}
+                                              <View className="intended-majors-page__wishlist-item-plan-actions-inline">
+                                                <Button
+                                                  onClick={async (e) => {
+                                                    e.stopPropagation()
+                                                    setChoiceToDelete({
+                                                      choiceId: choice.id,
+                                                      majorName: choice.enrollmentMajor || '该专业'
+                                                    })
+                                                    setDeleteConfirmOpen(true)
+                                                  }}
+                                                  className="intended-majors-page__wishlist-item-plan-action intended-majors-page__wishlist-item-plan-action--remove"
+                                                  size="sm"
+                                                  variant="ghost"
+                                                >
+                                                  <Text className="intended-majors-page__wishlist-item-plan-action-text">移除</Text>
+                                                </Button>
+                                                {/* 上移按钮：不是第一个时可以上移 */}
+                                                {choiceIdx > 0 && (
+                                                  <Button
+                                                    onClick={async (e) => {
+                                                      e.stopPropagation()
+                                                      if (choice.id) {
+                                                        await adjustMajorIndex(choice.id, { direction: 'up' as Direction })
+                                                        await loadChoicesFromAPI()
+                                                        Taro.showToast({
+                                                          title: '移动成功',
+                                                          icon: 'success',
+                                                          duration: 1500
+                                                        })
+                                                      }
+                                                    }}
+                                                    className="intended-majors-page__wishlist-item-plan-action intended-majors-page__wishlist-item-plan-action--move"
+                                                    size="sm"
+                                                    variant="ghost"
+                                                  >
+                                                    <Text className="intended-majors-page__wishlist-item-plan-action-text">上移</Text>
+                                                  </Button>
+                                                )}
+                                                {/* 下移按钮：不是最后一个时可以下移 */}
+                                                {choiceIdx < sortedChoices.length - 1 && (
+                                                  <Button
+                                                    onClick={async (e) => {
+                                                      e.stopPropagation()
+                                                      if (choice.id) {
+                                                        await adjustMajorIndex(choice.id, { direction: 'down' as Direction })
+                                                        await loadChoicesFromAPI()
+                                                        Taro.showToast({
+                                                          title: '移动成功',
+                                                          icon: 'success',
+                                                          duration: 1500
+                                                        })
+                                                      }
+                                                    }}
+                                                    className="intended-majors-page__wishlist-item-plan-action intended-majors-page__wishlist-item-plan-action--move"
+                                                    size="sm"
+                                                    variant="ghost"
+                                                  >
+                                                    <Text className="intended-majors-page__wishlist-item-plan-action-text">下移</Text>
+                                                  </Button>
+                                                )}
+                                              </View>
+                                            </View>
+                                          )}
+                                          {/* remark */}
+                                          {choice.remark && (
+                                            <View className="intended-majors-page__wishlist-item-plan-remark">
+                                              <Text className="intended-majors-page__wishlist-item-plan-remark-text">{choice.remark}</Text>
+                                            </View>
+                                          )}
+                                          {/* 招生人数/专业组（不显示选科） */}
+                                          {(choice.enrollmentQuota || majorGroupName) && (
+                                            <View className="intended-majors-page__wishlist-item-plan-info">
+                                              {choice.enrollmentQuota && (
+                                                <Text className="intended-majors-page__wishlist-item-plan-info-text">
+                                                  招生人数: {choice.enrollmentQuota}
+                                                </Text>
+                                              )}
+                                              {majorGroupName && mgId && (
+                                                <Text 
+                                                  className="intended-majors-page__wishlist-item-plan-info-text intended-majors-page__wishlist-item-plan-info-group" 
+                                                  data-major-group-button="true"
+                                                  onClick={async (e) => {
+                                                    e.stopPropagation()
+                                                    try {
+                                                      setLoadingGroupInfo(true)
+                                                      setSelectedGroupInfo({
+                                                        schoolName: school?.name || '',
+                                                        majorGroupName: majorGroupName,
+                                                        majorGroupId: mgId,
+                                                      })
+                                                      setSelectedSchoolData({
+                                                        schoolName: school?.name || '',
+                                                        schoolNature: school?.nature || 'public',
+                                                        rankDiffPer: 0,
+                                                        group: 0,
+                                                        historyScores: [],
+                                                        schoolFeature: schoolFeatures,
+                                                        belong: belong,
+                                                        provinceName: provinceName,
+                                                        cityName: cityName,
+                                                        enrollmentRate: enrollmentRate,
+                                                        employmentRate: employmentRate,
+                                                        majorGroupName: majorGroupName,
+                                                        majorGroupId: mgId,
+                                                      })
+                                                      setSelectedPlanData({
+                                                        enrollmentMajor: choice.enrollmentMajor || null,
+                                                        remark: choice.remark || null,
+                                                        subjectSelectionMode: choice.subjectSelectionMode || null,
+                                                        enrollmentQuota: choice.enrollmentQuota || null,
+                                                        studyPeriod: choice.studyPeriod || null,
+                                                        tuitionFee: choice.tuitionFee || null,
+                                                        batch: choice.batch || null,
+                                                        majorGroupId: mgId,
+                                                      } as any)
+                                                      
+                                                      // 调用 API 获取专业组信息
+                                                      const groupInfo = await getMajorGroupInfo(mgId)
+                                                      setGroupInfoData(groupInfo)
+                                                      setGroupDialogOpen(true)
+                                                    } catch (error) {
+                                                      console.error('获取专业组信息失败:', error)
+                                                      Taro.showToast({
+                                                        title: '获取专业组信息失败',
+                                                        icon: 'none',
+                                                      })
+                                                    } finally {
+                                                      setLoadingGroupInfo(false)
+                                                    }
+                                                  }}
+                                                >
+                                                  {choice.enrollmentQuota ? ' · ' : ''}专业组{majorGroupName ? `: ${majorGroupName}` : ''} 👁️
+                                                </Text>
+                                              )}
+                                            </View>
+                                          )}
+                                          {/* 分数信息 */}
+                                          {choice.majorScores && choice.majorScores.length > 0 && (
+                                            <View className="intended-majors-page__wishlist-item-plan-scores" data-scores="true">
+                                              {choice.majorScores.map((score, scoreIndex) => (
+                                                <View key={scoreIndex} className="intended-majors-page__wishlist-item-plan-score">
+                                                  {score.minScore !== null && score.minScore !== undefined && (
+                                                    <Text className="intended-majors-page__wishlist-item-plan-score-text" data-score="true">
+                                                      {score.year}年最低分数: {Math.floor(score.minScore)}
+                                                    </Text>
+                                                  )}
+                                                  {score.minRank !== null && (
+                                                    <Text className="intended-majors-page__wishlist-item-plan-score-text" data-score="true">
+                                                      最低位次: {score.minRank}
+                                                    </Text>
+                                                  )}
+                                                </View>
+                                              ))}
+                                            </View>
+                                          )}
+                                        </View>
+                                      )
+                                    })}
+                                  </View>
+                                )}
+                              </View>
+                            )
+                          })}
                         </View>
-                      )}
-                        
-                        {/* 操作按钮 */}
-                        <View className="intended-majors-page__wishlist-item-actions">
-                          <View className="intended-majors-page__wishlist-item-move-buttons">
-                            {idx > 0 && (
-                          <Button
-                                onClick={() => {
-                                  // 移动专业组逻辑
-                                  const firstItemInGroup = group.items[0]
-                                  if (firstItemInGroup.mgIndex !== null) {
-                                    adjustMgIndex({ 
-                                      mgIndex: firstItemInGroup.mgIndex, 
-                                      direction: 'up' as Direction 
-                                    }).then(() => {
-                                      loadChoicesFromAPI()
-                                    })
-                                  }
-                                }}
-                                className="intended-majors-page__wishlist-item-move-button intended-majors-page__wishlist-item-move-button--up"
-                            size="sm"
-                            variant="ghost"
-                          >
-                                <Text className="intended-majors-page__wishlist-item-move-text">上移</Text>
-                          </Button>
-                            )}
-                            {idx < groupedArray.length - 1 && (
-                          <Button
-                            onClick={() => {
-                                  // 移动专业组逻辑
-                                  const firstItemInGroup = group.items[0]
-                                  if (firstItemInGroup.mgIndex !== null) {
-                                    adjustMgIndex({ 
-                                      mgIndex: firstItemInGroup.mgIndex, 
-                                      direction: 'down' as Direction 
-                                    }).then(() => {
-                                      loadChoicesFromAPI()
-                                    })
-                                  }
-                                }}
-                                className="intended-majors-page__wishlist-item-move-button intended-majors-page__wishlist-item-move-button--down"
-                            size="sm"
-                            variant="ghost"
-                          >
-                                <Text className="intended-majors-page__wishlist-item-move-text">下移</Text>
-                          </Button>
-                        )}
-                          </View>
-                          <Button
-                            onClick={() => {
-                              // 显示删除确认对话框
-                              setGroupToDelete({
-                                items: group.items,
-                                schoolName: group.schoolName,
-                                majorGroupName: majorGroupName || '未命名专业组'
-                              })
-                              setDeleteConfirmOpen(true)
-                            }}
-                            className="intended-majors-page__wishlist-item-delete"
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <Text className="intended-majors-page__wishlist-item-delete-text">移除</Text>
-                          </Button>
-                                </View>
-                    </View>
-                  </Card>
-                )
-                })
-              })()}
+                      </Card>
+                    )
+                  })
+              ) : (
+                <View className="intended-majors-page__empty">
+                  <Text className="intended-majors-page__empty-icon">📚</Text>
+                  <Text className="intended-majors-page__empty-text">暂无志愿数据</Text>
+                  <Text className="intended-majors-page__empty-desc">请先进行院校探索，添加心仪的志愿</Text>
+                </View>
+              )}
               <Card 
                 className="intended-majors-page__add-more"
                 onClick={() => {
@@ -2028,9 +2117,9 @@ export default function IntendedMajorsPage() {
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
               {choiceToDelete
-                ? `确定要删除专业"${choiceToDelete.majorName}"吗？此操作无法撤销。`
+                ? `确定要删除专业"${choiceToDelete?.majorName || ''}"吗？此操作无法撤销。`
                 : groupToDelete 
-                ? `确定要删除"${groupToDelete.schoolName} - ${groupToDelete.majorGroupName}"专业组吗？此操作将删除该专业组下的所有志愿项，且无法撤销。`
+                ? `确定要删除"${groupToDelete?.schoolName || ''} - ${groupToDelete?.majorGroupName || ''}"专业组吗？此操作将删除该专业组下的所有志愿项，且无法撤销。`
                 : '确定要删除此志愿项吗？此操作无法撤销。'}
             </DialogDescription>
           </DialogHeader>
@@ -2057,7 +2146,21 @@ export default function IntendedMajorsPage() {
       </Dialog>
 
       {/* 专业组信息对话框 */}
-      <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+      <Dialog 
+        open={groupDialogOpen} 
+        onOpenChange={(open) => {
+          setGroupDialogOpen(open)
+          if (!open) {
+            // 关闭时清空数据
+            setGroupInfoData([])
+            setSelectedGroupInfo(null)
+            setSelectedSchoolData(null)
+            setSelectedPlanData(null)
+            setLoadingGroupInfo(false)
+            setExpandedScores(new Set()) // 清空 scores 展开状态
+          }
+        }}
+      >
         <DialogContent className="intended-majors-page__group-dialog">
           <DialogHeader>
             <DialogTitle>
@@ -2065,96 +2168,120 @@ export default function IntendedMajorsPage() {
             </DialogTitle>
           </DialogHeader>
           <View className="intended-majors-page__group-dialog-content">
-            {groupDataList.length === 0 ? (
+            {loadingGroupInfo ? (
+              <View className="intended-majors-page__group-dialog-empty">
+                <Text>加载中...</Text>
+              </View>
+            ) : groupInfoData.length === 0 ? (
               <View className="intended-majors-page__group-dialog-empty">
                 <Text>暂无专业组信息</Text>
                 <Text className="intended-majors-page__group-dialog-empty-desc">数据未加载或为空</Text>
               </View>
             ) : (
-              (() => {
-                const groupedByInfo = groupDataList.reduce((acc, item) => {
-                  const key = item.majorGroupInfo || '未分组'
-                  if (!acc[key]) {
-                    acc[key] = []
+              groupInfoData.map((plan, planIdx) => {
+                // 处理热爱能量值：如果值在0-1之间，乘以100取整
+                const normalizeLoveEnergy = (value: number | null): number | null => {
+                  if (value === null || value === undefined) return null
+                  if (value > 0 && value < 1) {
+                    return Math.floor(value * 100)
                   }
-                  acc[key].push(item)
-                  return acc
-                }, {} as Record<string, typeof groupDataList>)
+                  return value
+                }
 
-                return Object.entries(groupedByInfo).map(([groupInfo, majors]) => {
-                  // 标准化热爱能量值：如果值在0-1之间，乘以100取整
-                  const normalizeLoveEnergy = (value: any): number | null => {
-                    if (value === null || value === undefined) return null
-                    const numValue = typeof value === 'string' ? parseFloat(value) : Number(value)
-                    if (isNaN(numValue)) return null
-                    if (numValue > 0 && numValue < 1) {
-                      return Math.floor(numValue * 100)
-                    }
-                    return Math.round(numValue)
-                  }
-                  
-                  const majorsList = majors as any[]
-                  const scores = majorsList
-                    .map((m: any) => normalizeLoveEnergy(m.developmentPotential))
-                    .filter((s: number | null): s is number => s !== null && s > 0)
-                  const minScore = scores.length > 0 ? Math.min(...scores) : null
-                  const lowestScoreMajors = minScore !== null 
-                    ? majorsList.filter((m: any) => {
-                        const score = normalizeLoveEnergy(m.developmentPotential)
-                        return score !== null && score > 0 && (score === minScore || score === minScore + 1)
-                      })
-                    : []
-                  
-                  return (
-                    <View key={groupInfo} className="intended-majors-page__group-section">
-                      {lowestScoreMajors.length > 0 && (
-                        <View className="intended-majors-page__group-warning">
-                          <Text className="intended-majors-page__group-warning-title">⚠️ 提醒</Text>
-                          <Text className="intended-majors-page__group-warning-text">
-                            该专业组中包含热爱能量低的专业，选择该专业组可能会被调剂到这些专业，请谨慎选择。
-                          </Text>
+                const isScoresExpanded = expandedScores.has(planIdx)
+                const scoresCount = plan.scores?.length || 0
+                const isSingleScore = scoresCount === 1
+                
+                // 单个 score 时，获取热爱能量值
+                const singleLoveEnergy = isSingleScore && plan.scores?.[0] 
+                  ? normalizeLoveEnergy(plan.scores[0].loveEnergy) 
+                  : null
+
+                return (
+                  <View key={planIdx} className="intended-majors-page__group-section-new">
+                    {/* 第一行：enrollmentMajor + 加入志愿/删除志愿按钮 */}
+                    {plan.enrollmentMajor && (
+                      <View className="intended-majors-page__group-major-row">
+                        <View className="intended-majors-page__group-major-name-wrapper">
+                          <Text className="intended-majors-page__group-major-name">{plan.enrollmentMajor}</Text>
+                          {/* 如果只有一个 score，在 enrollmentMajor 后面显示热爱能量 */}
+                          {isSingleScore && singleLoveEnergy !== null && (
+                            <Text className="intended-majors-page__group-major-energy">
+                              热爱能量：{singleLoveEnergy}
+                            </Text>
+                          )}
                         </View>
-                      )}
-                      <Text className="intended-majors-page__group-section-title">{groupInfo}</Text>
-                      <View className="intended-majors-page__group-table">
-                        <View className="intended-majors-page__group-table-header">
-                          <Text>专业</Text>
-                          <Text>批次</Text>
-                          <Text>招生人数</Text>
-                          <Text>学费</Text>
-                          <Text>学制</Text>
-                          <Text>热爱能量</Text>
-                        </View>
-                        {majorsList.map((major: any, idx: number) => {
-                          const score = normalizeLoveEnergy(major.developmentPotential)
-                          const isLowest = minScore !== null && score !== null && score > 0 && (score === minScore || score === minScore + 1)
-                          
+                        {(() => {
+                          const { isIn, choiceId } = isPlanInWishlist(plan)
+                          if (isIn && choiceId) {
+                            return (
+                              <Text
+                                className="intended-majors-page__group-major-action intended-majors-page__group-major-action--remove"
+                                onClick={() => handleAddPlanToWishlist(plan)}
+                              >
+                                移除志愿
+                              </Text>
+                            )
+                          }
                           return (
-                            <View 
-                              key={idx} 
-                              className={`intended-majors-page__group-table-row ${isLowest ? 'intended-majors-page__group-table-row--warning' : ''}`}
+                            <Text
+                              className="intended-majors-page__group-major-action"
+                              onClick={() => handleAddPlanToWishlist(plan)}
                             >
-                              <View>
-                                <Text className="intended-majors-page__group-table-major-name">{major.majorName}</Text>
-                              </View>
-                              <Text>{major.batch || '-'}</Text>
-                              <Text>{major.num || '-'}</Text>
-                              <Text>{major.tuition ? `${major.tuition}元` : '-'}</Text>
-                              <Text>{major.studyPeriod || '-'}</Text>
-                              <View className="intended-majors-page__group-table-score">
-                                <Text className={isLowest ? 'intended-majors-page__group-table-score--low' : ''}>
-                                  {score !== null ? score : '-'}
-                                </Text>
-                                {isLowest && <Text>⚠️</Text>}
-                              </View>
-                            </View>
+                              加入志愿
+                            </Text>
                           )
-                        })}
+                        })()}
                       </View>
+                    )}
+
+                    {/* 第二行：remark */}
+                    {plan.remark && (
+                      <View className="intended-majors-page__group-remark">
+                        <Text>{plan.remark}</Text>
+                      </View>
+                    )}
+
+                    {/* 多个 scores 时，在 remark 下面显示 */}
+                    {!isSingleScore && plan.scores && plan.scores.length > 0 && (
+                      <View className="intended-majors-page__group-scores-multiple">
+                        <View className={`intended-majors-page__group-scores-row ${isScoresExpanded ? 'intended-majors-page__group-scores-row--expanded' : ''}`}>
+                          {plan.scores.map((score: any, idx: number) => {
+                            const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
+                            return (
+                              <View key={idx} className="intended-majors-page__group-score-item-inline">
+                                <Text className="intended-majors-page__group-score-major">{score.majorName}</Text>
+                                <Text className="intended-majors-page__group-score-energy">：{loveEnergy !== null ? loveEnergy : '-'}</Text>
+                              </View>
+                            )
+                          })}
+                          {/* 未展开时，在行末显示向下箭头 */}
+                          {!isScoresExpanded && (
+                            <View
+                              className="intended-majors-page__group-scores-arrow"
+                              onClick={() => {
+                                setExpandedScores((prev) => {
+                                  const newSet = new Set(prev)
+                                  newSet.add(planIdx)
+                                  return newSet
+                                })
+                              }}
+                            >
+                              <Text className="intended-majors-page__group-scores-arrow-icon">▼</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* 第三行：学制：studyPeriod 招生人数：enrollmentQuota */}
+                    <View className="intended-majors-page__group-info-row">
+                      <Text>学制：{plan.studyPeriod || '-'}</Text>
+                      <Text>招生人数：{plan.enrollmentQuota || '-'}</Text>
                     </View>
-                  )
-                })
-              })()
+                  </View>
+                )
+              })
             )}
           </View>
         </DialogContent>

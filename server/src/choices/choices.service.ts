@@ -305,7 +305,7 @@ export class ChoicesService {
             year: majorGroup.year,
             subjectSelectionMode: majorGroup.subjectSelectionMode,
             batch: majorGroup.batch,
-            mgId: majorGroup.mgId,
+            mgId: majorGroup.mgId ? IdTransformUtil.encode(majorGroup.mgId) : null,
             mgName: majorGroup.mgName,
             mgInfo: majorGroup.mgInfo,
           }
@@ -535,6 +535,7 @@ export class ChoicesService {
           }
 
           // 按 mgId 排序后构建 majorGroups
+          // 先构建所有 majorGroups 的信息
           const majorGroups = Array.from(majorGroupsMap.entries())
             .sort(([mgIdA], [mgIdB]) => (mgIdA || 0) - (mgIdB || 0))
             .map(([mgId, groupChoices]) => {
@@ -544,9 +545,12 @@ export class ChoicesService {
               }
               // 按 majorIndex 排序
               groupChoices.sort((a, b) => (a.majorIndex || 0) - (b.majorIndex || 0));
+              // 先构建 majorGroup，然后构建 choices，确保在序列化时先显示 majorGroup
+              const majorGroupData = buildMajorGroupSimple(firstChoiceInGroup.majorGroup);
+              const choicesData = groupChoices.map(buildChoiceInGroup);
               return {
-                majorGroup: buildMajorGroupSimple(firstChoiceInGroup.majorGroup),
-                choices: groupChoices.map(buildChoiceInGroup),
+                majorGroup: majorGroupData,
+                choices: choicesData,
               };
             })
             .filter((item): item is any => item !== null);
@@ -873,7 +877,7 @@ export class ChoicesService {
             year: majorGroup.year,
             subjectSelectionMode: majorGroup.subjectSelectionMode,
             batch: majorGroup.batch,
-            mgId: majorGroup.mgId,
+            mgId: majorGroup.mgId ? IdTransformUtil.encode(majorGroup.mgId) : null,
             mgName: majorGroup.mgName,
             mgInfo: majorGroup.mgInfo,
           }

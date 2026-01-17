@@ -35,8 +35,7 @@ export class MajorGroupSimpleDto {
   @Expose()
   batch: string | null;
 
-  @Exclude({ toPlainOnly: true })
-  @Transform(({ value }) => value ? IdTransformUtil.encode(value) : value)
+  @Expose()
   mgId: number | null;
 
   @Expose()
