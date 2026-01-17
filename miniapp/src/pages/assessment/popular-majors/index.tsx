@@ -77,10 +77,10 @@ const STORAGE_KEY = 'popularMajorsResults'
 
 // 元素分析类型配置
 const ELEMENT_ANALYSIS_TYPES = {
-  lexue: { label: '乐学', icon: '😊', color: '#4CAF50' },
-  shanxue: { label: '善学', icon: '⭐', color: '#2196F3' },
-  yanxue: { label: '厌学', icon: '😞', color: '#FF9800' },
-  tiaozhan: { label: '阻学', icon: '⚠️', color: '#F44336' },
+  lexue: { label: '乐学元素', color: '#4CAF50' },
+  shanxue: { label: '善学元素', color: '#2196F3' },
+  yanxue: { label: '厌学元素', color: '#FF9800' },
+  tiaozhan: { label: '阻学元素', color: '#F44336' },
 } as const
 
 // 元素分析显示组件（简化版，对话框在父组件中管理）
@@ -117,7 +117,6 @@ function ElementAnalysesDisplay({
     <View className="popular-majors-page__element-analyses">
       {Object.entries(ELEMENT_ANALYSIS_TYPES).map(([type, config]) => {
         const count = typeCounts[type] || 0
-        if (count === 0) return null
         
         return (
           <View
@@ -125,9 +124,6 @@ function ElementAnalysesDisplay({
             className="popular-majors-page__element-analysis-item"
             onClick={(e) => handleClick(type, e)}
           >
-            <Text className="popular-majors-page__element-analysis-icon">
-              {config.icon}
-            </Text>
             <View className="popular-majors-page__element-analysis-info">
               <Text className="popular-majors-page__element-analysis-label">
                 {config.label}
@@ -633,8 +629,8 @@ export default function PopularMajorsPage() {
                       )}
                     </View>
                   </View>
-                  {/* 元素分析显示：只有测评完成或者有得分时才显示 */}
-                  {major.elementAnalyses && major.elementAnalyses.length > 0 && shouldShowElementAnalyses && (
+                  {/* 元素分析显示：所有专业都显示 */}
+                  {major.elementAnalyses && major.elementAnalyses.length > 0 && (
                     <View 
                       className="popular-majors-page__major-element-analyses-wrapper"
                       onClick={(e) => {
@@ -823,25 +819,42 @@ export default function PopularMajorsPage() {
                 )
               }
               
+              // 根据分值返回测评结果文本
+              const getScoreResult = (score: number | null): string => {
+                if (score === null) {
+                  return '待测评'
+                }
+                const numScore = Number(score)
+                if (numScore >= 4 && numScore <= 6) {
+                  return '明显'
+                } else if (numScore >= -3 && numScore <= 3) {
+                  return '待发现'
+                } else if (numScore < -3) {
+                  return '不明显'
+                }
+                return '待测评'
+              }
+
               return (
                 <View className="popular-majors-page__element-dialog-list">
-                  {elements.map((element, index) => (
-                    <View key={index} className="popular-majors-page__element-dialog-item">
-                      <Text className="popular-majors-page__element-dialog-item-name">
-                        {element.elementName}
-                      </Text>
-                      {element.score !== null && (
+                  {elements.map((element, index) => {
+                    const scoreResult = getScoreResult(element.score)
+                    return (
+                      <View key={index} className="popular-majors-page__element-dialog-item">
+                        <Text className="popular-majors-page__element-dialog-item-name">
+                          {element.elementName}
+                        </Text>
                         <View className="popular-majors-page__element-dialog-item-score">
                           <Text className="popular-majors-page__element-dialog-item-score-label">
-                            得分：
+                            测评结果：
                           </Text>
                           <Text className="popular-majors-page__element-dialog-item-score-value">
-                            {element.score}
+                            {scoreResult}
                           </Text>
                         </View>
-                      )}
-                    </View>
-                  ))}
+                      </View>
+                    )
+                  })}
                 </View>
               )
             })()}
