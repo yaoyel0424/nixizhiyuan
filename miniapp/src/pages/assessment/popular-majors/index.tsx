@@ -542,12 +542,15 @@ export default function PopularMajorsPage() {
           <View className="popular-majors-page__majors">
             {filteredMajors.map((major, index) => {
               // 使用接口返回的数据判断是否完成测评
-              const isCompleted = major.progress?.isCompleted || false
+              const isCompleted = major.progress?.isCompleted === true
               // 使用接口返回的分数数据
               const score = major.score?.score
               // 兼容本地存储的数据（作为后备方案）
               const hasLocalResult = majorResults[major.code] !== undefined
               const localResultEnergy = majorResults[major.code]
+              
+              // 判断是否应该显示元素分析：只有测评完成或者有得分（>0）时才显示
+              const shouldShowElementAnalyses = isCompleted || (score !== undefined && score !== null && Number(score) > 0)
               // 获取测评进度（确保转换为数字类型）
               const completedCount = major.progress?.completedCount 
                 ? (typeof major.progress.completedCount === 'string' 
@@ -630,8 +633,8 @@ export default function PopularMajorsPage() {
                       )}
                     </View>
                   </View>
-                  {/* 元素分析显示 */}
-                  {major.elementAnalyses && major.elementAnalyses.length > 0 && (
+                  {/* 元素分析显示：只有测评完成或者有得分时才显示 */}
+                  {major.elementAnalyses && major.elementAnalyses.length > 0 && shouldShowElementAnalyses && (
                     <View 
                       className="popular-majors-page__major-element-analyses-wrapper"
                       onClick={(e) => {
