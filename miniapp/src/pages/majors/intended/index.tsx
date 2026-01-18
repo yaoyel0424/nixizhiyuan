@@ -1,7 +1,7 @@
 // 志愿方案页面
 import React, { useState, useEffect, useRef } from 'react'
 import { View, Text } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -679,6 +679,8 @@ export default function IntendedMajorsPage() {
 
   // 使用 ref 防止重复调用招生计划接口
   const fetchingEnrollmentPlansRef = useRef(false)
+  // 使用 ref 防止页面显示时重复刷新
+  const refreshingOnShowRef = useRef(false)
 
   // 加载数据（院校探索页面使用API数据，意向志愿页面使用静态数据）
   useEffect(() => {
@@ -900,15 +902,64 @@ export default function IntendedMajorsPage() {
 
   // 从 API 加载高考信息（仅在需要时调用，如更新后刷新）
   // 如果提供了 updatedInfo，直接使用，避免重复调用 API
+  // 刷新招生计划数据的函数
+  const refreshEnrollmentPlans = async () => {
+    if (activeTab === '专业赛道' && !fetchingEnrollmentPlansRef.current) {
+      try {
+        fetchingEnrollmentPlansRef.current = true
+        const plans = await getUserEnrollmentPlans()
+        setEnrollmentPlans(plans)
+        console.log('重新获取用户招生计划成功:', plans)
+      } catch (error) {
+        console.error('重新获取用户招生计划失败:', error)
+      } finally {
+        fetchingEnrollmentPlansRef.current = false
+      }
+    }
+  }
+
   const loadExamInfo = async (updatedInfo?: ExamInfo) => {
     try {
       // 如果提供了更新后的信息，直接使用，不调用 API
       const info = updatedInfo || await getExamInfo()
+      
+      // 在更新之前保存旧值，用于比较是否发生变化
+      const previousProvince = examInfo?.province
+      const previousScore = examInfo?.score
+      const previousRank = examInfo?.rank
+      const previousPreferredSubjects = examInfo?.preferredSubjects
+      const previousSecondarySubjects = examInfo?.secondarySubjects
+      
       setExamInfo(info)
       
       // 更新分数相关状态
       const score = info.score || 580
       setCurrentScore(score)
+      
+      // 如果高考信息或意向省份被更新，且当前是"专业赛道"页面，需要重新加载招生计划数据
+      // 因为后台返回的数据会根据高考信息和意向省份变化
+      if (updatedInfo) {
+        // 检查省份是否发生变化
+        const provinceChanged = previousProvince !== info.province
+        // 检查其他关键信息是否变化（分数、位次、选科等）
+        const scoreChanged = previousScore !== info.score
+        const rankChanged = previousRank !== info.rank
+        const subjectsChanged = previousPreferredSubjects !== info.preferredSubjects || 
+                                previousSecondarySubjects !== info.secondarySubjects
+        
+        // 如果任何关键信息发生变化，都需要刷新数据
+        if (provinceChanged || scoreChanged || rankChanged || subjectsChanged) {
+          console.log('检测到高考信息变化，刷新招生计划数据:', {
+            provinceChanged,
+            scoreChanged,
+            rankChanged,
+            subjectsChanged,
+            previousProvince,
+            newProvince: info.province
+          })
+          await refreshEnrollmentPlans()
+        }
+      }
       
       // 不在这里获取省控线，让 useEffect 统一处理，避免重复调用
       // 先设置默认的分数区间，等省控线获取后再更新
@@ -931,6 +982,97 @@ export default function IntendedMajorsPage() {
   useEffect(() => {
     loadExamInfoFromStorage()
   }, [])
+
+  // 监听高考信息对话框关闭，刷新数据
+  // 当对话框关闭时，如果是"专业赛道"页面，重新获取高考信息并刷新招生计划数据
+  // 这样可以确保返回页面时数据是最新的（即使没有检测到变化，也刷新一次以确保数据同步）
+  useEffect(() => {
+    // 当对话框从打开变为关闭时
+    if (!showExamInfoDialog && activeTab === '专业赛道') {
+      const refreshOnClose = async () => {
+        try {
+          // 重新获取最新的高考信息
+          const latestInfo = await getExamInfo()
+          
+          // 更新 examInfo 状态（确保状态是最新的）
+          setExamInfo(latestInfo)
+          
+          // 刷新招生计划数据（无论是否有变化，都刷新一次以确保数据同步）
+          console.log('高考信息对话框关闭，刷新招生计划数据')
+          await refreshEnrollmentPlans()
+        } catch (error) {
+          console.error('刷新数据失败:', error)
+        }
+      }
+      
+      // 延迟执行，确保对话框完全关闭
+      const timer = setTimeout(() => {
+        refreshOnClose()
+      }, 300)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [showExamInfoDialog, activeTab])
+
+  // 监听页面显示事件（从其他页面返回时触发）
+  // 当从意向省份页面返回时，检查高考信息是否变化并刷新数据
+  useDidShow(() => {
+    if (activeTab === '专业赛道' && !refreshingOnShowRef.current) {
+      refreshingOnShowRef.current = true
+      
+      const refreshOnShow = async () => {
+        try {
+          // 优先从本地存储获取高考信息，避免频繁调用可能有问题的接口
+          const savedProvince = await getStorage<string>('examProvince')
+          const savedFirstChoice = await getStorage<string>('examFirstChoice')
+          const savedOptional = await getStorage<string[]>('examOptionalSubjects')
+          const savedScore = await getStorage<string>('examTotalScore')
+          const savedRanking = await getStorage<string>('examRanking')
+          
+          // 构建本地存储的高考信息
+          const localInfo: ExamInfo = {
+            province: savedProvince || undefined,
+            preferredSubjects: savedFirstChoice || undefined,
+            secondarySubjects: savedOptional && savedOptional.length > 0 ? savedOptional.join(',') : undefined,
+            score: savedScore ? parseInt(savedScore, 10) : undefined,
+            rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
+          }
+          
+          // 比较关键信息是否变化
+          const provinceChanged = examInfo?.province !== localInfo.province
+          const scoreChanged = examInfo?.score !== localInfo.score
+          const rankChanged = examInfo?.rank !== localInfo.rank
+          const subjectsChanged = examInfo?.preferredSubjects !== localInfo.preferredSubjects ||
+                                  examInfo?.secondarySubjects !== localInfo.secondarySubjects
+          
+          // 如果任何关键信息发生变化，刷新数据
+          if (provinceChanged || scoreChanged || rankChanged || subjectsChanged) {
+            console.log('页面显示时检测到高考信息变化，刷新招生计划数据:', {
+              provinceChanged,
+              scoreChanged,
+              rankChanged,
+              subjectsChanged,
+              oldProvince: examInfo?.province,
+              newProvince: localInfo.province
+            })
+            // 更新 examInfo 状态
+            setExamInfo(localInfo)
+            // 刷新招生计划数据
+            await refreshEnrollmentPlans()
+          }
+        } catch (error) {
+          console.error('页面显示时刷新数据失败:', error)
+        } finally {
+          refreshingOnShowRef.current = false
+        }
+      }
+      
+      // 延迟执行，确保页面完全显示
+      setTimeout(() => {
+        refreshOnShow()
+      }, 300)
+    }
+  })
 
   // 使用 ref 防止重复调用省控线接口
   const fetchingControlScoreRef = useRef(false)

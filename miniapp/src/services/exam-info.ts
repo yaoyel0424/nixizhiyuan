@@ -1,4 +1,5 @@
 import { get, put } from './api'
+import { getCurrentUserDetail } from './user'
 
 /**
  * 高考信息接口
@@ -31,47 +32,45 @@ export interface GaokaoSubjectConfig {
 
 /**
  * 获取用户高考信息
- * 注意：后端 PUT /users/profile 接口在更新后会返回用户信息，可以用于获取
- * 如果后端有专门的 GET 接口，可以修改此函数
+ * 通过获取用户详情接口来获取高考信息
  * @returns 用户高考信息
  */
 export const getExamInfo = async (): Promise<ExamInfo> => {
   try {
-    // 由于后端 PUT /users/profile 在更新后会返回用户信息
-    // 我们可以通过调用一个空的更新请求来获取当前用户信息
-    // 但更好的方式是后端提供一个 GET /users/profile 接口
-    // 这里先尝试使用 GET 方法，如果失败则返回空对象
-    const response: any = await get('/users/profile')
+    // 使用 getCurrentUserDetail 获取用户详情（调用 /users/{id} 接口）
+    const userDetail = await getCurrentUserDetail()
+    
+    if (!userDetail) {
+      console.warn('无法获取用户详情，请先登录')
+      return {}
+    }
     
     // 响应拦截器可能返回原始数据或 BaseResponse 格式
-    if (response && typeof response === 'object') {
+    let userData: any = null
+    if (userDetail && typeof userDetail === 'object') {
       // 如果包含 data 字段，提取 data
-      if (response.data && typeof response.data === 'object') {
-        return {
-          province: response.data.province,
-          preferredSubjects: response.data.preferredSubjects,
-          secondarySubjects: response.data.secondarySubjects,
-          score: response.data.score,
-          rank: response.data.rank,
-          enrollType: response.data.enrollType,
-        }
+      if (userDetail.data && typeof userDetail.data === 'object') {
+        userData = userDetail.data
+      } else {
+        // 如果直接是用户数据，直接使用
+        userData = userDetail
       }
-      // 如果直接包含高考信息字段，直接返回
-      if (response.province || response.score !== undefined) {
-        return {
-          province: response.province,
-          preferredSubjects: response.preferredSubjects,
-          secondarySubjects: response.secondarySubjects,
-          score: response.score,
-          rank: response.rank,
-          enrollType: response.enrollType,
-        }
+    }
+    
+    if (userData) {
+      return {
+        province: userData.province,
+        preferredSubjects: userData.preferredSubjects,
+        secondarySubjects: userData.secondarySubjects,
+        score: userData.score,
+        rank: userData.rank,
+        enrollType: userData.enrollType,
       }
     }
   } catch (error) {
-    // 如果 GET 请求失败（接口可能不存在），返回空对象
+    // 如果获取失败，返回空对象
     // 用户可以通过编辑对话框来设置高考信息
-    console.warn('获取用户高考信息失败，接口可能不存在，将返回空对象:', error)
+    console.warn('获取用户高考信息失败，将返回空对象:', error)
   }
   return {}
 }

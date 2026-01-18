@@ -17,6 +17,14 @@ import './index.less'
 
 const STORAGE_KEY = 'questionnaire_answers'
 
+// 元素分析类型配置
+const ELEMENT_ANALYSIS_TYPES = {
+  lexue: { label: '乐学元素', color: '#4CAF50' },
+  shanxue: { label: '善学元素', color: '#2196F3' },
+  yanxue: { label: '厌学元素', color: '#FF9800' },
+  tiaozhan: { label: '阻学元素', color: '#F44336' },
+} as const
+
 // 字段标签映射
 const FIELD_LABELS: Record<string, string> = {
   educationLevel: '学历',
@@ -25,11 +33,10 @@ const FIELD_LABELS: Record<string, string> = {
   majorBrief: '核心价值',
   majorKey: '快速扫描',
   studyContent: '学习内容',
-  academicDevelopment: '学业发展',
 }
 
 const INLINE_FIELDS = ['educationLevel', 'studyPeriod', 'awardedDegree']
-const SECTION_ORDER = ['studyContent', 'academicDevelopment']
+const SECTION_ORDER = ['studyContent']
 
 // 学历转换映射
 const EDUCATION_LEVEL_MAP: Record<string, string> = {
@@ -618,8 +625,75 @@ function MajorElementAnalysesDisplay({ analyses }: { analyses: any[] }) {
   )
 }
 
+// 元素分析显示组件（与热门专业页面一致）
+function ElementAnalysesDisplay({ 
+  analyses, 
+  majorName,
+  onTypeClick
+}: { 
+  analyses: any[] | null | undefined
+  majorName: string
+  onTypeClick: (type: string, analyses: any[], majorName: string) => void
+}) {
+  if (!analyses || analyses.length === 0) {
+    return null
+  }
+
+  // 按类型统计元素数量
+  // 兼容两种数据结构：
+  // 1. 热门专业格式：analysis.elements (数组)
+  // 2. 专业详情格式：analysis.element (单个对象)
+  const typeCounts = analyses.reduce((acc, analysis) => {
+    const type = analysis.type
+    if (type && (type === 'lexue' || type === 'shanxue' || type === 'yanxue' || type === 'tiaozhan')) {
+      // 优先使用 elements 数组，如果没有则检查是否有单个 element
+      if (analysis.elements && Array.isArray(analysis.elements)) {
+        acc[type] = analysis.elements.length
+      } else if (analysis.element) {
+        // 单个 element 算作 1 个元素
+        acc[type] = (acc[type] || 0) + 1
+      } else {
+        acc[type] = 0
+      }
+    }
+    return acc
+  }, {} as Record<string, number>)
+
+  const handleClick = (type: string, e?: any) => {
+    if (e) {
+      e.stopPropagation()
+    }
+    onTypeClick(type, analyses, majorName)
+  }
+
+  return (
+    <View className="single-major-page__element-analyses">
+      {Object.entries(ELEMENT_ANALYSIS_TYPES).map(([type, config]) => {
+        const count = typeCounts[type] || 0
+        
+        return (
+          <View
+            key={type}
+            className="single-major-page__element-analysis-item"
+            onClick={(e) => handleClick(type, e)}
+          >
+            <View className="single-major-page__element-analysis-info">
+              <Text className="single-major-page__element-analysis-label">
+                {config.label}
+              </Text>
+              <Text className="single-major-page__element-analysis-count">
+                {count}项
+              </Text>
+            </View>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
 // 喜欢与天赋概览组件
-function MajorAnalysisActionCard({ analyses, onViewDetail, onRedoQuestionnaire }: any) {
+function MajorAnalysisActionCard({ analyses, onViewDetail, onRedoQuestionnaire, majorName, onTypeClick }: any) {
   const { positiveCount, negativeCount } = getAnalysisCounts(analyses)
   const totalCount = positiveCount + negativeCount
 
@@ -643,28 +717,11 @@ function MajorAnalysisActionCard({ analyses, onViewDetail, onRedoQuestionnaire }
         <Text className="single-major-page__analysis-title">喜欢与天赋概览</Text>
       </View>
       <View className="single-major-page__analysis-content">
-        <View className="single-major-page__analysis-buttons">
-          <View 
-            className="single-major-page__analysis-button single-major-page__analysis-button--positive"
-            onClick={onViewDetail}
-          >
-            <View className="single-major-page__analysis-button-content">
-              <Text className="single-major-page__analysis-button-value">{positiveCount}</Text>
-              <Text className="single-major-page__analysis-button-icon">📈</Text>
-            </View>
-            <Text className="single-major-page__analysis-button-label">积极助力项</Text>
-          </View>
-          <View 
-            className="single-major-page__analysis-button single-major-page__analysis-button--negative"
-            onClick={onViewDetail}
-          >
-            <View className="single-major-page__analysis-button-content">
-              <Text className="single-major-page__analysis-button-value">{negativeCount}</Text>
-              <Text className="single-major-page__analysis-button-icon">⚠️</Text>
-            </View>
-            <Text className="single-major-page__analysis-button-label">潜在挑战项</Text>
-          </View>
-        </View>
+        <ElementAnalysesDisplay 
+          analyses={analyses} 
+          majorName={majorName || ''}
+          onTypeClick={onTypeClick}
+        />
       </View>
     </Card>
   )
@@ -1032,6 +1089,11 @@ export default function SingleMajorPage() {
   const [error, setError] = useState<string | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showQuestionnaire, setShowQuestionnaire] = useState(false)
+  // 元素分析对话框状态
+  const [showElementDialog, setShowElementDialog] = useState(false)
+  const [selectedElementType, setSelectedElementType] = useState<string | null>(null)
+  const [selectedElementMajorName, setSelectedElementMajorName] = useState<string>('')
+  const [selectedElementAnalyses, setSelectedElementAnalyses] = useState<any[] | null>(null)
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1149,11 +1211,18 @@ export default function SingleMajorPage() {
           <View className="single-major-page__analysis-wrapper">
             <MajorAnalysisActionCard
               analyses={Array.isArray(majorDetail.majorElementAnalyses) ? majorDetail.majorElementAnalyses : []}
+              majorName={majorName}
               onViewDetail={() => {
                 setShowDetailModal(true)
               }}
               onRedoQuestionnaire={() => {
                 setShowQuestionnaire(true)
+              }}
+              onTypeClick={(type: string, analyses: any[], majorName: string) => {
+                setSelectedElementType(type)
+                setSelectedElementAnalyses(analyses)
+                setSelectedElementMajorName(majorName)
+                setShowElementDialog(true)
               }}
             />
           </View>
@@ -1212,6 +1281,104 @@ export default function SingleMajorPage() {
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
       />
+
+      {/* 元素分析详情对话框 */}
+      <Dialog open={showElementDialog} onOpenChange={setShowElementDialog}>
+        <DialogContent className="single-major-page__element-dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedElementType && ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.label} - {selectedElementMajorName}
+            </DialogTitle>
+          </DialogHeader>
+          <View className="single-major-page__element-dialog-content">
+            {(() => {
+              if (!selectedElementType || !selectedElementAnalyses) {
+                return (
+                  <View className="single-major-page__element-dialog-empty">
+                    <Text>暂无数据</Text>
+                  </View>
+                )
+              }
+              // 兼容两种数据结构
+              let elements: any[] = []
+              if (selectedElementAnalyses) {
+                // 收集所有匹配类型的分析项
+                const matchingAnalyses = selectedElementAnalyses.filter(a => a.type === selectedElementType)
+                
+                matchingAnalyses.forEach(analysis => {
+                  // 热门专业格式：analysis.elements (数组)
+                  if (analysis.elements && Array.isArray(analysis.elements)) {
+                    elements.push(...analysis.elements)
+                  } 
+                  // 专业详情格式：analysis.element (单个对象)
+                  else if (analysis.element) {
+                    // 转换为统一格式
+                    elements.push({
+                      elementName: analysis.element.name || '未命名',
+                      score: analysis.userElementScore ?? null
+                    })
+                  }
+                })
+              }
+              
+              if (elements.length === 0) {
+                return (
+                  <View className="single-major-page__element-dialog-empty">
+                    <Text>暂无数据</Text>
+                  </View>
+                )
+              }
+              
+              // 根据分值返回测评结果文本
+              const getScoreResult = (score: number | null): string => {
+                if (score === null) {
+                  return '待测评'
+                }
+                const numScore = Number(score)
+                if (numScore >= 4 && numScore <= 6) {
+                  return '明显'
+                } else if (numScore >= -3 && numScore <= 3) {
+                  return '待发现'
+                } else if (numScore < -3) {
+                  return '不明显'
+                }
+                return '待测评'
+              }
+
+              return (
+                <View className="single-major-page__element-dialog-list">
+                  {elements.map((element: any, index: number) => {
+                    const scoreResult = getScoreResult(element.score)
+                    return (
+                      <View key={index} className="single-major-page__element-dialog-item">
+                        <Text className="single-major-page__element-dialog-item-name">
+                          {element.elementName}
+                        </Text>
+                        <View className="single-major-page__element-dialog-item-score">
+                          <Text className="single-major-page__element-dialog-item-score-label">
+                            测评结果：
+                          </Text>
+                          <Text className="single-major-page__element-dialog-item-score-value">
+                            {scoreResult}
+                          </Text>
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+              )
+            })()}
+          </View>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowElementDialog(false)}
+              className="single-major-page__element-dialog-button"
+            >
+              关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </View>
   )
 }

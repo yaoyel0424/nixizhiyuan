@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
+import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
@@ -147,6 +149,10 @@ const isScienceMajor = (code: string): boolean => {
 }
 
 export default function PopularMajorsPage() {
+  // 检查问卷完成状态
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
+  
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedCategory, setSelectedCategory] = useState<'ben' | 'gz_ben' | 'zhuan'>('ben')
   const [loading, setLoading] = useState(true)
@@ -166,6 +172,13 @@ export default function PopularMajorsPage() {
   const [selectedElementType, setSelectedElementType] = useState<string | null>(null)
   const [selectedElementMajorName, setSelectedElementMajorName] = useState<string>('')
   const [selectedElementAnalyses, setSelectedElementAnalyses] = useState<MajorElementAnalysis[] | null>(null)
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+      setShowQuestionnaireModal(true)
+    }
+  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 将 API 响应数据转换为页面使用的格式
   const transformMajorData = (apiData: PopularMajorResponse): Major => {
@@ -565,31 +578,13 @@ export default function PopularMajorsPage() {
                     </View>
                     <View className="popular-majors-page__major-actions">
                       {isCompleted || hasLocalResult ? (
-                        <View className="popular-majors-page__major-actions-row">
-                          {/* 显示测评结果：优先使用接口返回的分数，否则使用本地存储的数据 */}
-                          {isCompleted && (score !== undefined && score !== null) ? (
-                            <View className="popular-majors-page__major-result">
-                              <Text className="popular-majors-page__major-result-icon">⚡</Text>
-                              <Text className="popular-majors-page__major-result-value">
-                                {Number(score).toFixed(2)}
-                              </Text>
-                            </View>
-                          ) : hasLocalResult ? (
-                            <View className="popular-majors-page__major-result">
-                              <Text className="popular-majors-page__major-result-icon">⚡</Text>
-                              <Text className="popular-majors-page__major-result-value">
-                                {localResultEnergy.toFixed(2)}
-                              </Text>
-                            </View>
-                          ) : null}
-                          <Button
-                            size="sm"
-                            className="popular-majors-page__major-button popular-majors-page__major-button--retake"
-                            onClick={() => handleStartAssessment(major)}
-                          >
-                            🔄 重测
-                          </Button>
-                        </View>
+                        <Button
+                          size="sm"
+                          className="popular-majors-page__major-button popular-majors-page__major-button--retake"
+                          onClick={() => handleStartAssessment(major)}
+                        >
+                          🔄 重测
+                        </Button>
                       ) : (
                         <Button
                           size="sm"
@@ -668,19 +663,10 @@ export default function PopularMajorsPage() {
           </DialogHeader>
 
           {isCompleted ? (
-            // 完成状态：显示热爱能量和重新测评按钮
+            // 完成状态：显示重新测评按钮
             <View className="popular-majors-page__dialog-completed">
-              <View className="popular-majors-page__dialog-energy">
-                <View className="popular-majors-page__dialog-energy-icon">
-                  <Text className="popular-majors-page__dialog-energy-icon-text">⚡</Text>
-                </View>
-                <Text className="popular-majors-page__dialog-energy-value">
-                  {loveEnergy !== null ? loveEnergy.toFixed(2) : '0.00'}
-                </Text>
-                <Text className="popular-majors-page__dialog-energy-label">热爱能量</Text>
-              </View>
               <Text className="popular-majors-page__dialog-energy-desc">
-                基于您的回答，我们计算出您对该专业的匹配度
+                测评已完成
               </Text>
               <View className="popular-majors-page__dialog-actions">
                 <Button
@@ -856,6 +842,13 @@ export default function PopularMajorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 问卷完成提示弹窗 */}
+      <QuestionnaireRequiredModal
+        open={showQuestionnaireModal}
+        onOpenChange={setShowQuestionnaireModal}
+        answerCount={answerCount}
+      />
     </PageContainer>
   )
 }
