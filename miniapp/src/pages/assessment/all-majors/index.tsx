@@ -235,24 +235,25 @@ export default function AllMajorsPage() {
             const unansweredIndices = findUnansweredQuestions(sorted, mergedAnswers)
             
             // 检查完成状态：只有当所有题目都有答案时才认为完成
-            // 注意：不仅要检查答案数量，还要确保没有漏答的题目
+            // 注意：不仅要检查答案数量，还要确保没有未答的题目
             const answeredCount = Object.keys(mergedAnswers).length
             const hasUnansweredQuestions = unansweredIndices.length > 0
             
             if (answeredCount === sorted.length && !hasUnansweredQuestions) {
-              // 所有题目都已答完，且没有漏答的题目
+              // 所有题目都已答完，且没有未答的题目
               setIsCompleted(true)
             } else {
               // 有未答题的题目，跳转到第一个未答题的题目
               setCurrentIndex(firstUnanswered)
               setIsCompleted(false)
               
-              // 如果有未答题的题目，显示提示
-              if (unansweredIndices.length > 0) {
+              // 只有当已经有部分题目答过，且还有未答题的题目时，才提示未答题
+              // 如果 answeredCount === 0，说明用户还没有开始答题，不应该提示未答题
+              if (answeredCount > 0 && unansweredIndices.length > 0) {
                 // 延迟显示提示，避免与加载状态冲突
                 setTimeout(() => {
                   Taro.showToast({
-                    title: `检测到 ${unansweredIndices.length} 道漏答题，已跳转到第 ${firstUnanswered + 1} 题`,
+                    title: `检测到 ${unansweredIndices.length} 道未答题，已跳转到第 ${firstUnanswered + 1} 题`,
                     icon: 'none',
                     duration: 3000
                   })
@@ -417,7 +418,7 @@ export default function AllMajorsPage() {
       })
     }
 
-    // 检查完成状态：只有当所有题目都有答案且没有漏答的题目时才认为完成
+    // 检查完成状态：只有当所有题目都有答案且没有未答的题目时才认为完成
     if (answeredCount === totalQuestions && !hasUnansweredQuestions) {
       // 延迟设置完成状态，让用户看到最后一题的反馈
       setTimeout(() => {
@@ -434,7 +435,7 @@ export default function AllMajorsPage() {
         setTimeout(() => {
           setCurrentIndex(firstUnanswered)
           Taro.showToast({
-            title: `检测到 ${unansweredIndices.length} 道漏答题，已跳转`,
+            title: `检测到 ${unansweredIndices.length} 道未答题，已跳转`,
             icon: 'none',
             duration: 2000
           })
@@ -707,14 +708,15 @@ export default function AllMajorsPage() {
             <Text className="all-majors-page__header-info-text">
               当前：{currentDimension} 维度 {answeredInCurrentDimension}/{totalInCurrentDimension}
             </Text>
-            {unansweredIndices.length > 0 && (
+            {/* 只有当已经有部分题目答过，且还有未答题的题目时，才显示未答题按钮 */}
+            {answeredCount > 0 && unansweredIndices.length > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowUnansweredDialog(true)}
                 className="all-majors-page__header-unanswered"
               >
-                漏答 {unansweredIndices.length} 题
+                未答 {unansweredIndices.length} 题
               </Button>
             )}
           </View>
@@ -834,11 +836,11 @@ export default function AllMajorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 漏答题提示对话框 */}
+      {/* 未答题提示对话框 */}
       <Dialog open={showUnansweredDialog} onOpenChange={setShowUnansweredDialog}>
         <DialogContent className="all-majors-page__unanswered-dialog">
           <DialogHeader>
-            <DialogTitle>漏答题提示</DialogTitle>
+            <DialogTitle>未答题提示</DialogTitle>
             <DialogDescription>
               检测到 {unansweredIndices.length} 道题目未回答，请完成所有题目后再提交。
             </DialogDescription>
@@ -850,9 +852,9 @@ export default function AllMajorsPage() {
                   onClick={handleJumpToFirstUnanswered}
                   className="all-majors-page__unanswered-jump-button"
                 >
-                  跳转到第一道漏答题（第 {unansweredIndices[0] + 1} 题）
+                  跳转到第一道未答题（第 {unansweredIndices[0] + 1} 题）
                 </Button>
-                <Text className="all-majors-page__unanswered-list-title">所有漏答题列表：</Text>
+                <Text className="all-majors-page__unanswered-list-title">所有未答题列表：</Text>
                 <View className="all-majors-page__unanswered-grid">
                   {unansweredIndices.map((index) => {
                     const question = sortedQuestions[index]
