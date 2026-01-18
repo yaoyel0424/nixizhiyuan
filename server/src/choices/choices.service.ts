@@ -13,10 +13,13 @@ import { User } from '@/entities/user.entity';
 import { MajorGroup } from '@/entities/major-group.entity';
 import { School } from '@/entities/school.entity';
 import { SchoolDetail } from '@/entities/school-detail.entity';
+import { EnrollmentPlan } from '@/entities/enrollment-plan.entity';
+import { MajorScore } from '@/entities/major-score.entity';
+import { Major } from '@/entities/major.entity';
+import { ScoresService } from '@/scores/scores.service';
 import { CreateChoiceDto } from './dto/create-choice.dto';
 import { ChoiceResponseDto } from './dto/choice-response.dto';
-import { GroupedChoiceResponseDto, SchoolGroupDto, MajorGroupGroupDto, ChoiceInGroupDto, VolunteerStatisticsDto } from './dto/grouped-choice-response.dto';
-import { SchoolSimpleDto } from '@/enroll-plan/dto/enrollment-plan-with-scores.dto';
+import { GroupedChoiceResponseDto, SchoolGroupDto, MajorGroupGroupDto, ChoiceInGroupDto, VolunteerStatisticsDto } from './dto/grouped-choice-response.dto'; 
 import { PROVINCE_NAME_TO_CODE, PROVINCE_CODE_TO_VOLUNTEER_COUNT } from '@/config/province';
 import { plainToInstance } from 'class-transformer';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
@@ -40,6 +43,9 @@ export class ChoicesService {
     private readonly schoolRepository: Repository<School>,
     @InjectRepository(SchoolDetail)
     private readonly schoolDetailRepository: Repository<SchoolDetail>,
+    @InjectRepository(Major)
+    private readonly majorRepository: Repository<Major>,
+    private readonly scoresService: ScoresService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -409,10 +415,169 @@ export class ChoicesService {
       .leftJoinAndSelect('choice.school', 'school')
       .leftJoinAndSelect('school.schoolDetail', 'schoolDetail');
 
+    // 5.1. 关联 enrollment_plans 表
+    queryBuilder
+      .leftJoin(
+        EnrollmentPlan,
+        'enrollmentPlan',
+        'choice.schoolCode = enrollmentPlan.schoolCode ' +
+        'AND choice.province = enrollmentPlan.province ' +
+        'AND choice.subjectSelectionMode = enrollmentPlan.subjectSelectionMode ' +
+        'AND choice.batch = enrollmentPlan.batch ' +
+        'AND choice.enrollmentType = enrollmentPlan.enrollmentType ' +
+        'AND choice.year = enrollmentPlan.year ' +
+        'AND enrollmentPlan.majorGroupId = choice.mgId ' +
+        'AND choice.enrollmentMajor = enrollmentPlan.enrollmentMajor ' +
+        'AND (choice.remark IS NOT DISTINCT FROM enrollmentPlan.remark)'
+      );
+
+    // 5.2. 关联 major_scores 表并选择需要的字段
+    queryBuilder
+      .leftJoin(
+        MajorScore,
+        'majorScore',
+        'enrollmentPlan.schoolCode = majorScore.schoolCode ' +
+        'AND enrollmentPlan.province = majorScore.province ' +
+        'AND enrollmentPlan.batch = majorScore.batch ' +
+        'AND enrollmentPlan.subjectSelectionMode = majorScore.subjectSelectionMode ' +
+        'AND enrollmentPlan.enrollmentMajor = majorScore.enrollmentMajor ' +
+        'AND (enrollmentPlan.keyWords IS NOT DISTINCT FROM majorScore.keyWords) ' +
+        'AND enrollmentPlan.enrollmentType = majorScore.enrollmentType '  
+      )
+      .addSelect('choice.id', 'choice_id')
+      .addSelect('majorScore.schoolCode', 'major_score_school_code')
+      .addSelect('majorScore.province', 'major_score_province')
+      .addSelect('majorScore.subjectSelectionMode', 'major_score_subject_selection_mode')
+      .addSelect('majorScore.year', 'major_score_year')
+      .addSelect('majorScore.enrollmentType', 'major_score_enrollment_type')
+      .addSelect('majorScore.minScore', 'major_score_min_score')
+      .addSelect('majorScore.minRank', 'major_score_min_rank')
+      .addSelect('majorScore.batch', 'major_score_batch')
+      .addSelect('majorScore.admitCount', 'major_score_admit_count')
+      .addSelect('enrollmentPlan.level3MajorId', 'enrollment_plan_level3_major_id');
+
     // 6. 查询用户的志愿选择列表（包含关联数据）
-    const choices = await queryBuilder
+    const { entities: choices, raw } = await queryBuilder
       .orderBy('choice.createdAt', 'DESC') // 按创建时间倒序排列，最新的在前
-      .getMany();
+      .getRawAndEntities();
+
+    // 6.1. 处理 major_scores 数据，按 choice.id 分组
+    const majorScoresMap = new Map<number, any[]>();
+    for (const row of raw) {
+      const choiceId = row.choice_id;
+      if (row.major_score_school_code !== null) {
+        if (!majorScoresMap.has(choiceId)) {
+          majorScoresMap.set(choiceId, []);
+        }
+        majorScoresMap.get(choiceId)!.push({
+          schoolCode: row.major_score_school_code,
+          province: row.major_score_province,
+          subjectSelectionMode: row.major_score_subject_selection_mode,
+          year: row.major_score_year,
+          enrollmentType: row.major_score_enrollment_type,
+          minScore: row.major_score_min_score,
+          minRank: row.major_score_min_rank,
+          batch: row.major_score_batch,
+          admitCount: row.major_score_admit_count,
+        });
+      }
+    }
+
+    // 6.2. 将 major_scores 数据附加到 choices 实体
+    for (const choice of choices) {
+      (choice as any).majorScoresFromJoin = majorScoresMap.get(choice.id) || [];
+    }
+
+    // 6.3. 收集所有唯一的 level3_major_id
+    const level3MajorIdSet = new Set<number>();
+    for (const row of raw) {
+      const level3MajorIds = row.enrollment_plan_level3_major_id;
+      if (level3MajorIds && Array.isArray(level3MajorIds) && level3MajorIds.length > 0) {
+        level3MajorIds.forEach((id: number) => {
+          if (id !== null && id !== undefined) {
+            level3MajorIdSet.add(id);
+          }
+        });
+      }
+    }
+
+    // 6.4. 查询 majors 表获取专业信息
+    const majorIdToInfoMap = new Map<number, { code: string; name: string }>();
+    if (level3MajorIdSet.size > 0) {
+      const majorIds = Array.from(level3MajorIdSet);
+      const majors = await this.majorRepository.find({
+        where: {
+          id: In(majorIds),
+          level: 3,
+        },
+        select: ['id', 'code', 'name'],
+      });
+
+      for (const major of majors) {
+        majorIdToInfoMap.set(major.id, {
+          code: major.code,
+          name: major.name,
+        });
+      }
+    }
+
+    // 6.5. 计算专业分数
+    const majorCodeToScoreMap = new Map<string, number>();
+    if (majorIdToInfoMap.size > 0) {
+      const majorCodes = Array.from(majorIdToInfoMap.values()).map((info) => info.code);
+      try {
+        const scoreResults = await this.scoresService.calculateScores(userId, undefined, majorCodes);
+        for (const result of scoreResults) {
+          majorCodeToScoreMap.set(result.majorCode, result.score);
+        }
+      } catch (error) {
+        this.logger.warn(`计算专业分数失败: ${error.message}`);
+        // 继续执行，分数将为 null
+      }
+    }
+
+    // 6.6. 处理每个 choice 的 level3_major_id，构建 scores 数组
+    // 使用 Map 存储每个 choice 的 majorId Set，避免重复
+    const choiceMajorIdSetMap = new Map<number, Set<number>>();
+    for (const row of raw) {
+      const choiceId = row.choice_id;
+      const level3MajorIds = row.enrollment_plan_level3_major_id;
+
+      if (level3MajorIds && Array.isArray(level3MajorIds) && level3MajorIds.length > 0) {
+        if (!choiceMajorIdSetMap.has(choiceId)) {
+          choiceMajorIdSetMap.set(choiceId, new Set<number>());
+        }
+
+        const majorIdSet = choiceMajorIdSetMap.get(choiceId)!;
+        for (const majorId of level3MajorIds) {
+          if (majorId !== null && majorId !== undefined) {
+            majorIdSet.add(majorId);
+          }
+        }
+      }
+    }
+
+    // 6.6.1. 将去重后的 majorId Set 转换为 scores 数组
+    const choiceScoresMap = new Map<number, Array<{ majorName: string; score: number | null }>>();
+    for (const [choiceId, majorIdSet] of choiceMajorIdSetMap.entries()) {
+      const scores: Array<{ majorName: string; score: number | null }> = [];
+      for (const majorId of majorIdSet) {
+        const majorInfo = majorIdToInfoMap.get(majorId);
+        if (majorInfo) {
+          const score = majorCodeToScoreMap.get(majorInfo.code) ?? null;
+          scores.push({
+            majorName: majorInfo.name,
+            score: score,
+          });
+        }
+      }
+      choiceScoresMap.set(choiceId, scores);
+    }
+
+    // 6.7. 将 scores 数据附加到 choices 实体
+    for (const choice of choices) {
+      (choice as any).scoresFromLevel3 = choiceScoresMap.get(choice.id) || [];
+    }
 
     if (choices.length === 0) {
       this.logger.log(`用户 ${userId} 在 ${queryYear} 年没有志愿选择记录`);
@@ -451,7 +616,7 @@ export class ChoicesService {
       tuitionFee: choice.tuitionFee,
       enrollmentMajor: choice.enrollmentMajor,
       curUnit: choice.curUnit,
-      majorScores: (choice.majorScores || []).map((score) => ({
+      majorScores: ((choice as any).majorScoresFromJoin || []).map((score: any) => ({
         schoolCode: score.schoolCode,
         province: score.province,
         year: score.year,
@@ -461,6 +626,10 @@ export class ChoicesService {
         minRank: score.minRank,
         admitCount: score.admitCount,
         enrollmentType: score.enrollmentType,
+      })),
+      scores: ((choice as any).scoresFromLevel3 || []).map((item: { majorName: string; score: number | null }) => ({
+        majorName: item.majorName,
+        score: item.score,
       })),
     });
 

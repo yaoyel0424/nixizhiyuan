@@ -6,16 +6,19 @@ import { User } from '@/entities/user.entity';
 import { MajorGroup } from '@/entities/major-group.entity';
 import { School } from '@/entities/school.entity';
 import { SchoolDetail } from '@/entities/school-detail.entity';
+import { Major } from '@/entities/major.entity';
 import { ChoicesService } from './choices.service';
 import { ChoicesController } from './choices.controller';
+import { ScoresModule } from '@/scores/scores.module';
 
 /**
  * 志愿选择模块
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Choice, User, MajorGroup, School, SchoolDetail]),
+    TypeOrmModule.forFeature([Choice, User, MajorGroup, School, SchoolDetail, Major]),
     ConfigModule,
+    ScoresModule,
   ],
   controllers: [ChoicesController],
   providers: [ChoicesService],

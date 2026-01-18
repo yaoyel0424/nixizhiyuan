@@ -5,6 +5,17 @@ import { MajorGroupSimpleDto } from './choice-response.dto';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
+ * 专业分数 DTO
+ */
+export class MajorScoreDto {
+  @Expose()
+  majorName: string;
+
+  @Expose()
+  score: number | null;
+}
+
+/**
  * 分组结构中的志愿选择 DTO（不包含 school 和 majorGroup 信息）
  */
 export class ChoiceInGroupDto {
@@ -71,6 +82,10 @@ export class ChoiceInGroupDto {
   @Expose()
   @Type(() => MajorScoreSimpleDto)
   majorScores: MajorScoreSimpleDto[];
+
+  @Expose()
+  @Type(() => MajorScoreDto)
+  scores: MajorScoreDto[];
 }
 
 /**
