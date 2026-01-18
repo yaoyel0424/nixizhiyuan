@@ -12,6 +12,7 @@ export interface DialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   children?: React.ReactNode
+  className?: string
 }
 
 export interface DialogContentProps {
@@ -41,7 +42,7 @@ export interface DialogFooterProps {
   children?: React.ReactNode
 }
 
-const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
+const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children, className = '' }) => {
   const [isOpen, setIsOpen] = useState(open || false)
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
 
   return (
     <DialogContext.Provider value={{ onClose: handleClose }}>
-      <View className="ui-dialog" onClick={handleClose}>
+      <View className={cn('ui-dialog', className)} onClick={handleClose}>
         <View className="ui-dialog__overlay" />
         <View className="ui-dialog__content" onClick={(e) => e.stopPropagation()}>
           {children}

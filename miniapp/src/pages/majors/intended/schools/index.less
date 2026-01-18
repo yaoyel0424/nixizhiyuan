@@ -87,7 +87,7 @@
 
 .schools-page__content {
   flex: 1;
-  padding: 32rpx;
+  padding: 32rpx 16rpx;
   max-width: 1024rpx;
   margin: 0 auto;
   width: 100%;
@@ -100,7 +100,7 @@
 }
 
 .schools-page__school-item {
-  padding: 24rpx;
+  padding: 24rpx 16rpx;
   background: #fff;
 }
 
@@ -269,11 +269,11 @@
   margin-top: 16rpx;
   padding-top: 16rpx;
   border-top: 1rpx solid #e5e7eb;
-  width: calc(100% + 48rpx);
-  margin-left: -24rpx;
-  margin-right: -24rpx;
-  padding-left: 24rpx;
-  padding-right: 24rpx;
+  width: calc(100% + 32rpx);
+  margin-left: -16rpx;
+  margin-right: -16rpx;
+  padding-left: 16rpx;
+  padding-right: 16rpx;
   box-sizing: border-box;
 }
 
@@ -291,6 +291,7 @@
 .schools-page__school-item-plan-major {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8rpx;
   font-size: 28rpx;
 }
@@ -303,26 +304,62 @@
 .schools-page__school-item-plan-major-value {
   color: #000;
   font-weight: 600;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8rpx;
+  flex: 1;
+  min-width: 0;
 }
 
-.schools-page__school-item-plan-major-action {
+// 公用的加入志愿按钮样式
+.schools-page__wishlist-button {
   cursor: pointer;
   font-size: 24rpx;
-  color: #1A4099;
+  color: #fff;
+  background: linear-gradient(135deg, #1A4099 0%, #2563eb 100%);
+  padding: 8rpx 20rpx;
+  border-radius: 8rpx;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2rpx 8rpx rgba(26, 64, 153, 0.3);
+  transition: all 0.2s ease;
   display: inline-block;
-  margin-left: 8rpx;
+  flex-shrink: 0;
   
-  &:hover {
-    opacity: 0.8;
+  &:active {
+    transform: scale(0.95);
+    box-shadow: 0 1rpx 4rpx rgba(26, 64, 153, 0.4);
+    background: linear-gradient(135deg, #153a8a 0%, #1e4ed8 100%);
+  }
+  
+  // 移除志愿状态（红色）
+  &--remove {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+    box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.3);
+    
+    &:active {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      box-shadow: 0 1rpx 4rpx rgba(239, 68, 68, 0.4);
+    }
   }
 }
 
+// 兼容旧样式类名，使用 mixin
+.schools-page__school-item-plan-major-action {
+  .schools-page__wishlist-button();
+}
+
 .schools-page__school-item-plan-major-action--active {
-  opacity: 1;
-  color: #ef4444;
+  .schools-page__wishlist-button();
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+  box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.3);
+  
+  &:active {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 1rpx 4rpx rgba(239, 68, 68, 0.4);
+  }
 }
 
 .schools-page__school-item-plan-remark {
@@ -349,20 +386,42 @@
   padding-left: 12rpx;
   padding-right: 12rpx;
   flex-wrap: wrap;
+  margin-top: 12rpx;
 }
 
 .schools-page__school-item-plan-info-text {
-  color: #666;
+  color: #1A4099;
   display: inline-block;
   box-sizing: border-box;
 }
 
-.schools-page__school-item-plan-info-group {
+.schools-page__school-item-plan-group-button-wrapper {
+  margin-top: 12rpx;
+  display: flex;
+  align-items: center;
+}
+
+.schools-page__school-item-plan-group-button {
   cursor: pointer;
-  color: #1A4099;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  padding: 10rpx 20rpx;
+  background: linear-gradient(135deg, #1A4099 0%, #2563eb 100%);
+  color: #fff !important;
+  border: 2rpx solid #1A4099;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  box-shadow: 0 4rpx 12rpx rgba(26, 64, 153, 0.3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
   
-  &:hover {
-    text-decoration: underline;
+  &:active {
+    transform: scale(0.95);
+    box-shadow: 0 2rpx 6rpx rgba(26, 64, 153, 0.4);
+    background: linear-gradient(135deg, #153a8a 0%, #1e4ed8 100%);
   }
 }
 
@@ -383,7 +442,7 @@
 
 .schools-page__school-item-plan-score-text {
   color: #1A4099;
-  font-weight: 500;
+  font-weight: normal;
 }
 
 .schools-page__school-item-feature {
@@ -464,6 +523,16 @@
   max-width: 90vw;
   max-height: 80vh;
   overflow-y: auto;
+  
+  // 为关闭按钮留出空间，避免与标题重叠
+  .ui-dialog-header {
+    padding-right: 80rpx; // 关闭按钮宽度 64rpx + 间距 16rpx
+    text-align: left; // 左对齐，避免与关闭按钮冲突
+  }
+  
+  .ui-dialog-title {
+    text-align: left; // 标题左对齐
+  }
 }
 
 // 新的专业组显示结构
@@ -507,20 +576,20 @@
   font-weight: 500;
 }
 
+// 专业组弹出框的加入志愿按钮使用公用样式
 .schools-page__group-major-action {
-  font-size: 24rpx;
-  color: #1A4099;
-  cursor: pointer;
-  padding: 8rpx 16rpx;
-  border-radius: 4rpx;
-  white-space: nowrap;
-  
-  &:active {
-    opacity: 0.7;
-  }
+  .schools-page__wishlist-button();
   
   &--remove {
-    color: #ef4444;
+    .schools-page__wishlist-button();
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+    box-shadow: 0 2rpx 8rpx rgba(239, 68, 68, 0.3);
+    
+    &:active {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      box-shadow: 0 1rpx 4rpx rgba(239, 68, 68, 0.4);
+    }
   }
 }
 
@@ -869,4 +938,9 @@
     background: #b91c1c;
     border-color: #b91c1c;
   }
+}
+
+// 删除确认对话框需要显示在专业组弹出框之上
+.schools-page__delete-confirm-dialog-wrapper {
+  z-index: 2000 !important; // 高于专业组弹出框的 z-index: 1000
 }
