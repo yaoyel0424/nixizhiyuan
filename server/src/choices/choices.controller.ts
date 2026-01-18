@@ -68,8 +68,7 @@ export class ChoicesController {
   async create(
     @CurrentUser() user: any,
     @Body() createChoiceDto: CreateChoiceDto,
-  ): Promise<ChoiceResponseDto> {
-    this.logger.log(`用户 ${user.id} 创建志愿选择`);
+  ): Promise<ChoiceResponseDto> {  
     return await this.choicesService.create(user.id, createChoiceDto);
   }
 

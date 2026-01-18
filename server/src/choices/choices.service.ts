@@ -58,7 +58,7 @@ export class ChoicesService {
   async create(
     userId: number,
     createChoiceDto: CreateChoiceDto,
-  ): Promise<ChoiceResponseDto> {
+  ): Promise<ChoiceResponseDto> { 
     // 1. 获取用户信息
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -80,7 +80,7 @@ export class ChoicesService {
     const secondarySubjects = user.secondarySubjects
       ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
       : null;
-
+ 
     // 4. 检查是否已存在相同的志愿选择
     // 检查条件：userId, province, year, batch, subjectSelectionMode, mgId, enrollmentMajor, remark
     const existingChoice = await this.choiceRepository.findOne({
@@ -90,9 +90,9 @@ export class ChoicesService {
         year,
         batch: createChoiceDto.batch ?? null,
         subjectSelectionMode: createChoiceDto.subjectSelectionMode ?? null,
-        mgId: createChoiceDto.mgId ?? null,
+        mgId:  createChoiceDto.mgId  ?? null,
         enrollmentMajor: createChoiceDto.enrollmentMajor ?? null,
-        remark: createChoiceDto.remark ?? null,
+        remark: createChoiceDto.remark ?? '',
       },
     });
 
@@ -245,12 +245,12 @@ export class ChoicesService {
 
     this.logger.log(
       `用户 ${userId} 创建志愿，mg_index: ${mgIndex}, major_index: ${majorIndex}`,
-    );
-
+    ); 
+ 
     // 7. 创建志愿选择记录
     const choice = this.choiceRepository.create({
       userId,
-      mgId: createChoiceDto.mgId ?? null,
+      mgId:  createChoiceDto.mgId ?? null,
       mgIndex,
       schoolCode: createChoiceDto.schoolCode ?? null,
       year,
@@ -266,7 +266,7 @@ export class ChoicesService {
       subjectSelectionMode: createChoiceDto.subjectSelectionMode ?? null,
       studyPeriod: createChoiceDto.studyPeriod ?? null,
       enrollmentQuota: createChoiceDto.enrollmentQuota ?? null,
-      remark: createChoiceDto.remark ?? null,
+      remark: createChoiceDto.remark ?? '',
       tuitionFee: createChoiceDto.tuitionFee ?? null,
       curUnit: createChoiceDto.curUnit ?? null,
       majorIndex,
@@ -311,7 +311,7 @@ export class ChoicesService {
             year: majorGroup.year,
             subjectSelectionMode: majorGroup.subjectSelectionMode,
             batch: majorGroup.batch,
-            mgId: majorGroup.mgId ? IdTransformUtil.encode(majorGroup.mgId) : null,
+            mgId: majorGroup.mgId ,
             mgName: majorGroup.mgName,
             mgInfo: majorGroup.mgInfo,
           }
