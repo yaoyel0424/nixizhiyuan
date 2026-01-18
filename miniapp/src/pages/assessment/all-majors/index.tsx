@@ -229,13 +229,35 @@ export default function AllMajorsPage() {
               })
             }
             const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
+            // 查找第一个未答题的题目索引
             const firstUnanswered = findFirstUnansweredIndex(sorted, mergedAnswers)
-            setCurrentIndex(firstUnanswered)
+            // 查找所有未答题的题目
+            const unansweredIndices = findUnansweredQuestions(sorted, mergedAnswers)
             
-            // 检查完成状态
+            // 检查完成状态：只有当所有题目都有答案时才认为完成
+            // 注意：不仅要检查答案数量，还要确保没有漏答的题目
             const answeredCount = Object.keys(mergedAnswers).length
-            if (answeredCount === sorted.length) {
+            const hasUnansweredQuestions = unansweredIndices.length > 0
+            
+            if (answeredCount === sorted.length && !hasUnansweredQuestions) {
+              // 所有题目都已答完，且没有漏答的题目
               setIsCompleted(true)
+            } else {
+              // 有未答题的题目，跳转到第一个未答题的题目
+              setCurrentIndex(firstUnanswered)
+              setIsCompleted(false)
+              
+              // 如果有未答题的题目，显示提示
+              if (unansweredIndices.length > 0) {
+                // 延迟显示提示，避免与加载状态冲突
+                setTimeout(() => {
+                  Taro.showToast({
+                    title: `检测到 ${unansweredIndices.length} 道漏答题，已跳转到第 ${firstUnanswered + 1} 题`,
+                    icon: 'none',
+                    duration: 3000
+                  })
+                }, 500)
+              }
             }
           }
         }
@@ -367,6 +389,9 @@ export default function AllMajorsPage() {
     }
 
     const answeredCount = Object.keys(newAnswers).length
+    // 检查是否有未答题的题目
+    const unansweredIndices = findUnansweredQuestions(sortedQuestions, newAnswers)
+    const hasUnansweredQuestions = unansweredIndices.length > 0
 
     if (answeredCount % 24 === 0 && answeredCount < totalQuestions) {
       const completedDimensionIndex = Math.floor(answeredCount / 24) - 1
@@ -392,12 +417,30 @@ export default function AllMajorsPage() {
       })
     }
 
-    if (answeredCount === totalQuestions) {
+    // 检查完成状态：只有当所有题目都有答案且没有漏答的题目时才认为完成
+    if (answeredCount === totalQuestions && !hasUnansweredQuestions) {
       // 延迟设置完成状态，让用户看到最后一题的反馈
       setTimeout(() => {
         setIsCompleted(true)
       }, 500)
       return
+    }
+    
+    // 如果有未答题的题目，提示用户
+    if (hasUnansweredQuestions && currentIndex === totalQuestions - 1) {
+      // 如果当前是最后一题，但还有未答题的题目，跳转到第一个未答题的题目
+      const firstUnanswered = unansweredIndices[0]
+      if (firstUnanswered !== undefined) {
+        setTimeout(() => {
+          setCurrentIndex(firstUnanswered)
+          Taro.showToast({
+            title: `检测到 ${unansweredIndices.length} 道漏答题，已跳转`,
+            icon: 'none',
+            duration: 2000
+          })
+        }, 500)
+        return
+      }
     }
 
     if (currentIndex < totalQuestions - 1) {
