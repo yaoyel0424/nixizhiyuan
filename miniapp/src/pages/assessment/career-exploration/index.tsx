@@ -1,5 +1,5 @@
 // 深度探索页面
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
@@ -11,11 +11,207 @@ import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getMajorDetailByCode, unfavoriteMajor } from '@/services/majors'
+import { getScalesByElementId } from '@/services/scales'
 import { MajorDetailInfo } from '@/types/api'
+import { Scale, ScaleAnswer } from '@/types/api'
 import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
 const STORAGE_KEY = 'questionnaire_answers'
+
+// 元素分析类型配置（与专业详情页一致）
+const ELEMENT_ANALYSIS_TYPES = {
+  lexue: { label: '乐学', color: '#4CAF50' },
+  shanxue: { label: '善学', color: '#2196F3' },
+  yanxue: { label: '厌学', color: '#FF9800' },
+  tiaozhan: { label: '阻学', color: '#F44336' },
+} as const
+
+// 字段标签映射（与专业详情页一致）
+const FIELD_LABELS: Record<string, string> = {
+  educationLevel: '学历',
+  studyPeriod: '学制',
+  awardedDegree: '学位',
+} as const
+
+const INLINE_FIELDS = ['educationLevel', 'studyPeriod', 'awardedDegree'] as const
+
+// 学历转换映射（与专业详情页一致）
+const EDUCATION_LEVEL_MAP: Record<string, string> = {
+  ben: '本科',
+  gao_ben: '本科(职业)',
+  zhuan: '专科',
+}
+
+/**
+ * 转换学历字段
+ */
+function formatEducationLevel(value: string): string {
+  return EDUCATION_LEVEL_MAP[value] || value
+}
+
+/**
+ * 内联字段显示组件（与专业详情页一致）
+ */
+function InlineFieldsDisplay({ data }: { data: Record<string, any> }) {
+  const inlineData = INLINE_FIELDS
+    .filter((key) => data[key] !== undefined && data[key] !== null)
+    .map((key) => {
+      let value = data[key]
+      // 转换学历字段
+      if (key === 'educationLevel' && typeof value === 'string') {
+        value = formatEducationLevel(value)
+      }
+      return {
+        key,
+        value,
+        label: FIELD_LABELS[key] || String(key),
+      }
+    })
+
+  if (inlineData.length === 0) return null
+
+  return (
+    <View className="single-major-page__inline-fields">
+      {inlineData.map(({ key, value, label }) => (
+        <View key={String(key)} className="single-major-page__inline-field">
+          <Text className="single-major-page__inline-field-label">{label}:</Text>
+          <Text className="single-major-page__inline-field-value">{String(value)}</Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+// 学习内容显示组件（与专业详情页一致，支持展开/收起）
+function StudyContentDisplay({ value }: { value: any }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (!value) {
+    return (
+      <View className="single-major-page__empty-text">
+        <Text>无数据</Text>
+      </View>
+    )
+  }
+
+  // 解析数据
+  let parsedData: any = null
+  if (typeof value === 'string') {
+    try {
+      parsedData = JSON.parse(value)
+    } catch {
+      // 如果不是 JSON，直接作为文本显示
+      parsedData = value
+    }
+  } else if (typeof value === 'object') {
+    parsedData = value
+  } else {
+    parsedData = String(value)
+  }
+
+  // 如果是对象，格式化显示
+  if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+    return (
+      <View className="single-major-page__study-content">
+        <View
+          className={`single-major-page__study-content-text ${expanded ? 'single-major-page__study-content-text--expanded' : ''}`}
+        >
+          {/* 专业基础课 */}
+          {parsedData.专业基础课 && Array.isArray(parsedData.专业基础课) && parsedData.专业基础课.length > 0 && (
+            <View className="single-major-page__study-content-section">
+              <Text className="single-major-page__study-content-section-title">专业基础课</Text>
+              <View className="single-major-page__study-content-list">
+                {parsedData.专业基础课.map((item: string, index: number) => (
+                  <View key={index} className="single-major-page__study-content-item">
+                    <Text className="single-major-page__study-content-bullet">•</Text>
+                    <Text className="single-major-page__study-content-item-text">{item}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 专业核心课 */}
+          {parsedData.专业核心课 && Array.isArray(parsedData.专业核心课) && parsedData.专业核心课.length > 0 && (
+            <View className="single-major-page__study-content-section">
+              <Text className="single-major-page__study-content-section-title">专业核心课</Text>
+              <View className="single-major-page__study-content-list">
+                {parsedData.专业核心课.map((item: string, index: number) => (
+                  <View key={index} className="single-major-page__study-content-item">
+                    <Text className="single-major-page__study-content-bullet">•</Text>
+                    <Text className="single-major-page__study-content-item-text">{item}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 核心实训 */}
+          {parsedData.核心实训 && Array.isArray(parsedData.核心实训) && parsedData.核心实训.length > 0 && (
+            <View className="single-major-page__study-content-section">
+              <Text className="single-major-page__study-content-section-title">核心实训</Text>
+              <View className="single-major-page__study-content-list">
+                {parsedData.核心实训.map((item: string, index: number) => (
+                  <View key={index} className="single-major-page__study-content-item">
+                    <Text className="single-major-page__study-content-bullet">•</Text>
+                    <Text className="single-major-page__study-content-item-text">{item}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* 一句话总结 */}
+          {parsedData.一句话总结 && (
+            <View className="single-major-page__study-content-section">
+              <Text className="single-major-page__study-content-section-title">一句话总结</Text>
+              <Text className="single-major-page__study-content-summary">{parsedData.一句话总结}</Text>
+            </View>
+          )}
+        </View>
+        <View
+          className="single-major-page__study-content-toggle"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <Text className="single-major-page__study-content-toggle-text">
+            {expanded ? '收起' : '展开'}
+          </Text>
+          <Text
+            className={`single-major-page__study-content-toggle-icon ${expanded ? 'single-major-page__study-content-toggle-icon--expanded' : ''}`}
+          >
+            ▼
+          </Text>
+        </View>
+      </View>
+    )
+  }
+
+  // 如果是字符串或其他类型，直接显示
+  const contentText = typeof parsedData === 'string' ? parsedData : String(parsedData)
+  return (
+    <View className="single-major-page__study-content">
+      <View
+        className={`single-major-page__study-content-text ${expanded ? 'single-major-page__study-content-text--expanded' : ''}`}
+      >
+        <Text className="single-major-page__text-content">{contentText}</Text>
+      </View>
+      <View
+        className="single-major-page__study-content-toggle"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <Text className="single-major-page__study-content-toggle-text">
+          {expanded ? '收起' : '展开'}
+        </Text>
+        <Text
+          className={`single-major-page__study-content-toggle-icon ${expanded ? 'single-major-page__study-content-toggle-icon--expanded' : ''}`}
+        >
+          ▼
+        </Text>
+      </View>
+    </View>
+  )
+}
 
 // 解析数据字段（可能是 JSON 字符串）
 function parseDataField(field: any): any {
@@ -37,20 +233,41 @@ function parseDataField(field: any): any {
   return field
 }
 
-// 解析指数得分字段（可能包含 "指数得分": "90" 这样的格式）
-function parseScoreField(scoreField: any): string {
-  if (!scoreField) return ''
-  const parsed = parseDataField(scoreField)
-  if (typeof parsed === 'number') return String(parsed)
-  if (typeof parsed === 'object' && parsed.指数得分) return String(parsed.指数得分)
-  if (typeof parsed === 'string') {
-    // 提取数字
-    const match = parsed.match(/指数得分[：:]\s*"?(\d+)"?/)
-    if (match) return match[1]
-    // 如果只是数字字符串
-    if (parsed.match(/^\d+$/)) return parsed
+/**
+ * 将职业发展相关字段转换成可展示的文本
+ * - 字符串：去空格后返回
+ * - 数组：递归展开并用“、”拼接
+ * - 对象：尝试提取可读内容；无内容返回空字符串
+ */
+function formatCareerText(value: any): string {
+  if (value === null || value === undefined) return ''
+  const parsed = parseDataField(value)
+  if (parsed === null || parsed === undefined) return ''
+
+  if (typeof parsed === 'string') return parsed.trim()
+  if (typeof parsed === 'number' || typeof parsed === 'boolean') return String(parsed)
+
+  if (Array.isArray(parsed)) {
+    return parsed
+      .map((v) => formatCareerText(v))
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join('、')
   }
-  return String(parsed || scoreField)
+
+  if (typeof parsed === 'object') {
+    const entries = Object.entries(parsed)
+      .map(([k, v]) => {
+        const text = formatCareerText(v)
+        if (!text) return ''
+        return `${k}：${text}`
+      })
+      .filter(Boolean)
+
+    return entries.join('；')
+  }
+
+  return String(parsed).trim()
 }
 
 // 获取分析数量
@@ -69,6 +286,67 @@ function getAnalysisCounts(analyses: any[]) {
     })
   }
   return { positiveCount, negativeCount }
+}
+
+/**
+ * 元素类型统计 + 点击切换（与专业详情页一致）
+ */
+function ElementAnalysesDisplay({
+  analyses,
+  majorName,
+  onToggleType,
+  expandedType,
+}: {
+  analyses: any[] | null | undefined
+  majorName: string
+  onToggleType: (type: string, analyses: any[], majorName: string) => void
+  expandedType: string | null
+}) {
+  if (!analyses || analyses.length === 0) {
+    return null
+  }
+
+  // 按类型统计元素数量（兼容两种结构：analysis.elements / analysis.element）
+  const typeCounts = analyses.reduce((acc, analysis) => {
+    const type = analysis.type
+    if (type && (type === 'lexue' || type === 'shanxue' || type === 'yanxue' || type === 'tiaozhan')) {
+      if (analysis.elements && Array.isArray(analysis.elements)) {
+        acc[type] = analysis.elements.length
+      } else if (analysis.element) {
+        acc[type] = (acc[type] || 0) + 1
+      } else {
+        acc[type] = 0
+      }
+    }
+    return acc
+  }, {} as Record<string, number>)
+
+  const handleClick = (type: string, e?: any) => {
+    if (e) {
+      e.stopPropagation()
+    }
+    onToggleType(type, analyses, majorName)
+  }
+
+  return (
+    <View className="single-major-page__element-analysis-types">
+      {Object.entries(ELEMENT_ANALYSIS_TYPES).map(([type, config]) => {
+        const count = typeCounts[type] || 0
+        return (
+          <View
+            key={type}
+            className={`single-major-page__element-analysis-item ${expandedType === type ? 'single-major-page__element-analysis-item--active' : ''}`}
+            onClick={(e) => handleClick(type, e)}
+          >
+            <View className="single-major-page__element-analysis-info">
+              <Text className="single-major-page__element-analysis-label">{config.label}</Text>
+              <Text className="single-major-page__element-analysis-count">{count}项</Text>
+            </View>
+          </View>
+        )
+      })}
+    </View>
+  )
 }
 
 // 条目卡片组件
@@ -249,61 +527,52 @@ function IndustryProspectsCard({ data, tag }: { data: any; tag?: string }) {
   // 解析数据（可能是 JSON 字符串）
   const parsedData = parseDataField(data)
   const displayData = typeof parsedData === 'object' && parsedData !== null ? parsedData : { 行业前景: parsedData }
+  const risks = typeof displayData !== 'string' ? parseDataField(displayData.趋势性风险) : null
+  const riskObj = typeof risks === 'object' && risks !== null ? risks : null
+  const industryText = typeof displayData === 'object' && displayData !== null
+    ? formatCareerText((displayData as any).行业前景)
+    : formatCareerText(displayData)
 
   return (
-    <Collapsible defaultOpen={false}>
-      <CollapsibleTrigger className="career-exploration-page__opportunity-trigger">
-        {(isOpen?: boolean) => (
-          <>
-            <View className="career-exploration-page__opportunity-header">
-              <Text className="career-exploration-page__opportunity-label">产业前景：</Text>
-              {tag && (
-                <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--purple">
-                  <Text>{tag}</Text>
-                </View>
-              )}
+    <View>
+      <View className="career-exploration-page__opportunity-header-row">
+        <View className="career-exploration-page__opportunity-header">
+          <Text className="career-exploration-page__opportunity-label">产业前景：</Text>
+          {tag && (
+            <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--purple">
+              <Text>{tag}</Text>
             </View>
-            <Text className="career-exploration-page__opportunity-arrow">{isOpen ? '▲' : '▼'}</Text>
-          </>
-        )}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="career-exploration-page__opportunity-content-inner">
-        {typeof displayData === 'string' ? (
-          <Text className="career-exploration-page__opportunity-text">{displayData}</Text>
-        ) : (
+          )}
+        </View>
+      </View>
+      <View className="career-exploration-page__opportunity-content-inner">
+        {(industryText || riskObj) ? (
           <View className="career-exploration-page__opportunity-details">
-            {displayData.指数得分 && (
-              <View className="career-exploration-page__opportunity-score-wrapper">
-                <Text className="career-exploration-page__opportunity-score-label">指数得分: </Text>
-                <Text className="career-exploration-page__opportunity-score-value">
-                  {parseScoreField(displayData.指数得分)}
-                </Text>
-              </View>
+            {industryText && (
+              <Text className="career-exploration-page__career-line">{industryText}</Text>
             )}
-            {displayData.行业前景 && (
-              <View className="career-exploration-page__opportunity-text-wrapper">
-                <Text className="career-exploration-page__opportunity-text">{String(displayData.行业前景)}</Text>
-              </View>
-            )}
-            {displayData.趋势性风险 && (
-              <View className="career-exploration-page__opportunity-risks">
+
+            {riskObj && (
+              <View
+                className={`career-exploration-page__opportunity-risks ${industryText ? 'career-exploration-page__opportunity-risks--with-divider' : ''}`}
+              >
                 <Text className="career-exploration-page__opportunity-risks-title">趋势性风险:</Text>
-                {(() => {
-                  const risks = parseDataField(displayData.趋势性风险)
-                  const riskObj = typeof risks === 'object' && risks !== null ? risks : {}
-                  return Object.entries(riskObj).map(([key, value]) => (
-                    <View key={key} className="career-exploration-page__opportunity-risk-item">
-                      <Text className="career-exploration-page__opportunity-risk-key">{key}:</Text>
-                      <Text className="career-exploration-page__opportunity-risk-value">{String(value)}</Text>
-                    </View>
-                  ))
-                })()}
+                {Object.entries(riskObj).map(([key, value]) => (
+                  <View key={key} className="career-exploration-page__opportunity-risk-item">
+                    <Text className="career-exploration-page__opportunity-risk-key">{key}:</Text>
+                    <Text className="career-exploration-page__opportunity-risk-value">
+                      {formatCareerText(value) || String(value)}
+                    </Text>
+                  </View>
+                ))}
               </View>
             )}
           </View>
+        ) : (
+          <View className="career-exploration-page__career-empty" />
         )}
-      </CollapsibleContent>
-    </Collapsible>
+      </View>
+    </View>
   )
 }
 
@@ -312,67 +581,40 @@ function CareerDevelopmentCard({ data, tag }: { data: any; tag?: string }) {
   // 解析数据（可能是 JSON 字符串）
   const parsedData = parseDataField(data)
   const displayData = typeof parsedData === 'object' && parsedData !== null ? parsedData : { 职业回报: parsedData }
+  const salaryRef = typeof displayData === 'object' && displayData !== null ? parseDataField(displayData.薪酬水平参考) : null
+  const salaryObj = typeof salaryRef === 'object' && salaryRef !== null ? salaryRef : null
+  const salaryLines: string[] = []
+  if (salaryObj) {
+    const startSalary = formatCareerText((salaryObj as any).起薪区间)
+    const midSalary = formatCareerText((salaryObj as any)['3-5年薪资区间'])
+    if (startSalary) salaryLines.push(startSalary)
+    if (midSalary) salaryLines.push(midSalary)
+  }
 
   return (
-    <Collapsible defaultOpen={false}>
-      <CollapsibleTrigger className="career-exploration-page__opportunity-trigger">
-        {(isOpen?: boolean) => (
-          <>
-            <View className="career-exploration-page__opportunity-header">
-              <Text className="career-exploration-page__opportunity-label">职业回报：</Text>
-              {tag && (
-                <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--orange">
-                  <Text>{tag}</Text>
-                </View>
-              )}
+    <View>
+      <View className="career-exploration-page__opportunity-header-row">
+        <View className="career-exploration-page__opportunity-header">
+          <Text className="career-exploration-page__opportunity-label">职业回报：</Text>
+          {tag && (
+            <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--orange">
+              <Text>{tag}</Text>
             </View>
-            <Text className="career-exploration-page__opportunity-arrow">{isOpen ? '▲' : '▼'}</Text>
-          </>
-        )}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="career-exploration-page__opportunity-content-inner">
-        {typeof displayData === 'string' ? (
-          <Text className="career-exploration-page__opportunity-text">{displayData}</Text>
-        ) : (
+          )}
+        </View>
+      </View>
+      <View className="career-exploration-page__opportunity-content-inner">
+        {salaryLines.length > 0 ? (
           <View className="career-exploration-page__opportunity-details">
-            {displayData.指数得分 && (
-              <View className="career-exploration-page__opportunity-score-wrapper">
-                <Text className="career-exploration-page__opportunity-score-label">指数得分: </Text>
-                <Text className="career-exploration-page__opportunity-score-value">
-                  {parseScoreField(displayData.指数得分)}
-                </Text>
-              </View>
-            )}
-            {displayData.薪酬水平参考 && (
-              <View className="career-exploration-page__opportunity-salary">
-                {(() => {
-                  const salaryRef = parseDataField(displayData.薪酬水平参考)
-                  const salaryObj = typeof salaryRef === 'object' && salaryRef !== null ? salaryRef : {}
-                  return (
-                    <>
-                      {salaryObj.起薪区间 && (
-                        <View className="career-exploration-page__opportunity-text-wrapper">
-                          <Text className="career-exploration-page__opportunity-text">
-                            {String(salaryObj.起薪区间)}
-                          </Text>
-                        </View>
-                      )}
-                      {salaryObj['3-5年薪资区间'] && (
-                        <View className="career-exploration-page__opportunity-text-wrapper">
-                          <Text className="career-exploration-page__opportunity-text">
-                            {String(salaryObj['3-5年薪资区间'])}
-                          </Text>
-                        </View>
-                      )}
-                    </>
-                  )
-                })()}
-              </View>
-            )}
+            {salaryLines.map((line, idx) => (
+              <Text key={idx} className="career-exploration-page__career-line">{line}</Text>
+            ))}
           </View>
+        ) : (
+          <View className="career-exploration-page__career-empty" />
         )}
-      </CollapsibleContent>
-    </Collapsible>
+      </View>
+    </View>
   )
 }
 
@@ -381,147 +623,395 @@ function GrowthPotentialCard({ data, tag }: { data: any; tag?: string }) {
   // 解析数据（可能是 JSON 字符串）
   const parsedData = parseDataField(data)
   const displayData = typeof parsedData === 'object' && parsedData !== null ? parsedData : { 成长空间: parsedData }
+  const envText = typeof displayData === 'object' && displayData !== null ? formatCareerText(displayData.工作环境提示) : ''
+  const devText = typeof displayData === 'object' && displayData !== null ? formatCareerText(displayData.横向发展可能) : ''
 
   return (
-    <Collapsible defaultOpen={false}>
-      <CollapsibleTrigger className="career-exploration-page__opportunity-trigger">
-        {(isOpen?: boolean) => (
-          <>
-            <View className="career-exploration-page__opportunity-header">
-              <Text className="career-exploration-page__opportunity-label">成长空间：</Text>
-              {tag && (
-                <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--green">
-                  <Text>{tag}</Text>
-                </View>
-              )}
+    <View>
+      <View className="career-exploration-page__opportunity-header-row">
+        <View className="career-exploration-page__opportunity-header">
+          <Text className="career-exploration-page__opportunity-label">成长空间：</Text>
+          {tag && (
+            <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--green">
+              <Text>{tag}</Text>
             </View>
-            <Text className="career-exploration-page__opportunity-arrow">{isOpen ? '▲' : '▼'}</Text>
-          </>
-        )}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="career-exploration-page__opportunity-content-inner">
-        {typeof displayData === 'string' ? (
-          <Text className="career-exploration-page__opportunity-text">{displayData}</Text>
-        ) : (
+          )}
+        </View>
+      </View>
+      <View className="career-exploration-page__opportunity-content-inner">
+        {envText || devText ? (
           <View className="career-exploration-page__opportunity-details">
-            {displayData.指数得分 && (
-              <View className="career-exploration-page__opportunity-score-wrapper">
-                <Text className="career-exploration-page__opportunity-score-label">指数得分: </Text>
-                <Text className="career-exploration-page__opportunity-score-value">
-                  {parseScoreField(displayData.指数得分)}
-                </Text>
-              </View>
+            {envText && (
+              <Text className="career-exploration-page__career-line">{envText}</Text>
             )}
-            {displayData.工作环境提示 && (
-              <View className="career-exploration-page__opportunity-text-wrapper">
-                <Text className="career-exploration-page__opportunity-text">{String(displayData.工作环境提示)}</Text>
-              </View>
-            )}
-            {displayData.横向发展可能 && (
-              <View className="career-exploration-page__opportunity-text-wrapper">
-                <Text className="career-exploration-page__opportunity-text">{String(displayData.横向发展可能)}</Text>
-              </View>
+            {devText && (
+              <Text className="career-exploration-page__career-line">{devText}</Text>
             )}
           </View>
+        ) : (
+          <View className="career-exploration-page__career-empty" />
         )}
-      </CollapsibleContent>
-    </Collapsible>
+      </View>
+    </View>
   )
 }
 
-// 喜欢与天赋概览组件
+// 学业发展卡片组件
+function AcademicDevelopmentCard({ data, tag }: { data: any; tag?: string }) {
+  // 解析数据（可能是 JSON 字符串）
+  const parsedData = parseDataField(data)
+  const displayData = typeof parsedData === 'object' && parsedData !== null
+    ? parsedData
+    : { 学业发展: parsedData }
+  const academicText = formatCareerText(displayData)
+
+  return (
+    <View>
+      <View className="career-exploration-page__opportunity-header-row">
+        <View className="career-exploration-page__opportunity-header">
+          <Text className="career-exploration-page__opportunity-label">学业发展：</Text>
+          {tag && (
+            <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--blue">
+              <Text>{tag}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+      <View className="career-exploration-page__opportunity-content-inner">
+        {academicText ? (
+          <View className="career-exploration-page__opportunity-details">
+            <Text className="career-exploration-page__career-line">{academicText}</Text>
+          </View>
+        ) : (
+          <View className="career-exploration-page__career-empty" />
+        )}
+      </View>
+    </View>
+  )
+}
+
+// 喜欢与天赋概览组件（与专业详情页一致）
 function MajorAnalysisActionCard({
   analyses,
-  onViewDetail,
+  majorName,
 }: {
   analyses: any[]
-  onViewDetail: () => void
+  majorName: string
 }) {
-  const [expandedType, setExpandedType] = useState<'positive' | 'negative' | null>('positive')
   const { positiveCount, negativeCount } = getAnalysisCounts(analyses)
   const totalCount = positiveCount + negativeCount
+  const [expandedElementType, setExpandedElementType] = useState<string | null>(null)
+  const [expandedElementMajorName, setExpandedElementMajorName] = useState<string>('')
+  const [expandedElementAnalyses, setExpandedElementAnalyses] = useState<any[] | null>(null)
+  const hasAutoExpandedRef = useRef(false)
+  const [expandedQuestionnaireElementIds, setExpandedQuestionnaireElementIds] = useState<Set<number>>(
+    new Set(),
+  )
+  const [questionnaireLoadingElementIds, setQuestionnaireLoadingElementIds] = useState<Set<number>>(
+    new Set(),
+  )
+  const [questionnaireErrorByElementId, setQuestionnaireErrorByElementId] = useState<Record<number, string>>(
+    {},
+  )
+  const [questionnaireCacheByElementId, setQuestionnaireCacheByElementId] = useState<
+    Record<number, { scales: Scale[]; answers: ScaleAnswer[] }>
+  >({})
 
-  // 分组分析数据
-  const positiveItems = analyses.filter(
-    (a) => a && a.type && (a.type === 'shanxue' || a.type === 'lexue')
-  )
-  const negativeItems = analyses.filter(
-    (a) => a && a.type && (a.type === 'tiaozhan' || a.type === 'yanxue')
-  )
+  // 根据分值返回测评结果文本
+  const getScoreResult = (score: number | null): string => {
+    if (score === null) return '待测评'
+    const numScore = Number(score)
+    if (numScore >= 4 && numScore <= 6) return '明显'
+    if (numScore >= -3 && numScore <= 3) return '待发现'
+    if (numScore < -3) return '不明显'
+    return '待测评'
+  }
+
+  // 兼容两种数据结构，提取当前类型下的元素列表
+  const getElementsByType = (type: string | null, allAnalyses: any[] | null): any[] => {
+    if (!type || !allAnalyses) return []
+    const elements: any[] = []
+    const matchingAnalyses = allAnalyses.filter((a) => a.type === type)
+    matchingAnalyses.forEach((analysis) => {
+      if (analysis.elements && Array.isArray(analysis.elements)) {
+        elements.push(
+          ...analysis.elements.map((el: any) => ({
+            elementName: el?.elementName || el?.name || el?.element?.name || '未命名',
+            elementId: el?.elementId ?? el?.id ?? el?.element?.id ?? null,
+            score: el?.score ?? null,
+            matchReason: el?.matchReason ?? el?.match_reason ?? analysis.matchReason ?? null,
+          })),
+        )
+      } else if (analysis.element) {
+        elements.push({
+          elementName: analysis.element.name || '未命名',
+          elementId: analysis.element.id ?? null,
+          score: analysis.userElementScore ?? null,
+          matchReason: analysis.matchReason ?? null,
+        })
+      }
+    })
+    return elements
+  }
+
+  const handleToggleType = (type: string, allAnalyses: any[], mName: string) => {
+    // 用户已交互：不再触发默认展开逻辑
+    hasAutoExpandedRef.current = true
+    setExpandedElementAnalyses(allAnalyses)
+    setExpandedElementMajorName(mName)
+    setExpandedElementType((prev) => (prev === type ? null : type))
+  }
+
+  const inlineElements = getElementsByType(expandedElementType, expandedElementAnalyses)
+
+  // 默认展开“乐学”，若无数据则按顺序降级
+  useEffect(() => {
+    if (!analyses || !Array.isArray(analyses) || analyses.length === 0) return
+    if (hasAutoExpandedRef.current) return
+
+    const preferredTypes = ['lexue', 'shanxue', 'yanxue', 'tiaozhan']
+    const firstAvailable = preferredTypes.find((t) => getElementsByType(t, analyses).length > 0) || 'lexue'
+
+    hasAutoExpandedRef.current = true
+    setExpandedElementAnalyses(analyses)
+    setExpandedElementMajorName(majorName || '')
+    setExpandedElementType(firstAvailable)
+  }, [analyses, majorName])
+  const reasonKind = expandedElementType === 'yanxue'
+    ? 'yanxue'
+    : expandedElementType === 'tiaozhan'
+      ? 'tiaozhan'
+      : 'match'
+  const reasonLabel = reasonKind === 'yanxue'
+    ? '厌学原因'
+    : reasonKind === 'tiaozhan'
+      ? '阻学原因'
+      : '匹配原因'
+
+  // 获取 element 的问卷与答案（带缓存）
+  const fetchElementQuestionnaire = async (elementId: number) => {
+    try {
+      setQuestionnaireErrorByElementId((prev) => {
+        const next = { ...prev }
+        delete next[elementId]
+        return next
+      })
+      setQuestionnaireLoadingElementIds((prev) => {
+        const next = new Set(prev)
+        next.add(elementId)
+        return next
+      })
+      const res = await getScalesByElementId(elementId)
+      setQuestionnaireCacheByElementId((prev) => ({
+        ...prev,
+        [elementId]: {
+          scales: Array.isArray(res?.scales) ? res.scales : [],
+          answers: Array.isArray(res?.answers) ? res.answers : [],
+        },
+      }))
+    } catch (e: any) {
+      setQuestionnaireErrorByElementId((prev) => ({
+        ...prev,
+        [elementId]: e?.message || '获取问卷失败，请稍后重试',
+      }))
+    } finally {
+      setQuestionnaireLoadingElementIds((prev) => {
+        const next = new Set(prev)
+        next.delete(elementId)
+        return next
+      })
+    }
+  }
+
+  // 切换 element 问卷展示
+  const toggleElementQuestionnaire = async (elementId: number) => {
+    setExpandedQuestionnaireElementIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(elementId)) next.delete(elementId)
+      else next.add(elementId)
+      return next
+    })
+    if (!questionnaireCacheByElementId[elementId] && !questionnaireLoadingElementIds.has(elementId)) {
+      await fetchElementQuestionnaire(elementId)
+    }
+  }
 
   if (totalCount === 0) {
     return (
-      <Card className="career-exploration-page__analysis-empty">
-        <Text className="career-exploration-page__analysis-empty-text">
-          暂无天赋匹配度数据。请先完成问卷。
-        </Text>
-        <Button
-          onClick={() => {
-            Taro.navigateTo({
-              url: '/pages/assessment/questionnaire/index'
-            })
-          }}
-          className="career-exploration-page__analysis-empty-button"
-        >
-          🔄 立即进行专业匹配问卷
-        </Button>
+      <Card className="single-major-page__analysis-empty-card">
+        <View className="single-major-page__analysis-empty-content">
+          <Text className="single-major-page__analysis-empty-text">暂无天赋匹配度数据。请先完成问卷。</Text>
+          <Button
+            onClick={() => {
+              Taro.navigateTo({ url: '/pages/assessment/questionnaire/index' })
+            }}
+            className="single-major-page__analysis-empty-button"
+          >
+            <Text>🔄 立即进行专业匹配问卷</Text>
+          </Button>
+        </View>
       </Card>
     )
   }
 
-  const toggleExpanded = (type: 'positive' | 'negative') => {
-    setExpandedType(expandedType === type ? null : type)
-  }
-
   return (
-    <Card className="career-exploration-page__analysis-card">
-      <View className="career-exploration-page__analysis-header">
-        <Text className="career-exploration-page__analysis-title">🧠 喜欢与天赋概览</Text>
+    <Card className="single-major-page__analysis-card">
+      <View className="single-major-page__analysis-header">
+        <Text className="single-major-page__analysis-icon">🧠</Text>
+        <Text className="single-major-page__analysis-title">喜欢与天赋概览</Text>
       </View>
-      <View className="career-exploration-page__analysis-buttons">
-        <View
-          className={`career-exploration-page__analysis-button career-exploration-page__analysis-button--positive ${expandedType === 'positive' ? 'career-exploration-page__analysis-button--active' : ''}`}
-          onClick={() => toggleExpanded('positive')}
-        >
-          <View className="career-exploration-page__analysis-button-content">
-            <Text className="career-exploration-page__analysis-button-count career-exploration-page__analysis-button-count--positive">
-              {positiveCount}
-            </Text>
-            <Text className="career-exploration-page__analysis-button-icon">📈</Text>
+      <View className="single-major-page__analysis-content">
+        <ElementAnalysesDisplay
+          analyses={analyses}
+          majorName={majorName || ''}
+          onToggleType={handleToggleType}
+          expandedType={expandedElementType}
+        />
+
+        {expandedElementType && (
+          <View className="single-major-page__element-inline">
+            <View className="single-major-page__element-inline-header">
+              <Text className="single-major-page__element-inline-title">
+                {ELEMENT_ANALYSIS_TYPES[expandedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.label} - {expandedElementMajorName}
+              </Text>
+              <Text
+                className="single-major-page__element-inline-toggle"
+                onClick={(e) => {
+                  e?.stopPropagation?.()
+                  // 用户已交互：不再触发默认展开逻辑
+                  hasAutoExpandedRef.current = true
+                  setExpandedElementType(null)
+                }}
+              >
+                ▲
+              </Text>
+            </View>
+
+            {inlineElements.length === 0 ? (
+              <View className="single-major-page__element-dialog-empty">
+                <Text>暂无数据</Text>
+              </View>
+            ) : (
+              <View className="single-major-page__element-dialog-list">
+                {inlineElements.map((element: any, index: number) => {
+                  const scoreResult = getScoreResult(element.score)
+                  const elementId: number | null = typeof element.elementId === 'number' ? element.elementId : null
+                  const isQuestionnaireExpanded = elementId !== null && expandedQuestionnaireElementIds.has(elementId)
+                  const isQuestionnaireLoading = elementId !== null && questionnaireLoadingElementIds.has(elementId)
+                  const questionnaireError = elementId !== null ? questionnaireErrorByElementId[elementId] : undefined
+                  const questionnaireData = elementId !== null ? questionnaireCacheByElementId[elementId] : undefined
+
+                  const answerByScaleId = new Map<number, number>()
+                  if (questionnaireData?.answers && Array.isArray(questionnaireData.answers)) {
+                    questionnaireData.answers.forEach((a) => {
+                      if (typeof a?.scaleId === 'number' && typeof a?.score === 'number') {
+                        answerByScaleId.set(a.scaleId, a.score)
+                      }
+                    })
+                  }
+
+                  return (
+                    <View
+                      key={elementId !== null ? `element-${elementId}` : `element-${element.elementName || index}`}
+                      className="single-major-page__element-dialog-item"
+                    >
+                      <Text className="single-major-page__element-dialog-item-name">{element.elementName}</Text>
+                      {element.matchReason && (
+                        <Text className="single-major-page__element-dialog-item-reason">
+                          <Text
+                            className={`single-major-page__element-dialog-item-reason-label single-major-page__element-dialog-item-reason-label--${reasonKind}`}
+                          >
+                            {reasonLabel}：
+                          </Text>
+                          {element.matchReason}
+                        </Text>
+                      )}
+                      <View className="single-major-page__element-dialog-item-score">
+                        <Text className="single-major-page__element-dialog-item-score-label">测评结果：</Text>
+                        <Text className="single-major-page__element-dialog-item-score-value">{scoreResult}</Text>
+                        {elementId !== null && (
+                          <Text
+                            className="single-major-page__element-dialog-item-score-action"
+                            onClick={() => toggleElementQuestionnaire(elementId)}
+                          >
+                            查看问卷
+                            <Text className="single-major-page__element-dialog-item-score-action-icon">
+                              {isQuestionnaireExpanded ? '▲' : '▼'}
+                            </Text>
+                          </Text>
+                        )}
+                      </View>
+
+                      {elementId !== null && isQuestionnaireExpanded && (
+                        <View className="single-major-page__element-questionnaire">
+                          {isQuestionnaireLoading && (
+                            <Text className="single-major-page__element-questionnaire-loading">加载中...</Text>
+                          )}
+                          {!isQuestionnaireLoading && questionnaireError && (
+                            <View className="single-major-page__element-questionnaire-error">
+                              <Text className="single-major-page__element-questionnaire-error-text">{questionnaireError}</Text>
+                              <Text
+                                className="single-major-page__element-questionnaire-retry"
+                                onClick={() => fetchElementQuestionnaire(elementId)}
+                              >
+                                点击重试
+                              </Text>
+                            </View>
+                          )}
+                          {!isQuestionnaireLoading && !questionnaireError && questionnaireData && (
+                            <View className="single-major-page__element-questionnaire-content">
+                              {questionnaireData.scales.length === 0 ? (
+                                <Text className="single-major-page__element-questionnaire-empty">暂无问卷内容</Text>
+                              ) : (
+                                questionnaireData.scales.map((scale, scaleIndex) => {
+                                  const selectedScore = answerByScaleId.get(scale.id)
+                                  const options = Array.isArray(scale.options) ? [...scale.options] : []
+                                  options.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                                  return (
+                                    <View key={scale.id} className="single-major-page__element-questionnaire-scale">
+                                      <Text className="single-major-page__element-questionnaire-scale-content">
+                                        {scaleIndex + 1}. {scale.content}
+                                      </Text>
+                                      <View className="single-major-page__element-questionnaire-options">
+                                        {options.map((opt) => {
+                                          const isSelected =
+                                            typeof selectedScore === 'number' &&
+                                            typeof opt.optionValue === 'number' &&
+                                            opt.optionValue === selectedScore
+                                          return (
+                                            <View
+                                              key={opt.id}
+                                              className={`single-major-page__element-questionnaire-option ${isSelected ? 'single-major-page__element-questionnaire-option--selected' : ''}`}
+                                            >
+                                              <View className="single-major-page__element-questionnaire-option-header">
+                                                <Text className="single-major-page__element-questionnaire-option-name">{opt.optionName}</Text>
+                                                {isSelected && (
+                                                  <Text className="single-major-page__element-questionnaire-option-badge">你的选择</Text>
+                                                )}
+                                              </View>
+                                              {opt.additionalInfo && String(opt.additionalInfo).trim() && (
+                                                <Text className="single-major-page__element-questionnaire-option-info">{opt.additionalInfo}</Text>
+                                              )}
+                                            </View>
+                                          )
+                                        })}
+                                      </View>
+                                    </View>
+                                  )
+                                })
+                              )}
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  )
+                })}
+              </View>
+            )}
           </View>
-          <Text className="career-exploration-page__analysis-button-label">积极助力项</Text>
-        </View>
-        <View
-          className={`career-exploration-page__analysis-button career-exploration-page__analysis-button--negative ${expandedType === 'negative' ? 'career-exploration-page__analysis-button--active' : ''}`}
-          onClick={() => toggleExpanded('negative')}
-        >
-          <View className="career-exploration-page__analysis-button-content">
-            <Text className="career-exploration-page__analysis-button-count career-exploration-page__analysis-button-count--negative">
-              {negativeCount}
-            </Text>
-            <Text className="career-exploration-page__analysis-button-icon">⚠️</Text>
-          </View>
-          <Text className="career-exploration-page__analysis-button-label">潜在挑战项</Text>
-        </View>
+        )}
       </View>
-
-      {/* 积极助力项列表 */}
-      {expandedType === 'positive' && positiveItems.length > 0 && (
-        <View className="career-exploration-page__analysis-items career-exploration-page__analysis-items--positive">
-          {positiveItems.map((item: any, index: number) => (
-            <ItemCard key={index} item={item} type="positive" />
-          ))}
-        </View>
-      )}
-
-      {/* 潜在挑战项列表 */}
-      {expandedType === 'negative' && negativeItems.length > 0 && (
-        <View className="career-exploration-page__analysis-items career-exploration-page__analysis-items--negative">
-          {negativeItems.map((item: any, index: number) => (
-            <ItemCard key={index} item={item} type="negative" />
-          ))}
-        </View>
-      )}
     </Card>
   )
 }
@@ -660,6 +1150,10 @@ export default function CareerExplorationPage() {
           if (detail.growthPotential && typeof detail.growthPotential === 'string') {
             detail.growthPotential = parseDataField(detail.growthPotential)
           }
+          // 解析学业发展
+          if ((detail as any).academicDevelopment && typeof (detail as any).academicDevelopment === 'string') {
+            ;(detail as any).academicDevelopment = parseDataField((detail as any).academicDevelopment)
+          }
         }
         
         setMajorDetail(detail)
@@ -751,41 +1245,39 @@ export default function CareerExplorationPage() {
         <View className="career-exploration-page__content">
           {/* 专业基本信息 */}
           <Card className="career-exploration-page__info-card">
-            <View className="career-exploration-page__info-header">
-              <Text className="career-exploration-page__info-title">{majorDetail.code} 专业信息</Text>
-            </View>
-            <View className="career-exploration-page__info-fields">
-              {majorDetail.educationLevel && (
-                <View className="career-exploration-page__info-field">
-                  <Text className="career-exploration-page__info-label">学历层次:</Text>
-                  <Text className="career-exploration-page__info-value">{majorDetail.educationLevel}</Text>
-                </View>
-              )}
-              {majorDetail.studyPeriod && (
-                <View className="career-exploration-page__info-field">
-                  <Text className="career-exploration-page__info-label">学制:</Text>
-                  <Text className="career-exploration-page__info-value">{majorDetail.studyPeriod}</Text>
-                </View>
-              )}
-              {majorDetail.awardedDegree && (
-                <View className="career-exploration-page__info-field">
-                  <Text className="career-exploration-page__info-label">授予学位:</Text>
-                  <Text className="career-exploration-page__info-value">{majorDetail.awardedDegree}</Text>
-                </View>
-              )}
-            </View>
-            {majorDetail.majorBrief && (
-              <View className="career-exploration-page__info-brief">
-                <Text className="career-exploration-page__info-brief-text">{majorDetail.majorBrief}</Text>
-              </View>
+            {majorName && (
+              <Text className="single-major-page__major-name">{majorName}</Text>
             )}
-            {majorDetail.majorKey && (
-              <View className="career-exploration-page__info-keywords">
-                <Text className="career-exploration-page__info-keywords-label">关键词: </Text>
-                <Text className="career-exploration-page__info-keywords-value">{majorDetail.majorKey}</Text>
-              </View>
-            )}
+            <InlineFieldsDisplay data={majorDetail as any} />
           </Card>
+
+          {/* 快速扫描和核心价值（与专业详情页一致） */}
+          {(majorDetail.majorKey || majorDetail.majorBrief) && (
+            <View className="single-major-page__value-cards">
+              {majorDetail.majorKey && (
+                <Card className="single-major-page__value-card">
+                  <View className="single-major-page__value-card-header">
+                    <Text className="single-major-page__value-card-icon">🧠</Text>
+                    <Text className="single-major-page__value-card-title">快速扫描</Text>
+                  </View>
+                  <View className="single-major-page__value-card-content">
+                    <Text className="single-major-page__value-card-text">{majorDetail.majorKey}</Text>
+                  </View>
+                </Card>
+              )}
+              {majorDetail.majorBrief && (
+                <Card className="single-major-page__value-card">
+                  <View className="single-major-page__value-card-header">
+                    <Text className="single-major-page__value-card-icon">📖</Text>
+                    <Text className="single-major-page__value-card-title">核心价值</Text>
+                  </View>
+                  <View className="single-major-page__value-card-content">
+                    <Text className="single-major-page__value-card-text">{majorDetail.majorBrief}</Text>
+                  </View>
+                </Card>
+              )}
+            </View>
+          )}
 
           {/* Tabs */}
           <View className="career-exploration-page__tabs-wrapper">
@@ -819,7 +1311,7 @@ export default function CareerExplorationPage() {
                   {majorDetail?.majorElementAnalyses && (
                     <MajorAnalysisActionCard
                       analyses={majorDetail.majorElementAnalyses}
-                      onViewDetail={() => setShowDetailModal(true)}
+                      majorName={majorName}
                     />
                   )}
                 </View>
@@ -850,14 +1342,12 @@ export default function CareerExplorationPage() {
                   )}
 
                   {/* 学业发展 */}
-                  {majorDetail.academicDevelopmentTag && (
+                  {((majorDetail as any).academicDevelopment || majorDetail.academicDevelopmentTag) && (
                     <Card className="career-exploration-page__opportunity-card">
-                      <View className="career-exploration-page__opportunity-header">
-                        <Text className="career-exploration-page__opportunity-label">学业发展：</Text>
-                        <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--blue">
-                          <Text>{majorDetail.academicDevelopmentTag}</Text>
-                        </View>
-                      </View>
+                      <AcademicDevelopmentCard
+                        data={(majorDetail as any).academicDevelopment}
+                        tag={majorDetail.academicDevelopmentTag}
+                      />
                     </Card>
                   )}
                 </View>

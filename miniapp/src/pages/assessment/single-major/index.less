@@ -118,7 +118,8 @@
   }
 
   &__value-card-text {
-    font-size: 28rpx;
+    // 字体缩小一号（用于“快速扫描/核心价值”正文）
+    font-size: 26rpx;
     line-height: 1.8;
     color: #333;
     white-space: pre-wrap;
@@ -226,6 +227,59 @@
     gap: 10rpx;
   }
 
+  // 详细分解：乐学/善学/厌学/阻学（单行横向展示，超出可横滑）
+  &__score-detail-scroll {
+    margin-top: 12rpx;
+    width: 100%;
+  }
+
+  &__score-detail-tags {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12rpx;
+    padding-bottom: 6rpx; // 给滚动区域一点呼吸感
+  }
+
+  &__score-detail-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8rpx;
+    padding: 10rpx 14rpx;
+    border-radius: 999rpx;
+    border: 1rpx solid #e5e7eb;
+    background: #f9fafb;
+    white-space: nowrap;
+  }
+
+  &__score-detail-tag-label {
+    font-size: 22rpx;
+    color: #4b5563;
+    font-weight: 600;
+  }
+
+  &__score-detail-tag-value {
+    font-size: 24rpx;
+    font-weight: 800;
+  }
+
+  &__score-detail-tag--positive {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.08);
+
+    .single-major-page__score-detail-tag-value {
+      color: #10b981;
+    }
+  }
+
+  &__score-detail-tag--negative {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+
+    .single-major-page__score-detail-tag-value {
+      color: #ef4444;
+    }
+  }
+
   &__score-detail-item {
     display: flex;
     justify-content: space-between;
@@ -266,7 +320,8 @@
   }
 
   &__section-title {
-    font-size: 32rpx;
+    // 卡片标题字体缩小一号
+    font-size: 30rpx;
     font-weight: 700;
     color: #1A4099;
   }
@@ -295,6 +350,7 @@
       .single-major-page__text-content {
         display: block;
         -webkit-line-clamp: unset;
+        line-clamp: unset;
         overflow: visible;
       }
     }
@@ -303,6 +359,7 @@
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 3;
+      line-clamp: 3;
       overflow: hidden;
       text-overflow: ellipsis;
       word-break: break-word;
@@ -316,7 +373,7 @@
   }
 
   &__study-content-section-title {
-    font-size: 30rpx;
+    font-size: 28rpx;
     font-weight: 600;
     color: #1A4099;
     margin-bottom: 8rpx;
@@ -335,21 +392,21 @@
   }
 
   &__study-content-bullet {
-    font-size: 28rpx;
+    font-size: 26rpx;
     color: #1A4099;
     line-height: 1.8;
     flex-shrink: 0;
   }
 
   &__study-content-item-text {
-    font-size: 28rpx;
+    font-size: 26rpx;
     line-height: 1.8;
     color: #333;
     flex: 1;
   }
 
   &__study-content-summary {
-    font-size: 28rpx;
+    font-size: 26rpx;
     line-height: 1.8;
     color: #333;
     padding: 16rpx;
@@ -369,7 +426,7 @@
   }
 
   &__study-content-toggle-text {
-    font-size: 28rpx;
+    font-size: 26rpx;
     color: #1A4099;
     font-weight: 500;
   }
@@ -386,7 +443,8 @@
 
   // 文本内容
   &__text-content {
-    font-size: 28rpx;
+    // section-card 内正文字体缩小一号
+    font-size: 26rpx;
     line-height: 1.8;
     color: #333;
     white-space: pre-wrap;
@@ -407,7 +465,7 @@
   }
 
   &__list-bullet {
-    font-size: 28rpx;
+    font-size: 26rpx;
     color: #1A4099;
     line-height: 1.8;
   }
@@ -430,14 +488,14 @@
   }
 
   &__object-label {
-    font-size: 28rpx;
+    font-size: 26rpx;
     font-weight: 600;
     color: #333;
   }
 
   // 空数据
   &__empty-text {
-    font-size: 28rpx;
+    font-size: 26rpx;
     color: #999;
     font-style: italic;
   }
@@ -480,25 +538,28 @@
     padding: 12rpx 16rpx;
   }
 
-  // 元素分析显示样式
-  &__element-analyses {
+  // 元素类型（乐学/善学/厌学/阻学）一行占满，间隔均分
+  &__element-analysis-types {
     display: flex;
-    flex-wrap: wrap;
-    gap: 16rpx;
+    flex-wrap: nowrap;
+    width: 100%;
+    justify-content: space-between;
+    gap: 12rpx;
   }
 
   &__element-analysis-item {
     display: flex;
     align-items: center;
     gap: 12rpx;
-    padding: 12rpx 20rpx;
+    padding: 10rpx 14rpx;
     background: #fff;
     border: 2rpx solid #e5e7eb;
-    border-radius: 24rpx;
+    border-radius: 999rpx;
     cursor: pointer;
+    // 四个元素等分占满一行
     flex: 1;
-    min-width: 140rpx;
-    max-width: calc(50% - 8rpx);
+    justify-content: center;
+    min-width: 0;
     transition: all 0.2s;
 
     &:active {
@@ -506,10 +567,17 @@
     }
   }
 
+  &__element-analysis-item--active {
+    border-color: #1A4099;
+    background: rgba(26, 64, 153, 0.06);
+  }
+
   &__element-analysis-info {
     display: flex;
-    flex-direction: column;
-    gap: 4rpx;
+    // 标签与数量同一行显示
+    flex-direction: row;
+    align-items: center;
+    gap: 8rpx;
     flex: 1;
     min-width: 0;
   }
@@ -519,12 +587,49 @@
     font-weight: 600;
     color: #333;
     line-height: 1.2;
+    white-space: nowrap;
   }
 
   &__element-analysis-count {
     font-size: 22rpx;
     color: #999;
     line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  // 点击元素类型后：在下方内联展开详情
+  &__element-inline {
+    margin-top: 16rpx;
+    // 直接在原 Card 内展示，不再额外做一层“卡片感”容器
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  &__element-inline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12rpx;
+    margin-bottom: 12rpx;
+  }
+
+  &__element-inline-title {
+    font-size: 26rpx;
+    font-weight: 700;
+    color: #1A4099;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__element-inline-toggle {
+    font-size: 24rpx;
+    color: #1A4099;
+    font-weight: 700;
   }
 
   // 元素分析详情对话框样式
@@ -562,16 +667,151 @@
   }
 
   &__element-dialog-item-name {
-    font-size: 30rpx;
+    // element 名称字号小一号
+    font-size: 28rpx;
     font-weight: 600;
     color: #1A4099;
     line-height: 1.4;
+  }
+
+  &__element-dialog-item-reason {
+    font-size: 24rpx;
+    color: #666;
+    line-height: 1.6;
+  }
+
+  &__element-dialog-item-reason-label {
+    font-weight: 700;
+
+    &--match {
+      color: #1A4099;
+    }
+
+    &--yanxue {
+      color: #FF9800;
+    }
+
+    &--tiaozhan {
+      color: #ef4444;
+    }
   }
 
   &__element-dialog-item-score {
     display: flex;
     align-items: center;
     gap: 12rpx;
+  }
+
+  &__element-dialog-item-score-action {
+    margin-left: auto;
+    font-size: 24rpx;
+    font-weight: 700;
+    color: #1A4099;
+    display: inline-flex;
+    align-items: center;
+    gap: 6rpx;
+  }
+
+  &__element-dialog-item-score-action-icon {
+    font-size: 22rpx;
+    color: #1A4099;
+  }
+
+  &__element-questionnaire {
+    padding-top: 12rpx;
+    border-top: 1rpx solid #e5e7eb;
+  }
+
+  &__element-questionnaire-loading {
+    font-size: 24rpx;
+    color: #666;
+  }
+
+  &__element-questionnaire-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12rpx;
+  }
+
+  &__element-questionnaire-error-text {
+    font-size: 24rpx;
+    color: #ef4444;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__element-questionnaire-retry {
+    font-size: 24rpx;
+    font-weight: 700;
+    color: #1A4099;
+    flex-shrink: 0;
+  }
+
+  &__element-questionnaire-empty {
+    font-size: 24rpx;
+    color: #999;
+  }
+
+  &__element-questionnaire-scale {
+    margin-top: 12rpx;
+  }
+
+  &__element-questionnaire-scale-content {
+    font-size: 26rpx;
+    color: #111827;
+    line-height: 1.6;
+  }
+
+  &__element-questionnaire-options {
+    margin-top: 8rpx;
+    display: flex;
+    flex-direction: column;
+    gap: 10rpx;
+  }
+
+  &__element-questionnaire-option {
+    padding: 12rpx 14rpx;
+    border-radius: 12rpx;
+    border: 1rpx solid #e5e7eb;
+    background: #fff;
+  }
+
+  &__element-questionnaire-option--selected {
+    border-color: rgba(26, 64, 153, 0.4);
+    background: rgba(26, 64, 153, 0.06);
+  }
+
+  &__element-questionnaire-option-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12rpx;
+  }
+
+  &__element-questionnaire-option-name {
+    font-size: 24rpx;
+    color: #333;
+    line-height: 1.6;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__element-questionnaire-option-badge {
+    font-size: 22rpx;
+    font-weight: 700;
+    color: #1A4099;
+    background: rgba(26, 64, 153, 0.12);
+    padding: 4rpx 10rpx;
+    border-radius: 999rpx;
+    flex-shrink: 0;
+  }
+
+  &__element-questionnaire-option-info {
+    font-size: 22rpx;
+    color: #666;
+    margin-top: 6rpx;
+    line-height: 1.6;
   }
 
   &__element-dialog-item-score-label {

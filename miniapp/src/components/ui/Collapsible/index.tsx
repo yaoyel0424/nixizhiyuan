@@ -11,7 +11,12 @@ export interface CollapsibleProps {
 }
 
 export interface CollapsibleTriggerProps {
-  children: ReactNode
+  /**
+   * 触发器内容
+   * - 支持直接传 ReactNode
+   * - 也支持 render props：children(isOpen) => ReactNode（用于根据展开状态渲染箭头等）
+   */
+  children: ReactNode | ((isOpen?: boolean) => ReactNode)
   className?: string
   onClick?: () => void
 }
@@ -52,12 +57,12 @@ const Collapsible: React.FC<CollapsibleProps> = ({
   )
 }
 
-const CollapsibleTrigger: React.FC<CollapsibleTriggerProps & { isOpen?: boolean }> = ({ 
+const CollapsibleTrigger = ({ 
   children, 
   className,
   onClick,
   isOpen 
-}) => {
+}: CollapsibleTriggerProps & { isOpen?: boolean }) => {
   return (
     <View 
       className={cn('ui-collapsible-trigger', className)}

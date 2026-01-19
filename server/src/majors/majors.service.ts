@@ -381,6 +381,8 @@ export class MajorsService {
         summary: analysis.summary,
         matchReason: analysis.matchReason,
         theoryBasis: analysis.theoryBasis,
+        potentialConversionReason: analysis.potentialConversionReason,
+        potentialConversionValue: analysis.potentialConversionValue,
         userElementScore: (analysis as any).userElementScore,
       })),
     };

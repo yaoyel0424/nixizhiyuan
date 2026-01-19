@@ -103,6 +103,20 @@ export class MajorElementAnalysisDto {
   theoryBasis?: string;
 
   /**
+   * 潜力转换原因
+   */
+  @ApiProperty({ description: '潜力转换原因', required: false })
+  @Expose()
+  potentialConversionReason?: string;
+
+  /**
+   * 潜力转换值
+   */
+  @ApiProperty({ description: '潜力转换值', required: false, example: '0.85' })
+  @Expose()
+  potentialConversionValue?: string;
+
+  /**
    * 用户对该元素的分数
    */
   @ApiProperty({ description: '用户对该元素的分数', example: 85.5, required: false })

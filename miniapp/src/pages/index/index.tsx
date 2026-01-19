@@ -343,7 +343,7 @@ export default function IndexPage() {
 
         {/* 全面评估卡片 */}
         <View className="index-page__card" onClick={() => setIsGuideDialogOpen(true)}>
-          <Card className="index-page__card-inner">
+          <Card className="index-page__card-inner index-page__card-inner--full">
             <View className="index-page__card-header">
               <View className="index-page__card-icon index-page__card-icon--full">
                 <Text className="index-page__card-icon-text">📊</Text>

@@ -416,8 +416,8 @@ export default function MajorsPage() {
         <View className="majors-page__header-content">
           <View className="majors-page__header-top">
             <Text className="majors-page__title">专业探索</Text>
+            <Text className="majors-page__subtitle">发现适合你的专业方向</Text>
           </View>
-          <Text className="majors-page__subtitle">发现适合你的专业方向</Text>
 
           {/* 搜索框 */}
           <View className="majors-page__search">
