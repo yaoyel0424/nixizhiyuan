@@ -355,6 +355,8 @@ export class ChoicesService {
       where: { id: userId },
     });
 
+    const rank = user?.rank ?? 0;
+
     if (!user) {
       this.logger.warn(`用户不存在: ${userId}`);
       throw new NotFoundException('用户不存在');
@@ -466,6 +468,13 @@ export class ChoicesService {
     for (const row of raw) {
       const choiceId = row.choice_id;
       if (row.major_score_school_code !== null) {
+        const rankDiff = row.major_score_min_rank - rank;
+        const rankDiffText =
+          rankDiff > 0
+            ? `比我低${rankDiff} 位`
+            : rankDiff < 0
+              ? `比我高${Math.abs(rankDiff)} 位`
+              : '与我相同';
         if (!majorScoresMap.has(choiceId)) {
           majorScoresMap.set(choiceId, []);
         }
@@ -479,6 +488,8 @@ export class ChoicesService {
           minRank: row.major_score_min_rank,
           batch: row.major_score_batch,
           admitCount: row.major_score_admit_count,
+          rank: rank,
+          rankDiff: rankDiffText,
         });
       }
     }
@@ -626,6 +637,7 @@ export class ChoicesService {
         minRank: score.minRank,
         admitCount: score.admitCount,
         enrollmentType: score.enrollmentType,
+        rankDiff: score.rankDiff,
       })),
       scores: ((choice as any).scoresFromLevel3 || []).map((item: { majorName: string; score: number | null }) => ({
         majorName: item.majorName,

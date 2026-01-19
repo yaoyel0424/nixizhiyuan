@@ -112,6 +112,9 @@ export class MajorScoreSimpleDto {
 
   @Expose()
   enrollmentType: string | null;
+
+  @Expose()
+  rankDiff: string;
 }
 
 /**

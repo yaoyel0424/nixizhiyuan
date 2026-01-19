@@ -369,6 +369,8 @@ export class EnrollPlanService {
       where: { id: userId },
     });
 
+    const rank = user?.rank ?? 0; 
+
     if (!user) {
       this.logger.warn(`用户不存在: ${userId}`);
       throw new NotFoundException('用户不存在');
@@ -538,6 +540,7 @@ export class EnrollPlanService {
               minRank: number | null;
               admitCount: number | null;
               enrollmentType: string | null;
+              rankDiff: string;
             }>;
           }
         >;
@@ -664,6 +667,7 @@ export class EnrollPlanService {
           minRank: rawData['ms_min_rank'] ?? null,
           admitCount: rawData['ms_admit_count'] ?? null,
           enrollmentType: rawData['ms_enrollment_type'] ?? null,
+          rankDiff: rawData['ms_min_rank'] - rank > 0 ? `比我低${rawData['ms_min_rank'] - rank}位` : rawData['ms_min_rank'] - rank < 0 ? `比我高${Math.abs(rawData['ms_min_rank'] - rank)}位` : '与我相同',
         };
 
         // 检查是否已存在相同的 majorScore（通过 id 判断，避免重复）
@@ -737,6 +741,7 @@ export class EnrollPlanService {
             minRank: ms.minRank,
             admitCount: ms.admitCount,
             enrollmentType: ms.enrollmentType,
+            rankDiff: ms.rankDiff,
           }),
         );
 

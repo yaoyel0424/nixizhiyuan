@@ -75,6 +75,15 @@ export class MajorScoreSimpleDto {
 
   @Expose()
   enrollmentType: string | null;
+
+  /**
+   * 与我排名差值描述
+   * - 大于 0：比我低{rankDiff}位
+   * - 小于 0：比我高{abs(rankDiff)}位
+   * - 等于 0：与我相同
+   */
+  @Expose()
+  rankDiff: string;
 }
 
 /**
