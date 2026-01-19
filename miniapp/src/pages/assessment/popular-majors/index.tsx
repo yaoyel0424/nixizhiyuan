@@ -500,12 +500,8 @@ export default function PopularMajorsPage() {
         {/* 头部横幅 */}
         <View className="popular-majors-page__header">
           <View className="popular-majors-page__header-content">
-            <Text className="popular-majors-page__header-title">
-              热门专业测评
-            </Text>
-            <Text className="popular-majors-page__header-subtitle">
-              选择热门专业，进行专业匹配度测评
-            </Text>
+            <Text className="popular-majors-page__header-title">热门专业测评</Text>
+            <Text className="popular-majors-page__header-subtitle">进行专业匹配度测评</Text>
           </View>
         </View>
 

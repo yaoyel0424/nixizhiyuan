@@ -233,16 +233,17 @@
   border: none;
   
   &--orange {
-    background: transparent;
-    border: 3rpx solid #FF7F50;
-    color: #FF7F50;
-    box-shadow: 0 2rpx 8rpx rgba(255, 127, 80, 0.15);
+    // “开启探索”按钮：使用橙色背景，突出主行动作
+    background: linear-gradient(to right, #FF7F50, #FF6A3D);
+    border: none;
+    color: #fff;
+    box-shadow: 0 8rpx 24rpx rgba(255, 127, 80, 0.3);
     font-weight: 600;
     height: 80rpx;
     font-size: 28rpx;
     
     &:active {
-      background: rgba(255, 127, 80, 0.1);
+      background: linear-gradient(to right, #FF6A3D, #FF7F50);
     }
   }
 }
