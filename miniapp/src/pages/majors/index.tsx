@@ -13,7 +13,8 @@ import {
   favoriteMajor, 
   unfavoriteMajor, 
   checkFavoriteMajor,
-  getFavoriteMajorsCount
+  getFavoriteMajorsCount,
+  getMajorDetailByCode
 } from '@/services/majors'
 import { MajorScoreResponse } from '@/types/api'
 import { getStorage, setStorage } from '@/utils/storage'
@@ -407,6 +408,63 @@ export default function MajorsPage() {
       // 获取前10个专业（按分数排序）
       const top10Majors = allMajors.slice(0, 10)
 
+      // 获取每个专业的匹配理由
+      Taro.showLoading({ title: '加载专业详情...' })
+      const majorsWithReasons = await Promise.all(
+        top10Majors.map(async (major) => {
+          try {
+            const detail = await getMajorDetailByCode(major.majorCode)
+            // 提取匹配理由：优先使用得分最高的匹配理由
+            const analyses = detail.majorElementAnalyses || detail.analyses || []
+            let matchReason = ''
+            
+            // 筛选出有匹配理由的分析，并按得分排序（得分高的优先）
+            const analysesWithReason = analyses
+              .filter((a: any) => a.matchReason && (a.userElementScore !== undefined && a.userElementScore !== null))
+              .sort((a: any, b: any) => {
+                const scoreA = typeof a.userElementScore === 'number' ? a.userElementScore : 0
+                const scoreB = typeof b.userElementScore === 'number' ? b.userElementScore : 0
+                return scoreB - scoreA // 降序排列
+              })
+            
+            if (analysesWithReason.length > 0) {
+              // 使用得分最高的匹配理由
+              matchReason = analysesWithReason[0].matchReason
+            } else {
+              // 如果没有得分，优先查找乐学类型的匹配理由
+              const lexueAnalysis = analyses.find((a: any) => a.type === 'lexue' && a.matchReason)
+              if (lexueAnalysis) {
+                matchReason = lexueAnalysis.matchReason
+              } else {
+                // 如果没有乐学，查找善学
+                const shanxueAnalysis = analyses.find((a: any) => a.type === 'shanxue' && a.matchReason)
+                if (shanxueAnalysis) {
+                  matchReason = shanxueAnalysis.matchReason
+                } else {
+                  // 如果都没有，使用第一个有匹配理由的分析
+                  const firstWithReason = analyses.find((a: any) => a.matchReason)
+                  if (firstWithReason) {
+                    matchReason = firstWithReason.matchReason
+                  }
+                }
+              }
+            }
+            
+            return {
+              ...major,
+              matchReason: matchReason || null
+            }
+          } catch (error) {
+            console.error(`获取专业 ${major.majorCode} 详情失败:`, error)
+            return {
+              ...major,
+              matchReason: null
+            }
+          }
+        })
+      )
+      Taro.hideLoading()
+
       // 获取系统信息
       const systemInfo = await Taro.getSystemInfo()
       const { windowWidth } = systemInfo
@@ -414,11 +472,19 @@ export default function MajorsPage() {
 
       // Canvas 尺寸（设计稿尺寸，单位：rpx）
       const canvasWidth = 750 // rpx
-      // 根据内容动态计算高度：标题区域 + 每个专业卡片高度
-      const headerHeight = 200 // 标题区域高度
-      const majorCardHeight = 180 // 每个专业卡片高度
-      const padding = 40 // 上下内边距
-      const canvasHeight = headerHeight + (top10Majors.length * majorCardHeight) + padding
+      // 根据内容动态计算高度：标题区域 + 每个专业卡片高度（包含匹配理由时更高）
+      const headerHeight = 120 // 标题区域高度（减小）
+      const baseCardHeight = 140 // 基础卡片高度（减小）
+      const reasonHeight = 100 // 匹配理由额外高度（增加以容纳3行文本）
+      const cardSpacing = 16 // 卡片间距（减小）
+      const padding = 40 // 上下内边距（减小）
+      
+      // 计算总高度：标题 + 所有卡片 + 间距 + 内边距
+      // majorsWithReasons 已经是前10个专业了
+      const totalCardHeight = majorsWithReasons.reduce((sum, major) => {
+        return sum + baseCardHeight + (major.matchReason ? reasonHeight : 0) + cardSpacing
+      }, 0)
+      const canvasHeight = headerHeight + totalCardHeight + padding
       const canvasWidthPx = (canvasWidth / 750) * windowWidth * dpr
       const canvasHeightPx = (canvasHeight / 750) * windowWidth * dpr
 
@@ -453,38 +519,44 @@ export default function MajorsPage() {
 
           // 绘制标题
           ctx.fillStyle = '#FFFFFF'
-          ctx.font = `bold ${56 * dpr}px sans-serif`
+          ctx.font = `bold ${44 * dpr}px sans-serif`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText('专业探索推荐', canvasWidthPx / 2, 60 * dpr)
+          ctx.fillText('专业探索推荐', canvasWidthPx / 2, 50 * dpr)
 
           // 绘制副标题
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-          ctx.font = `${28 * dpr}px sans-serif`
-          ctx.fillText('为您推荐的前10个匹配专业', canvasWidthPx / 2, 110 * dpr)
+          ctx.font = `${22 * dpr}px sans-serif`
+          ctx.fillText('为您推荐的前10个匹配专业', canvasWidthPx / 2, 85 * dpr)
 
           // 绘制每个专业信息
-          let currentY = 160 * dpr
-          const cardPadding = 30 * dpr
-          const cardSpacing = 20 * dpr
+          let currentY = 120 * dpr
+          const cardPadding = 24 * dpr
+          const spacing = cardSpacing * dpr
 
-          top10Majors.forEach((major, index) => {
+          // majorsWithReasons 已经是前10个专业了，直接使用
+          majorsWithReasons.forEach((major, index) => {
+            // 计算当前卡片高度（根据是否有匹配理由）
+            const cardHeight = (baseCardHeight + (major.matchReason ? reasonHeight : 0)) * dpr
+            
             // 绘制专业卡片背景（白色半透明）
             ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
-            ctx.fillRect(cardPadding, currentY, canvasWidthPx - cardPadding * 2, majorCardHeight * dpr)
+            ctx.fillRect(cardPadding, currentY, canvasWidthPx - cardPadding * 2, cardHeight)
 
             // 绘制排名
             ctx.fillStyle = '#FF7F50'
-            ctx.font = `bold ${36 * dpr}px sans-serif`
+            ctx.font = `bold ${28 * dpr}px sans-serif`
             ctx.textAlign = 'left'
-            ctx.fillText(`${index + 1}`, cardPadding + 20 * dpr, currentY + 40 * dpr)
+            ctx.textBaseline = 'top'
+            ctx.fillText(`${index + 1}`, cardPadding + 16 * dpr, currentY + 16 * dpr)
 
             // 绘制专业名称
             ctx.fillStyle = '#FFFFFF'
-            ctx.font = `bold ${32 * dpr}px sans-serif`
+            ctx.font = `bold ${26 * dpr}px sans-serif`
+            ctx.textBaseline = 'top'
             const majorName = major.majorName || '未知专业'
             // 如果名称太长，截断
-            const maxNameWidth = canvasWidthPx - cardPadding * 2 - 120 * dpr
+            const maxNameWidth = canvasWidthPx - cardPadding * 2 - 100 * dpr
             let displayName = majorName
             const nameMetrics = ctx.measureText(majorName)
             if (nameMetrics.width > maxNameWidth) {
@@ -495,42 +567,99 @@ export default function MajorsPage() {
               }
               displayName = truncated + '...'
             }
-            ctx.fillText(displayName, cardPadding + 80 * dpr, currentY + 40 * dpr)
+            ctx.fillText(displayName, cardPadding + 64 * dpr, currentY + 16 * dpr)
 
             // 绘制专业代码
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-            ctx.font = `${24 * dpr}px sans-serif`
-            ctx.fillText(`代码：${major.majorCode}`, cardPadding + 80 * dpr, currentY + 70 * dpr)
+            ctx.font = `${20 * dpr}px sans-serif`
+            ctx.fillText(`代码：${major.majorCode}`, cardPadding + 64 * dpr, currentY + 48 * dpr)
 
             // 绘制匹配分数
             ctx.fillStyle = '#FF7F50'
-            ctx.font = `bold ${40 * dpr}px sans-serif`
+            ctx.font = `bold ${32 * dpr}px sans-serif`
             ctx.textAlign = 'right'
+            ctx.textBaseline = 'top'
             const scoreText = formatScore(major.score)
-            ctx.fillText(scoreText, canvasWidthPx - cardPadding - 20 * dpr, currentY + 50 * dpr)
+            ctx.fillText(scoreText, canvasWidthPx - cardPadding - 16 * dpr, currentY + 16 * dpr)
 
             // 绘制分数标签
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-            ctx.font = `${24 * dpr}px sans-serif`
-            ctx.fillText('匹配分', canvasWidthPx - cardPadding - 20 * dpr, currentY + 85 * dpr)
+            ctx.font = `${18 * dpr}px sans-serif`
+            ctx.fillText('匹配分', canvasWidthPx - cardPadding - 16 * dpr, currentY + 52 * dpr)
 
-            // 绘制专业简介（如果有且长度合适）
-            if (major.majorBrief && major.majorBrief.length > 0) {
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
-              ctx.font = `${22 * dpr}px sans-serif`
+            // 绘制匹配理由（如果有）
+            if (major.matchReason) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+              ctx.font = `bold ${20 * dpr}px sans-serif`
               ctx.textAlign = 'left'
-              const brief = major.majorBrief.length > 50 ? major.majorBrief.substring(0, 50) + '...' : major.majorBrief
-              ctx.fillText(brief, cardPadding + 20 * dpr, currentY + 110 * dpr)
+              ctx.textBaseline = 'top'
+              ctx.fillText('匹配原因：', cardPadding + 16 * dpr, currentY + 88 * dpr)
+              
+              // 绘制匹配理由文本（需要换行处理）
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+              ctx.font = `${20 * dpr}px sans-serif`
+              const reasonText = major.matchReason
+              const maxWidth = canvasWidthPx - cardPadding * 2 - 32 * dpr
+              const lineHeight = 28 * dpr
+              let y = currentY + 112 * dpr
+              const maxLines = 3 // 最多显示3行
+              const maxY = currentY + cardHeight - 16 * dpr
+              
+              // 文本换行处理（按字符分割，适合中文）
+              const chars = reasonText.split('')
+              let line = ''
+              let lineCount = 0
+              
+              for (let i = 0; i < chars.length; i++) {
+                const testLine = line + chars[i]
+                const metrics = ctx.measureText(testLine)
+                
+                if (metrics.width > maxWidth && line.length > 0) {
+                  // 当前行已满，绘制并换行
+                  ctx.fillText(line, cardPadding + 16 * dpr, y)
+                  line = chars[i]
+                  y += lineHeight
+                  lineCount++
+                  
+                  // 如果超过最大行数或超出卡片范围，截断
+                  if (lineCount >= maxLines || y > maxY) {
+                    if (i < chars.length - 1) {
+                      ctx.fillText(line + '...', cardPadding + 16 * dpr, y)
+                    } else {
+                      ctx.fillText(line, cardPadding + 16 * dpr, y)
+                    }
+                    break
+                  }
+                } else {
+                  line = testLine
+                }
+              }
+              
+              // 绘制最后一行（如果还有剩余且未超出范围）
+              if (line && lineCount < maxLines && y <= maxY) {
+                ctx.fillText(line, cardPadding + 16 * dpr, y)
+              }
+            } else {
+              // 如果没有匹配理由，绘制专业简介（如果有且长度合适）
+              if (major.majorBrief && major.majorBrief.length > 0) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+                ctx.font = `${18 * dpr}px sans-serif`
+                ctx.textAlign = 'left'
+                ctx.textBaseline = 'top'
+                const brief = major.majorBrief.length > 50 ? major.majorBrief.substring(0, 50) + '...' : major.majorBrief
+                ctx.fillText(brief, cardPadding + 16 * dpr, currentY + 88 * dpr)
+              }
             }
 
-            currentY += majorCardHeight * dpr + cardSpacing
+            currentY += cardHeight + spacing
           })
 
           // 绘制底部提示
           ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-          ctx.font = `${24 * dpr}px sans-serif`
+          ctx.font = `${20 * dpr}px sans-serif`
           ctx.textAlign = 'center'
-          ctx.fillText('逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案', canvasWidthPx / 2, currentY + 30 * dpr)
+          ctx.textBaseline = 'top'
+          ctx.fillText('逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案', canvasWidthPx / 2, currentY + 24 * dpr)
 
           // 导出图片并预览
           setTimeout(() => {
@@ -956,7 +1085,7 @@ export default function MajorsPage() {
         type="2d"
         id="majorsShareCanvas"
         className="majors-page__share-canvas"
-        style={{ width: '750rpx', height: '2000rpx', position: 'fixed', top: '-9999rpx', left: '-9999rpx' }}
+        style={{ width: '750rpx', height: '4000rpx', position: 'fixed', top: '-9999rpx', left: '-9999rpx' }}
       />
     </View>
   )
