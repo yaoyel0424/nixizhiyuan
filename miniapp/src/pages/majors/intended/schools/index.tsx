@@ -48,6 +48,18 @@ interface IntentionMajor {
 }
 
 export default function IntendedMajorsSchoolsPage() {
+  /**
+   * 格式化百分比展示
+   * - 为 0（含字符串 '0'/'0.0'）时显示 '-'
+   * - 其他情况显示 `{value}%`
+   */
+  const formatRatePercent = (value: string | number | null | undefined): string => {
+    if (value === null || value === undefined || value === '') return '-'
+    const num = typeof value === 'string' ? parseFloat(value) : Number(value)
+    if (Number.isNaN(num) || num === 0) return '-'
+    return `${value}%`
+  }
+
   // 检查问卷完成状态
   const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
@@ -1022,11 +1034,11 @@ export default function IntendedMajorsSchoolsPage() {
                       <View className="schools-page__school-item-rates">
                         <View className="schools-page__school-item-rate">
                           <Text className="schools-page__school-item-rate-label">升学率:</Text>
-                          <Text className="schools-page__school-item-rate-value">{school.enrollmentRate}%</Text>
+                          <Text className="schools-page__school-item-rate-value">{formatRatePercent(school.enrollmentRate)}</Text>
                         </View>
                         <View className="schools-page__school-item-rate">
                           <Text className="schools-page__school-item-rate-label">就业率:</Text>
-                          <Text className="schools-page__school-item-rate-value">{school.employmentRate}%</Text>
+                          <Text className="schools-page__school-item-rate-value">{formatRatePercent(school.employmentRate)}</Text>
                         </View>
                       </View>
                       
@@ -1246,6 +1258,7 @@ export default function IntendedMajorsSchoolsPage() {
                                         {score.minRank !== null && (
                                           <Text className="schools-page__school-item-plan-score-text">
                                             最低位次: {score.minRank}
+                                            {(score as any).rankDiff ? `, ${(score as any).rankDiff}` : ''}
                                           </Text>
                                         )}
                                       </View>
@@ -1405,32 +1418,52 @@ export default function IntendedMajorsSchoolsPage() {
                     {/* 多个 scores 时，在 remark 下面显示 */}
                     {!isSingleScore && plan.scores && plan.scores.length > 0 && (
                       <View className="schools-page__group-scores-multiple">
-                        <View className={`schools-page__group-scores-row ${isScoresExpanded ? 'schools-page__group-scores-row--expanded' : ''}`}>
-                          {plan.scores.map((score, idx) => {
-                            const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
-                            return (
-                              <View key={idx} className="schools-page__group-score-item-inline">
-                                <Text className="schools-page__group-score-major">{score.majorName}</Text>
-                                <Text className="schools-page__group-score-energy">：{loveEnergy !== null ? loveEnergy : '-'}</Text>
-                              </View>
-                            )
-                          })}
-                          {/* 未展开时，在行末显示向下箭头 */}
-                          {!isScoresExpanded && (
+                        {(() => {
+                          // 拼接为一行：majorName:热爱能量、majorName:热爱能量
+                          const scoreText = plan.scores
+                            .map((score) => {
+                              const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
+                              const energyText = loveEnergy !== null ? String(loveEnergy) : '-'
+                              const majorName = score.majorName ? String(score.majorName) : ''
+                              return majorName ? `${majorName}:${energyText}` : energyText
+                            })
+                            .filter((s) => s)
+                            .join('、')
+
+                          const toggleExpanded = () => {
+                            setExpandedScores((prev) => {
+                              const newSet = new Set(prev)
+                              if (newSet.has(planIdx)) {
+                                newSet.delete(planIdx)
+                              } else {
+                                newSet.add(planIdx)
+                              }
+                              return newSet
+                            })
+                          }
+
+                          return (
                             <View
-                              className="schools-page__group-scores-arrow"
-                              onClick={() => {
-                                setExpandedScores((prev) => {
-                                  const newSet = new Set(prev)
-                                  newSet.add(planIdx)
-                                  return newSet
-                                })
-                              }}
+                              className={`schools-page__group-scores-row ${isScoresExpanded ? 'schools-page__group-scores-row--expanded' : ''}`}
+                              onClick={toggleExpanded}
                             >
-                              <Text className="schools-page__group-scores-arrow-icon">▼</Text>
+                              <Text className="schools-page__group-scores-text">
+                                热爱能量：{scoreText}
+                              </Text>
+                              <View
+                                className="schools-page__group-scores-arrow"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleExpanded()
+                                }}
+                              >
+                                <Text className="schools-page__group-scores-arrow-icon">
+                                  {isScoresExpanded ? '▲' : '▼'}
+                                </Text>
+                              </View>
                             </View>
-                          )}
-                        </View>
+                          )
+                        })()}
                       </View>
                     )}
 

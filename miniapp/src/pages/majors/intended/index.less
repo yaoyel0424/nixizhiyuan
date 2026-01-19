@@ -1323,36 +1323,31 @@
 .intended-majors-page__group-scores-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8rpx;
   font-size: 26rpx;
   position: relative;
   line-height: 40rpx;
-  
-  &:not(&--expanded) {
-    max-height: 40rpx;
-    overflow: hidden;
-  }
-  
+  min-width: 0;
+
   &--expanded {
-    max-height: none;
-    overflow: visible;
+    align-items: flex-start;
   }
 }
 
-.intended-majors-page__group-score-item-inline {
-  display: flex;
-  align-items: center;
+.intended-majors-page__group-scores-text {
+  flex: 1;
+  min-width: 0;
   color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.intended-majors-page__group-score-major {
-  font-weight: 500;
-}
-
-.intended-majors-page__group-score-energy {
-  color: #1A4099;
-  font-weight: 500;
+.intended-majors-page__group-scores-row--expanded .intended-majors-page__group-scores-text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
+  word-break: break-all;
 }
 
 .intended-majors-page__group-scores-arrow {
@@ -1418,6 +1413,50 @@
     white-space: nowrap;
     font-weight: 400;
   }
+}
+
+// 意向志愿：招生人数后的热爱能量展示
+.intended-majors-page__wishlist-item-plan-love-energy {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  // 占满剩余空间，确保右侧箭头能靠右对齐
+  flex: 1;
+  min-width: 0;
+}
+
+// 当热爱能量来自多个 scores 时，单独占一行显示（与招生人数分开）
+.intended-majors-page__wishlist-item-plan-love-energy--separate {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 8rpx;
+}
+
+.intended-majors-page__wishlist-item-plan-love-energy-text {
+  display: inline-block;
+  max-width: 520rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  color: #666666;
+  flex: 1;
+  min-width: 0;
+
+  &--expanded {
+    white-space: normal !important;
+    overflow: visible;
+    text-overflow: initial;
+    word-break: break-all;
+  }
+}
+
+.intended-majors-page__wishlist-item-plan-love-energy-toggle {
+  // 右侧箭头按钮靠右
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #1A4099;
+  font-size: 24rpx;
+  font-weight: 600;
 }
 
 .intended-majors-page__wishlist-item-group-toggle {

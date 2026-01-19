@@ -11,8 +11,19 @@ export interface MajorScoreItem {
   batch?: string | null
   minScore?: number | null
   minRank?: number | null
+  /**
+   * 与我位次差值描述（例如：比我低10位/比我高5位/与我相同）
+   */
+  rankDiff?: string
   admitCount?: number | null
   enrollmentType?: string | null
+  /**
+   * 热爱能量（后端可能嵌套在 majorScores 的 item 中返回）
+   */
+  scores?: Array<{
+    majorName?: string
+    score?: number | null
+  }>
 }
 
 /**
@@ -113,6 +124,13 @@ export interface ChoiceInGroup {
   enrollmentMajor: string | null
   curUnit: string | null
   majorScores: MajorScoreItem[]
+  /**
+   * 热爱能量（后端 ChoiceInGroupDto.scores）
+   */
+  scores?: Array<{
+    majorName?: string
+    score?: number | null
+  }>
 }
 
 /**

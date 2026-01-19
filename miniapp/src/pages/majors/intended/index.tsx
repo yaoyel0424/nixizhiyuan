@@ -669,6 +669,46 @@ export default function IntendedMajorsPage() {
   const [selectedPlanData, setSelectedPlanData] = useState<any | null>(null) // 保存选中的plan数据
   const [expandedChoicesInGroup, setExpandedChoicesInGroup] = useState<Set<string>>(new Set()) // 展开的专业组内的志愿列表
   const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
+  const [expandedLoveEnergyChoiceIds, setExpandedLoveEnergyChoiceIds] = useState<Set<number>>(new Set()) // 展开的热爱能量（意向志愿）
+
+  /**
+   * 格式化百分比展示
+   * - 为 0（含字符串 '0'/'0.0'）时显示 '-'
+   * - 其他情况显示 `{value}%`
+   */
+  const formatRatePercent = (value: string | number | null | undefined): string => {
+    if (value === null || value === undefined || value === '') return '-'
+    const num = typeof value === 'string' ? parseFloat(value) : Number(value)
+    if (Number.isNaN(num) || num === 0) return '-'
+    return `${value}%`
+  }
+
+  /**
+   * 标准化热爱能量值
+   * - 如果值在 0-1 之间，乘以 100 取整
+   * - 其他情况四舍五入
+   */
+  const normalizeLoveEnergy = (value: unknown): string | null => {
+    if (value === null || value === undefined) return null
+    const numValue = typeof value === 'string' ? parseFloat(value) : Number(value)
+    if (Number.isNaN(numValue)) return null
+    if (numValue > 0 && numValue < 1) {
+      return Math.floor(numValue * 100).toString()
+    }
+    return Math.round(numValue).toString()
+  }
+
+  /**
+   * 获取意向志愿中用于展示的热爱能量 scores 列表
+   * - 优先从 majorScores[*].scores 读取（兼容后端可能嵌套在 majorScores 中的结构）
+   * - 如果不存在，则回退到 choice.scores（兼容后端 ChoiceInGroupDto 的 scores 字段）
+   */
+  const getChoiceLoveEnergyScores = (choice: any): any[] => {
+    const majorScores = Array.isArray(choice?.majorScores) ? choice.majorScores : []
+    const nestedScores = majorScores.flatMap((ms: any) => (Array.isArray(ms?.scores) ? ms.scores : []))
+    if (nestedScores.length > 0) return nestedScores
+    return Array.isArray(choice?.scores) ? choice.scores : []
+  }
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1808,11 +1848,11 @@ export default function IntendedMajorsPage() {
                             <View className="intended-majors-page__wishlist-item-rates">
                               <View className="intended-majors-page__wishlist-item-rate">
                                 <Text className="intended-majors-page__wishlist-item-rate-label">升学率:</Text>
-                                <Text className="intended-majors-page__wishlist-item-rate-value">{enrollmentRate}%</Text>
+                                <Text className="intended-majors-page__wishlist-item-rate-value">{formatRatePercent(enrollmentRate)}</Text>
                               </View>
                               <View className="intended-majors-page__wishlist-item-rate">
                                 <Text className="intended-majors-page__wishlist-item-rate-label">就业率:</Text>
-                                <Text className="intended-majors-page__wishlist-item-rate-value">{employmentRate}%</Text>
+                                <Text className="intended-majors-page__wishlist-item-rate-value">{formatRatePercent(employmentRate)}</Text>
                               </View>
                             </View>
                           </View>
@@ -1945,6 +1985,26 @@ export default function IntendedMajorsPage() {
                                 {isChoicesExpanded && (
                                   <View className="intended-majors-page__wishlist-item-plans">
                                     {sortedChoices.map((choice, choiceIdx) => {
+                                      const loveEnergyScores = getChoiceLoveEnergyScores(choice)
+                                      const loveEnergyItems = loveEnergyScores
+                                        .map((s: any) => {
+                                          const scoreText = normalizeLoveEnergy(s?.score)
+                                          if (!scoreText) return null
+                                          return {
+                                            majorName: s?.majorName ? String(s.majorName) : '',
+                                            scoreText,
+                                          }
+                                        })
+                                        .filter((item: { majorName: string; scoreText: string } | null): item is { majorName: string; scoreText: string } => Boolean(item))
+                                      const isSingleLoveEnergy = loveEnergyItems.length === 1
+                                      const isLoveEnergyExpandable = loveEnergyItems.length > 1
+                                      const isLoveEnergyExpanded = expandedLoveEnergyChoiceIds.has(choice.id)
+                                      const loveEnergyDisplayText = isSingleLoveEnergy
+                                        ? loveEnergyItems[0].scoreText
+                                        : loveEnergyItems
+                                          .map((item) => (item.majorName ? `${item.majorName}:${item.scoreText}` : item.scoreText))
+                                          .join('、')
+
                                       return (
                                         <View key={choiceIdx} className="intended-majors-page__wishlist-item-plan">
                                           {/* enrollmentMajor + 操作按钮（移除、上移、下移） */}
@@ -2023,12 +2083,44 @@ export default function IntendedMajorsPage() {
                                               <Text className="intended-majors-page__wishlist-item-plan-remark-text">{choice.remark}</Text>
                                             </View>
                                           )}
-                                          {/* 招生人数 */}
-                                          {choice.enrollmentQuota && (
+                                          {/* 招生人数 + 热爱能量 */}
+                                          {(choice.enrollmentQuota || loveEnergyItems.length > 0) && (
                                             <View className="intended-majors-page__wishlist-item-plan-info">
-                                              <Text className="intended-majors-page__wishlist-item-plan-info-text">
-                                                招生人数: {choice.enrollmentQuota}
-                                              </Text>
+                                              {choice.enrollmentQuota && (
+                                                <Text className="intended-majors-page__wishlist-item-plan-info-text">
+                                                  招生人数: {choice.enrollmentQuota}
+                                                </Text>
+                                              )}
+                                              {loveEnergyItems.length > 0 && (
+                                                <View
+                                                  className={`intended-majors-page__wishlist-item-plan-love-energy ${isLoveEnergyExpandable ? 'intended-majors-page__wishlist-item-plan-love-energy--separate' : ''}`}
+                                                >
+                                                  <Text
+                                                    className={`intended-majors-page__wishlist-item-plan-love-energy-text ${isLoveEnergyExpanded ? 'intended-majors-page__wishlist-item-plan-love-energy-text--expanded' : ''}`}
+                                                  >
+                                                    热爱能量: {loveEnergyDisplayText}
+                                                  </Text>
+                                                  {isLoveEnergyExpandable && (
+                                                    <Text
+                                                      className="intended-majors-page__wishlist-item-plan-love-energy-toggle"
+                                                      onClick={(e) => {
+                                                        e?.stopPropagation?.()
+                                                        setExpandedLoveEnergyChoiceIds((prev) => {
+                                                          const next = new Set(prev)
+                                                          if (next.has(choice.id)) {
+                                                            next.delete(choice.id)
+                                                          } else {
+                                                            next.add(choice.id)
+                                                          }
+                                                          return next
+                                                        })
+                                                      }}
+                                                    >
+                                                      {isLoveEnergyExpanded ? '▲' : '▼'}
+                                                    </Text>
+                                                  )}
+                                                </View>
+                                              )}
                                             </View>
                                           )}
                                           {/* 分数信息 */}
@@ -2044,6 +2136,7 @@ export default function IntendedMajorsPage() {
                                                   {score.minRank !== null && (
                                                     <Text className="intended-majors-page__wishlist-item-plan-score-text" data-score="true">
                                                       最低位次: {score.minRank}
+                                                      {(score as any).rankDiff ? `, ${(score as any).rankDiff}` : ''}
                                                     </Text>
                                                   )}
                                                 </View>
@@ -2080,7 +2173,7 @@ export default function IntendedMajorsPage() {
                 <View className="intended-majors-page__add-more-content">
                   <Text className="intended-majors-page__add-more-icon">➕</Text>
                   <Text className="intended-majors-page__add-more-text">
-                    热爱能量高的专业({top20PercentCount}个)较少,继续添加
+                    已探索{groupedChoices?.statistics?.selected ?? 0}/{groupedChoices?.statistics?.total ?? 0}
                   </Text>
                 </View>
               </Card>
@@ -2338,32 +2431,52 @@ export default function IntendedMajorsPage() {
                     {/* 多个 scores 时，在 remark 下面显示 */}
                     {!isSingleScore && plan.scores && plan.scores.length > 0 && (
                       <View className="intended-majors-page__group-scores-multiple">
-                        <View className={`intended-majors-page__group-scores-row ${isScoresExpanded ? 'intended-majors-page__group-scores-row--expanded' : ''}`}>
-                          {plan.scores.map((score: any, idx: number) => {
-                            const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
-                            return (
-                              <View key={idx} className="intended-majors-page__group-score-item-inline">
-                                <Text className="intended-majors-page__group-score-major">{score.majorName}</Text>
-                                <Text className="intended-majors-page__group-score-energy">：{loveEnergy !== null ? loveEnergy : '-'}</Text>
-                              </View>
-                            )
-                          })}
-                          {/* 未展开时，在行末显示向下箭头 */}
-                          {!isScoresExpanded && (
+                        {(() => {
+                          // 拼接为一行：majorName:热爱能量、majorName:热爱能量
+                          const scoreText = plan.scores
+                            .map((score: any) => {
+                              const loveEnergy = normalizeLoveEnergy(score.loveEnergy)
+                              const energyText = loveEnergy !== null ? String(loveEnergy) : '-'
+                              const majorName = score.majorName ? String(score.majorName) : ''
+                              return majorName ? `${majorName}:${energyText}` : energyText
+                            })
+                            .filter((s: string) => s)
+                            .join('、')
+
+                          const toggleExpanded = () => {
+                            setExpandedScores((prev) => {
+                              const newSet = new Set(prev)
+                              if (newSet.has(planIdx)) {
+                                newSet.delete(planIdx)
+                              } else {
+                                newSet.add(planIdx)
+                              }
+                              return newSet
+                            })
+                          }
+
+                          return (
                             <View
-                              className="intended-majors-page__group-scores-arrow"
-                              onClick={() => {
-                                setExpandedScores((prev) => {
-                                  const newSet = new Set(prev)
-                                  newSet.add(planIdx)
-                                  return newSet
-                                })
-                              }}
+                              className={`intended-majors-page__group-scores-row ${isScoresExpanded ? 'intended-majors-page__group-scores-row--expanded' : ''}`}
+                              onClick={toggleExpanded}
                             >
-                              <Text className="intended-majors-page__group-scores-arrow-icon">▼</Text>
+                              <Text className="intended-majors-page__group-scores-text">
+                                热爱能量：{scoreText}
+                              </Text>
+                              <View
+                                className="intended-majors-page__group-scores-arrow"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleExpanded()
+                                }}
+                              >
+                                <Text className="intended-majors-page__group-scores-arrow-icon">
+                                  {isScoresExpanded ? '▲' : '▼'}
+                                </Text>
+                              </View>
                             </View>
-                          )}
-                        </View>
+                          )
+                        })()}
                       </View>
                     )}
 
