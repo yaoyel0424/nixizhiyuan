@@ -39,8 +39,11 @@
 .majors-page__header-title-wrapper {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 8rpx;
+  // 标题与副标题同一行
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16rpx;
 }
 
 .majors-page__back-btn {

@@ -228,7 +228,7 @@ export default function AssessmentPage() {
                     )}
                   </View>
                   <Text className="assessment-page__result-card-desc">
-                    深度探索喜欢的专业
+                    匹配喜欢与天赋，锁定适配度高的专业
                   </Text>
                 </View>
               </View>
@@ -259,7 +259,7 @@ export default function AssessmentPage() {
                     )}
                   </View>
                   <Text className="assessment-page__result-card-desc">
-                    设置意向省份
+                    选择心仪省份，筛选适配专业的院校
                   </Text>
                 </View>
               </View>
@@ -313,7 +313,7 @@ export default function AssessmentPage() {
                     )}
                   </View>
                   <Text className="assessment-page__result-card-desc">
-                    探索各专业对应的院校
+                    汇总特质、专业、省份信息，生成专属高考志愿
                   </Text>
                 </View>
               </View>

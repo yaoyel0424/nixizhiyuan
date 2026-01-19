@@ -1682,7 +1682,8 @@ export default function IntendedMajorsPage() {
               <Text className="intended-majors-page__empty-desc">请先进行院校探索，添加心仪的志愿</Text>
               <Button
                 onClick={() => {
-                  Taro.redirectTo({
+                  // 使用 navigateTo 保留页面栈，便于从“院校探索”返回到“志愿方案”
+                  Taro.navigateTo({
                     url: '/pages/majors/intended/index?tab=专业赛道'
                   })
                 }}
@@ -2165,7 +2166,8 @@ export default function IntendedMajorsPage() {
               <Card 
                 className="intended-majors-page__add-more"
                 onClick={() => {
-                  Taro.redirectTo({
+                  // 使用 navigateTo 保留页面栈，便于从“院校探索”返回到“志愿方案”
+                  Taro.navigateTo({
                     url: '/pages/majors/intended/index?tab=专业赛道'
                   })
                 }}

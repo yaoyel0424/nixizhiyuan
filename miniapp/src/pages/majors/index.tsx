@@ -574,7 +574,7 @@ export default function MajorsPage() {
             ctx.font = `${20 * dpr}px sans-serif`
             ctx.fillText(`代码：${major.majorCode}`, cardPadding + 64 * dpr, currentY + 48 * dpr)
 
-            // 绘制匹配分数
+            // 绘制热爱能量（原匹配分）
             ctx.fillStyle = '#FF7F50'
             ctx.font = `bold ${32 * dpr}px sans-serif`
             ctx.textAlign = 'right'
@@ -585,7 +585,7 @@ export default function MajorsPage() {
             // 绘制分数标签
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
             ctx.font = `${18 * dpr}px sans-serif`
-            ctx.fillText('匹配分', canvasWidthPx - cardPadding - 16 * dpr, currentY + 52 * dpr)
+            ctx.fillText('热爱能量', canvasWidthPx - cardPadding - 16 * dpr, currentY + 52 * dpr)
 
             // 绘制匹配理由（如果有）
             if (major.matchReason) {
@@ -836,7 +836,7 @@ export default function MajorsPage() {
                         <View className="majors-page__major-score">
                           <View className="majors-page__major-score-content">
                             <Text className="majors-page__major-score-value">{formatScore(major.score)}</Text>
-                            <Text className="majors-page__major-score-label">匹配分</Text>
+                            <Text className="majors-page__major-score-label">热爱能量</Text>
                           </View>
                           <View 
                             className={`majors-page__favorite-star ${favoriteMajors.has(major.majorCode) ? 'majors-page__favorite-star--active' : ''} ${guideStep === 1 && index === 0 ? 'majors-page__favorite-star--guide' : ''}`}

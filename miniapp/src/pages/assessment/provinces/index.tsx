@@ -243,9 +243,14 @@ export default function ProvincesPage() {
           {/* 已选择的省份 */}
           {selectedProvinceDetails.length > 0 && (
             <View className="provinces-page__selected">
-              <Text className="provinces-page__selected-title">
-                已选择 ({favoriteCount > 0 ? favoriteCount : selectedProvinceDetails.length})
-              </Text>
+              <View className="provinces-page__selected-header">
+                <Text className="provinces-page__selected-title">
+                  已选择 ({favoriteCount > 0 ? favoriteCount : selectedProvinceDetails.length})
+                </Text>
+                <Text className="provinces-page__selected-desc">
+                  系统根据选择的省份匹配院校
+                </Text>
+              </View>
               <View className="provinces-page__selected-list">
                 {selectedProvinceDetails.map((province) => {
                   return (
