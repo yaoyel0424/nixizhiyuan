@@ -740,6 +740,11 @@ function MajorAnalysisActionCard({
             elementId: el?.elementId ?? el?.id ?? el?.element?.id ?? null,
             score: el?.score ?? null,
             matchReason: el?.matchReason ?? el?.match_reason ?? analysis.matchReason ?? null,
+            // 转化潜力（主要用于厌学/阻学）
+            potentialConversionValue:
+              el?.potentialConversionValue ?? analysis?.potentialConversionValue ?? null,
+            potentialConversionReason:
+              el?.potentialConversionReason ?? analysis?.potentialConversionReason ?? null,
           })),
         )
       } else if (analysis.element) {
@@ -748,10 +753,28 @@ function MajorAnalysisActionCard({
           elementId: analysis.element.id ?? null,
           score: analysis.userElementScore ?? null,
           matchReason: analysis.matchReason ?? null,
+          // 转化潜力（主要用于厌学/阻学）
+          potentialConversionValue: analysis?.potentialConversionValue ?? null,
+          potentialConversionReason: analysis?.potentialConversionReason ?? null,
         })
       }
     })
     return elements
+  }
+
+  /**
+   * 转化潜力等级映射
+   * - high -> 高
+   * - medium -> 中
+   * - low -> 低
+   */
+  const getPotentialConversionLabel = (value: any): { level: 'high' | 'medium' | 'low' | 'unknown'; text: string } => {
+    const raw = typeof value === 'string' ? value.trim().toLowerCase() : ''
+    if (raw === 'high') return { level: 'high', text: '高' }
+    if (raw === 'medium') return { level: 'medium', text: '中' }
+    if (raw === 'low') return { level: 'low', text: '低' }
+    if (value === null || value === undefined || raw === '') return { level: 'unknown', text: '' }
+    return { level: 'unknown', text: String(value) }
   }
 
   const handleToggleType = (type: string, allAnalyses: any[], mName: string) => {
@@ -941,6 +964,37 @@ function MajorAnalysisActionCard({
                           </Text>
                         )}
                       </View>
+
+                      {(() => {
+                        // 仅在“厌学/阻学”元素下展示转化潜力（放在“测评结果”下面）
+                        const shouldShowConversion = reasonKind === 'yanxue' || reasonKind === 'tiaozhan'
+                        if (!shouldShowConversion) return null
+                        const { level, text } = getPotentialConversionLabel(element?.potentialConversionValue)
+                        const reasonText = element?.potentialConversionReason ? String(element.potentialConversionReason) : ''
+                        if (!text && !reasonText) return null
+
+                        return (
+                          <View className="single-major-page__element-dialog-item-conversion">
+                            {text && (
+                              <View className="single-major-page__element-dialog-item-conversion-row">
+                                <Text className="single-major-page__element-dialog-item-conversion-label">
+                                  转化潜力：
+                                </Text>
+                                <Text
+                                  className={`single-major-page__element-dialog-item-conversion-tag single-major-page__element-dialog-item-conversion-tag--${level}`}
+                                >
+                                  {text}
+                                </Text>
+                              </View>
+                            )}
+                            {reasonText && (
+                              <Text className="single-major-page__element-dialog-item-conversion-reason">
+                                {reasonText}
+                              </Text>
+                            )}
+                          </View>
+                        )
+                      })()}
 
                       {elementId !== null && isQuestionnaireExpanded && (
                         <View className="single-major-page__element-questionnaire">

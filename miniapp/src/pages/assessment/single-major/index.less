@@ -702,6 +702,59 @@
     gap: 12rpx;
   }
 
+  // 厌学/阻学：转化潜力展示
+  &__element-dialog-item-conversion {
+    display: flex;
+    flex-direction: column;
+    gap: 10rpx;
+  }
+
+  &__element-dialog-item-conversion-row {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    flex-wrap: wrap;
+  }
+
+  &__element-dialog-item-conversion-label {
+    font-size: 24rpx;
+    color: #666;
+    font-weight: 600;
+  }
+
+  &__element-dialog-item-conversion-tag {
+    font-size: 22rpx;
+    font-weight: 700;
+    padding: 4rpx 12rpx;
+    border-radius: 999rpx;
+
+    &--high {
+      background: rgba(34, 197, 94, 0.16);
+      color: #16a34a;
+    }
+
+    &--medium {
+      background: rgba(245, 158, 11, 0.18);
+      color: #b45309;
+    }
+
+    &--low {
+      background: rgba(239, 68, 68, 0.14);
+      color: #dc2626;
+    }
+
+    &--unknown {
+      background: rgba(156, 163, 175, 0.18);
+      color: #4b5563;
+    }
+  }
+
+  &__element-dialog-item-conversion-reason {
+    font-size: 24rpx;
+    color: #666;
+    line-height: 1.6;
+  }
+
   &__element-dialog-item-score-action {
     margin-left: auto;
     font-size: 24rpx;
