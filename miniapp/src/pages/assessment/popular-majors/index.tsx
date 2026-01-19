@@ -574,13 +574,21 @@ export default function PopularMajorsPage() {
                     </View>
                     <View className="popular-majors-page__major-actions">
                       {isCompleted || hasLocalResult ? (
-                        <Button
-                          size="sm"
-                          className="popular-majors-page__major-button popular-majors-page__major-button--retake"
-                          onClick={() => handleStartAssessment(major)}
-                        >
-                          🔄 重测
-                        </Button>
+                        <View className="popular-majors-page__major-actions-row">
+                          {score !== undefined && score !== null && (
+                            <View className="popular-majors-page__major-score">
+                              <Text className="popular-majors-page__major-score-label">得分</Text>
+                              <Text className="popular-majors-page__major-score-value">{score}</Text>
+                            </View>
+                          )}
+                          <Button
+                            size="sm"
+                            className="popular-majors-page__major-button popular-majors-page__major-button--retake"
+                            onClick={() => handleStartAssessment(major)}
+                          >
+                            🔄 重测
+                          </Button>
+                        </View>
                       ) : (
                         <Button
                           size="sm"

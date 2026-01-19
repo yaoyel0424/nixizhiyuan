@@ -1,6 +1,6 @@
 // 专业探索页面
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -17,6 +17,8 @@ import {
 } from '@/services/majors'
 import { MajorScoreResponse } from '@/types/api'
 import { getStorage, setStorage } from '@/utils/storage'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
 import './index.less'
 
 // 每页显示的数据量
@@ -54,6 +56,10 @@ export default function MajorsPage() {
   const [guideStep, setGuideStep] = useState<1 | 2 | null>(null) // 1: 收藏专业, 2: 查看心动专业
   // 搜索关键词
   const [searchQuery, setSearchQuery] = useState('')
+  // 分享相关状态
+  const [showShareDialog, setShowShareDialog] = useState(false)
+  const [showShareGuide, setShowShareGuide] = useState(false)
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -393,6 +399,202 @@ export default function MajorsPage() {
     return numScore.toFixed(2)
   }
 
+  // 生成分享图片（包含前10个专业的详细信息）
+  const generateShareImage = async () => {
+    try {
+      setIsGeneratingImage(true)
+
+      // 获取前10个专业（按分数排序）
+      const top10Majors = allMajors.slice(0, 10)
+
+      // 获取系统信息
+      const systemInfo = await Taro.getSystemInfo()
+      const { windowWidth } = systemInfo
+      const dpr = systemInfo.pixelRatio || 2
+
+      // Canvas 尺寸（设计稿尺寸，单位：rpx）
+      const canvasWidth = 750 // rpx
+      // 根据内容动态计算高度：标题区域 + 每个专业卡片高度
+      const headerHeight = 200 // 标题区域高度
+      const majorCardHeight = 180 // 每个专业卡片高度
+      const padding = 40 // 上下内边距
+      const canvasHeight = headerHeight + (top10Majors.length * majorCardHeight) + padding
+      const canvasWidthPx = (canvasWidth / 750) * windowWidth * dpr
+      const canvasHeightPx = (canvasHeight / 750) * windowWidth * dpr
+
+      // 创建 Canvas 上下文
+      const query = Taro.createSelectorQuery()
+      query
+        .select('#majorsShareCanvas')
+        .fields({ node: true, size: true })
+        .exec((res) => {
+          if (!res || !res[0] || !res[0].node) {
+            Taro.showToast({
+              title: 'Canvas 初始化失败',
+              icon: 'none',
+            })
+            setIsGeneratingImage(false)
+            return
+          }
+
+          const canvas = res[0].node
+          const ctx = canvas.getContext('2d')
+
+          // 设置 Canvas 实际尺寸
+          canvas.width = canvasWidthPx
+          canvas.height = canvasHeightPx
+
+          // 绘制背景（渐变蓝色）
+          const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeightPx)
+          gradient.addColorStop(0, '#1A4099')
+          gradient.addColorStop(1, '#2563eb')
+          ctx.fillStyle = gradient
+          ctx.fillRect(0, 0, canvasWidthPx, canvasHeightPx)
+
+          // 绘制标题
+          ctx.fillStyle = '#FFFFFF'
+          ctx.font = `bold ${56 * dpr}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText('专业探索推荐', canvasWidthPx / 2, 60 * dpr)
+
+          // 绘制副标题
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+          ctx.font = `${28 * dpr}px sans-serif`
+          ctx.fillText('为您推荐的前10个匹配专业', canvasWidthPx / 2, 110 * dpr)
+
+          // 绘制每个专业信息
+          let currentY = 160 * dpr
+          const cardPadding = 30 * dpr
+          const cardSpacing = 20 * dpr
+
+          top10Majors.forEach((major, index) => {
+            // 绘制专业卡片背景（白色半透明）
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
+            ctx.fillRect(cardPadding, currentY, canvasWidthPx - cardPadding * 2, majorCardHeight * dpr)
+
+            // 绘制排名
+            ctx.fillStyle = '#FF7F50'
+            ctx.font = `bold ${36 * dpr}px sans-serif`
+            ctx.textAlign = 'left'
+            ctx.fillText(`${index + 1}`, cardPadding + 20 * dpr, currentY + 40 * dpr)
+
+            // 绘制专业名称
+            ctx.fillStyle = '#FFFFFF'
+            ctx.font = `bold ${32 * dpr}px sans-serif`
+            const majorName = major.majorName || '未知专业'
+            // 如果名称太长，截断
+            const maxNameWidth = canvasWidthPx - cardPadding * 2 - 120 * dpr
+            let displayName = majorName
+            const nameMetrics = ctx.measureText(majorName)
+            if (nameMetrics.width > maxNameWidth) {
+              // 截断名称
+              let truncated = majorName
+              while (ctx.measureText(truncated + '...').width > maxNameWidth && truncated.length > 0) {
+                truncated = truncated.slice(0, -1)
+              }
+              displayName = truncated + '...'
+            }
+            ctx.fillText(displayName, cardPadding + 80 * dpr, currentY + 40 * dpr)
+
+            // 绘制专业代码
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+            ctx.font = `${24 * dpr}px sans-serif`
+            ctx.fillText(`代码：${major.majorCode}`, cardPadding + 80 * dpr, currentY + 70 * dpr)
+
+            // 绘制匹配分数
+            ctx.fillStyle = '#FF7F50'
+            ctx.font = `bold ${40 * dpr}px sans-serif`
+            ctx.textAlign = 'right'
+            const scoreText = formatScore(major.score)
+            ctx.fillText(scoreText, canvasWidthPx - cardPadding - 20 * dpr, currentY + 50 * dpr)
+
+            // 绘制分数标签
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+            ctx.font = `${24 * dpr}px sans-serif`
+            ctx.fillText('匹配分', canvasWidthPx - cardPadding - 20 * dpr, currentY + 85 * dpr)
+
+            // 绘制专业简介（如果有且长度合适）
+            if (major.majorBrief && major.majorBrief.length > 0) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+              ctx.font = `${22 * dpr}px sans-serif`
+              ctx.textAlign = 'left'
+              const brief = major.majorBrief.length > 50 ? major.majorBrief.substring(0, 50) + '...' : major.majorBrief
+              ctx.fillText(brief, cardPadding + 20 * dpr, currentY + 110 * dpr)
+            }
+
+            currentY += majorCardHeight * dpr + cardSpacing
+          })
+
+          // 绘制底部提示
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+          ctx.font = `${24 * dpr}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText('逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案', canvasWidthPx / 2, currentY + 30 * dpr)
+
+          // 导出图片并预览
+          setTimeout(() => {
+            Taro.canvasToTempFilePath({
+              canvas: canvas,
+              success: (exportRes) => {
+                setIsGeneratingImage(false)
+                setShowShareDialog(false)
+                
+                // 预览图片，用户可以长按分享
+                Taro.previewImage({
+                  urls: [exportRes.tempFilePath],
+                  current: exportRes.tempFilePath,
+                  success: () => {
+                    // 预览成功后，显示操作说明
+                    setTimeout(() => {
+                      setShowShareGuide(true)
+                    }, 500)
+                  },
+                  fail: (err) => {
+                    console.error('预览图片失败:', err)
+                    Taro.showToast({
+                      title: err.errMsg || '预览图片失败',
+                      icon: 'none',
+                      duration: 2000
+                    })
+                  },
+                })
+              },
+              fail: (err) => {
+                console.error('导出图片失败:', err)
+                Taro.showToast({
+                  title: err.errMsg || '生成图片失败',
+                  icon: 'none',
+                  duration: 2000
+                })
+                setIsGeneratingImage(false)
+              },
+            })
+          }, 500)
+        })
+    } catch (error: any) {
+      console.error('生成分享图片失败:', error)
+      Taro.showToast({
+        title: error?.message || '操作失败',
+        icon: 'none',
+        duration: 2000
+      })
+      setIsGeneratingImage(false)
+    }
+  }
+
+  // 处理分享按钮点击
+  const handleShareClick = () => {
+    if (allMajors.length === 0) {
+      Taro.showToast({
+        title: '暂无专业数据',
+        icon: 'none'
+      })
+      return
+    }
+    setShowShareDialog(true)
+  }
+
   // 根据搜索关键词过滤专业列表
   const filteredMajors = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -415,8 +617,13 @@ export default function MajorsPage() {
       <View className="majors-page__header">
         <View className="majors-page__header-content">
           <View className="majors-page__header-top">
-            <Text className="majors-page__title">专业探索</Text>
-            <Text className="majors-page__subtitle">发现适合你的专业方向</Text>
+            <View className="majors-page__header-title-wrapper">
+              <Text className="majors-page__title">专业探索</Text>
+              <Text className="majors-page__subtitle">发现适合你的专业方向</Text>
+            </View>
+            <View className="majors-page__share-btn" onClick={handleShareClick}>
+              <Text className="majors-page__share-icon">📤</Text>
+            </View>
           </View>
 
           {/* 搜索框 */}
@@ -656,6 +863,100 @@ export default function MajorsPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
+      />
+
+      {/* 分享对话框 */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="majors-page__share-dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle>分享专业推荐</DialogTitle>
+            <DialogDescription>
+              <Text className="majors-page__share-dialog-desc">
+                生成包含前10个匹配专业的详细推荐图片，预览后长按即可分享给好友
+              </Text>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <View className="majors-page__share-dialog-actions">
+              <Button
+                className="majors-page__share-dialog-btn"
+                onClick={generateShareImage}
+                disabled={isGeneratingImage}
+                size="lg"
+              >
+                {isGeneratingImage ? '生成中...' : '📸 生成分享图片'}
+              </Button>
+              <Button
+                variant="outline"
+                className="majors-page__share-dialog-btn"
+                onClick={() => setShowShareDialog(false)}
+                size="lg"
+              >
+                取消
+              </Button>
+            </View>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 分享操作说明对话框 */}
+      <Dialog open={showShareGuide} onOpenChange={setShowShareGuide}>
+        <DialogContent className="majors-page__share-guide-dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle>如何分享图片给好友</DialogTitle>
+          </DialogHeader>
+          <View className="majors-page__share-guide-content">
+            <View className="majors-page__share-guide-step">
+              <View className="majors-page__share-guide-step-number">1</View>
+              <View className="majors-page__share-guide-step-content">
+                <Text className="majors-page__share-guide-step-title">图片已生成并打开预览</Text>
+                <Text className="majors-page__share-guide-step-desc">
+                  专业推荐图片已生成，当前正在预览界面
+                </Text>
+              </View>
+            </View>
+            <View className="majors-page__share-guide-step">
+              <View className="majors-page__share-guide-step-number">2</View>
+              <View className="majors-page__share-guide-step-content">
+                <Text className="majors-page__share-guide-step-title">长按图片</Text>
+                <Text className="majors-page__share-guide-step-desc">
+                  在预览界面中，长按图片会弹出分享菜单
+                </Text>
+              </View>
+            </View>
+            <View className="majors-page__share-guide-step">
+              <View className="majors-page__share-guide-step-number">3</View>
+              <View className="majors-page__share-guide-step-content">
+                <Text className="majors-page__share-guide-step-title">选择分享方式</Text>
+                <Text className="majors-page__share-guide-step-desc">
+                  在弹出的菜单中选择"发送给朋友"或"分享到朋友圈"，即可分享给好友
+                </Text>
+              </View>
+            </View>
+            <View className="majors-page__share-guide-tip">
+              <Text className="majors-page__share-guide-tip-text">
+                💡 提示：长按预览中的图片即可快速分享，无需保存到相册
+              </Text>
+            </View>
+          </View>
+          <DialogFooter>
+            <Button
+              className="majors-page__share-guide-btn"
+              onClick={() => setShowShareGuide(false)}
+              size="lg"
+            >
+              我知道了
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 隐藏的 Canvas，用于生成分享图片 */}
+      <Canvas
+        type="2d"
+        id="majorsShareCanvas"
+        className="majors-page__share-canvas"
+        style={{ width: '750rpx', height: '2000rpx', position: 'fixed', top: '-9999rpx', left: '-9999rpx' }}
       />
     </View>
   )

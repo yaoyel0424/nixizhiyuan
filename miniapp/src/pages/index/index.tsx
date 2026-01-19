@@ -274,9 +274,9 @@ export default function IndexPage() {
   const handleReExplore = (e: any) => {
     e.stopPropagation(); // 阻止事件冒泡，避免触发步骤点击
     setIsGuideDialogOpen(false);
-    // 跳转到评估页面重新开始
+    // 跳转到评估页面重新开始，传递 restart=true 参数
     Taro.navigateTo({
-      url: '/pages/assessment/all-majors/index',
+      url: '/pages/assessment/all-majors/index?restart=true',
     });
   };
 
