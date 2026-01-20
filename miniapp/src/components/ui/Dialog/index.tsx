@@ -49,6 +49,20 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children, className
     setIsOpen(open || false)
   }, [open])
 
+  // 弹窗打开时，阻止父页面滚动；关闭后恢复（H5 用 body overflow，其他端用阻止触摸滚动）
+  useEffect(() => {
+    if (!isOpen) return
+    if (Taro.getEnv && Taro.getEnv() === Taro.ENV_TYPE.WEB) {
+      const body = document?.body
+      if (!body) return
+      const prevOverflow = body.style.overflow
+      body.style.overflow = 'hidden'
+      return () => {
+        body.style.overflow = prevOverflow
+      }
+    }
+  }, [isOpen])
+
   const handleClose = () => {
     setIsOpen(false)
     onOpenChange?.(false)
@@ -58,7 +72,8 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children, className
 
   return (
     <DialogContext.Provider value={{ onClose: handleClose }}>
-      <View className={cn('ui-dialog', className)} onClick={handleClose}>
+      {/* @ts-expect-error 小程序端用于阻止背景滚动 */}
+      <View className={cn('ui-dialog', className)} onClick={handleClose} catchMove>
         <View className="ui-dialog__overlay" />
         <View className="ui-dialog__content" onClick={(e) => e.stopPropagation()}>
           {children}

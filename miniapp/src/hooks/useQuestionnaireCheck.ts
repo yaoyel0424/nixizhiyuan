@@ -21,12 +21,14 @@ function loadAnswersFromStorage(): Record<number, number> {
 
 /**
  * 检查问卷是否完成的 Hook
- * @returns { isCompleted: boolean, isLoading: boolean, answerCount: number }
+ * @returns { isCompleted: boolean, isLoading: boolean, answerCount: number, majorFavoritesCount: number }
  */
 export function useQuestionnaireCheck() {
   const [isCompleted, setIsCompleted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [answerCount, setAnswerCount] = useState(0)
+  // 心动专业（专业收藏）数量：用于页面空态提示
+  const [majorFavoritesCount, setMajorFavoritesCount] = useState(0)
 
   useEffect(() => {
     const checkQuestionnaire = async () => {
@@ -39,6 +41,7 @@ export function useQuestionnaireCheck() {
           const count = data.scaleAnswersCount || 0
           setAnswerCount(count)
           setIsCompleted(count >= UNLOCK_THRESHOLD)
+          setMajorFavoritesCount(data.majorFavoritesCount || 0)
         } catch (error) {
           console.error('获取问卷完成状态失败，使用本地数据:', error)
           // API 失败时，降级使用本地存储数据
@@ -46,12 +49,14 @@ export function useQuestionnaireCheck() {
           const count = Object.keys(storedAnswers).length
           setAnswerCount(count)
           setIsCompleted(count >= UNLOCK_THRESHOLD)
+          setMajorFavoritesCount(0)
         }
       } catch (error) {
         console.error('检查问卷完成状态失败:', error)
         // 出错时默认未完成
         setIsCompleted(false)
         setAnswerCount(0)
+        setMajorFavoritesCount(0)
       } finally {
         setIsLoading(false)
       }
@@ -60,5 +65,5 @@ export function useQuestionnaireCheck() {
     checkQuestionnaire()
   }, [])
 
-  return { isCompleted, isLoading, answerCount }
+  return { isCompleted, isLoading, answerCount, majorFavoritesCount }
 }

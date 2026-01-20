@@ -806,6 +806,52 @@ export class ChoicesService {
   }
 
   /**
+   * 批量删除志愿选择
+   * @param userId 用户ID
+   * @param ids 要删除的志愿选择ID数组
+   * @returns 删除结果（成功删除的数量和失败的ID列表）
+   */
+  async removeMultiple(
+    userId: number,
+    ids: number[],
+  ): Promise<{ deleted: number; failed: number[] }> {
+    if (!ids || ids.length === 0) {
+      throw new BadRequestException('至少需要提供一个ID');
+    }
+
+    // 1. 查找所有属于当前用户的志愿选择记录
+    const choices = await this.choiceRepository.find({
+      where: {
+        id: In(ids),
+        userId, // 确保只能删除自己的志愿
+      },
+    });
+
+    // 2. 找出不存在的或不属于当前用户的ID
+    const foundIds = choices.map((choice) => choice.id);
+    const failedIds = ids.filter((id) => !foundIds.includes(id));
+
+    if (failedIds.length > 0) {
+      this.logger.warn(
+        `用户 ${userId} 尝试删除不存在的志愿选择或不属于自己的志愿，IDs: ${failedIds.join(', ')}`,
+      );
+    }
+
+    // 3. 删除找到的记录
+    if (choices.length > 0) {
+      await this.choiceRepository.remove(choices);
+      this.logger.log(
+        `用户 ${userId} 批量删除志愿选择成功，删除 ${choices.length} 条记录，失败 ${failedIds.length} 条`,
+      );
+    }
+
+    return {
+      deleted: choices.length,
+      failed: failedIds,
+    };
+  }
+
+  /**
    * 调整索引（上移或下移）
    * @param userId 用户ID
    * @param choiceId 志愿选择ID

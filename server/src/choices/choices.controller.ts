@@ -25,6 +25,7 @@ import { ChoiceResponseDto } from './dto/choice-response.dto';
 import { GroupedChoiceResponseDto, SchoolGroupDto } from './dto/grouped-choice-response.dto';
 import { AdjustDirectionDto } from './dto/adjust-direction.dto';
 import { AdjustMgIndexDto } from './dto/adjust-mg-index.dto';
+import { RemoveMultipleDto } from './dto/remove-multiple.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
@@ -141,6 +142,63 @@ export class ChoicesController {
     this.logger.log(`用户 ${user.id} 删除志愿选择，ID: ${id}`);
     await this.choicesService.remove(user.id, id);
     return { message: '删除成功' };
+  }
+
+  /**
+   * 批量删除志愿选择
+   * @param user 当前用户
+   * @param removeMultipleDto 批量删除的 DTO（包含 ids 数组）
+   * @returns 删除结果
+   */
+  @Delete('batch')
+  @ApiOperation({ summary: '批量删除志愿选择' })
+  @ApiResponse({
+    status: 200,
+    description: '删除成功',
+    schema: {
+      type: 'object',
+      properties: {
+        deleted: {
+          type: 'number',
+          description: '成功删除的数量',
+          example: 3,
+        },
+        failed: {
+          type: 'array',
+          items: { type: 'number' },
+          description: '删除失败的ID列表（不存在或不属于当前用户）',
+          example: [5, 6],
+        },
+        message: {
+          type: 'string',
+          example: '批量删除完成',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: '请求参数错误（至少需要提供一个ID）',
+  })
+  async removeMultiple(
+    @CurrentUser() user: any,
+    @Body() removeMultipleDto: RemoveMultipleDto,
+  ): Promise<{
+    deleted: number;
+    failed: number[];
+    message: string;
+  }> {
+    this.logger.log(
+      `用户 ${user.id} 批量删除志愿选择，IDs: ${removeMultipleDto.ids.join(', ')}`,
+    );
+    const result = await this.choicesService.removeMultiple(
+      user.id,
+      removeMultipleDto.ids,
+    );
+    return {
+      ...result,
+      message: '批量删除完成',
+    };
   }
 
   /**

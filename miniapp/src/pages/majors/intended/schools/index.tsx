@@ -47,6 +47,9 @@ interface IntentionMajor {
   schools: School[]
 }
 
+// 院校列表分页：一次渲染 10 条，避免列表过大卡顿
+const SCHOOLS_PAGE_SIZE = 10
+
 export default function IntendedMajorsSchoolsPage() {
   /**
    * 格式化百分比展示
@@ -93,6 +96,8 @@ export default function IntendedMajorsSchoolsPage() {
   const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set()) // 展开的 plan 索引（用于旧结构，保留兼容）
   const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null) // 选中的省份
+  // 分段展示：当前已展示的院校条数
+  const [visibleSchoolCount, setVisibleSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
 
   // 从 apiData 中提取并去重省份列表
   const provinces = React.useMemo(() => {
@@ -398,6 +403,11 @@ export default function IntendedMajorsSchoolsPage() {
     loadChoicesFromAPI()
     loadPlanWishlist()
   }, [majorCode, majorId])
+
+  // 当筛选条件变化/重新加载数据时，重置分页展示数量
+  useEffect(() => {
+    setVisibleSchoolCount(SCHOOLS_PAGE_SIZE)
+  }, [majorCode, majorId, selectedProvince, apiData.length])
 
   // 判断学校是否已加入志愿
   const isSchoolInWishlist = (schoolData: School): { isIn: boolean; choiceId?: number } => {
@@ -936,6 +946,10 @@ export default function IntendedMajorsSchoolsPage() {
 
   // 使用筛选后的数据
   const displayData = filteredData || data
+  // 当前页展示的数据（只渲染一部分，避免一次性渲染过多导致卡顿）
+  const totalSchoolCount = displayData.schools.length
+  const pagedSchools = displayData.schools.slice(0, visibleSchoolCount)
+  const hasMoreSchools = visibleSchoolCount < totalSchoolCount
 
   return (
     <View className="schools-page">
@@ -976,7 +990,7 @@ export default function IntendedMajorsSchoolsPage() {
       <View className="schools-page__content">
         <View className="schools-page__schools-list">
           {displayData.schools.length > 0 ? (
-            displayData.schools.map((school, idx) => {
+            pagedSchools.map((school, idx) => {
               const schoolKey = `${majorCode}-${school.schoolName}`
               const { isIn: isInWishlist, choiceId } = isSchoolInWishlist(school)
 
@@ -1281,6 +1295,20 @@ export default function IntendedMajorsSchoolsPage() {
               <Text>暂无符合条件的院校</Text>
             </View>
           )}
+
+          {/* 分段加载：一次追加 10 条 */}
+          {displayData.schools.length > 0 && hasMoreSchools && (
+            <View className="schools-page__load-more">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setVisibleSchoolCount((prev) => Math.min(prev + SCHOOLS_PAGE_SIZE, totalSchoolCount))
+                }}
+              >
+                加载更多（已显示 {Math.min(visibleSchoolCount, totalSchoolCount)}/{totalSchoolCount}）
+              </Button>
+            </View>
+          )}
         </View>
       </View>
 
@@ -1319,6 +1347,7 @@ export default function IntendedMajorsSchoolsPage() {
 
       {/* 专业组信息弹出框 */}
       <Dialog 
+        className="schools-page__group-dialog-wrapper"
         open={groupDialogOpen} 
         onOpenChange={(open) => {
           setGroupDialogOpen(open)
@@ -1336,9 +1365,11 @@ export default function IntendedMajorsSchoolsPage() {
       >
         <DialogContent className="schools-page__group-dialog">
           <DialogHeader>
-            <DialogTitle>
-              {selectedGroupInfo?.schoolName} - {selectedGroupInfo?.majorGroupName} 专业组信息
-            </DialogTitle>
+            <View className="schools-page__group-dialog-title-wrapper">
+              <Text className="schools-page__group-dialog-title-text">
+                {selectedGroupInfo?.schoolName} - {selectedGroupInfo?.majorGroupName} 专业组信息
+              </Text>
+            </View>
           </DialogHeader>
           <View className="schools-page__group-dialog-content">
             {loadingGroupInfo ? (
@@ -1476,6 +1507,16 @@ export default function IntendedMajorsSchoolsPage() {
                 )
               })
             )}
+          </View>
+
+          {/* 底部浮动关闭按钮：不随内容滚动 */}
+          <View className="schools-page__group-dialog-footer">
+            <Button
+              className="schools-page__group-dialog-close-button"
+              onClick={() => setGroupDialogOpen(false)}
+            >
+              关闭
+            </Button>
           </View>
         </DialogContent>
       </Dialog>

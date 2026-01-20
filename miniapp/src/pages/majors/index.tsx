@@ -731,13 +731,14 @@ export default function MajorsPage() {
     }
     
     const query = searchQuery.trim().toLowerCase()
-    return displayedMajors.filter(major => {
+    // 全局搜索：基于全量 allMajors 过滤
+    return allMajors.filter(major => {
       // 搜索专业名称或代码
       const nameMatch = major.majorName?.toLowerCase().includes(query) || false
       const codeMatch = major.majorCode?.toLowerCase().includes(query) || false
       return nameMatch || codeMatch
     })
-  }, [displayedMajors, searchQuery])
+  }, [displayedMajors, allMajors, searchQuery])
 
   return (
     <View className="majors-page">
@@ -787,7 +788,8 @@ export default function MajorsPage() {
       <ScrollView
         className="majors-page__scroll-view"
         scrollY
-        onScrollToLower={handleScrollToLower}
+        // 有搜索词时禁用“滚动加载更多”，避免搜索结果随分页变化
+        onScrollToLower={searchQuery.trim() ? undefined : handleScrollToLower}
         lowerThreshold={100}
         enableBackToTop
       >
@@ -796,7 +798,7 @@ export default function MajorsPage() {
             <View className="majors-page__loading">
               <Text className="majors-page__loading-text">加载中...</Text>
             </View>
-          ) : displayedMajors.length === 0 ? (
+          ) : allMajors.length === 0 ? (
             <View className="majors-page__empty">
               <Text className="majors-page__empty-text">暂无专业数据</Text>
               <Text className="majors-page__empty-desc">请先完成专业测评问卷</Text>

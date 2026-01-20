@@ -630,7 +630,7 @@ function ExamInfoDialog({
 
 export default function IntendedMajorsPage() {
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, majorFavoritesCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const router = useRouter()
@@ -721,6 +721,10 @@ export default function IntendedMajorsPage() {
   const fetchingEnrollmentPlansRef = useRef(false)
   // 使用 ref 防止页面显示时重复刷新
   const refreshingOnShowRef = useRef(false)
+  // 首次进入页面时，useDidShow 也会触发：用 ref 避免首次就刷新导致重复请求
+  const hasDidShowOnceRef = useRef(false)
+  // 仅在“高考信息弹窗从打开->关闭”时刷新：避免初始 showExamInfoDialog=false 也触发刷新导致重复请求
+  const prevShowExamInfoDialogRef = useRef(showExamInfoDialog)
 
   // 加载数据（院校探索页面使用API数据，意向志愿页面使用静态数据）
   useEffect(() => {
@@ -1027,8 +1031,11 @@ export default function IntendedMajorsPage() {
   // 当对话框关闭时，如果是"专业赛道"页面，重新获取高考信息并刷新招生计划数据
   // 这样可以确保返回页面时数据是最新的（即使没有检测到变化，也刷新一次以确保数据同步）
   useEffect(() => {
-    // 当对话框从打开变为关闭时
-    if (!showExamInfoDialog && activeTab === '专业赛道') {
+    const wasOpen = prevShowExamInfoDialogRef.current
+    prevShowExamInfoDialogRef.current = showExamInfoDialog
+
+    // 仅当对话框从“打开”变为“关闭”时触发刷新（避免初始渲染重复请求）
+    if (wasOpen && !showExamInfoDialog && activeTab === '专业赛道') {
       const refreshOnClose = async () => {
         try {
           // 重新获取最新的高考信息
@@ -1057,6 +1064,11 @@ export default function IntendedMajorsPage() {
   // 监听页面显示事件（从其他页面返回时触发）
   // 当从意向省份页面返回时，检查高考信息是否变化并刷新数据
   useDidShow(() => {
+    // 注意：首次进入页面也会执行 useDidShow，这里跳过首次，避免与首次加载逻辑叠加导致重复请求
+    if (!hasDidShowOnceRef.current) {
+      hasDidShowOnceRef.current = true
+      return
+    }
     if (activeTab === '专业赛道' && !refreshingOnShowRef.current) {
       refreshingOnShowRef.current = true
       
@@ -1153,11 +1165,13 @@ export default function IntendedMajorsPage() {
 
   // 使用 ref 防止重复调用用户详情接口
   const fetchingUserDetailRef = useRef(false)
+  // 使用 ref 防止同一次进入页面时重复拉取用户详情
+  const hasFetchedUserDetailOnceRef = useRef(false)
 
   // 院校探索页面加载时获取用户详情
   useEffect(() => {
     // 使用 activeTab 判断是否为院校探索页面
-    if (activeTab !== '意向志愿' && !fetchingUserDetailRef.current) {
+    if (activeTab !== '意向志愿' && !fetchingUserDetailRef.current && !hasFetchedUserDetailOnceRef.current) {
       const fetchUserDetail = async () => {
         // 如果正在获取中，避免重复调用
         if (fetchingUserDetailRef.current) {
@@ -1172,6 +1186,8 @@ export default function IntendedMajorsPage() {
             // 这里可以根据需要处理用户详情数据
             // 例如更新某些状态或执行其他操作
           }
+          // 标记已获取，避免重复请求
+          hasFetchedUserDetailOnceRef.current = true
         } catch (error) {
           console.error('获取用户详情失败:', error)
         } finally {
@@ -1679,7 +1695,9 @@ export default function IntendedMajorsPage() {
             <View className="intended-majors-page__empty">
               <Text className="intended-majors-page__empty-icon">🔍</Text>
               <Text className="intended-majors-page__empty-text">暂无志愿数据</Text>
-              <Text className="intended-majors-page__empty-desc">请先进行院校探索，添加心仪的志愿</Text>
+              <Text className="intended-majors-page__empty-desc">
+                {majorFavoritesCount === 0 ? '请先探索心动专业' : '请先进行院校探索，添加心仪的志愿'}
+              </Text>
               <Button
                 onClick={() => {
                   // 使用 navigateTo 保留页面栈，便于从“院校探索”返回到“志愿方案”
@@ -2160,7 +2178,9 @@ export default function IntendedMajorsPage() {
                 <View className="intended-majors-page__empty">
                   <Text className="intended-majors-page__empty-icon">📚</Text>
                   <Text className="intended-majors-page__empty-text">暂无志愿数据</Text>
-                  <Text className="intended-majors-page__empty-desc">请先进行院校探索，添加心仪的志愿</Text>
+                  <Text className="intended-majors-page__empty-desc">
+                    {majorFavoritesCount === 0 ? '请先探索心动专业' : '请先进行院校探索，添加心仪的志愿'}
+                  </Text>
                 </View>
               )}
               <Card 
@@ -2335,6 +2355,7 @@ export default function IntendedMajorsPage() {
 
       {/* 专业组信息对话框 */}
       <Dialog 
+        className="intended-majors-page__group-dialog-wrapper"
         open={groupDialogOpen} 
         onOpenChange={(open) => {
           setGroupDialogOpen(open)
@@ -2351,9 +2372,11 @@ export default function IntendedMajorsPage() {
       >
         <DialogContent className="intended-majors-page__group-dialog">
           <DialogHeader>
-            <DialogTitle>
-              {selectedGroupInfo?.schoolName} - {selectedGroupInfo?.majorGroupName} 专业组信息
-            </DialogTitle>
+            <View className="intended-majors-page__group-dialog-title-wrapper">
+              <Text className="intended-majors-page__group-dialog-title-text">
+                {selectedGroupInfo?.schoolName} - {selectedGroupInfo?.majorGroupName} 专业组信息
+              </Text>
+            </View>
           </DialogHeader>
           <View className="intended-majors-page__group-dialog-content">
             {loadingGroupInfo ? (
@@ -2491,6 +2514,16 @@ export default function IntendedMajorsPage() {
                 )
               })
             )}
+          </View>
+
+          {/* 底部浮动关闭按钮：不随内容滚动 */}
+          <View className="intended-majors-page__group-dialog-footer">
+            <Button
+              className="intended-majors-page__group-dialog-close-button"
+              onClick={() => setGroupDialogOpen(false)}
+            >
+              关闭
+            </Button>
           </View>
         </DialogContent>
       </Dialog>
