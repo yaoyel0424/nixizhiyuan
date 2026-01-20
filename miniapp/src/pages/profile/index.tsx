@@ -3,11 +3,14 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { clearUserInfo } from '@/store/slices/userSlice'
+import { clearUserInfo, updateUserInfo } from '@/store/slices/userSlice'
 import { logout } from '@/services/auth'
-import { getUserRelatedDataCount } from '@/services/user'
+import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog'
+import { Input } from '@/components/ui/Input'
 import { BottomNav } from '@/components/BottomNav'
 import { ShareModal } from '@/components/ShareModal'
 import './index.less'
@@ -74,6 +77,11 @@ export default function ProfilePage() {
   
   const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
   const [shareModalOpen, setShareModalOpen] = useState(false) // 分享弹窗显示状态
+
+  // 昵称编辑弹窗
+  const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false)
+  const [nicknameDraft, setNicknameDraft] = useState('')
+  const [nicknameSaving, setNicknameSaving] = useState(false)
   
   // 从用户信息中获取昵称和头像
   const userName = userInfo?.nickname || userInfo?.username || '未来的同学'
@@ -308,9 +316,22 @@ export default function ProfilePage() {
 
             {/* 昵称 */}
             <View className="profile-page__info">
-              <Text className="profile-page__name">
-                你好，{isLoggedIn ? userName : "未来的同学"}
-              </Text>
+              <View className="profile-page__name-row">
+                <Text className="profile-page__name">
+                  你好，{isLoggedIn ? userName : '未来的同学'}
+                </Text>
+                {isLoggedIn && (
+                  <Text
+                    className="profile-page__name-edit"
+                    onClick={() => {
+                      setNicknameDraft((userInfo?.nickname || '').trim())
+                      setNicknameDialogOpen(true)
+                    }}
+                  >
+                    修改
+                  </Text>
+                )}
+              </View>
               {/* 副标题/状态 */}
               <View className="profile-page__status">
                 {statusInfo.icon && (
@@ -463,6 +484,86 @@ export default function ProfilePage() {
         open={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
       />
+
+      {/* 修改昵称弹窗 */}
+      <Dialog
+        open={nicknameDialogOpen}
+        onOpenChange={(open) => {
+          setNicknameDialogOpen(open)
+          if (!open) {
+            setNicknameSaving(false)
+          }
+        }}
+      >
+        <DialogContent className="profile-page__nickname-dialog" showCloseButton={!nicknameSaving}>
+          <DialogHeader>
+            <DialogTitle>修改昵称</DialogTitle>
+          </DialogHeader>
+
+          <View className="profile-page__nickname-form">
+            <Input
+              value={nicknameDraft}
+              placeholder="请输入昵称"
+              maxlength={50}
+              disabled={nicknameSaving}
+              onInput={(e) => {
+                setNicknameDraft(e.detail.value)
+              }}
+            />
+          </View>
+
+          <DialogFooter className="profile-page__nickname-footer">
+            <Button
+              variant="outline"
+              disabled={nicknameSaving}
+              onClick={() => setNicknameDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              disabled={nicknameSaving}
+              onClick={async () => {
+                const nextNickname = (nicknameDraft || '').trim()
+                if (!nextNickname) {
+                  Taro.showToast({
+                    title: '昵称不能为空',
+                    icon: 'none',
+                    duration: 2000,
+                  })
+                  return
+                }
+
+                try {
+                  setNicknameSaving(true)
+                  await updateCurrentUserNickname(nextNickname)
+
+                  // 本地立即更新 Redux，驱动页面昵称刷新
+                  dispatch(updateUserInfo({ nickname: nextNickname }))
+
+                  Taro.showToast({
+                    title: '修改成功',
+                    icon: 'success',
+                    duration: 1500,
+                  })
+
+                  setNicknameDialogOpen(false)
+                } catch (error: any) {
+                  console.error('更新昵称失败:', error)
+                  Taro.showToast({
+                    title: error?.message || '更新昵称失败，请重试',
+                    icon: 'none',
+                    duration: 2000,
+                  })
+                } finally {
+                  setNicknameSaving(false)
+                }
+              }}
+            >
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }

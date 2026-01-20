@@ -1170,6 +1170,11 @@
   }
 }
 
+// 删除确认框需要盖在“专业组弹框”之上，避免被遮挡
+.intended-majors-page__delete-confirm-dialog {
+  z-index: 2100;
+}
+
 .intended-majors-page__group-dialog-title-wrapper {
   width: 100%;
   overflow-x: auto;

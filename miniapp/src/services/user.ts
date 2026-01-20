@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro'
-import { get, post, put } from './api'
+import { get, post, put, patch } from './api'
 import { UserInfo, UpdateUserParams, ChangePasswordParams, UserRelatedDataResponse } from '@/types/api'
 
 /**
@@ -143,6 +143,21 @@ export const getUserRelatedDataCount = async (): Promise<UserRelatedDataResponse
       return response
     }
     // 其他情况直接返回
+    return response
+  }
+  return response
+}
+
+/**
+ * 更新当前用户昵称
+ * @param nickname 昵称
+ * @returns 更新后的用户信息（后端返回 UserResponseDto）
+ */
+export const updateCurrentUserNickname = async (nickname: string): Promise<any> => {
+  const response: any = await patch('/users/nickname', { nickname })
+  // 响应拦截器可能返回原始数据或 BaseResponse 格式
+  if (response && typeof response === 'object') {
+    if ('data' in response && response.data) return response.data
     return response
   }
   return response

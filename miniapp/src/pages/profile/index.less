@@ -55,12 +55,45 @@
   text-align: center;
 }
 
+.profile-page__name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
 .profile-page__name {
   font-size: 48rpx;
   font-weight: bold;
   color: #fff;
-  margin-bottom: 16rpx;
+  margin-bottom: 0;
   display: block;
+}
+
+.profile-page__name-edit {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  padding: 8rpx 12rpx;
+  border-radius: 10rpx;
+  background: rgba(255, 255, 255, 0.16);
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.profile-page__nickname-dialog {
+  width: 100%;
+}
+
+.profile-page__nickname-form {
+  margin-top: 8rpx;
+}
+
+.profile-page__nickname-footer {
+  margin-top: 28rpx;
 }
 
 .profile-page__status {

@@ -13,7 +13,7 @@ import { getStorage, setStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import { getCurrentUserDetail } from '@/services/user'
 import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo } from '@/services/enroll-plan'
-import { getChoices, deleteChoice, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
+import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, ChoiceResponse, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
@@ -671,6 +671,10 @@ export default function IntendedMajorsPage() {
   const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
   const [expandedLoveEnergyChoiceIds, setExpandedLoveEnergyChoiceIds] = useState<Set<number>>(new Set()) // 展开的热爱能量（意向志愿）
 
+  // 志愿列表刷新：合并短时间内的多次写操作，避免频繁请求与重渲染
+  const fetchingChoicesRef = useRef(false)
+  const refreshChoicesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   /**
    * 格式化百分比展示
    * - 为 0（含字符串 '0'/'0.0'）时显示 '-'
@@ -719,6 +723,8 @@ export default function IntendedMajorsPage() {
 
   // 使用 ref 防止重复调用招生计划接口
   const fetchingEnrollmentPlansRef = useRef(false)
+  // 分数区间拖动时，防抖刷新院校探索数据，避免频繁请求
+  const refreshEnrollmentPlansTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 使用 ref 防止页面显示时重复刷新
   const refreshingOnShowRef = useRef(false)
   // 首次进入页面时，useDidShow 也会触发：用 ref 避免首次就刷新导致重复请求
@@ -739,7 +745,7 @@ export default function IntendedMajorsPage() {
           try {
             fetchingEnrollmentPlansRef.current = true
             // 院校探索页面：调用API获取用户招生计划
-            const plans = await getUserEnrollmentPlans()
+            const plans = await getUserEnrollmentPlans(scoreRange[0], scoreRange[1])
             setEnrollmentPlans(plans)
             console.log('获取用户招生计划成功:', plans)
           } finally {
@@ -835,24 +841,205 @@ export default function IntendedMajorsPage() {
     return items
   }
 
+  /**
+   * 将 groupedChoices 同步到页面 state（groupedChoices / wishlistItems / wishlistCounts）
+   * - 作为该页面“志愿列表”的单一更新入口，避免到处重复 setState
+   */
+  const applyGroupedChoicesToState = (groupedData: GroupedChoiceResponse | null) => {
+    setGroupedChoices(groupedData)
+    const items = groupedData ? convertGroupedChoicesToItems(groupedData) : []
+    setWishlistItems(items)
+
+    const counts: Record<string, number> = {}
+    items.forEach((item: any) => {
+      if (item.majorCode) {
+        counts[item.majorCode] = (counts[item.majorCode] || 0) + 1
+      }
+    })
+    setWishlistCounts(counts)
+  }
+
+  /**
+   * 本地移除若干 choiceId（用于“移除志愿/批量删除”后即时刷新 UI）
+   */
+  const removeChoiceIdsLocally = (ids: number[]) => {
+    if (!groupedChoices || !Array.isArray(ids) || ids.length === 0) return
+
+    const idSet = new Set(ids)
+    const nextVolunteers = (groupedChoices.volunteers || [])
+      .map((vol) => ({
+        ...vol,
+        majorGroups: (vol.majorGroups || [])
+          .map((mg) => ({
+            ...mg,
+            choices: (mg.choices || []).filter((c) => !idSet.has(c.id)),
+          }))
+          .filter((mg) => (mg.choices || []).length > 0),
+      }))
+      .filter((vol) => (vol.majorGroups || []).length > 0)
+
+    // statistics.selected 的语义：mgIndex 唯一数量（后端注释已说明）
+    const uniqueMgIndexes = new Set<number>()
+    nextVolunteers.forEach((v) => {
+      if (typeof v.mgIndex === 'number') uniqueMgIndexes.add(v.mgIndex)
+    })
+
+    const nextGrouped: GroupedChoiceResponse = {
+      ...groupedChoices,
+      volunteers: nextVolunteers as any,
+      statistics: {
+        ...groupedChoices.statistics,
+        selected: uniqueMgIndexes.size,
+      },
+    }
+
+    applyGroupedChoicesToState(nextGrouped)
+  }
+
+  /**
+   * 本地插入/更新一条 choice（用于“加入志愿”后即时切换按钮与列表）
+   * - 后续仍会后台刷新一次，保证最终态与后端一致
+   */
+  const upsertChoiceLocally = (choice: ChoiceResponse) => {
+    if (!choice) return
+
+    const schoolCode = choice.schoolCode || choice.school?.code
+    if (!schoolCode) return
+
+    const majorGroupId = choice.majorGroupId ?? choice.majorGroup?.mgId ?? null
+    const mgIndex = choice.mgIndex ?? null
+
+    const safeGrouped: GroupedChoiceResponse = groupedChoices || ({
+      volunteers: [],
+      statistics: { selected: 0, total: 0 },
+    } as any)
+
+    // 复制 volunteers
+    const volunteers = [...(safeGrouped.volunteers || [])]
+    const volunteerIndex = volunteers.findIndex((v) => {
+      const matchByIndex = mgIndex !== null && v.mgIndex === mgIndex
+      const matchBySchool = v.school?.code === schoolCode
+      return matchBySchool && (mgIndex === null ? true : matchByIndex)
+    })
+
+    let volunteer = volunteerIndex >= 0 ? (volunteers[volunteerIndex] as any) : null
+
+    if (!volunteer) {
+      volunteer = {
+        mgIndex,
+        school: (choice.school || {
+          code: schoolCode,
+          name: null,
+          provinceName: null,
+          cityName: null,
+          nature: null,
+          belong: null,
+          features: null,
+          enrollmentRate: null,
+          employmentRate: null,
+        }) as any,
+        majorGroups: [],
+      } as any
+      volunteers.push(volunteer)
+    }
+
+    const majorGroups = [...(volunteer.majorGroups || [])]
+    const majorGroupIndex = majorGroups.findIndex((mg) => {
+      const mgId = mg.majorGroup?.mgId ?? null
+      if (majorGroupId !== null && mgId !== null) {
+        return Number(mgId) === Number(majorGroupId) || String(mgId) === String(majorGroupId)
+      }
+      // 回退：用名称匹配
+      const mgName = mg.majorGroup?.mgName ?? null
+      const targetName = choice.majorGroupInfo ?? choice.majorGroup?.mgName ?? null
+      if (mgName && targetName) return String(mgName).trim() === String(targetName).trim()
+      return false
+    })
+
+    let majorGroupGroup = majorGroupIndex >= 0 ? (majorGroups[majorGroupIndex] as any) : null
+
+    if (!majorGroupGroup) {
+      majorGroupGroup = {
+        majorGroup: (choice.majorGroup || {
+          schoolCode: schoolCode,
+          province: choice.province ?? null,
+          year: choice.year ?? null,
+          subjectSelectionMode: choice.subjectSelectionMode ?? null,
+          batch: choice.batch ?? null,
+          mgId: majorGroupId,
+          mgName: choice.majorGroupInfo ?? null,
+          mgInfo: null,
+        }) as any,
+        choices: [],
+      } as any
+      majorGroups.push(majorGroupGroup)
+    }
+
+    const choices = [...(majorGroupGroup.choices || [])]
+    const existingIndex = choices.findIndex((c) => c.id === choice.id)
+    const nextChoiceInGroup: ChoiceInGroup = {
+      id: choice.id,
+      userId: choice.userId,
+      schoolCode: choice.schoolCode,
+      majorGroupId: choice.majorGroupId,
+      mgIndex: choice.mgIndex,
+      majorIndex: choice.majorIndex,
+      majorGroupInfo: choice.majorGroupInfo,
+      province: choice.province,
+      year: choice.year,
+      batch: choice.batch,
+      subjectSelectionMode: choice.subjectSelectionMode,
+      studyPeriod: choice.studyPeriod,
+      enrollmentQuota: choice.enrollmentQuota,
+      enrollmentType: choice.enrollmentType,
+      remark: choice.remark,
+      tuitionFee: choice.tuitionFee,
+      enrollmentMajor: choice.enrollmentMajor,
+      curUnit: choice.curUnit,
+      majorScores: choice.majorScores || [],
+      school: choice.school || null,
+    } as any
+
+    if (existingIndex >= 0) {
+      choices[existingIndex] = nextChoiceInGroup
+    } else {
+      choices.push(nextChoiceInGroup)
+    }
+
+    // 回写 majorGroupGroup
+    const nextMajorGroupGroup = { ...majorGroupGroup, choices } as any
+    const writeMajorGroupIndex = majorGroupIndex >= 0 ? majorGroupIndex : majorGroups.length - 1
+    majorGroups[writeMajorGroupIndex] = nextMajorGroupGroup
+
+    // 回写 volunteer
+    const nextVolunteer = { ...volunteer, majorGroups } as any
+    const writeVolunteerIndex = volunteerIndex >= 0 ? volunteerIndex : volunteers.length - 1
+    volunteers[writeVolunteerIndex] = nextVolunteer
+
+    const uniqueMgIndexes = new Set<number>()
+    volunteers.forEach((v) => {
+      if (typeof v.mgIndex === 'number') uniqueMgIndexes.add(v.mgIndex)
+    })
+
+    const nextGrouped: GroupedChoiceResponse = {
+      ...safeGrouped,
+      volunteers: volunteers as any,
+      statistics: {
+        ...safeGrouped.statistics,
+        selected: uniqueMgIndexes.size,
+      },
+    }
+
+    applyGroupedChoicesToState(nextGrouped)
+  }
+
   // 加载志愿列表（从API）
   const loadChoicesFromAPI = async () => {
+    if (fetchingChoicesRef.current) return
     try {
+      fetchingChoicesRef.current = true
       const groupedData = await getChoices()
-      setGroupedChoices(groupedData)
-      
-      // 转换为扁平化列表
-      const items = convertGroupedChoicesToItems(groupedData)
-      setWishlistItems(items)
-      
-      // 计算专业数量
-      const counts: Record<string, number> = {}
-      items.forEach((item: any) => {
-        if (item.majorCode) {
-          counts[item.majorCode] = (counts[item.majorCode] || 0) + 1
-        }
-      })
-      setWishlistCounts(counts)
+      applyGroupedChoicesToState(groupedData)
     } catch (error) {
       console.error('从API加载志愿列表失败:', error)
       // 降级：从本地存储加载
@@ -860,7 +1047,23 @@ export default function IntendedMajorsPage() {
       if (savedItems && savedItems.length > 0) {
         setWishlistItems(savedItems)
       }
+    } finally {
+      fetchingChoicesRef.current = false
     }
+  }
+
+  /**
+   * 后台刷新志愿列表（防抖 + 合并多次写操作）
+   * - 不阻塞当前 UI（按钮状态已通过本地更新即时变化）
+   */
+  const scheduleRefreshChoices = (delay = 400) => {
+    if (refreshChoicesTimerRef.current) {
+      clearTimeout(refreshChoicesTimerRef.current)
+    }
+    refreshChoicesTimerRef.current = setTimeout(() => {
+      refreshChoicesTimerRef.current = null
+      loadChoicesFromAPI()
+    }, delay)
   }
 
   // 加载志愿列表
@@ -951,7 +1154,7 @@ export default function IntendedMajorsPage() {
     if (activeTab === '专业赛道' && !fetchingEnrollmentPlansRef.current) {
       try {
         fetchingEnrollmentPlansRef.current = true
-        const plans = await getUserEnrollmentPlans()
+        const plans = await getUserEnrollmentPlans(scoreRange[0], scoreRange[1])
         setEnrollmentPlans(plans)
         console.log('重新获取用户招生计划成功:', plans)
       } catch (error) {
@@ -1234,6 +1437,17 @@ export default function IntendedMajorsPage() {
       } catch (error) {
         console.error('保存分数区间失败:', error)
       }
+
+      // 专业赛道：分数区间变化后，防抖刷新院校探索数据
+      if (activeTab === '专业赛道') {
+        if (refreshEnrollmentPlansTimerRef.current) {
+          clearTimeout(refreshEnrollmentPlansTimerRef.current)
+        }
+        refreshEnrollmentPlansTimerRef.current = setTimeout(() => {
+          refreshEnrollmentPlansTimerRef.current = null
+          refreshEnrollmentPlans()
+        }, 400)
+      }
     }
   }
 
@@ -1248,9 +1462,10 @@ export default function IntendedMajorsPage() {
       // 如果是删除单个专业
       if (choiceToDelete) {
         await deleteChoice(choiceToDelete.choiceId)
-        
-        // 重新加载志愿列表
-        await loadChoicesFromAPI()
+
+        // 最佳实践：先本地更新 UI，再后台刷新校准
+        removeChoiceIdsLocally([choiceToDelete.choiceId])
+        scheduleRefreshChoices()
         
         Taro.showToast({
           title: '删除成功',
@@ -1261,20 +1476,45 @@ export default function IntendedMajorsPage() {
         setChoiceToDelete(null)
       } else if (groupToDelete) {
         // 如果是删除专业组
-        const deletePromises = groupToDelete.items
-          .filter((item: any) => item.id)
-          .map((item: any) => deleteChoice(item.id))
+        const ids = Array.from(
+          new Set(
+            (groupToDelete.items || [])
+              .map((item: any) => item?.id)
+              .filter((id: any) => typeof id === 'number' && !Number.isNaN(id)),
+          ),
+        )
+
+        if (ids.length === 0) {
+          Taro.showToast({
+            title: '没有可删除的志愿项',
+            icon: 'none',
+            duration: 2000,
+          })
+          setGroupToDelete(null)
+          setDeleteConfirmOpen(false)
+          return
+        }
+
+        const result = await removeMultipleChoices(ids)
+
+        // 最佳实践：先本地更新 UI，再后台刷新校准
+        removeChoiceIdsLocally(ids)
+        scheduleRefreshChoices()
         
-        await Promise.all(deletePromises)
-        
-        // 重新加载志愿列表
-        await loadChoicesFromAPI()
-        
-        Taro.showToast({
-          title: '删除成功',
-          icon: 'success',
-          duration: 2000
-        })
+        const failedCount = result?.failed?.length || 0
+        if (failedCount > 0) {
+          Taro.showToast({
+            title: `删除完成：成功${result.deleted || 0}条，失败${failedCount}条`,
+            icon: 'none',
+            duration: 2500,
+          })
+        } else {
+          Taro.showToast({
+            title: '删除成功',
+            icon: 'success',
+            duration: 2000,
+          })
+        }
         
         setGroupToDelete(null)
       } else if (itemToDelete !== null) {
@@ -1283,9 +1523,10 @@ export default function IntendedMajorsPage() {
         
         if (deletedItem?.id) {
           await deleteChoice(deletedItem.id)
-          
-          // 重新加载志愿列表
-          await loadChoicesFromAPI()
+
+          // 最佳实践：先本地更新 UI，再后台刷新校准
+          removeChoiceIdsLocally([deletedItem.id])
+          scheduleRefreshChoices()
           
           Taro.showToast({
             title: '删除成功',
@@ -1376,8 +1617,10 @@ export default function IntendedMajorsPage() {
     const targetMajorGroupName = selectedGroupInfo.majorGroupName
     // 从 selectedGroupInfo 或 selectedPlanData 获取 majorGroupId
     const targetMajorGroupId = selectedGroupInfo.majorGroupId || selectedPlanData?.majorGroupId || selectedPlanData?.majorGroup?.mgId || null
-    const targetRemark = selectedPlanData?.remark || plan.remark || null
-    const targetEnrollmentMajor = plan.enrollmentMajor || selectedPlanData?.enrollmentMajor || null
+    // 优先使用当前 plan 的 remark 和 enrollmentMajor，而不是 selectedPlanData 的
+    // 因为 selectedPlanData 可能是第一个 plan 的数据，不是当前 plan 的数据
+    const targetRemark = plan.remark || null
+    const targetEnrollmentMajor = plan.enrollmentMajor || null
     
     if (!targetMajorGroupName && !targetMajorGroupId) {
       return { isIn: false }
@@ -1414,7 +1657,11 @@ export default function IntendedMajorsPage() {
               // 优先使用 majorGroupId 匹配（最准确）
               let isGroupMatch = false
               if (targetMajorGroupId && choiceMajorGroupId) {
-                isGroupMatch = (targetMajorGroupId === choiceMajorGroupId)
+                // 确保类型一致（都转为数字或字符串）
+                isGroupMatch = (
+                  Number(targetMajorGroupId) === Number(choiceMajorGroupId) ||
+                  String(targetMajorGroupId) === String(choiceMajorGroupId)
+                )
               } else if (targetMajorGroupName && choiceMajorGroupName) {
                 // 如果没有 majorGroupId，则使用名称匹配（精确匹配）
                 isGroupMatch = (
@@ -1539,10 +1786,11 @@ export default function IntendedMajorsPage() {
       }
 
       // 调用API创建志愿
-      await createChoice(createChoiceDto)
+      const createdChoice = await createChoice(createChoiceDto)
 
-      // 重新加载志愿列表
-      await loadChoicesFromAPI()
+      // 最佳实践：先本地更新 UI，再后台刷新校准
+      upsertChoiceLocally(createdChoice)
+      scheduleRefreshChoices()
 
       Taro.showToast({
         title: '已加入志愿',
@@ -2319,7 +2567,11 @@ export default function IntendedMajorsPage() {
       />
 
       {/* 删除确认对话框 */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <Dialog
+        className="intended-majors-page__delete-confirm-dialog"
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>确认删除</DialogTitle>
