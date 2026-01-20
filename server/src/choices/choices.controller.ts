@@ -105,46 +105,6 @@ export class ChoicesController {
   }
 
   /**
-   * 删除志愿选择
-   * @param user 当前用户
-   * @param id 志愿选择ID
-   * @returns 删除结果
-   */
-  @Delete(':id')
-  @ApiOperation({ summary: '删除志愿选择' })
-  @ApiParam({
-    name: 'id',
-    description: '志愿选择ID',
-    type: Number,
-    example: 1,
-  })
-  @ApiResponse({
-    status: 200,
-    description: '删除成功',
-    schema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          example: '删除成功',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: '志愿选择不存在或不属于当前用户',
-  })
-  async remove(
-    @CurrentUser() user: any,
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<{ message: string }> {
-    this.logger.log(`用户 ${user.id} 删除志愿选择，ID: ${id}`);
-    await this.choicesService.remove(user.id, id);
-    return { message: '删除成功' };
-  }
-
-  /**
    * 批量删除志愿选择
    * @param user 当前用户
    * @param removeMultipleDto 批量删除的 DTO（包含 ids 数组）
@@ -199,6 +159,46 @@ export class ChoicesController {
       ...result,
       message: '批量删除完成',
     };
+  }
+
+  /**
+   * 删除志愿选择
+   * @param user 当前用户
+   * @param id 志愿选择ID
+   * @returns 删除结果
+   */
+  @Delete(':id')
+  @ApiOperation({ summary: '删除志愿选择' })
+  @ApiParam({
+    name: 'id',
+    description: '志愿选择ID',
+    type: Number,
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '删除成功',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: '删除成功',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: '志愿选择不存在或不属于当前用户',
+  })
+  async remove(
+    @CurrentUser() user: any,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ message: string }> {
+    this.logger.log(`用户 ${user.id} 删除志愿选择，ID: ${id}`);
+    await this.choicesService.remove(user.id, id);
+    return { message: '删除成功' };
   }
 
   /**

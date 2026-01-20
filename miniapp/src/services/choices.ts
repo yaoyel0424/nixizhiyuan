@@ -190,6 +190,34 @@ export interface AdjustMajorIndexDto {
 }
 
 /**
+ * 批量删除志愿选择请求
+ */
+export interface RemoveMultipleDto {
+  /**
+   * 要删除的志愿选择 ID 数组（至少 1 个）
+   */
+  ids: number[]
+}
+
+/**
+ * 批量删除志愿选择响应
+ */
+export interface RemoveMultipleResponse {
+  /**
+   * 成功删除的数量
+   */
+  deleted: number
+  /**
+   * 删除失败的 ID 列表（不存在或不属于当前用户）
+   */
+  failed: number[]
+  /**
+   * 后端提示信息（例如：批量删除完成）
+   */
+  message?: string
+}
+
+/**
  * 创建志愿选择
  * @param createChoiceDto 创建志愿的 DTO
  * @returns 创建的志愿选择记录
@@ -254,6 +282,31 @@ export const deleteChoice = async (id: number): Promise<void> => {
     await del(`/choices/${id}`)
   } catch (error) {
     console.error('删除志愿选择失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 批量删除志愿选择
+ * @param ids 志愿选择ID数组
+ * @returns 批量删除结果
+ */
+export const removeMultipleChoices = async (ids: number[]): Promise<RemoveMultipleResponse> => {
+  try {
+    const response: any = await del<RemoveMultipleResponse>('/choices/batch', { ids })
+
+    // 响应拦截器可能返回原始数据或 BaseResponse 格式
+    if (response && typeof response === 'object') {
+      if (response.data && typeof response.data === 'object') {
+        return response.data
+      }
+      if (response.deleted !== undefined) {
+        return response
+      }
+    }
+    throw new Error('批量删除志愿选择失败：响应格式不正确')
+  } catch (error) {
+    console.error('批量删除志愿选择失败:', error)
     throw error
   }
 }
