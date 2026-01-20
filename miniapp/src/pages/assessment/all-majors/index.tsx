@@ -135,12 +135,10 @@ export default function AllMajorsPage() {
   const [previousAnswers, setPreviousAnswers] = useState<Record<number, number>>({})
   const [isInitialized, setIsInitialized] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isCompleted, setIsCompleted] = useState(false)
   const [progressAnimation, setProgressAnimation] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [showUnansweredDialog, setShowUnansweredDialog] = useState(false)
   const [showUnansweredBlink, setShowUnansweredBlink] = useState(false)
-  const [showClearDataConfirm, setShowClearDataConfirm] = useState(false)
 
   // 从 API 加载数据
   useEffect(() => {
@@ -211,7 +209,6 @@ export default function AllMajorsPage() {
           if (isRestart) {
             // 重新开始：从第一题开始
             setCurrentIndex(0)
-            setIsCompleted(false)
           } else {
             // 正常流程：找到第一个未答题的题目
             // 需要重新获取合并后的答案（因为 setAnswers 是异步的）
@@ -240,12 +237,11 @@ export default function AllMajorsPage() {
             const hasUnansweredQuestions = unansweredIndices.length > 0
             
             if (answeredCount === sorted.length && !hasUnansweredQuestions) {
-              // 所有题目都已答完，且没有未答的题目
-              setIsCompleted(true)
+              // 所有题目都已答完：不进入“完成页”，直接展示题目与已选答案
+              setCurrentIndex(0)
             } else {
               // 有未答题的题目，跳转到第一个未答题的题目
               setCurrentIndex(firstUnanswered)
-              setIsCompleted(false)
               
               // 只有当已经有部分题目答过，且还有未答题的题目时，才提示未答题
               // 如果 answeredCount === 0，说明用户还没有开始答题，不应该提示未答题
@@ -285,19 +281,6 @@ export default function AllMajorsPage() {
     setShowUnansweredBlink(false)
   }, [currentIndex])
 
-  // 当评估完成时，自动跳转到专业推荐页面
-  useEffect(() => {
-    if (isCompleted && isInitialized && !isLoading) {
-      const timer = setTimeout(() => {
-        Taro.reLaunch({
-          url: '/pages/majors/index'
-        })
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [isCompleted, isInitialized, isLoading])
-
-
   const currentQuestion = sortedQuestions[currentIndex]
   const currentDimension = currentQuestion?.dimension || ''
   const questionsInCurrentDimension = sortedQuestions.filter((q) => q.dimension === currentDimension)
@@ -331,8 +314,6 @@ export default function AllMajorsPage() {
     const emptyAnswers: Record<number, number> = {}
     setAnswers(emptyAnswers)
     saveAnswersToStorage(emptyAnswers)
-    // 重置完成状态
-    setIsCompleted(false)
     // 回到第一题
     setCurrentIndex(0)
     // 关闭确认对话框
@@ -416,15 +397,6 @@ export default function AllMajorsPage() {
         icon: 'none',
         duration: 3000
       })
-    }
-
-    // 检查完成状态：只有当所有题目都有答案且没有未答的题目时才认为完成
-    if (answeredCount === totalQuestions && !hasUnansweredQuestions) {
-      // 延迟设置完成状态，让用户看到最后一题的反馈
-      setTimeout(() => {
-        setIsCompleted(true)
-      }, 500)
-      return
     }
     
     // 如果有未答题的题目，提示用户
@@ -523,22 +495,6 @@ export default function AllMajorsPage() {
     })
   }
 
-  // 清除数据
-  const handleClearData = () => {
-    Taro.removeStorageSync(STORAGE_KEY)
-    Taro.removeStorageSync(PREVIOUS_ANSWERS_KEY)
-    setAnswers({})
-    setPreviousAnswers({})
-    setCurrentIndex(0)
-    setIsCompleted(false)
-    setShowClearDataConfirm(false)
-    Taro.showToast({
-      title: '数据已清除',
-      icon: 'success',
-      duration: 2000
-    })
-  }
-
   if (isLoading || !isInitialized) {
     return (
       <View className="all-majors-page__fullscreen">
@@ -590,38 +546,6 @@ export default function AllMajorsPage() {
     )
   }
 
-  if (isCompleted) {
-    return (
-      <View className="all-majors-page__fullscreen">
-        <View className="all-majors-page__completed">
-        <View className="all-majors-page__completed-content">
-          <View className="all-majors-page__completed-icon">
-            <Text className="all-majors-page__completed-icon-text">🎉</Text>
-          </View>
-          <Text className="all-majors-page__completed-title">评估完成！</Text>
-          <Text className="all-majors-page__completed-desc">
-            恭喜您完成所有168题评估！
-            {'\n'}
-            系统正在为您生成专业匹配报告...
-          </Text>
-          <View className="all-majors-page__completed-benefits">
-            <Text className="all-majors-page__completed-benefits-title">您将获得</Text>
-            <View className="all-majors-page__completed-benefits-list">
-              <Text className="all-majors-page__completed-benefits-item">完整的天赋画像分析</Text>
-              <Text className="all-majors-page__completed-benefits-item">前10个最匹配专业推荐</Text>
-              <Text className="all-majors-page__completed-benefits-item">详细的专业契合度报告</Text>
-            </View>
-          </View>
-          <View className="all-majors-page__completed-loading">
-            <View className="all-majors-page__completed-loading-dot" />
-            <Text className="all-majors-page__completed-loading-text">正在跳转到专业推荐页面...</Text>
-          </View>
-        </View>
-      </View>
-      </View>
-    )
-  }
-
   if (!currentQuestion) {
     return (
       <View className="all-majors-page__fullscreen">
@@ -648,10 +572,10 @@ export default function AllMajorsPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowClearDataConfirm(true)}
+              onClick={handleRestartExploration}
               className="all-majors-page__header-clear"
             >
-              清除
+              重新探索
             </Button>
           </View>
 
@@ -726,9 +650,6 @@ export default function AllMajorsPage() {
         <View className="all-majors-page__content">
           <Card className={`all-majors-page__question-card ${showUnansweredBlink && !isCurrentQuestionAnswered ? 'all-majors-page__question-card--blink' : ''}`}>
             <View className="all-majors-page__question-header">
-              <View className="all-majors-page__question-badge">
-                {currentQuestion.dimension} · {currentQuestion.type === 'like' ? '喜欢' : '天赋'}
-              </View>
               <Text className="all-majors-page__question-content">{currentQuestion.content}</Text>
             </View>
 
@@ -741,6 +662,11 @@ export default function AllMajorsPage() {
                 const isSelected = answerValue === optionValue && !isNaN(answerValue) && !isNaN(optionValue)
                 const hasCurrentAnswer = questionId in answers && answers[questionId] !== undefined && answers[questionId] !== null
                 const wasPreviousAnswer = !hasCurrentAnswer && Number(previousAnswers[questionId]) === optionValue
+                const additionalInfoLines = (option.additionalInfo || '')
+                  .split(';;')
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                const additionalInfoText = additionalInfoLines.join('；')
 
                 return (
                   <Button
@@ -750,7 +676,14 @@ export default function AllMajorsPage() {
                     className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${wasPreviousAnswer ? 'all-majors-page__option--previous' : ''}`}
                   >
                     <View className="all-majors-page__option-content">
-                      <Text className="all-majors-page__option-text">{option.optionName}</Text>
+                      <View className="all-majors-page__option-text-wrapper">
+                        <Text className="all-majors-page__option-text">{option.optionName}</Text>
+                        {additionalInfoText && (
+                          <View className="all-majors-page__option-additional">
+                            <Text className="all-majors-page__option-additional-line">{additionalInfoText}</Text>
+                          </View>
+                        )}
+                      </View>
                       {wasPreviousAnswer && (
                         <Text className="all-majors-page__option-previous-badge">上次选择</Text>
                       )}
@@ -764,47 +697,44 @@ export default function AllMajorsPage() {
 
         {/* 底部导航 */}
         <View className="all-majors-page__footer">
-          {isUnlocked ? (
-            <>
-              <Button
-                onClick={handleRestartExploration}
-                variant="outline"
-                className="all-majors-page__footer-button"
-              >
-                ← 重新探索
-              </Button>
-              <Button
-                onClick={() => {
-                  Taro.reLaunch({
-                    url: '/pages/majors/index'
-                  })
-                }}
-                className="all-majors-page__footer-button all-majors-page__footer-button--primary"
-              >
-                已完成，探索专业 →
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                onClick={() => {
-                  setShowUnansweredBlink(false)
-                  setCurrentIndex((prev) => Math.max(0, prev - 1))
-                }}
-                disabled={currentIndex === 0}
-                variant="outline"
-                className="all-majors-page__footer-button"
-              >
-                ← 上一题
-              </Button>
-              <Button
-                onClick={handleNextQuestion}
-                disabled={currentIndex === totalQuestions - 1}
-                className="all-majors-page__footer-button all-majors-page__footer-button--primary"
-              >
-                下一题 →
-              </Button>
-            </>
+          <Button
+            onClick={() => {
+              setShowUnansweredBlink(false)
+              setCurrentIndex((prev) => Math.max(0, prev - 1))
+            }}
+            disabled={currentIndex === 0}
+            variant="outline"
+            className="all-majors-page__footer-button"
+          >
+            ← 上一题
+          </Button>
+
+          <Button
+            onClick={() => {
+              if (isUnlocked) {
+                setShowUnansweredBlink(false)
+                setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))
+                return
+              }
+              handleNextQuestion()
+            }}
+            disabled={currentIndex === totalQuestions - 1}
+            className="all-majors-page__footer-button all-majors-page__footer-button--primary"
+          >
+            下一题 →
+          </Button>
+
+          {isUnlocked && (
+            <Button
+              onClick={() => {
+                Taro.reLaunch({
+                  url: '/pages/majors/index',
+                })
+              }}
+              className="all-majors-page__footer-button all-majors-page__footer-button--primary"
+            >
+              探索专业 →
+            </Button>
           )}
         </View>
       </View>
@@ -887,33 +817,6 @@ export default function AllMajorsPage() {
               className="all-majors-page__dialog-button"
             >
               关闭
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 清除数据确认对话框 */}
-      <Dialog open={showClearDataConfirm} onOpenChange={setShowClearDataConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>确认清除数据</DialogTitle>
-            <DialogDescription>
-              确定要清除所有答题数据吗？此操作不可恢复，所有已保存的答案将被永久删除。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowClearDataConfirm(false)}
-              className="all-majors-page__dialog-button"
-            >
-              取消
-            </Button>
-            <Button
-              onClick={handleClearData}
-              className="all-majors-page__dialog-button all-majors-page__dialog-button--danger"
-            >
-              确定清除
             </Button>
           </DialogFooter>
         </DialogContent>

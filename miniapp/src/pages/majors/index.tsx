@@ -894,17 +894,23 @@ export default function MajorsPage() {
                             <Text className="majors-page__score-item-value">{formatScore(major.tiaozhanDeduction)}</Text>
                           </View>
                           {(() => {
-                            const yanxue = typeof major.yanxueDeduction === 'string' 
-                              ? parseFloat(major.yanxueDeduction) 
-                              : major.yanxueDeduction
-                            return yanxue > 0 ? (
+                            // 厌学分数：取值 yanxueDeduction（为扣分项时以负号展示）
+                            const raw = major.yanxueDeduction
+                            if (raw === null || raw === undefined || raw === '') return null
+                            const yanxue = typeof raw === 'string' ? parseFloat(raw) : Number(raw)
+                            if (Number.isNaN(yanxue)) return null
+
+                            const isDeduction = yanxue > 0
+                            return (
                               <View className="majors-page__score-item">
-                                <Text className="majors-page__score-item-label">厌学扣分</Text>
-                                <Text className="majors-page__score-item-value majors-page__score-item-value--deduction">
-                                  -{formatScore(yanxue)}
+                                <Text className="majors-page__score-item-label">厌学分数</Text>
+                                <Text
+                                  className={`majors-page__score-item-value ${isDeduction ? 'majors-page__score-item-value--deduction' : ''}`}
+                                >
+                                  {isDeduction ? `-${formatScore(yanxue)}` : formatScore(yanxue)}
                                 </Text>
                               </View>
-                            ) : null
+                            )
                           })()}
                         </View>
                       )}

@@ -164,10 +164,17 @@
 }
 
 .all-majors-page__question-card {
-  padding: 48rpx;
+  // 宽度铺满屏幕：抵消 content 的左右 padding
+  width: calc(100% + 64rpx);
+  margin-left: -32rpx;
+  margin-right: -32rpx;
+
+  // 内部间距收紧
+  padding: 32rpx;
   border-radius: 16rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
   transition: all 0.3s;
+  box-sizing: border-box;
 }
 
 .all-majors-page__question-card--blink {
@@ -176,18 +183,8 @@
 }
 
 .all-majors-page__question-header {
-  margin-bottom: 48rpx;
-}
-
-.all-majors-page__question-badge {
-  display: inline-block;
-  padding: 8rpx 24rpx;
-  border-radius: 999rpx;
-  background: rgba(26, 64, 153, 0.1);
-  color: #1A4099;
-  font-size: 24rpx;
-  font-weight: 500;
-  margin-bottom: 24rpx;
+  // 内部组件间距收紧
+  margin-bottom: 8rpx;
 }
 
 .all-majors-page__question-content {
@@ -196,17 +193,22 @@
   color: #1A4099;
   line-height: 1.6;
   display: block;
+  // 题干占屏幕 95%（避免贴边）
+  width: 95%;
 }
 
 .all-majors-page__question-options {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  // 内部组件间距收紧
+  gap: 8rpx;
 }
 
 .all-majors-page__option {
   width: 100%;
-  padding: 32rpx;
+  // 内部组件间距收紧
+  // 覆盖 ui-button 默认 padding，进一步收紧
+  padding: 18rpx 20rpx !important;
   text-align: left;
   border-radius: 16rpx;
   transition: all 0.3s;
@@ -227,26 +229,51 @@
 
 .all-majors-page__option-content {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   width: 100%;
 }
 
-.all-majors-page__option-text {
-  font-size: 28rpx;
-  line-height: 1.6;
+.all-majors-page__option-text-wrapper {
   flex: 1;
+  min-width: 0;
+}
+
+.all-majors-page__option-text {
+  font-size: 26rpx;
+  line-height: 1.45;
   word-break: break-word;
 }
 
+.all-majors-page__option-additional {
+  margin-top: 6rpx;
+}
+
+.all-majors-page__option-additional-line {
+  display: block;
+  font-size: 22rpx;
+  line-height: 1.35;
+  color: #6b7280;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+}
+
+.all-majors-page__option--selected {
+  .all-majors-page__option-additional-line {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
 .all-majors-page__option-previous-badge {
-  font-size: 20rpx;
-  padding: 4rpx 16rpx;
+  font-size: 18rpx;
+  padding: 2rpx 10rpx;
   background: rgba(255, 127, 80, 0.2);
   color: #FF7F50;
   font-weight: 500;
   border-radius: 999rpx;
-  margin-left: 16rpx;
+  margin-left: 8rpx;
   flex-shrink: 0;
 }
 
@@ -258,13 +285,15 @@
   border-top: 2rpx solid #e5e7eb;
   box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.05);
   display: flex;
-  gap: 24rpx;
+  flex-wrap: nowrap;
+  gap: 16rpx;
   z-index: 40;
   flex-shrink: 0;
 }
 
 .all-majors-page__footer-button {
   flex: 1;
+  min-width: 0;
   height: 96rpx;
   font-size: 32rpx;
   font-weight: 600;
