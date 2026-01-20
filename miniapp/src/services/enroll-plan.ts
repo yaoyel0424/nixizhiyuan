@@ -154,11 +154,24 @@ export const getEnrollmentPlansByMajorId = async (majorId: number): Promise<Enro
 
 /**
  * 根据当前用户信息查询匹配的招生计划（按收藏专业分组）
+ * @param minScore 最低分（可选）
+ * @param maxScore 最高分（可选）
  * @returns 按收藏专业分组的招生计划列表
  */
-export const getUserEnrollmentPlans = async (): Promise<UserEnrollmentPlan[]> => {
+export const getUserEnrollmentPlans = async (
+  minScore?: number,
+  maxScore?: number,
+): Promise<UserEnrollmentPlan[]> => {
   try {
-    const response: any = await get<UserEnrollmentPlan[]>('/enroll-plan/user-plans')
+    const params: Record<string, any> = {}
+    if (minScore !== undefined && minScore !== null) {
+      params.minScore = minScore
+    }
+    if (maxScore !== undefined && maxScore !== null) {
+      params.maxScore = maxScore
+    }
+
+    const response: any = await get<UserEnrollmentPlan[]>('/enroll-plan/user-plans', params)
     
     // 响应拦截器可能返回原始数据或 BaseResponse 格式
     if (response && typeof response === 'object') {

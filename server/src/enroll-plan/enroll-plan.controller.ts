@@ -5,6 +5,7 @@ import {
   Logger,
   Param,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -12,6 +13,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { EnrollPlanService } from './enroll-plan.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -36,6 +38,20 @@ export class EnrollPlanController {
    */
   @Get('user-plans')
   @ApiOperation({ summary: '根据当前用户信息查询匹配的招生计划（按收藏专业分组）' })
+  @ApiQuery({
+    name: 'minScore',
+    required: false,
+    description: '最低分（用于按分数段筛选院校）',
+    type: Number,
+    example: 500,
+  })
+  @ApiQuery({
+    name: 'maxScore',
+    required: false,
+    description: '最高分（用于按分数段筛选院校）',
+    type: Number,
+    example: 600,
+  })
   @ApiResponse({
     status: 200,
     description: '查询成功',
@@ -44,9 +60,11 @@ export class EnrollPlanController {
     status: 404,
     description: '用户不存在',
   })
-  @Cache(60)
+  @Cache(30)
   async getUserEnrollmentPlans(
     @CurrentUser() user: any,
+    @Query('minScore') minScore?: string,
+    @Query('maxScore') maxScore?: string,
   ): Promise<
     Array<{
       majorFavorite: {
@@ -68,9 +86,22 @@ export class EnrollPlanController {
     }>
   > {
     const year = process.env.CURRENT_YEAR || '2025';
+    // 分数段筛选：前端传入最低分/最高分（可选）
+    // 注意：这里用 Number() 支持整数/小数；无效值将被忽略（等价于不传）
+    const parsedMinScore =
+      minScore !== undefined && minScore !== null && String(minScore).trim() !== ''
+        ? Number(minScore)
+        : undefined;
+    const parsedMaxScore =
+      maxScore !== undefined && maxScore !== null && String(maxScore).trim() !== ''
+        ? Number(maxScore)
+        : undefined;
+
     return await this.enrollPlanService.findEnrollmentPlansByUser(
       user.id,
       year,
+      Number.isFinite(parsedMinScore as number) ? (parsedMinScore as number) : undefined,
+      Number.isFinite(parsedMaxScore as number) ? (parsedMaxScore as number) : undefined,
     );
   }
 

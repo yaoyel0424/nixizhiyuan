@@ -62,6 +62,8 @@ export class EnrollPlanService {
   async findEnrollmentPlansByUser(
     userId: number,
     year: string = '2025',
+    minScore?: number,
+    maxScore?: number,
   ): Promise<
     Array<{
       majorFavorite: {
@@ -223,6 +225,34 @@ export class EnrollPlanService {
     queryBuilder.andWhere('ep.level3_major_id && ARRAY[:...majorIds]::integer[]', {
       majorIds,
     });
+
+    // 分数段筛选（可选）：满足对应分数段的院校
+    // 使用 EXISTS 避免 JOIN 造成 enrollment_plans 结果重复
+    if (
+      minScore !== undefined &&
+      maxScore !== undefined &&
+      Number.isFinite(minScore) &&
+      Number.isFinite(maxScore) &&
+      minScore <= maxScore
+    ) {
+      queryBuilder.andWhere(
+        `EXISTS (
+          SELECT 1
+          FROM major_scores ms
+          WHERE 
+           "ep"."school_code" = "ms"."school_code"::varchar
+            AND "ep"."province" = "ms"."province"::varchar
+            AND "ep"."batch" = "ms"."batch"::varchar
+            AND "ep"."subject_selection_mode" = "ms"."subject_selection_mode"::varchar
+            AND "ep"."enrollment_major" = "ms"."enrollment_major"
+            AND "ep"."enrollment_type" = "ms"."enrollment_type"
+            AND "ep"."key_words" = "ms"."key_words"
+            AND "ms"."min_score" IS NOT NULL
+            AND "ms"."min_score" BETWEEN :minScore AND :maxScore
+        )`,
+        { minScore, maxScore },
+      );
+    }
 
     // 7. 执行查询
     const enrollmentPlans = await queryBuilder.getMany();
