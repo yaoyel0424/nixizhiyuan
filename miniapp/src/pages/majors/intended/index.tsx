@@ -647,6 +647,8 @@ export default function IntendedMajorsPage() {
   const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
   const [currentScore, setCurrentScore] = useState<number>(580)
   const [scoreRange, setScoreRange] = useState<[number, number]>([500, 650])
+  // 分数区间是否已从本地存储/高考信息初始化完成（避免用默认值触发一次错误请求）
+  const [scoreRangeReady, setScoreRangeReady] = useState(false)
   const [minControlScore, setMinControlScore] = useState<number>(0) // 省份最低省控线
   const [expandedHistoryScores, setExpandedHistoryScores] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -723,6 +725,11 @@ export default function IntendedMajorsPage() {
 
   // 使用 ref 防止重复调用招生计划接口
   const fetchingEnrollmentPlansRef = useRef(false)
+  // 使用 ref 保存最新 scoreRange，避免 setTimeout/闭包拿到旧值导致请求参数不一致
+  const scoreRangeRef = useRef<[number, number]>(scoreRange)
+  useEffect(() => {
+    scoreRangeRef.current = scoreRange
+  }, [scoreRange])
   // 分数区间拖动时，防抖刷新院校探索数据，避免频繁请求
   const refreshEnrollmentPlansTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 使用 ref 防止页面显示时重复刷新
@@ -737,20 +744,13 @@ export default function IntendedMajorsPage() {
     const loadData = async () => {
       try {
         if (activeTab === '专业赛道') {
-          // 如果正在获取中，避免重复调用
-          if (fetchingEnrollmentPlansRef.current) {
+          // 分数区间未初始化完成时，不发起请求，避免 minScore/maxScore 与滑块显示不一致
+          if (!scoreRangeReady) {
             return
           }
-          
-          try {
-            fetchingEnrollmentPlansRef.current = true
-            // 院校探索页面：调用API获取用户招生计划
-            const plans = await getUserEnrollmentPlans(scoreRange[0], scoreRange[1])
-            setEnrollmentPlans(plans)
-            console.log('获取用户招生计划成功:', plans)
-          } finally {
-            fetchingEnrollmentPlansRef.current = false
-          }
+          // 院校探索页面：调用API获取用户招生计划（使用最新滑块值）
+          // 注意：不要在这里手动操作 fetchingEnrollmentPlansRef，避免与 refreshEnrollmentPlans 内部的并发控制冲突
+          await refreshEnrollmentPlans()
         } else {
           // 意向志愿页面：使用静态数据
           setData(intentionData as unknown as IntentionMajor[])
@@ -762,7 +762,7 @@ export default function IntendedMajorsPage() {
       }
     }
     loadData()
-  }, [activeTab])
+  }, [activeTab, scoreRangeReady])
 
   // 加载专业组数据
   useEffect(() => {
@@ -1141,20 +1141,25 @@ export default function IntendedMajorsPage() {
         const maxScore = Math.min(750, score + 50)
         setScoreRange([minScore, maxScore])
       }
+      setScoreRangeReady(true)
     } catch (error) {
       console.error('从本地存储加载高考信息失败:', error)
       setCurrentScore(580)
+      // 即使失败，也允许后续按默认区间请求
+      setScoreRangeReady(true)
     }
   }
 
   // 从 API 加载高考信息（仅在需要时调用，如更新后刷新）
   // 如果提供了 updatedInfo，直接使用，避免重复调用 API
   // 刷新招生计划数据的函数
-  const refreshEnrollmentPlans = async () => {
+  // - 支持传入指定区间，避免 setTimeout 闭包拿到旧 scoreRange
+  const refreshEnrollmentPlans = async (range?: [number, number]) => {
     if (activeTab === '专业赛道' && !fetchingEnrollmentPlansRef.current) {
       try {
         fetchingEnrollmentPlansRef.current = true
-        const plans = await getUserEnrollmentPlans(scoreRange[0], scoreRange[1])
+        const [minScore, maxScore] = range || scoreRangeRef.current
+        const plans = await getUserEnrollmentPlans(minScore, maxScore)
         setEnrollmentPlans(plans)
         console.log('重新获取用户招生计划成功:', plans)
       } catch (error) {
@@ -1218,6 +1223,7 @@ export default function IntendedMajorsPage() {
         const maxScore = Math.min(750, score + 50)
         setScoreRange([minScore, maxScore])
       }
+      setScoreRangeReady(true)
     } catch (error) {
       console.error('从 API 加载高考信息失败:', error)
       // 如果 API 失败，从本地存储加载
@@ -1445,7 +1451,8 @@ export default function IntendedMajorsPage() {
         }
         refreshEnrollmentPlansTimerRef.current = setTimeout(() => {
           refreshEnrollmentPlansTimerRef.current = null
-          refreshEnrollmentPlans()
+          // 直接使用本次滑块的最新值，避免闭包拿到旧 scoreRange
+          refreshEnrollmentPlans(finalRange)
         }, 400)
       }
     }

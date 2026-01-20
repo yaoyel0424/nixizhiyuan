@@ -86,8 +86,16 @@ export const resetPassword = (phone: string, captcha: string, newPassword: strin
  * 检查token是否有效
  * @returns 检查结果
  */
-export const checkToken = (): Promise<any> => {
-  return get('/auth/check-token')
+export const checkToken = async (): Promise<any> => {
+  const response: any = await get('/auth/check-token')
+  // 响应拦截器可能返回原始数据或 BaseResponse 格式
+  if (response && typeof response === 'object') {
+    if (response.data) {
+      return response.data
+    }
+    return response
+  }
+  return response
 }
 
 /**

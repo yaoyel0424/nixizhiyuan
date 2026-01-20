@@ -4,7 +4,7 @@ import { View, Text, Image } from '@tarojs/components'
 import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearUserInfo, updateUserInfo } from '@/store/slices/userSlice'
-import { logout } from '@/services/auth'
+import { logout, checkToken } from '@/services/auth'
 import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
@@ -93,6 +93,32 @@ export default function ProfilePage() {
   useEffect(() => {
     setAvatarError(false)
   }, [userInfo?.avatar])
+
+  // 个人中心页：调用 /auth/check-token 获取最新 nickname 并同步到 Redux
+  useEffect(() => {
+    if (!isLoggedIn) return
+    checkToken()
+      .then((data: any) => {
+        const nextNickname =
+          (data?.nickname ?? data?.user?.nickname ?? data?.userInfo?.nickname ?? '').toString().trim()
+        const nextAvatar =
+          (data?.avatar ?? data?.avatarUrl ?? data?.user?.avatar ?? data?.user?.avatarUrl ?? '')
+            .toString()
+            .trim()
+
+        // 只在有值且确实变化时才更新，避免重复刷新
+        if (nextNickname && nextNickname !== (userInfo?.nickname || '')) {
+          dispatch(updateUserInfo({ nickname: nextNickname }))
+        }
+        if (nextAvatar && nextAvatar !== (userInfo?.avatar || '')) {
+          dispatch(updateUserInfo({ avatar: nextAvatar }))
+        }
+      })
+      .catch((error) => {
+        // token 失效或网络失败时不打扰用户（登录态由其他流程处理）
+        console.error('检查登录态失败:', error)
+      })
+  }, [isLoggedIn, userInfo?.nickname, userInfo?.avatar, dispatch])
 
   // 获取用户相关数据统计
   useEffect(() => {
