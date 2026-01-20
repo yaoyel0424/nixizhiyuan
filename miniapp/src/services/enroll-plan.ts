@@ -126,29 +126,66 @@ export interface EnrollmentPlanWithScores {
 }
 
 /**
+ * 按分数段分组的院校列表
+ * - inRange：满足分数段的招生计划（同一学校只保留满足的 plans）
+ * - notInRange：不满足分数段的招生计划（同一学校只保留不满足的 plans，包含无分数）
+ */
+export interface EnrollmentPlansByScoreRange {
+  inRange: EnrollmentPlanWithScores[]
+  notInRange: EnrollmentPlanWithScores[]
+}
+
+/**
  * 根据专业ID查询招生计划和分数信息
  * @param majorId 专业ID
- * @returns 按学校分组的招生计划列表
+ * @param minScore 最低分（可选）
+ * @param maxScore 最高分（可选）
+ * @returns 按分数段分组的招生计划列表
  */
-export const getEnrollmentPlansByMajorId = async (majorId: number): Promise<EnrollmentPlanWithScores[]> => {
+export const getEnrollmentPlansByMajorId = async (
+  majorId: number,
+  minScore?: number,
+  maxScore?: number,
+): Promise<EnrollmentPlansByScoreRange> => {
   try {
-    const response: any = await get<EnrollmentPlanWithScores[]>(`/enroll-plan/major/${majorId}/scores`)
+    const params: Record<string, any> = {}
+    if (minScore !== undefined && minScore !== null) {
+      params.minScore = minScore
+    }
+    if (maxScore !== undefined && maxScore !== null) {
+      params.maxScore = maxScore
+    }
+
+    const response: any = await get<EnrollmentPlansByScoreRange>(
+      `/enroll-plan/major/${majorId}/scores`,
+      params,
+    )
     
     // 响应拦截器可能返回原始数据或 BaseResponse 格式
     if (response && typeof response === 'object') {
       // 如果包含 data 字段，提取 data
-      if (response.data && Array.isArray(response.data)) {
-        return response.data
+      if (response.data && typeof response.data === 'object') {
+        // 新结构：{ inRange, notInRange }
+        if (Array.isArray(response.data.inRange) || Array.isArray(response.data.notInRange)) {
+          return {
+            inRange: Array.isArray(response.data.inRange) ? response.data.inRange : [],
+            notInRange: Array.isArray(response.data.notInRange) ? response.data.notInRange : [],
+          }
+        }
+        // 兼容旧结构：data 直接是数组
+        if (Array.isArray(response.data)) {
+          return { inRange: response.data, notInRange: [] }
+        }
       }
-      // 如果直接是数组，直接返回
+      // 兼容旧结构：response 直接是数组
       if (Array.isArray(response)) {
-        return response
+        return { inRange: response, notInRange: [] }
       }
     }
-    return []
+    return { inRange: [], notInRange: [] }
   } catch (error) {
     console.error('获取专业招生计划失败:', error)
-    return []
+    return { inRange: [], notInRange: [] }
   }
 }
 

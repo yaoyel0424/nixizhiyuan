@@ -9,7 +9,14 @@ import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getStorage, setStorage } from '@/utils/storage'
-import { getEnrollmentPlansByMajorId, EnrollmentPlanWithScores, getMajorGroupInfo, MajorGroupInfo, EnrollmentPlanItem } from '@/services/enroll-plan'
+import {
+  getEnrollmentPlansByMajorId,
+  EnrollmentPlanWithScores,
+  EnrollmentPlansByScoreRange,
+  getMajorGroupInfo,
+  MajorGroupInfo,
+  EnrollmentPlanItem,
+} from '@/services/enroll-plan'
 import { createChoice, CreateChoiceDto, getChoices, deleteChoice, GroupedChoiceResponse } from '@/services/choices'
 import './index.less'
 
@@ -72,9 +79,22 @@ export default function IntendedMajorsSchoolsPage() {
   const majorIdParam = router.params?.majorId || ''
   const majorId = majorIdParam ? parseInt(majorIdParam, 10) : null
   const majorNameParam = router.params?.majorName || ''
+  // 分数段筛选（从志愿方案页传递过来）
+  const minScoreParam = router.params?.minScore
+  const maxScoreParam = router.params?.maxScore
+  const minScore = minScoreParam ? Number(minScoreParam) : undefined
+  const maxScore = maxScoreParam ? Number(maxScoreParam) : undefined
   
   const [data, setData] = useState<IntentionMajor | null>(null)
-  const [apiData, setApiData] = useState<EnrollmentPlanWithScores[]>([]) // 保存原始API数据
+  // 保存接口返回的两组数据
+  const [inRangeApiData, setInRangeApiData] = useState<EnrollmentPlanWithScores[]>([])
+  const [notInRangeApiData, setNotInRangeApiData] = useState<EnrollmentPlanWithScores[]>([])
+  // 当前页面用于渲染/计算的 apiData（默认展示 inRange）
+  const [apiData, setApiData] = useState<EnrollmentPlanWithScores[]>([])
+  // 其他院校（notInRange）是否已展开展示
+  const [showNotInRange, setShowNotInRange] = useState(false)
+  // 其他院校分段展示：当前已展示的院校条数
+  const [visibleNotInRangeSchoolCount, setVisibleNotInRangeSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
   const [loading, setLoading] = useState(true)
   const [wishlist, setWishlist] = useState<Set<string>>(new Set())
   const [groupedChoices, setGroupedChoices] = useState<GroupedChoiceResponse | null>(null) // 已加入的志愿列表
@@ -99,17 +119,18 @@ export default function IntendedMajorsSchoolsPage() {
   // 分段展示：当前已展示的院校条数
   const [visibleSchoolCount, setVisibleSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
 
-  // 从 apiData 中提取并去重省份列表
+  // 从 inRange/notInRange 中提取并去重省份列表（用于同时筛选两段列表）
   const provinces = React.useMemo(() => {
-    if (!apiData || apiData.length === 0) return []
+    const all = [...(inRangeApiData || []), ...(notInRangeApiData || [])]
+    if (all.length === 0) return []
     const provinceSet = new Set<string>()
-    apiData.forEach((item) => {
+    all.forEach((item) => {
       if (item.school?.provinceName) {
         provinceSet.add(item.school.provinceName)
       }
     })
     return Array.from(provinceSet).sort()
-  }, [apiData])
+  }, [inRangeApiData, notInRangeApiData])
 
   // 根据选中的省份筛选数据
   const filteredData = React.useMemo(() => {
@@ -129,6 +150,19 @@ export default function IntendedMajorsSchoolsPage() {
       schools: filteredSchools,
     }
   }, [data, selectedProvince])
+
+  // notInRange：转换为页面结构，并复用同一个省份筛选条件
+  const notInRangeData = React.useMemo(() => {
+    return convertApiDataToSchoolList(notInRangeApiData, majorCode)
+  }, [notInRangeApiData, majorCode])
+
+  const filteredNotInRangeSchools = React.useMemo(() => {
+    let schools = notInRangeData.schools
+    if (selectedProvince) {
+      schools = schools.filter((school) => school.provinceName === selectedProvince)
+    }
+    return schools
+  }, [notInRangeData, selectedProvince])
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -181,10 +215,23 @@ export default function IntendedMajorsSchoolsPage() {
     }
   }, [groupDialogOpen, selectedSchoolData, selectedGroupInfo])
 
-  // 将 API 返回的数据转换为页面需要的格式
-  const convertApiDataToSchoolList = (apiData: EnrollmentPlanWithScores[], majorCode: string): IntentionMajor | null => {
+  /**
+   * 将 API 返回的数据转换为页面需要的结构
+   * 注意：这里使用函数声明，避免在 useMemo 中提前调用时报 “is not a function”
+   */
+  function convertApiDataToSchoolList(
+    apiData: EnrollmentPlanWithScores[],
+    majorCode: string,
+  ): IntentionMajor {
     if (!apiData || apiData.length === 0) {
-      return null
+      // 允许空列表渲染：用于 inRange 为空但 notInRange 有数据时，仍然展示页面并提供“其他院校”切换
+      return {
+        major: {
+          code: majorCode,
+          name: majorNameParam ? decodeURIComponent(majorNameParam) : majorCode,
+        },
+        schools: [],
+      }
     }
 
     // 从第一个招生计划中获取专业名称
@@ -315,20 +362,27 @@ export default function IntendedMajorsSchoolsPage() {
           return
         }
 
-        const apiData = await getEnrollmentPlansByMajorId(majorId)
-        
-        if (!apiData || apiData.length === 0) {
-          console.warn('API 返回数据为空')
-          setData(null)
-          setLoading(false)
-          return
-        }
-
-        // 保存原始API数据
+        const grouped: EnrollmentPlansByScoreRange = await getEnrollmentPlansByMajorId(
+          majorId,
+          Number.isFinite(minScore as number) ? (minScore as number) : undefined,
+          Number.isFinite(maxScore as number) ? (maxScore as number) : undefined,
+        )
+        const inRangeList = grouped?.inRange || []
+        const notInRangeList = grouped?.notInRange || []
+        setInRangeApiData(inRangeList)
+        setNotInRangeApiData(notInRangeList)
+        // 默认展示 inRange
+        const apiData = inRangeList
         setApiData(apiData)
-        // 如果路由参数中没有 majorName，则从 API 数据中获取
+        setShowNotInRange(false)
+        setVisibleNotInRangeSchoolCount(SCHOOLS_PAGE_SIZE)
+
+        // 如果路由参数中没有 majorName，则从 API 数据中获取（优先 inRange，其次 notInRange）
         if (!majorNameParam) {
-          const majorNameFromApi = apiData[0]?.plans[0]?.enrollmentMajor || majorCode
+          const majorNameFromApi =
+            inRangeList[0]?.plans?.[0]?.enrollmentMajor ||
+            notInRangeList[0]?.plans?.[0]?.enrollmentMajor ||
+            majorCode
           setMajorName(majorNameFromApi)
         }
         
@@ -402,15 +456,24 @@ export default function IntendedMajorsSchoolsPage() {
     
     loadChoicesFromAPI()
     loadPlanWishlist()
-  }, [majorCode, majorId])
+  }, [majorCode, majorId, minScoreParam, maxScoreParam])
 
   // 当筛选条件变化/重新加载数据时，重置分页展示数量
   useEffect(() => {
     setVisibleSchoolCount(SCHOOLS_PAGE_SIZE)
   }, [majorCode, majorId, selectedProvince, apiData.length])
 
-  // 判断学校是否已加入志愿
-  const isSchoolInWishlist = (schoolData: School): { isIn: boolean; choiceId?: number } => {
+  // 当其他院校展开/筛选条件变化时，重置其他院校分页展示数量
+  useEffect(() => {
+    if (!showNotInRange) return
+    setVisibleNotInRangeSchoolCount(SCHOOLS_PAGE_SIZE)
+  }, [showNotInRange, selectedProvince, notInRangeApiData.length])
+
+  // 判断学校是否已加入志愿（需要传入对应分组的 apiData，避免同校在两组中时取错 plans）
+  const isSchoolInWishlist = (
+    schoolData: School,
+    apiSource: EnrollmentPlanWithScores[],
+  ): { isIn: boolean; choiceId?: number } => {
     // 优先使用groupedChoices判断（最准确，直接从API返回的数据判断）
     if (groupedChoices && groupedChoices.volunteers.length > 0) {
       // 查找匹配的学校
@@ -437,8 +500,8 @@ export default function IntendedMajorsSchoolsPage() {
     }
     
     // 使用choiceIdMap判断
-    if (choiceIdMap.size > 0 && apiData.length > 0) {
-      const apiSchoolData = apiData.find(item => item.school.name === schoolData.schoolName)
+    if (choiceIdMap.size > 0 && apiSource.length > 0) {
+      const apiSchoolData = apiSource.find(item => item.school.name === schoolData.schoolName)
       if (apiSchoolData) {
         const schoolCode = apiSchoolData.school.code
         const mgId = schoolData.majorGroupId
@@ -464,7 +527,9 @@ export default function IntendedMajorsSchoolsPage() {
       setChoiceIdMap((prev) => {
         const newMap = new Map(prev)
         // 找到对应的key并删除
-        const apiSchoolData = apiData.find(item => item.school.name === choiceToDelete.schoolData.schoolName)
+        const apiSchoolData = [...(inRangeApiData || []), ...(notInRangeApiData || [])].find(
+          item => item.school.name === choiceToDelete.schoolData.schoolName,
+        )
         if (apiSchoolData) {
           const schoolCode = apiSchoolData.school.code
           const mgId = choiceToDelete.schoolData.majorGroupId
@@ -535,7 +600,10 @@ export default function IntendedMajorsSchoolsPage() {
   }
 
   const toggleWishlist = async (schoolKey: string, schoolData: School) => {
-    const { isIn, choiceId } = isSchoolInWishlist(schoolData)
+    const { isIn, choiceId } = isSchoolInWishlist(
+      schoolData,
+      [...(inRangeApiData || []), ...(notInRangeApiData || [])],
+    )
     
     if (isIn && choiceId) {
       // 移除志愿
@@ -951,6 +1019,327 @@ export default function IntendedMajorsSchoolsPage() {
   const pagedSchools = displayData.schools.slice(0, visibleSchoolCount)
   const hasMoreSchools = visibleSchoolCount < totalSchoolCount
 
+  // 其他院校（notInRange）分段展示
+  const totalNotInRangeSchoolCount = filteredNotInRangeSchools.length
+  const pagedNotInRangeSchools = filteredNotInRangeSchools.slice(0, visibleNotInRangeSchoolCount)
+  const hasMoreNotInRangeSchools = visibleNotInRangeSchoolCount < totalNotInRangeSchoolCount
+
+  /**
+   * 渲染单个院校卡片（复用同一套 UI）
+   * @param school 学校数据
+   * @param idx 渲染序号
+   * @param apiSource 对应分组的原始接口数据（用于取 plans）
+   * @param keyPrefix React key 前缀（避免两段列表 key 冲突）
+   */
+  const renderSchoolCard = (
+    school: School,
+    idx: number,
+    apiSource: EnrollmentPlanWithScores[],
+    keyPrefix: string,
+  ) => {
+    // 关键：用局部变量遮蔽 apiData，复用原有渲染逻辑（避免复制一整套代码）
+    const apiData = apiSource
+    const { isIn: isInWishlist, choiceId } = isSchoolInWishlist(school, apiSource)
+    void isInWishlist
+    void choiceId
+
+    return (
+      <Card key={`${keyPrefix}-${idx}`} className="schools-page__school-item">
+        <View className="schools-page__school-item-content">
+          <View className="schools-page__school-item-header">
+          <View className="schools-page__school-item-header-left">
+            <View className="schools-page__school-item-name-row">
+              <Text className="schools-page__school-item-name">{school.schoolName}</Text>
+              {(() => {
+                const locationParts: string[] = []
+                if (school.provinceName) locationParts.push(school.provinceName)
+                if (school.cityName) locationParts.push(school.cityName)
+                if (school.belong) locationParts.push(school.belong)
+                
+                return locationParts.length > 0 ? (
+                  <Text className="schools-page__school-item-location-inline">
+                    {locationParts.join(' · ')}
+                  </Text>
+                ) : null
+              })()}
+            </View>
+            {(() => {
+              // 处理 features：可能是字符串、数组或空值
+              let validFeatures: string[] = []
+              if (school.schoolFeature) {
+                // 如果是字符串，先检查是否是 "[]"
+                const featureStr = String(school.schoolFeature).trim()
+                if (featureStr && featureStr !== '[]' && featureStr !== 'null' && featureStr !== 'undefined') {
+                  // 尝试解析为数组，如果不是数组则按逗号分割
+                  try {
+                    const parsed = JSON.parse(featureStr)
+                    if (Array.isArray(parsed)) {
+                      validFeatures = parsed.filter((f: any) => f && String(f).trim())
+                    } else {
+                      validFeatures = featureStr.split(',').filter(f => f.trim())
+                    }
+                  } catch {
+                    // 不是 JSON，按逗号分割
+                    validFeatures = featureStr.split(',').filter(f => f.trim())
+                  }
+                }
+              }
+              return validFeatures.length > 0 ? (
+                <View className="schools-page__school-item-features">
+                  {validFeatures.map((feature, i) => (
+                    <Text key={i} className="schools-page__school-item-feature">
+                      {feature.trim()}
+                    </Text>
+                  ))}
+                </View>
+              ) : null
+            })()}
+            <View className="schools-page__school-item-rates">
+              <View className="schools-page__school-item-rate">
+                <Text className="schools-page__school-item-rate-label">升学率:</Text>
+                <Text className="schools-page__school-item-rate-value">{formatRatePercent(school.enrollmentRate)}</Text>
+              </View>
+              <View className="schools-page__school-item-rate">
+                <Text className="schools-page__school-item-rate-label">就业率:</Text>
+                <Text className="schools-page__school-item-rate-value">{formatRatePercent(school.employmentRate)}</Text>
+              </View>
+            </View>
+            
+            {(() => {
+              // 找到当前学校对应的 apiData
+              const schoolApiData = apiData.find(item => item.school.name === school.schoolName)
+              if (!schoolApiData || !schoolApiData.plans || schoolApiData.plans.length === 0) {
+                return null
+              }
+              
+              return (
+                <View className="schools-page__school-item-plans">
+                  {schoolApiData.plans.map((plan, planIndex) => (
+                    <View key={planIndex} className="schools-page__school-item-plan">
+                      {plan.enrollmentMajor && (
+                        <View className="schools-page__school-item-plan-major">
+                          <Text className="schools-page__school-item-plan-major-value">
+                            {plan.enrollmentMajor}
+                          </Text>
+                          {(() => {
+                            // 判断当前 plan 是否已加入志愿
+                            let isPlanInWishlist = false
+                            let planChoiceId: number | undefined = undefined
+                            
+                            if (groupedChoices && groupedChoices.volunteers.length > 0) {
+                              const volunteer = groupedChoices.volunteers.find(v => v.school.name === school.schoolName)
+                              if (volunteer) {
+                                for (const majorGroup of volunteer.majorGroups) {
+                                  for (const choice of majorGroup.choices) {
+                                    // 匹配条件：学校代码、专业组ID、招生专业
+                                    const isSchoolMatch = choice.schoolCode === schoolApiData.school.code
+                                    const isGroupMatch = (choice.majorGroupId === plan.majorGroupId) || 
+                                                         (plan.majorGroupId && majorGroup.majorGroup.mgId === plan.majorGroupId)
+                                    const isMajorMatch = choice.enrollmentMajor === plan.enrollmentMajor
+                                    
+                                    if (isSchoolMatch && isGroupMatch && isMajorMatch) {
+                                      isPlanInWishlist = true
+                                      planChoiceId = choice.id
+                                      break
+                                    }
+                                  }
+                                  if (isPlanInWishlist) break
+                                }
+                              }
+                            }
+                            
+                            return (
+                              <Text 
+                                className={`schools-page__school-item-plan-major-action ${isPlanInWishlist ? 'schools-page__school-item-plan-major-action--active' : ''}`}
+                                onClick={async (e) => {
+                                  e.stopPropagation()
+                                  if (isPlanInWishlist && planChoiceId) {
+                                    await handleRemoveChoice(planChoiceId, school)
+                                  } else {
+                                    try {
+                                      // 构建创建志愿的DTO
+                                      const createChoiceDto: CreateChoiceDto = {
+                                        mgId: plan.majorGroupId || plan.majorGroup?.mgId || school.majorGroupId || null,
+                                        schoolCode: schoolApiData.school.code,
+                                        enrollmentMajor: plan.enrollmentMajor || null,
+                                        batch: plan.batch || null,
+                                        majorGroupInfo: plan.majorGroupInfo || plan.majorGroup?.mgInfo || null,
+                                        subjectSelectionMode: plan.subjectSelectionMode || plan.majorGroup?.subjectSelectionMode || null,
+                                        studyPeriod: plan.studyPeriod || null,
+                                        enrollmentQuota: plan.enrollmentQuota || null,
+                                        remark: plan.remark || null,
+                                        tuitionFee: plan.tuitionFee || null,
+                                        curUnit: plan.curUnit || null,
+                                        majorScores: plan.majorScores?.map(score => ({
+                                          schoolCode: score.schoolCode,
+                                          province: score.province,
+                                          year: score.year,
+                                          subjectSelectionMode: score.subjectSelectionMode,
+                                          batch: score.batch,
+                                          minScore: score.minScore,
+                                          minRank: score.minRank,
+                                          admitCount: score.admitCount,
+                                          enrollmentType: score.enrollmentType,
+                                        })) || null,
+                                      }
+                                      
+                                      await createChoice(createChoiceDto)
+                                      
+                                      // 重新加载志愿列表
+                                      const choicesData = await getChoices()
+                                      setGroupedChoices(choicesData)
+                                      
+                                      // 更新choiceId映射
+                                      const idMap = new Map<string, number>()
+                                      choicesData.volunteers.forEach((volunteer) => {
+                                        volunteer.majorGroups.forEach((majorGroup) => {
+                                          majorGroup.choices.forEach((choice) => {
+                                            const key = `${choice.schoolCode}-${choice.majorGroupId || 'no-group'}`
+                                            idMap.set(key, choice.id)
+                                          })
+                                        })
+                                      })
+                                      setChoiceIdMap(idMap)
+                                      
+                                      // 更新wishlist状态
+                                      const wishlistSet = new Set<string>()
+                                      choicesData.volunteers.forEach((volunteer) => {
+                                        volunteer.majorGroups.forEach((majorGroup) => {
+                                          majorGroup.choices.forEach((choice) => {
+                                            const key = `${majorCode}-${volunteer.school.name}`
+                                            wishlistSet.add(key)
+                                          })
+                                        })
+                                      })
+                                      setWishlist(wishlistSet)
+                                      
+                                      Taro.showToast({
+                                        title: '已加入志愿',
+                                        icon: 'success',
+                                        duration: 2000
+                                      })
+                                    } catch (error: any) {
+                                      console.error('加入志愿失败:', error)
+                                      Taro.showToast({
+                                        title: error?.message || '加入志愿失败，请重试',
+                                        icon: 'none',
+                                        duration: 2000
+                                      })
+                                    }
+                                  }
+                                }}
+                              >
+                                {isPlanInWishlist ? '移除志愿' : '加入志愿'}
+                              </Text>
+                            )
+                          })()}
+                        </View>
+                      )}
+                      {plan.remark && (
+                        <View className="schools-page__school-item-plan-remark">
+                          <Text className="schools-page__school-item-plan-remark-text">{plan.remark}</Text>
+                        </View>
+                      )}
+                      
+                      {(plan.majorGroupInfo || plan.enrollmentQuota) && (
+                        <View className="schools-page__school-item-plan-info">
+                          {plan.majorGroupInfo && (
+                            <Text className="schools-page__school-item-plan-info-text">
+                              选科: {plan.majorGroupInfo}
+                            </Text>
+                          )}
+                          {plan.enrollmentQuota && (
+                            <Text className="schools-page__school-item-plan-info-text">
+                              {plan.majorGroupInfo ? ' · ' : ''}招生人数: {plan.enrollmentQuota}
+                            </Text>
+                          )}
+                        </View>
+                      )}
+                      
+                      {school.majorGroupId && (
+                        <View className="schools-page__school-item-plan-group-button-wrapper">
+                          <Text 
+                            className="schools-page__school-item-plan-group-button"
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              const mgId = school.majorGroupId
+                              if (!mgId) return
+                              
+                              try {
+                                setLoadingGroupInfo(true)
+                                setSelectedGroupInfo({
+                                  schoolName: school.schoolName,
+                                  majorGroupName: school.majorGroupName || '专业组',
+                                  majorGroupId: mgId,
+                                })
+                                // 保存学校数据，用于后续加入志愿
+                                setSelectedSchoolData(school)
+                                
+                                // 找到对应的plan数据（从apiData中）
+                                let matchedPlan: EnrollmentPlanItem | null = null
+                                if (apiData.length > 0) {
+                                  const schoolData = apiData.find(item => item.school.name === school.schoolName)
+                                  if (schoolData) {
+                                    // 找到匹配的plan（通过majorGroupId）
+                                    matchedPlan = schoolData.plans.find(p => 
+                                      (p.majorGroupId && p.majorGroupId === mgId) ||
+                                      (p.majorGroup?.mgId && p.majorGroup.mgId === mgId)
+                                    ) || schoolData.plans[0] || null
+                                  }
+                                }
+                                setSelectedPlanData(matchedPlan)
+                                
+                                // 调用 API 获取专业组信息
+                                const groupInfo = await getMajorGroupInfo(mgId)
+                                setGroupInfoData(groupInfo)
+                                setGroupDialogOpen(true)
+                              } catch (error) {
+                                console.error('获取专业组信息失败:', error)
+                                Taro.showToast({
+                                  title: '获取专业组信息失败',
+                                  icon: 'none',
+                                })
+                              } finally {
+                                setLoadingGroupInfo(false)
+                              }
+                            }}
+                          >
+                            查看专业组{school.majorGroupName ? `: ${school.majorGroupName}` : ''} 👁️
+                          </Text>
+                        </View>
+                      )}
+                      
+                      {plan.majorScores && plan.majorScores.length > 0 && (
+                        <View className="schools-page__school-item-plan-scores">
+                          {plan.majorScores.map((score, scoreIndex) => (
+                            <View key={scoreIndex} className="schools-page__school-item-plan-score">
+                              {score.minScore !== null && (
+                                <Text className="schools-page__school-item-plan-score-text">
+                                  {score.year}年最低分数: {Math.floor(score.minScore)}
+                                </Text>
+                              )}
+                              {score.minRank !== null && (
+                                <Text className="schools-page__school-item-plan-score-text">
+                                  最低位次: {score.minRank}
+                                  {(score as any).rankDiff ? `, ${(score as any).rankDiff}` : ''}
+                                </Text>
+                              )}
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )
+            })()}
+          </View>
+        </View>
+      </View>
+      </Card>
+    )
+  }
+
   return (
     <View className="schools-page">
       
@@ -990,306 +1379,7 @@ export default function IntendedMajorsSchoolsPage() {
       <View className="schools-page__content">
         <View className="schools-page__schools-list">
           {displayData.schools.length > 0 ? (
-            pagedSchools.map((school, idx) => {
-              const schoolKey = `${majorCode}-${school.schoolName}`
-              const { isIn: isInWishlist, choiceId } = isSchoolInWishlist(school)
-
-              return (
-                <Card key={idx} className="schools-page__school-item">
-                  <View className="schools-page__school-item-content">
-                    <View className="schools-page__school-item-header">
-                    <View className="schools-page__school-item-header-left">
-                      <View className="schools-page__school-item-name-row">
-                        <Text className="schools-page__school-item-name">{school.schoolName}</Text>
-                        {(() => {
-                          const locationParts: string[] = []
-                          if (school.provinceName) locationParts.push(school.provinceName)
-                          if (school.cityName) locationParts.push(school.cityName)
-                          if (school.belong) locationParts.push(school.belong)
-                          
-                          return locationParts.length > 0 ? (
-                            <Text className="schools-page__school-item-location-inline">
-                              {locationParts.join(' · ')}
-                            </Text>
-                          ) : null
-                        })()}
-                      </View>
-                      {(() => {
-                        // 处理 features：可能是字符串、数组或空值
-                        let validFeatures: string[] = []
-                        if (school.schoolFeature) {
-                          // 如果是字符串，先检查是否是 "[]"
-                          const featureStr = String(school.schoolFeature).trim()
-                          if (featureStr && featureStr !== '[]' && featureStr !== 'null' && featureStr !== 'undefined') {
-                            // 尝试解析为数组，如果不是数组则按逗号分割
-                            try {
-                              const parsed = JSON.parse(featureStr)
-                              if (Array.isArray(parsed)) {
-                                validFeatures = parsed.filter((f: any) => f && String(f).trim())
-                              } else {
-                                validFeatures = featureStr.split(',').filter(f => f.trim())
-                              }
-                            } catch {
-                              // 不是 JSON，按逗号分割
-                              validFeatures = featureStr.split(',').filter(f => f.trim())
-                            }
-                          }
-                        }
-                        return validFeatures.length > 0 ? (
-                          <View className="schools-page__school-item-features">
-                            {validFeatures.map((feature, i) => (
-                              <Text key={i} className="schools-page__school-item-feature">
-                                {feature.trim()}
-                              </Text>
-                            ))}
-                          </View>
-                        ) : null
-                      })()}
-                      <View className="schools-page__school-item-rates">
-                        <View className="schools-page__school-item-rate">
-                          <Text className="schools-page__school-item-rate-label">升学率:</Text>
-                          <Text className="schools-page__school-item-rate-value">{formatRatePercent(school.enrollmentRate)}</Text>
-                        </View>
-                        <View className="schools-page__school-item-rate">
-                          <Text className="schools-page__school-item-rate-label">就业率:</Text>
-                          <Text className="schools-page__school-item-rate-value">{formatRatePercent(school.employmentRate)}</Text>
-                        </View>
-                      </View>
-                      
-                      {(() => {
-                        // 找到当前学校对应的 apiData
-                        const schoolApiData = apiData.find(item => item.school.name === school.schoolName)
-                        if (!schoolApiData || !schoolApiData.plans || schoolApiData.plans.length === 0) {
-                          return null
-                        }
-                        
-                        return (
-                          <View className="schools-page__school-item-plans">
-                            {schoolApiData.plans.map((plan, planIndex) => (
-                              <View key={planIndex} className="schools-page__school-item-plan">
-                                {plan.enrollmentMajor && (
-                                  <View className="schools-page__school-item-plan-major">
-                                    <Text className="schools-page__school-item-plan-major-value">
-                                      {plan.enrollmentMajor}
-                                    </Text>
-                                    {(() => {
-                                      // 判断当前 plan 是否已加入志愿
-                                      let isPlanInWishlist = false
-                                      let planChoiceId: number | undefined = undefined
-                                      
-                                      if (groupedChoices && groupedChoices.volunteers.length > 0) {
-                                        const volunteer = groupedChoices.volunteers.find(v => v.school.name === school.schoolName)
-                                        if (volunteer) {
-                                          for (const majorGroup of volunteer.majorGroups) {
-                                            for (const choice of majorGroup.choices) {
-                                              // 匹配条件：学校代码、专业组ID、招生专业
-                                              const isSchoolMatch = choice.schoolCode === schoolApiData.school.code
-                                              const isGroupMatch = (choice.majorGroupId === plan.majorGroupId) || 
-                                                                   (plan.majorGroupId && majorGroup.majorGroup.mgId === plan.majorGroupId)
-                                              const isMajorMatch = choice.enrollmentMajor === plan.enrollmentMajor
-                                              
-                                              if (isSchoolMatch && isGroupMatch && isMajorMatch) {
-                                                isPlanInWishlist = true
-                                                planChoiceId = choice.id
-                                                break
-                                              }
-                                            }
-                                            if (isPlanInWishlist) break
-                                          }
-                                        }
-                                      }
-                                      
-                                      return (
-                                        <Text 
-                                          className={`schools-page__school-item-plan-major-action ${isPlanInWishlist ? 'schools-page__school-item-plan-major-action--active' : ''}`}
-                                          onClick={async (e) => {
-                                            e.stopPropagation()
-                                            if (isPlanInWishlist && planChoiceId) {
-                                              await handleRemoveChoice(planChoiceId, school)
-                                            } else {
-                                              try {
-                                                // 构建创建志愿的DTO
-                                                const createChoiceDto: CreateChoiceDto = {
-                                                  mgId: plan.majorGroupId || plan.majorGroup?.mgId || school.majorGroupId || null,
-                                                  schoolCode: schoolApiData.school.code,
-                                                  enrollmentMajor: plan.enrollmentMajor || null,
-                                                  batch: plan.batch || null,
-                                                  majorGroupInfo: plan.majorGroupInfo || plan.majorGroup?.mgInfo || null,
-                                                  subjectSelectionMode: plan.subjectSelectionMode || plan.majorGroup?.subjectSelectionMode || null,
-                                                  studyPeriod: plan.studyPeriod || null,
-                                                  enrollmentQuota: plan.enrollmentQuota || null,
-                                                  remark: plan.remark || null,
-                                                  tuitionFee: plan.tuitionFee || null,
-                                                  curUnit: plan.curUnit || null,
-                                                  majorScores: plan.majorScores?.map(score => ({
-                                                    schoolCode: score.schoolCode,
-                                                    province: score.province,
-                                                    year: score.year,
-                                                    subjectSelectionMode: score.subjectSelectionMode,
-                                                    batch: score.batch,
-                                                    minScore: score.minScore,
-                                                    minRank: score.minRank,
-                                                    admitCount: score.admitCount,
-                                                    enrollmentType: score.enrollmentType,
-                                                  })) || null,
-                                                }
-                                                
-                                                await createChoice(createChoiceDto)
-                                                
-                                                // 重新加载志愿列表
-                                                const choicesData = await getChoices()
-                                                setGroupedChoices(choicesData)
-                                                
-                                                // 更新choiceId映射
-                                                const idMap = new Map<string, number>()
-                                                choicesData.volunteers.forEach((volunteer) => {
-                                                  volunteer.majorGroups.forEach((majorGroup) => {
-                                                    majorGroup.choices.forEach((choice) => {
-                                                      const key = `${choice.schoolCode}-${choice.majorGroupId || 'no-group'}`
-                                                      idMap.set(key, choice.id)
-                                                    })
-                                                  })
-                                                })
-                                                setChoiceIdMap(idMap)
-                                                
-                                                // 更新wishlist状态
-                                                const wishlistSet = new Set<string>()
-                                                choicesData.volunteers.forEach((volunteer) => {
-                                                  volunteer.majorGroups.forEach((majorGroup) => {
-                                                    majorGroup.choices.forEach((choice) => {
-                                                      const key = `${majorCode}-${volunteer.school.name}`
-                                                      wishlistSet.add(key)
-                                                    })
-                                                  })
-                                                })
-                                                setWishlist(wishlistSet)
-                                                
-                                                Taro.showToast({
-                                                  title: '已加入志愿',
-                                                  icon: 'success',
-                                                  duration: 2000
-                                                })
-                                              } catch (error: any) {
-                                                console.error('加入志愿失败:', error)
-                                                Taro.showToast({
-                                                  title: error?.message || '加入志愿失败，请重试',
-                                                  icon: 'none',
-                                                  duration: 2000
-                                                })
-                                              }
-                                            }
-                                          }}
-                                        >
-                                          {isPlanInWishlist ? '移除志愿' : '加入志愿'}
-                                        </Text>
-                                      )
-                                    })()}
-                                  </View>
-                                )}
-                                {plan.remark && (
-                                  <View className="schools-page__school-item-plan-remark">
-                                    <Text className="schools-page__school-item-plan-remark-text">{plan.remark}</Text>
-                                  </View>
-                                )}
-                                
-                                {(plan.majorGroupInfo || plan.enrollmentQuota) && (
-                                  <View className="schools-page__school-item-plan-info">
-                                    {plan.majorGroupInfo && (
-                                      <Text className="schools-page__school-item-plan-info-text">
-                                        选科: {plan.majorGroupInfo}
-                                      </Text>
-                                    )}
-                                    {plan.enrollmentQuota && (
-                                      <Text className="schools-page__school-item-plan-info-text">
-                                        {plan.majorGroupInfo ? ' · ' : ''}招生人数: {plan.enrollmentQuota}
-                                      </Text>
-                                    )}
-                                  </View>
-                                )}
-                                
-                                {school.majorGroupId && (
-                                  <View className="schools-page__school-item-plan-group-button-wrapper">
-                                    <Text 
-                                      className="schools-page__school-item-plan-group-button"
-                                      onClick={async (e) => {
-                                        e.stopPropagation()
-                                        const mgId = school.majorGroupId
-                                        if (!mgId) return
-                                        
-                                        try {
-                                          setLoadingGroupInfo(true)
-                                          setSelectedGroupInfo({
-                                            schoolName: school.schoolName,
-                                            majorGroupName: school.majorGroupName || '专业组',
-                                            majorGroupId: mgId,
-                                          })
-                                          // 保存学校数据，用于后续加入志愿
-                                          setSelectedSchoolData(school)
-                                          
-                                          // 找到对应的plan数据（从apiData中）
-                                          let matchedPlan: EnrollmentPlanItem | null = null
-                                          if (apiData.length > 0) {
-                                            const schoolData = apiData.find(item => item.school.name === school.schoolName)
-                                            if (schoolData) {
-                                              // 找到匹配的plan（通过majorGroupId）
-                                              matchedPlan = schoolData.plans.find(p => 
-                                                (p.majorGroupId && p.majorGroupId === mgId) ||
-                                                (p.majorGroup?.mgId && p.majorGroup.mgId === mgId)
-                                              ) || schoolData.plans[0] || null
-                                            }
-                                          }
-                                          setSelectedPlanData(matchedPlan)
-                                          
-                                          // 调用 API 获取专业组信息
-                                          const groupInfo = await getMajorGroupInfo(mgId)
-                                          setGroupInfoData(groupInfo)
-                                          setGroupDialogOpen(true)
-                                        } catch (error) {
-                                          console.error('获取专业组信息失败:', error)
-                                          Taro.showToast({
-                                            title: '获取专业组信息失败',
-                                            icon: 'none',
-                                          })
-                                        } finally {
-                                          setLoadingGroupInfo(false)
-                                        }
-                                      }}
-                                    >
-                                      查看专业组{school.majorGroupName ? `: ${school.majorGroupName}` : ''} 👁️
-                                    </Text>
-                                  </View>
-                                )}
-                                
-                                {plan.majorScores && plan.majorScores.length > 0 && (
-                                  <View className="schools-page__school-item-plan-scores">
-                                    {plan.majorScores.map((score, scoreIndex) => (
-                                      <View key={scoreIndex} className="schools-page__school-item-plan-score">
-                                        {score.minScore !== null && (
-                                          <Text className="schools-page__school-item-plan-score-text">
-                                            {score.year}年最低分数: {Math.floor(score.minScore)}
-                                          </Text>
-                                        )}
-                                        {score.minRank !== null && (
-                                          <Text className="schools-page__school-item-plan-score-text">
-                                            最低位次: {score.minRank}
-                                            {(score as any).rankDiff ? `, ${(score as any).rankDiff}` : ''}
-                                          </Text>
-                                        )}
-                                      </View>
-                                    ))}
-                                  </View>
-                                )}
-                              </View>
-                            ))}
-                          </View>
-                        )
-                      })()}
-                    </View>
-                  </View>
-                </View>
-                </Card>
-              )
-            })
+            pagedSchools.map((school, idx) => renderSchoolCard(school, idx, inRangeApiData, 'inRange'))
           ) : (
             <View className="schools-page__empty">
               <Text>暂无符合条件的院校</Text>
@@ -1307,6 +1397,65 @@ export default function IntendedMajorsSchoolsPage() {
               >
                 加载更多（已显示 {Math.min(visibleSchoolCount, totalSchoolCount)}/{totalSchoolCount}）
               </Button>
+            </View>
+          )}
+
+          {/* 其他院校：点击展开，再次点击可收起（不显示数量） */}
+          {filteredNotInRangeSchools.length > 0 && (
+            <View className="schools-page__load-more">
+              <Button
+                onClick={() => {
+                  setShowNotInRange((prev) => {
+                    const next = !prev
+                    // 收起时重置“其他院校”分页状态
+                    if (!next) {
+                      setVisibleNotInRangeSchoolCount(SCHOOLS_PAGE_SIZE)
+                    }
+                    // 展开时也确保从 10 条开始
+                    if (next) {
+                      setVisibleNotInRangeSchoolCount(SCHOOLS_PAGE_SIZE)
+                    }
+                    return next
+                  })
+                }}
+              >
+                {showNotInRange ? '收起其他院校' : '其他院校'}
+              </Button>
+            </View>
+          )}
+
+          {showNotInRange && (
+            <View>
+              <View className="schools-page__load-more">
+                <Text>其他院校</Text>
+              </View>
+              {totalNotInRangeSchoolCount > 0 ? (
+                <>
+                  {pagedNotInRangeSchools.map((school, idx) =>
+                    renderSchoolCard(school, idx, notInRangeApiData, 'notInRange'),
+                  )}
+
+                  {hasMoreNotInRangeSchools && (
+                    <View className="schools-page__load-more">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setVisibleNotInRangeSchoolCount((prev) =>
+                            Math.min(prev + SCHOOLS_PAGE_SIZE, totalNotInRangeSchoolCount),
+                          )
+                        }}
+                      >
+                        加载更多（已显示 {Math.min(visibleNotInRangeSchoolCount, totalNotInRangeSchoolCount)}/
+                        {totalNotInRangeSchoolCount}）
+                      </Button>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <View className="schools-page__empty">
+                  <Text>暂无其他院校</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
