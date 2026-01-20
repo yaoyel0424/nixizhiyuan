@@ -229,6 +229,18 @@ export class UsersService {
   }
 
   /**
+   * 更新用户昵称
+   * @param id 用户ID
+   * @param nickname 用户昵称
+   * @returns 更新后的用户信息
+   */
+  async updateNickname(id: number, nickname: string): Promise<User> {
+    const user = await this.findOne(id);
+    user.nickname = nickname;
+    return this.userRepository.save(user);
+  }
+
+  /**
    * 获取用户相关数据的数量统计
    * @param userId 用户ID
    * @returns 用户相关数据的数量统计

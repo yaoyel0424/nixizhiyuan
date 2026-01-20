@@ -17,6 +17,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateNicknameDto } from './dto/update-nickname.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRelatedDataResponseDto } from './dto/user-related-data-response.dto';
@@ -67,6 +68,42 @@ export class UsersController {
     @CurrentUser() user: any,
   ): Promise<UserRelatedDataResponseDto> {
     return await this.usersService.getUserRelatedDataCount(user.id);
+  }
+
+  /**
+   * 更新当前用户昵称
+   * @param user 当前用户
+   * @param updateNicknameDto 更新昵称 DTO
+   * @returns 更新后的用户信息
+   */
+  @Patch('/nickname')
+  @ApiOperation({ summary: '更新当前用户昵称' })
+  @ApiResponse({
+    status: 200,
+    description: '更新成功',
+    type: UserResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: '参数错误',
+  })
+  @ApiResponse({
+    status: 404,
+    description: '用户不存在',
+  })
+  async updateNickname(
+    @CurrentUser() user: any,
+    @Body() updateNicknameDto: UpdateNicknameDto,
+  ): Promise<UserResponseDto> {
+    const nickname = (updateNicknameDto.nickname || '').trim();
+    if (!nickname) {
+      throw new BadRequestException('昵称不能为空');
+    }
+
+    const updatedUser = await this.usersService.updateNickname(user.id, nickname);
+    return plainToInstance(UserResponseDto, updatedUser, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @Get(':id')
