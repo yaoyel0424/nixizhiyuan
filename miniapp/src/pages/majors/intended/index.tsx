@@ -1278,6 +1278,36 @@ export default function IntendedMajorsPage() {
       hasDidShowOnceRef.current = true
       return
     }
+    
+    // 处理 '意向志愿' 标签页：检查是否需要刷新志愿列表
+    if (activeTab === '意向志愿' && !refreshingOnShowRef.current) {
+      refreshingOnShowRef.current = true
+      
+      const checkAndRefreshChoices = async () => {
+        try {
+          // 检查是否有刷新标记
+          const needRefresh = await getStorage<boolean>('needRefreshChoices')
+          if (needRefresh) {
+            console.log('检测到志愿变化标记，刷新列表')
+            // 清除标记
+            await setStorage('needRefreshChoices', false)
+            // 刷新志愿列表
+            await loadChoicesFromAPI()
+          }
+        } catch (error) {
+          console.error('检查刷新标记失败:', error)
+        } finally {
+          refreshingOnShowRef.current = false
+        }
+      }
+      
+      // 延迟执行，确保页面完全显示
+      setTimeout(() => {
+        checkAndRefreshChoices()
+      }, 300)
+      return
+    }
+    
     if (activeTab === '专业赛道' && !refreshingOnShowRef.current) {
       refreshingOnShowRef.current = true
       

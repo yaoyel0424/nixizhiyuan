@@ -583,6 +583,9 @@ export default function IntendedMajorsSchoolsPage() {
         icon: 'success',
         duration: 2000
       })
+
+      // 设置刷新标记，通知父页面返回时需要刷新
+      await setStorage('needRefreshChoices', true)
     } catch (error: any) {
       console.error('移除志愿失败:', error)
       Taro.showToast({
@@ -606,7 +609,7 @@ export default function IntendedMajorsSchoolsPage() {
     )
     
     if (isIn && choiceId) {
-      // 移除志愿
+      // 移除志愿（会触发确认框，确认后会在 confirmDeleteChoice 中设置标记）
       await handleRemoveChoice(choiceId, schoolData)
       return
     }
@@ -715,6 +718,9 @@ export default function IntendedMajorsSchoolsPage() {
         icon: 'success',
         duration: 2000
       })
+
+      // 设置刷新标记，通知父页面返回时需要刷新
+      await setStorage('needRefreshChoices', true)
     } catch (error: any) {
       console.error('加入志愿失败:', error)
       Taro.showToast({
@@ -980,6 +986,9 @@ export default function IntendedMajorsSchoolsPage() {
         icon: 'success',
         duration: 2000
       })
+
+      // 设置刷新标记，通知父页面返回时需要刷新
+      await setStorage('needRefreshChoices', true)
     } catch (error: any) {
       console.error('加入志愿失败:', error)
       Taro.showToast({
@@ -1218,6 +1227,9 @@ export default function IntendedMajorsSchoolsPage() {
                                         icon: 'success',
                                         duration: 2000
                                       })
+
+                                      // 设置刷新标记，通知父页面返回时需要刷新
+                                      await setStorage('needRefreshChoices', true)
                                     } catch (error: any) {
                                       console.error('加入志愿失败:', error)
                                       Taro.showToast({
