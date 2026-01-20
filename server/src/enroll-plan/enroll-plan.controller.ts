@@ -114,6 +114,20 @@ export class EnrollPlanController {
   @Get('major/:majorId/scores')
   @Cache(60)
   @ApiOperation({ summary: '根据专业ID查询招生计划和分数信息' })
+  @ApiQuery({
+    name: 'minScore',
+    required: false,
+    description: '最低分（用于按分数段筛选院校）',
+    type: Number,
+    example: 500,
+  })
+  @ApiQuery({
+    name: 'maxScore',
+    required: false,
+    description: '最高分（用于按分数段筛选院校）',
+    type: Number,
+    example: 600,
+  })
   @ApiParam({
     name: 'majorId',
     description: '专业ID',
@@ -132,12 +146,27 @@ export class EnrollPlanController {
   async getEnrollmentPlansByMajorId(
     @Param('majorId', ParseIntPipe) majorId: number,
     @CurrentUser() user: any,
+    @Query('minScore') minScore?: string,
+    @Query('maxScore') maxScore?: string,
   ): Promise<EnrollmentPlanWithScoresDto[]> {
     const year = process.env.CURRENT_YEAR || '2025';
+
+    // 分数段筛选（可选）：两者都提供且为有效数字时才启用
+    const parsedMinScore =
+      minScore !== undefined && minScore !== null && String(minScore).trim() !== ''
+        ? Number(minScore)
+        : undefined;
+    const parsedMaxScore =
+      maxScore !== undefined && maxScore !== null && String(maxScore).trim() !== ''
+        ? Number(maxScore)
+        : undefined;
+
     return await this.enrollPlanService.findEnrollmentPlansByMajorId(
       majorId,
       user.id,
       year,
+      Number.isFinite(parsedMinScore as number) ? (parsedMinScore as number) : undefined,
+      Number.isFinite(parsedMaxScore as number) ? (parsedMaxScore as number) : undefined,
     );
   }
 

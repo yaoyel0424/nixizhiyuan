@@ -72,6 +72,11 @@ export default function IntendedMajorsSchoolsPage() {
   const majorIdParam = router.params?.majorId || ''
   const majorId = majorIdParam ? parseInt(majorIdParam, 10) : null
   const majorNameParam = router.params?.majorName || ''
+  // 分数段筛选（可选）：来自“志愿方案-专业赛道”的分数区间滑块
+  const minScoreParam = router.params?.minScore
+  const maxScoreParam = router.params?.maxScore
+  const minScore = minScoreParam ? parseFloat(String(minScoreParam)) : undefined
+  const maxScore = maxScoreParam ? parseFloat(String(maxScoreParam)) : undefined
   
   const [data, setData] = useState<IntentionMajor | null>(null)
   const [apiData, setApiData] = useState<EnrollmentPlanWithScores[]>([]) // 保存原始API数据
@@ -315,7 +320,11 @@ export default function IntendedMajorsSchoolsPage() {
           return
         }
 
-        const apiData = await getEnrollmentPlansByMajorId(majorId)
+        const apiData = await getEnrollmentPlansByMajorId(
+          majorId,
+          Number.isFinite(minScore as number) ? (minScore as number) : undefined,
+          Number.isFinite(maxScore as number) ? (maxScore as number) : undefined,
+        )
         
         if (!apiData || apiData.length === 0) {
           console.warn('API 返回数据为空')
