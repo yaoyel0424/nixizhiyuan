@@ -494,9 +494,16 @@ export class ChoicesService {
       }
     }
 
-    // 6.2. 将 major_scores 数据附加到 choices 实体
+    // 6.2. 将 major_scores 数据附加到 choices 实体，并按 year 排序
     for (const choice of choices) {
-      (choice as any).majorScoresFromJoin = majorScoresMap.get(choice.id) || [];
+      const majorScores = majorScoresMap.get(choice.id) || [];
+      // 按 year 降序排序（最新的年份在前）
+      majorScores.sort((a, b) => {
+        if (a.year === null || a.year === undefined) return 1;
+        if (b.year === null || b.year === undefined) return -1;
+        return b.year.localeCompare(a.year);
+      });
+      (choice as any).majorScoresFromJoin = majorScores;
     }
 
     // 6.3. 收集所有唯一的 level3_major_id
