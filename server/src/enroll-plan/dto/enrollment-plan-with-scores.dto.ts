@@ -189,3 +189,19 @@ export class EnrollmentPlanWithScoresDto {
   plans: EnrollmentPlanItemDto[];
 }
 
+/**
+ * 分数段分组返回 DTO（返回两个数组：满足分数段 / 不满足分数段）
+ * 说明：
+ * - 同一学校如果同时存在满足与不满足的招生计划，会在两个数组中各出现一次（plans 会被分别过滤）
+ * - 当未传入 minScore/maxScore（或参数无效）时，默认全部放入 inRange，notInRange 为空数组
+ */
+export class EnrollmentPlansByScoreRangeDto {
+  @Expose()
+  @Type(() => EnrollmentPlanWithScoresDto)
+  inRange: EnrollmentPlanWithScoresDto[];
+
+  @Expose()
+  @Type(() => EnrollmentPlanWithScoresDto)
+  notInRange: EnrollmentPlanWithScoresDto[];
+}
+

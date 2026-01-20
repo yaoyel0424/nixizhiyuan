@@ -14,6 +14,7 @@ import { Province } from '@/entities/province.entity';
 import { ScoresService } from '@/scores/scores.service';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
 import {
+  EnrollmentPlansByScoreRangeDto,
   EnrollmentPlanWithScoresDto,
   EnrollmentPlanItemDto,
   SchoolSimpleDto,
@@ -387,6 +388,8 @@ export class EnrollPlanService {
    * @param majorId 专业ID
    * @param userId 用户ID（用于获取用户信息）
    * @param year 年份，默认为2025
+   * @param minScore 最低分（可选，用于按分数段分组）
+   * @param maxScore 最高分（可选，用于按分数段分组）
    * @returns 招生计划列表（包含学校、学校详情、专业组和分数信息）
    */
   async findEnrollmentPlansByMajorId(
@@ -395,7 +398,7 @@ export class EnrollPlanService {
     year: string = '2025',
     minScore?: number,
     maxScore?: number,
-  ): Promise<EnrollmentPlanWithScoresDto[]> {
+  ): Promise<EnrollmentPlansByScoreRangeDto> {
     // 1. 获取用户信息
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -432,16 +435,24 @@ export class EnrollPlanService {
       ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
       : [];
 
-    const hasScoreRangeFilter =
-      minScore !== undefined &&
-      maxScore !== undefined &&
-      Number.isFinite(minScore) &&
-      Number.isFinite(maxScore) &&
-      minScore <= maxScore;
-
     // 5. 构建查询（使用 getRawAndEntities 来获取 JOIN 的数据）
-    // 加载 major_scores（复杂 JOIN 条件）：如果启用分数段筛选，则只 JOIN 分数段内的分数，减少 raw 数量
-    const majorScoresJoinCondition = `"ep"."school_code" = "ms"."school_code"::varchar
+    const queryBuilder = this.enrollmentPlanRepository
+      .createQueryBuilder('ep')
+      // 加载 school 关系
+      .leftJoinAndSelect('ep.school', 'school')
+      // 加载 schoolDetail（通过 school.code 关联）
+      .leftJoinAndSelect(
+        'school_details',
+        'schoolDetail',
+        'schoolDetail.code = school.code',
+      )
+      // 加载 majorGroup 关系
+      .leftJoinAndSelect('ep.majorGroup', 'majorGroup')
+      // 加载 major_scores（复杂 JOIN 条件）
+      .leftJoin(
+        'major_scores',
+        'ms',
+        `"ep"."school_code" = "ms"."school_code"::varchar
          AND "ep"."province" = "ms"."province"::varchar
          AND "ep"."batch" = "ms"."batch"::varchar
          AND "ep"."subject_selection_mode" = "ms"."subject_selection_mode"::varchar
@@ -462,37 +473,8 @@ export class EnrollPlanService {
                AND array_length("ep"."sub_level2_major_ids", 1) > 0 
                AND array_length("ms"."sub_level2_major_ids", 1) > 0)
             ))
-         )
-         ${
-           hasScoreRangeFilter
-             ? 'AND "ms"."min_score" IS NOT NULL AND "ms"."min_score" BETWEEN :minScore AND :maxScore'
-             : ''
-         }`;
-
-    const majorScoresJoinParams: Record<string, any> = { majorId };
-    if (hasScoreRangeFilter) {
-      majorScoresJoinParams.minScore = minScore;
-      majorScoresJoinParams.maxScore = maxScore;
-    }
-
-    const queryBuilder = this.enrollmentPlanRepository
-      .createQueryBuilder('ep')
-      // 加载 school 关系
-      .leftJoinAndSelect('ep.school', 'school')
-      // 加载 schoolDetail（通过 school.code 关联）
-      .leftJoinAndSelect(
-        'school_details',
-        'schoolDetail',
-        'schoolDetail.code = school.code',
-      )
-      // 加载 majorGroup 关系
-      .leftJoinAndSelect('ep.majorGroup', 'majorGroup')
-      // 加载 major_scores（复杂 JOIN 条件）
-      .leftJoin(
-        'major_scores',
-        'ms',
-        majorScoresJoinCondition,
-        majorScoresJoinParams,
+         )`,
+        { majorId },
       )
       // 只选择最终 DTO 需要的字段（减少数据传输量）
       .addSelect('"ms"."id"', 'ms_id') // 用于去重
@@ -562,46 +544,6 @@ export class EnrollPlanService {
           OR ep.secondary_subjects IS NULL
           OR ep.secondary_subjects = ARRAY[]::varchar[]
         )`,
-      );
-    }
-
-    // 分数段筛选（可选）：
-    // - 有分数：要求存在 major_scores 且 min_score 在区间内
-    // - 无分数：要求该招生计划完全没有对应 major_scores（仍返回，但会被单独分组到列表末尾）
-    // 注意：这里不改变返回结构，只做过滤与排序分组
-    if (hasScoreRangeFilter) {
-      queryBuilder.andWhere(
-        `(
-          EXISTS (
-            SELECT 1
-            FROM major_scores ms_range
-            WHERE
-                "ep"."school_code" = "ms_range"."school_code"::varchar
-              AND "ep"."province" = "ms_range"."province"::varchar
-              AND "ep"."batch" = "ms_range"."batch"::varchar
-              AND "ep"."subject_selection_mode" = "ms_range"."subject_selection_mode"::varchar
-              AND "ep"."enrollment_major" = "ms_range"."enrollment_major"
-              AND "ep"."enrollment_type" = "ms_range"."enrollment_type"
-              AND "ep"."key_words" = "ms_range"."key_words"
-             
-              AND "ms_range"."min_score" IS NOT NULL
-              AND "ms_range"."min_score" BETWEEN :minScore AND :maxScore
-          )
-          OR NOT EXISTS (
-            SELECT 1
-            FROM major_scores ms_any
-            WHERE
-                "ep"."school_code" = "ms_any"."school_code"::varchar
-              AND "ep"."province" = "ms_any"."province"::varchar
-              AND "ep"."batch" = "ms_any"."batch"::varchar
-              AND "ep"."subject_selection_mode" = "ms_any"."subject_selection_mode"::varchar
-              AND "ep"."enrollment_major" = "ms_any"."enrollment_major"
-              AND "ep"."enrollment_type" = "ms_any"."enrollment_type"
-              AND "ep"."key_words" = "ms_any"."key_words"
-             
-          )
-        )`,
-        { minScore, maxScore, majorId },
       );
     }
 
@@ -865,25 +807,66 @@ export class EnrollPlanService {
       };
     });
 
-    // 分数段筛选启用时：把“无分数的院校”放到结果列表末尾（单独成组）
-    // 不修改返回结构，只改变排序分组
-    const finalResults = hasScoreRangeFilter
+    // 分数段分组：返回两个数组（满足分数段 / 不满足分数段）
+    // 同一学校如果同时存在满足与不满足的招生计划，会在两个数组中各出现一次（plans 会被分别过滤）
+    const hasScoreRangeGroup =
+      minScore !== undefined &&
+      maxScore !== undefined &&
+      Number.isFinite(minScore) &&
+      Number.isFinite(maxScore) &&
+      minScore <= maxScore;
+
+    const isPlanInRange = (
+      plan: EnrollmentPlanItemDto,
+      min: number,
+      max: number,
+    ): boolean => {
+      const scores = Array.isArray((plan as any).majorScores)
+        ? ((plan as any).majorScores as any[])
+        : [];
+      return scores.some((s) => {
+        const rawMinScore = s?.minScore;
+        const scoreNum =
+          typeof rawMinScore === 'number'
+            ? rawMinScore
+            : rawMinScore !== null && rawMinScore !== undefined
+              ? Number.parseFloat(String(rawMinScore))
+              : NaN;
+        if (!Number.isFinite(scoreNum)) return false;
+        return scoreNum >= min && scoreNum <= max;
+      });
+    };
+
+    const groupedResult = hasScoreRangeGroup
       ? (() => {
-          const withScores: EnrollmentPlanWithScoresDto[] = [];
-          const withoutScores: EnrollmentPlanWithScoresDto[] = [];
+          const inRange: EnrollmentPlanWithScoresDto[] = [];
+          const notInRange: EnrollmentPlanWithScoresDto[] = [];
+
           simplifiedResults.forEach((school) => {
-            const hasAnyScore = (school.plans || []).some(
-              (p: any) => Array.isArray(p.majorScores) && p.majorScores.length > 0,
+            const inRangePlans = (school.plans || []).filter((p) =>
+              isPlanInRange(p as any, minScore as number, maxScore as number),
             );
-            if (hasAnyScore) {
-              withScores.push(school);
-            } else {
-              withoutScores.push(school);
+            const notInRangePlans = (school.plans || []).filter(
+              (p) => !isPlanInRange(p as any, minScore as number, maxScore as number),
+            );
+
+            if (inRangePlans.length > 0) {
+              inRange.push({
+                school: school.school,
+                plans: inRangePlans,
+              } as any);
+            }
+            if (notInRangePlans.length > 0) {
+              notInRange.push({
+                school: school.school,
+                plans: notInRangePlans,
+              } as any);
             }
           });
-          return [...withScores, ...withoutScores];
+
+          return { inRange, notInRange };
         })()
-      : simplifiedResults;
+      : { inRange: simplifiedResults, notInRange: [] };
 
     const totalPlans = simplifiedResults.reduce(
       (sum, school) => sum + school.plans.length,
@@ -894,7 +877,7 @@ export class EnrollPlanService {
     );
 
     // 使用 plainToInstance 转换，使 @Transform 装饰器生效
-    return plainToInstance(EnrollmentPlanWithScoresDto, finalResults, {
+    return plainToInstance(EnrollmentPlansByScoreRangeDto, groupedResult, {
       excludeExtraneousValues: true,
     });
   }

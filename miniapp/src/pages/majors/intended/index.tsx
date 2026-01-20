@@ -1,6 +1,6 @@
 // 志愿方案页面
 import React, { useState, useEffect, useRef } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -2490,7 +2490,7 @@ export default function IntendedMajorsPage() {
                             // 传递 majorId、majorCode 和 majorName，院校列表页面可以根据 majorId 调用 API
                             const majorNameParam = encodeURIComponent(major.name || '')
                             Taro.navigateTo({
-                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}&majorName=${majorNameParam}&minScore=${scoreRange[0]}&maxScore=${scoreRange[1]}`
+                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}&majorName=${majorNameParam}`
                             })
                           }}
                           className="intended-majors-page__major-item-link"
@@ -2630,7 +2630,7 @@ export default function IntendedMajorsPage() {
               </Text>
             </View>
           </DialogHeader>
-          <View className="intended-majors-page__group-dialog-content">
+          <ScrollView className="intended-majors-page__group-dialog-content" scrollY>
             {loadingGroupInfo ? (
               <View className="intended-majors-page__group-dialog-empty">
                 <Text>加载中...</Text>
@@ -2766,7 +2766,7 @@ export default function IntendedMajorsPage() {
                 )
               })
             )}
-          </View>
+          </ScrollView>
 
           {/* 底部浮动关闭按钮：不随内容滚动 */}
           <View className="intended-majors-page__group-dialog-footer">

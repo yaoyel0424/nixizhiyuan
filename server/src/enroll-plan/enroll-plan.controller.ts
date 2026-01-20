@@ -17,7 +17,10 @@ import {
 } from '@nestjs/swagger';
 import { EnrollPlanService } from './enroll-plan.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
-import { EnrollmentPlanWithScoresDto } from './dto/enrollment-plan-with-scores.dto';
+import {
+  EnrollmentPlanWithScoresDto,
+  EnrollmentPlansByScoreRangeDto,
+} from './dto/enrollment-plan-with-scores.dto';
 import { MajorGroupInfoResponseDto } from './dto/major-group-info-response.dto';
 import { Cache } from '@/common/decorators/cache.decorator';
 /**
@@ -60,7 +63,7 @@ export class EnrollPlanController {
     status: 404,
     description: '用户不存在',
   })
-  @Cache(30)
+ 
   async getUserEnrollmentPlans(
     @CurrentUser() user: any,
     @Query('minScore') minScore?: string,
@@ -117,14 +120,14 @@ export class EnrollPlanController {
   @ApiQuery({
     name: 'minScore',
     required: false,
-    description: '最低分（用于按分数段筛选院校）',
+    description: '最低分（用于按分数段分组）',
     type: Number,
     example: 500,
   })
   @ApiQuery({
     name: 'maxScore',
     required: false,
-    description: '最高分（用于按分数段筛选院校）',
+    description: '最高分（用于按分数段分组）',
     type: Number,
     example: 600,
   })
@@ -137,7 +140,7 @@ export class EnrollPlanController {
   @ApiResponse({
     status: 200,
     description: '查询成功',
-    type: [EnrollmentPlanWithScoresDto],
+    type: EnrollmentPlansByScoreRangeDto,
   })
   @ApiResponse({
     status: 404,
@@ -148,10 +151,9 @@ export class EnrollPlanController {
     @CurrentUser() user: any,
     @Query('minScore') minScore?: string,
     @Query('maxScore') maxScore?: string,
-  ): Promise<EnrollmentPlanWithScoresDto[]> {
+  ): Promise<EnrollmentPlansByScoreRangeDto> {
     const year = process.env.CURRENT_YEAR || '2025';
 
-    // 分数段筛选（可选）：两者都提供且为有效数字时才启用
     const parsedMinScore =
       minScore !== undefined && minScore !== null && String(minScore).trim() !== ''
         ? Number(minScore)

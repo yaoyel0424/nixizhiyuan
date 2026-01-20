@@ -128,28 +128,11 @@ export interface EnrollmentPlanWithScores {
 /**
  * 根据专业ID查询招生计划和分数信息
  * @param majorId 专业ID
- * @param minScore 最低分（可选）
- * @param maxScore 最高分（可选）
  * @returns 按学校分组的招生计划列表
  */
-export const getEnrollmentPlansByMajorId = async (
-  majorId: number,
-  minScore?: number,
-  maxScore?: number,
-): Promise<EnrollmentPlanWithScores[]> => {
+export const getEnrollmentPlansByMajorId = async (majorId: number): Promise<EnrollmentPlanWithScores[]> => {
   try {
-    const params: Record<string, any> = {}
-    if (minScore !== undefined && minScore !== null) {
-      params.minScore = minScore
-    }
-    if (maxScore !== undefined && maxScore !== null) {
-      params.maxScore = maxScore
-    }
-
-    const response: any = await get<EnrollmentPlanWithScores[]>(
-      `/enroll-plan/major/${majorId}/scores`,
-      params,
-    )
+    const response: any = await get<EnrollmentPlanWithScores[]>(`/enroll-plan/major/${majorId}/scores`)
     
     // 响应拦截器可能返回原始数据或 BaseResponse 格式
     if (response && typeof response === 'object') {
