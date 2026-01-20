@@ -159,8 +159,9 @@
   flex: 1;
   min-height: 0;
   padding: 32rpx;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .all-majors-page__question-card {
@@ -168,6 +169,12 @@
   width: calc(100% + 64rpx);
   margin-left: -32rpx;
   margin-right: -32rpx;
+
+  // 占满剩余高度：不随内容变动
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 
   // 内部间距收紧
   padding: 32rpx;
@@ -200,15 +207,19 @@
 .all-majors-page__question-options {
   display: flex;
   flex-direction: column;
-  // 内部组件间距收紧
-  gap: 8rpx;
+  // option 间距扩大一点
+  gap: 24rpx;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .all-majors-page__option {
   width: 100%;
   // 内部组件间距收紧
   // 覆盖 ui-button 默认 padding，进一步收紧
-  padding: 18rpx 20rpx !important;
+  padding: 22rpx 22rpx !important;
   text-align: left;
   border-radius: 16rpx;
   transition: all 0.3s;
@@ -240,9 +251,12 @@
 }
 
 .all-majors-page__option-text {
-  font-size: 26rpx;
+  display: block;
+  font-size: 30rpx;
   line-height: 1.45;
+  white-space: normal;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .all-majors-page__option-additional {
@@ -251,7 +265,7 @@
 
 .all-majors-page__option-additional-line {
   display: block;
-  font-size: 22rpx;
+  font-size: 24rpx;
   line-height: 1.35;
   color: #6b7280;
   white-space: normal;
