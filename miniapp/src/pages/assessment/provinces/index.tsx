@@ -388,12 +388,19 @@ export default function ProvincesPage() {
                 variant={selectedProvince && favoriteProvinceIds.has(selectedProvince.id) ? 'outline' : 'default'}
                 onClick={() => {
                   if (selectedProvince) {
+                    // 已选择时：仅关闭弹窗，不取消选择
+                    if (favoriteProvinceIds.has(selectedProvince.id)) {
+                      setShowDetail(false)
+                      return
+                    }
+
+                    // 未选择时：选择省份并关闭弹窗
                     toggleProvince(selectedProvince.id)
                     setShowDetail(false)
                   }
                 }}
               >
-                {selectedProvince && favoriteProvinceIds.has(selectedProvince.id) ? '取消选择' : '选择此省份'}
+                {selectedProvince && favoriteProvinceIds.has(selectedProvince.id) ? '关闭' : '选择此省份'}
               </Button>
             </DialogFooter>
           </DialogContent>
