@@ -828,26 +828,17 @@ export default function IntendedMajorsSchoolsPage() {
                 continue
               }
               
-              // 匹配备注（如果招生专业已匹配，备注匹配要求可以放宽）
-              // 如果目标备注和choice备注都存在，尝试匹配（允许部分匹配或都为空）
-              // 如果都不存在，认为匹配
-              // 如果只有一个存在，也认为匹配（因为备注可能不完整）
+              // 匹配备注（必须精确匹配）
               let isRemarkMatch = false
               if (!targetRemark && !choiceRemark) {
-                // 都不存在，认为匹配
                 isRemarkMatch = true
               } else if (targetRemark && choiceRemark) {
-                // 都存在，尝试精确匹配或部分匹配
-                const targetRemarkTrim = targetRemark.trim()
-                const choiceRemarkTrim = choiceRemark.trim()
                 isRemarkMatch = (
-                  choiceRemarkTrim === targetRemarkTrim ||
-                  choiceRemarkTrim.includes(targetRemarkTrim) ||
-                  targetRemarkTrim.includes(choiceRemarkTrim)
+                  choiceRemark === targetRemark ||
+                  choiceRemark.trim() === targetRemark.trim()
                 )
               } else {
-                // 只有一个存在，也认为匹配（备注可能不完整）
-                isRemarkMatch = true
+                isRemarkMatch = false
               }
               
               // 当专业组匹配、招生专业匹配、且备注匹配时，认为已加入志愿
@@ -1140,13 +1131,28 @@ export default function IntendedMajorsSchoolsPage() {
                               if (volunteer) {
                                 for (const majorGroup of volunteer.majorGroups) {
                                   for (const choice of majorGroup.choices) {
-                                    // 匹配条件：学校代码、专业组ID、招生专业
+                                    // 匹配条件：学校代码、专业组ID、招生专业、备注（精确匹配）
                                     const isSchoolMatch = choice.schoolCode === schoolApiData.school.code
                                     const isGroupMatch = (choice.majorGroupId === plan.majorGroupId) || 
                                                          (plan.majorGroupId && majorGroup.majorGroup.mgId === plan.majorGroupId)
                                     const isMajorMatch = choice.enrollmentMajor === plan.enrollmentMajor
                                     
-                                    if (isSchoolMatch && isGroupMatch && isMajorMatch) {
+                                    // 备注匹配（必须精确匹配）
+                                    let isRemarkMatch = false
+                                    const targetRemark = plan.remark || null
+                                    const choiceRemark = choice.remark || null
+                                    if (!targetRemark && !choiceRemark) {
+                                      isRemarkMatch = true
+                                    } else if (targetRemark && choiceRemark) {
+                                      isRemarkMatch = (
+                                        choiceRemark === targetRemark ||
+                                        choiceRemark.trim() === targetRemark.trim()
+                                      )
+                                    } else {
+                                      isRemarkMatch = false
+                                    }
+                                    
+                                    if (isSchoolMatch && isGroupMatch && isMajorMatch && isRemarkMatch) {
                                       isPlanInWishlist = true
                                       planChoiceId = choice.id
                                       break
