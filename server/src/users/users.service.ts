@@ -329,6 +329,7 @@ export class UsersService {
         majorFavoritesCount,
         provinceFavoritesCount,
         choicesCount,
+        preferredSubjects: user.preferredSubjects || null,
       },
       {
         excludeExtraneousValues: true,

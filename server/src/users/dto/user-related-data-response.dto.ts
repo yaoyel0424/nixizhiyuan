@@ -15,5 +15,8 @@ export class UserRelatedDataResponseDto {
 
   @Expose()
   choicesCount: number;
+
+  @Expose()
+  preferredSubjects?: string;
 }
 

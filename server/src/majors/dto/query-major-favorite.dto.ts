@@ -36,7 +36,7 @@ export class QueryMajorFavoriteDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(APP_CONSTANTS.MAX_LIMIT)
+  @Max(1000)
   limit?: number = 1000;
 }
 
