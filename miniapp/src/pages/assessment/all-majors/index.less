@@ -217,25 +217,61 @@
 
 .all-majors-page__option {
   width: 100%;
-  // 内部组件间距收紧
-  // 覆盖 ui-button 默认 padding，进一步收紧
-  padding: 22rpx 22rpx !important;
+  padding: 22rpx;
   text-align: left;
   border-radius: 16rpx;
   transition: all 0.3s;
+  cursor: pointer;
+  // 使用 flex 布局，支持多行文本
+  display: flex;
+  align-items: flex-start;
+  // 允许文本换行
+  white-space: normal;
+  // 高度自适应，无限制
   min-height: auto;
   height: auto;
+  max-height: none;
+  // 默认样式（未选中状态）
+  background: #fff;
+  border: 2rpx solid #e5e7eb;
+  color: #333;
+  
+  // 点击效果
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  
+  // 悬停效果（H5端）
+  @media (hover: hover) {
+    &:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+    }
+  }
 }
 
 .all-majors-page__option--selected {
-  background: #FF7F50;
-  color: #fff;
-  border-color: #FF7F50;
+  background: #FF7F50 !important;
+  color: #fff !important;
+  border-color: #FF7F50 !important;
+  
+  // 选中状态的点击效果
+  &:active {
+    background: #ff6a3d !important;
+    transform: scale(0.98);
+  }
+  
+  @media (hover: hover) {
+    &:hover {
+      background: #ff6a3d !important;
+    }
+  }
 }
 
 .all-majors-page__option--previous {
-  border-color: rgba(255, 127, 80, 0.5);
-  background: rgba(255, 127, 80, 0.05);
+  border-color: rgba(255, 127, 80, 0.5) !important;
+  background: rgba(255, 127, 80, 0.05) !important;
 }
 
 .all-majors-page__option-content {

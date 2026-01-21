@@ -385,4 +385,5 @@ export interface UserRelatedDataResponse {
   majorFavoritesCount: number
   provinceFavoritesCount: number
   choicesCount: number
+  preferredSubjects?: string | null
 }

@@ -11,7 +11,7 @@ import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredMo
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getStorage, setStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
-import { getCurrentUserDetail } from '@/services/user'
+import { getCurrentUserDetail, getUserRelatedDataCount } from '@/services/user'
 import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo } from '@/services/enroll-plan'
 import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, ChoiceResponse, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
@@ -1221,14 +1221,16 @@ export default function IntendedMajorsPage() {
       setCurrentScore(score)
       
       // 不在这里获取省控线，让 useEffect 统一处理，避免重复调用
-      // 先设置默认的分数区间，等省控线获取后再更新
-      const savedRange = await getStorage<[number, number]>('scoreRange')
-      if (savedRange && Array.isArray(savedRange) && savedRange.length === 2) {
-        setScoreRange(savedRange)
-      } else {
-        const minScore = Math.max(0, score - 50)
-        const maxScore = Math.min(750, score + 50)
-        setScoreRange([minScore, maxScore])
+      // 根据新的高考分数计算初始分数区间（下30到上20）
+      // 不再使用保存的旧区间，因为高考分数可能已经变化
+      const minScore = Math.max(0, score - 30)
+      const maxScore = Math.min(750, score + 20)
+      setScoreRange([minScore, maxScore])
+      // 保存新的分数区间
+      try {
+        await setStorage('scoreRange', [minScore, maxScore])
+      } catch (error) {
+        console.error('保存初始分数区间失败:', error)
       }
       setScoreRangeReady(true)
     } catch (error) {
@@ -1303,14 +1305,16 @@ export default function IntendedMajorsPage() {
       }
       
       // 不在这里获取省控线，让 useEffect 统一处理，避免重复调用
-      // 先设置默认的分数区间，等省控线获取后再更新
-      const savedRange = await getStorage<[number, number]>('scoreRange')
-      if (savedRange && Array.isArray(savedRange) && savedRange.length === 2) {
-        setScoreRange(savedRange)
-      } else {
-        const minScore = Math.max(0, score - 50)
-        const maxScore = Math.min(750, score + 50)
-        setScoreRange([minScore, maxScore])
+      // 根据新的高考分数计算初始分数区间（下30到上20）
+      // 如果分数发生变化，重新计算范围，不再使用保存的旧区间
+      const minScore = Math.max(0, score - 30)
+      const maxScore = Math.min(750, score + 20)
+      setScoreRange([minScore, maxScore])
+      // 保存新的分数区间
+      try {
+        await setStorage('scoreRange', [minScore, maxScore])
+      } catch (error) {
+        console.error('保存初始分数区间失败:', error)
       }
       setScoreRangeReady(true)
     } catch (error) {
@@ -1332,7 +1336,7 @@ export default function IntendedMajorsPage() {
     const wasOpen = prevShowExamInfoDialogRef.current
     prevShowExamInfoDialogRef.current = showExamInfoDialog
 
-    // 仅当对话框从“打开”变为“关闭”时触发刷新（避免初始渲染重复请求）
+    // 仅当对话框从"打开"变为"关闭"时触发刷新（避免初始渲染重复请求）
     if (wasOpen && !showExamInfoDialog && activeTab === '专业赛道') {
       const refreshOnClose = async () => {
         try {
@@ -1341,6 +1345,21 @@ export default function IntendedMajorsPage() {
           
           // 更新 examInfo 状态（确保状态是最新的）
           setExamInfo(latestInfo)
+          
+          // 检查用户是否填写了高考信息（preferredSubjects）
+          // 只有在未填写时才显示友好提示（已填写的用户不需要提示）
+          const hasPreferredSubjects = latestInfo?.preferredSubjects && 
+                                      latestInfo.preferredSubjects !== null && 
+                                      latestInfo.preferredSubjects !== ''
+          
+          if (!hasPreferredSubjects) {
+            Taro.showToast({
+              title: '温馨提示：未填写高考信息将无法推荐院校，建议完善信息以获得更好的推荐体验',
+              icon: 'none',
+              duration: 3000,
+              mask: false
+            })
+          }
           
           // 刷新招生计划数据（无论是否有变化，都刷新一次以确保数据同步）
           console.log('高考信息对话框关闭，刷新招生计划数据')
@@ -1402,6 +1421,19 @@ export default function IntendedMajorsPage() {
       
       const refreshOnShow = async () => {
         try {
+          // 调用 related-data-count 接口检查用户是否填写了高考信息
+          try {
+            const relatedData = await getUserRelatedDataCount()
+            // 如果 preferredSubjects 为空或 null，自动打开高考信息对话框
+            if (!relatedData.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
+              console.log('页面显示时检测到用户未填写高考信息，自动打开高考信息对话框')
+              setShowExamInfoDialog(true)
+            }
+          } catch (error) {
+            console.error('获取用户相关数据统计失败:', error)
+            // 如果接口调用失败，不阻止页面正常加载
+          }
+          
           // 优先从本地存储获取高考信息，避免频繁调用可能有问题的接口
           const savedProvince = await getStorage<string>('examProvince')
           const savedFirstChoice = await getStorage<string>('examFirstChoice')
@@ -1496,7 +1528,7 @@ export default function IntendedMajorsPage() {
   // 使用 ref 防止同一次进入页面时重复拉取用户详情
   const hasFetchedUserDetailOnceRef = useRef(false)
 
-  // 院校探索页面加载时获取用户详情
+  // 院校探索页面加载时获取用户详情和检查高考信息
   useEffect(() => {
     // 使用 activeTab 判断是否为院校探索页面
     if (activeTab !== '意向志愿' && !fetchingUserDetailRef.current && !hasFetchedUserDetailOnceRef.current) {
@@ -1514,6 +1546,20 @@ export default function IntendedMajorsPage() {
             // 这里可以根据需要处理用户详情数据
             // 例如更新某些状态或执行其他操作
           }
+          
+          // 调用 related-data-count 接口检查用户是否填写了高考信息
+          try {
+            const relatedData = await getUserRelatedDataCount()
+            // 如果 preferredSubjects 为空或 null，自动打开高考信息对话框
+            if (!relatedData.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
+              console.log('检测到用户未填写高考信息，自动打开高考信息对话框')
+              setShowExamInfoDialog(true)
+            }
+          } catch (error) {
+            console.error('获取用户相关数据统计失败:', error)
+            // 如果接口调用失败，不阻止页面正常加载
+          }
+          
           // 标记已获取，避免重复请求
           hasFetchedUserDetailOnceRef.current = true
         } catch (error) {
@@ -1549,11 +1595,78 @@ export default function IntendedMajorsPage() {
     }
   }, [activeTab, wishlistItems.length])
 
+  // 当高考分数变化时，自动调整分数区间范围，确保在有效范围内（下30到上20）
+  useEffect(() => {
+    if (activeTab === '专业赛道' && scoreRangeReady) {
+      const minLimit = Math.max(currentScore - 30, minControlScore || 0)
+      const maxLimit = Math.min(currentScore + 20, 750)
+      
+      // 使用函数式更新，确保使用最新的 scoreRange 值
+      setScoreRange(prevRange => {
+        // 计算新的理想范围
+        const idealMin = minLimit
+        const idealMax = maxLimit
+        
+        // 如果当前范围不在理想范围内，则重置为理想范围
+        // 或者如果当前范围的最小值或最大值不在有效范围内，也需要调整
+        let newMin = prevRange[0]
+        let newMax = prevRange[1]
+        let needUpdate = false
+        
+        // 如果最小值小于理想最小值，或者最大值大于理想最大值，需要调整
+        if (prevRange[0] < idealMin || prevRange[1] > idealMax) {
+          // 如果整个范围都不在理想范围内，直接重置为理想范围
+          if (prevRange[0] < idealMin && prevRange[1] > idealMax) {
+            newMin = idealMin
+            newMax = idealMax
+            needUpdate = true
+          } else {
+            // 部分超出，调整超出部分
+            if (prevRange[0] < idealMin) {
+              newMin = idealMin
+              needUpdate = true
+            }
+            if (prevRange[1] > idealMax) {
+              newMax = idealMax
+              needUpdate = true
+            }
+          }
+        }
+        
+        // 确保最小值不超过最大值
+        if (newMin > newMax) {
+          newMin = idealMin
+          newMax = idealMax
+          needUpdate = true
+        }
+        
+        if (needUpdate && newMin <= newMax) {
+          const adjustedRange: [number, number] = [newMin, newMax]
+          // 保存调整后的范围
+          setStorage('scoreRange', adjustedRange).catch(error => {
+            console.error('保存调整后的分数区间失败:', error)
+          })
+          // 刷新院校探索数据
+          refreshEnrollmentPlans(adjustedRange)
+          return adjustedRange
+        }
+        
+        return prevRange
+      })
+    }
+  }, [currentScore, minControlScore, activeTab, scoreRangeReady])
+
   // 处理分数区间变化
   const handleScoreRangeChange = async (newRange: [number, number]) => {
-    // 确保最小值不低于省控线
-    const minValue = Math.max(newRange[0], minControlScore || 0)
-    const finalRange: [number, number] = [minValue, newRange[1]]
+    // 计算基于当前高考分数的有效范围
+    const minLimit = Math.max(currentScore - 30, minControlScore || 0)
+    const maxLimit = Math.min(currentScore + 20, 750)
+    
+    // 确保最小值不低于省控线，且不小于有效范围的最小值
+    const minValue = Math.max(newRange[0], minLimit)
+    // 确保最大值不超过有效范围的最大值
+    const maxValue = Math.min(newRange[1], maxLimit)
+    const finalRange: [number, number] = [minValue, maxValue]
     
     if (finalRange[0] <= finalRange[1]) {
       setScoreRange(finalRange)
@@ -2034,8 +2147,8 @@ export default function IntendedMajorsPage() {
             </Text>
             <View className="intended-majors-page__slider-container">
               <RangeSlider
-                min={minControlScore || 0}
-                max={750}
+                min={Math.max(currentScore - 30, minControlScore || 0)}
+                max={Math.min(currentScore + 20, 750)}
                 value={scoreRange}
                 onChange={handleScoreRangeChange}
                 step={1}
