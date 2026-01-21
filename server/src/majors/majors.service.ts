@@ -158,7 +158,7 @@ export class MajorsService {
       totalPages: number;
     };
   }> {
-    const { page = 1, limit = 10 } = queryDto;
+    const { page = 1, limit = 1000 } = queryDto;
     const skip = (page - 1) * limit;
 
     // 获取用户信息
