@@ -1,5 +1,5 @@
 // 志愿方案页面
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
@@ -104,12 +104,18 @@ function ExamInfoDialog({
   // 根据省份变化，重置科目选择
   useEffect(() => {
     if (currentProvinceConfig) {
+      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
+      
       // 如果省份配置中没有首选科目要求，清空首选
       if (!currentProvinceConfig.primarySubjects || currentProvinceConfig.primarySubjects.count === 0) {
         setFirstChoice(null)
       } else {
         // 如果有首选科目要求，但当前选择不在可选列表中，清空
         if (firstChoice && !currentProvinceConfig.primarySubjects.subjects.includes(firstChoice)) {
+          setFirstChoice(null)
+        }
+        // 如果不是3+3模式，且首选是"综合"，清空（非3+3模式不能选择"综合"）
+        if (!is3Plus3Mode && firstChoice === '综合') {
           setFirstChoice(null)
         }
       }
@@ -224,6 +230,17 @@ function ExamInfoDialog({
   // 处理首选科目选择
   const handlePrimarySubjectChange = (subject: string) => {
     if (currentProvinceConfig?.primarySubjects) {
+      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
+      // 如果不是3+3模式，不能选择"综合"
+      if (!is3Plus3Mode && subject === '综合') {
+        Taro.showToast({
+          title: '非3+3模式不能选择"综合"',
+          icon: 'none',
+          duration: 2000
+        })
+        return
+      }
+      
       if (currentProvinceConfig.primarySubjects.count === 1) {
         // 单选模式
         setFirstChoice(subject === firstChoice ? null : subject)
@@ -365,12 +382,69 @@ function ExamInfoDialog({
     }
   }
 
+  // 判断是否可以提交
+  const canConfirm = useMemo(() => {
+    const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
+    
+    // 如果是3+3模式（首选科目是"综合"），次选科目必须选择三科
+    if (is3Plus3Mode) {
+      return optionalSubjects.size === 3
+    }
+    
+    // 如果不是3+3模式，必须要有首选科目，且不能是"综合"
+    if (!is3Plus3Mode) {
+      // 必须有首选科目
+      if (!firstChoice) {
+        return false
+      }
+      // 首选科目不能是"综合"
+      if (firstChoice === '综合') {
+        return false
+      }
+    }
+    
+    return true
+  }, [selectedProvince, optionalSubjects.size, firstChoice])
+
   const handleConfirm = async () => {
     try {
       setLoading(true)
       
       // 判断是否为3+3模式省份
       const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
+      
+      // 验证：如果首选科目是"综合"，次选科目必须选择三科
+      if (is3Plus3Mode && optionalSubjects.size !== 3) {
+        Taro.showToast({
+          title: '次选科目必须选择三科',
+          icon: 'none',
+          duration: 2000
+        })
+        setLoading(false)
+        return
+      }
+      
+      // 验证：如果不是3+3模式，必须要有首选科目，且不能是"综合"
+      if (!is3Plus3Mode) {
+        if (!firstChoice) {
+          Taro.showToast({
+            title: '请选择首选科目',
+            icon: 'none',
+            duration: 2000
+          })
+          setLoading(false)
+          return
+        }
+        if (firstChoice === '综合') {
+          Taro.showToast({
+            title: '非3+3模式不能选择"综合"',
+            icon: 'none',
+            duration: 2000
+          })
+          setLoading(false)
+          return
+        }
+      }
       
       // 准备更新数据
       const updateData: ExamInfo = {
@@ -618,9 +692,24 @@ function ExamInfoDialog({
             onClick={handleConfirm}
             className="exam-info-dialog__confirm-button"
             size="lg"
+            disabled={!canConfirm || loading}
           >
             确认
           </Button>
+          {/* 提示信息：如果首选科目是"综合"但次选科目未选择三科 */}
+          {PROVINCES_3_3_MODE.includes(selectedProvince) && optionalSubjects.size !== 3 && (
+            <View className="exam-info-dialog__tip">
+              <Text className="exam-info-dialog__tip-icon">⚠️</Text>
+              <Text className="exam-info-dialog__tip-text">次选科目必须选择三科</Text>
+            </View>
+          )}
+          {/* 提示信息：如果不是3+3模式，必须选择首选科目 */}
+          {!PROVINCES_3_3_MODE.includes(selectedProvince) && !firstChoice && currentProvinceConfig?.primarySubjects && currentProvinceConfig.primarySubjects.count > 0 && (
+            <View className="exam-info-dialog__tip">
+              <Text className="exam-info-dialog__tip-icon">⚠️</Text>
+              <Text className="exam-info-dialog__tip-text">请选择首选科目</Text>
+            </View>
+          )}
         </View>
       </DialogContent>
 
