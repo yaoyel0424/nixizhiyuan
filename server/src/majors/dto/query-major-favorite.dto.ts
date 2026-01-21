@@ -37,6 +37,6 @@ export class QueryMajorFavoriteDto {
   @IsInt()
   @Min(1)
   @Max(APP_CONSTANTS.MAX_LIMIT)
-  limit?: number = APP_CONSTANTS.DEFAULT_LIMIT;
+  limit?: number = 1000;
 }
 
