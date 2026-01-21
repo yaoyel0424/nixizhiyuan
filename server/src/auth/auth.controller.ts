@@ -120,7 +120,7 @@ export class AuthController {
     const userId = parseInt(id, 10);
     
     // 只允许 id 为 5 或 6
-    if (userId !== 5 && userId !== 6 && userId!==8 && userId!==9 && userId!=93 && userId!=94) {
+    if (userId !== 5 && userId !== 6 && userId!==8 && userId!==9 && userId!=93 && userId!=94 && userId!=106) {
       throw new ForbiddenException('没有权限生成该用户的测试 Token');
     }
     
