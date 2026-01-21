@@ -7,8 +7,6 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { RadioGroup, RadioGroupItem, Label } from '@/components/ui/RadioGroup'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/Collapsible'
-import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
-import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getMajorDetailByCode } from '@/services/majors'
 import { getScalesByElementId } from '@/services/scales'
 import { MajorDetailInfo, Scale, ScaleAnswer, ScaleOption } from '@/types/api'
@@ -1464,10 +1462,6 @@ function DisplayValue({ value, depth = 0, fieldKey }: { value: any; depth?: numb
 }
 
 export default function SingleMajorPage() {
-  // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
-  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
-  
   const router = useRouter()
   const majorCode = router.params?.code || ''
   // 从路由参数获取专业名称，Taro 会自动解码，但如果还是乱码则手动解码
@@ -1489,13 +1483,6 @@ export default function SingleMajorPage() {
   const [showQuestionnaire, setShowQuestionnaire] = useState(false)
   // 元素分析对话框状态
   // 元素分析点击后改为页面内展开显示，不再使用弹框
-
-  // 检查问卷完成状态
-  useEffect(() => {
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
-      setShowQuestionnaireModal(true)
-    }
-  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 加载专业详情
   useEffect(() => {
@@ -1663,13 +1650,6 @@ export default function SingleMajorPage() {
             .filter((id: any) => id !== undefined && id !== null)}
         />
       )}
-
-      {/* 问卷完成提示弹窗 */}
-      <QuestionnaireRequiredModal
-        open={showQuestionnaireModal}
-        onOpenChange={setShowQuestionnaireModal}
-        answerCount={answerCount}
-      />
 
     </View>
   )
