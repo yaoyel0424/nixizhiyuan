@@ -7,8 +7,6 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
-import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
-import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
@@ -149,10 +147,6 @@ const isScienceMajor = (code: string): boolean => {
 }
 
 export default function PopularMajorsPage() {
-  // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
-  const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
-  
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedCategory, setSelectedCategory] = useState<'ben' | 'gz_ben' | 'zhuan'>('ben')
   const [loading, setLoading] = useState(true)
@@ -172,13 +166,6 @@ export default function PopularMajorsPage() {
   const [selectedElementType, setSelectedElementType] = useState<string | null>(null)
   const [selectedElementMajorName, setSelectedElementMajorName] = useState<string>('')
   const [selectedElementAnalyses, setSelectedElementAnalyses] = useState<MajorElementAnalysis[] | null>(null)
-
-  // 检查问卷完成状态
-  useEffect(() => {
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
-      setShowQuestionnaireModal(true)
-    }
-  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 将 API 响应数据转换为页面使用的格式
   const transformMajorData = (apiData: PopularMajorResponse): Major => {
@@ -847,12 +834,6 @@ export default function PopularMajorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 问卷完成提示弹窗 */}
-      <QuestionnaireRequiredModal
-        open={showQuestionnaireModal}
-        onOpenChange={setShowQuestionnaireModal}
-        answerCount={answerCount}
-      />
     </PageContainer>
   )
 }
