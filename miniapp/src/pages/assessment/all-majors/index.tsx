@@ -669,10 +669,9 @@ export default function AllMajorsPage() {
                 const additionalInfoText = additionalInfoLines.join('；')
 
                 return (
-                  <Button
+                  <View
                     key={option.id}
                     onClick={() => handleAnswer(option.optionValue)}
-                    variant={isSelected ? 'default' : 'outline'}
                     className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${wasPreviousAnswer ? 'all-majors-page__option--previous' : ''}`}
                   >
                     <View className="all-majors-page__option-content">
@@ -688,7 +687,7 @@ export default function AllMajorsPage() {
                         <Text className="all-majors-page__option-previous-badge">上次选择</Text>
                       )}
                     </View>
-                  </Button>
+                  </View>
                 )
               })}
             </View>
