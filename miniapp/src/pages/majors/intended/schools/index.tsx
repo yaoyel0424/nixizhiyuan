@@ -905,7 +905,8 @@ export default function IntendedMajorsSchoolsPage() {
         subjectSelectionMode: matchedPlan.subjectSelectionMode || matchedPlan.majorGroup?.subjectSelectionMode || null,
         studyPeriod: plan.studyPeriod || matchedPlan.studyPeriod || null,
         enrollmentQuota: plan.enrollmentQuota || matchedPlan.enrollmentQuota || null,
-        remark: plan.remark || matchedPlan.remark || null,
+        // 优先使用当前 plan 的 remark，即使为空字符串也要使用（不能回退到 matchedPlan.remark）
+        remark: plan.remark !== undefined && plan.remark !== null ? plan.remark : (matchedPlan?.remark || null),
         tuitionFee: matchedPlan.tuitionFee || null,
         curUnit: matchedPlan.curUnit || null,
         majorScores: matchedPlan.majorScores?.map(score => ({
