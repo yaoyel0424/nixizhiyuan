@@ -1408,6 +1408,17 @@ export default function IntendedMajorsPage() {
         console.error('从 API 获取高考信息失败:', error)
         // 如果 API 失败，继续使用本地存储的数据
       }
+      
+      // 初始化意向省份数量（用于检测变化）
+      try {
+        const relatedData = await getUserRelatedDataCount()
+        if (relatedData?.provinceFavoritesCount !== undefined) {
+          await setStorage('previousProvinceFavoritesCount', relatedData.provinceFavoritesCount)
+        }
+      } catch (error) {
+        console.error('初始化意向省份数量失败:', error)
+        // 如果失败，不影响页面正常加载
+      }
     }
     loadData()
   }, [])
@@ -1504,9 +1515,10 @@ export default function IntendedMajorsPage() {
       
       const refreshOnShow = async () => {
         try {
-          // 调用 related-data-count 接口检查用户是否填写了高考信息
+          // 调用 related-data-count 接口检查用户是否填写了高考信息和意向省份数量
+          let relatedData: any = null
           try {
-            const relatedData = await getUserRelatedDataCount()
+            relatedData = await getUserRelatedDataCount()
             // 如果 preferredSubjects 为空或 null，自动打开高考信息对话框
             if (!relatedData.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
               console.log('页面显示时检测到用户未填写高考信息，自动打开高考信息对话框')
@@ -1515,6 +1527,20 @@ export default function IntendedMajorsPage() {
           } catch (error) {
             console.error('获取用户相关数据统计失败:', error)
             // 如果接口调用失败，不阻止页面正常加载
+          }
+          
+          // 检查意向省份（收藏省份）数量是否变化
+          const previousProvinceFavoritesCount = await getStorage<number>('previousProvinceFavoritesCount')
+          const currentProvinceFavoritesCount = relatedData?.provinceFavoritesCount || 0
+          const provinceFavoritesCountChanged = previousProvinceFavoritesCount !== currentProvinceFavoritesCount
+          
+          // 如果意向省份数量变化，更新本地存储
+          if (provinceFavoritesCountChanged) {
+            await setStorage('previousProvinceFavoritesCount', currentProvinceFavoritesCount)
+            console.log('页面显示时检测到意向省份变化，刷新招生计划数据:', {
+              previousCount: previousProvinceFavoritesCount,
+              currentCount: currentProvinceFavoritesCount
+            })
           }
           
           // 优先从本地存储获取高考信息，避免频繁调用可能有问题的接口
@@ -1540,18 +1566,23 @@ export default function IntendedMajorsPage() {
           const subjectsChanged = examInfo?.preferredSubjects !== localInfo.preferredSubjects ||
                                   examInfo?.secondarySubjects !== localInfo.secondarySubjects
           
-          // 如果任何关键信息发生变化，刷新数据
-          if (provinceChanged || scoreChanged || rankChanged || subjectsChanged) {
-            console.log('页面显示时检测到高考信息变化，刷新招生计划数据:', {
+          // 如果任何关键信息发生变化（包括意向省份），刷新数据
+          if (provinceChanged || scoreChanged || rankChanged || subjectsChanged || provinceFavoritesCountChanged) {
+            console.log('页面显示时检测到信息变化，刷新招生计划数据:', {
               provinceChanged,
               scoreChanged,
               rankChanged,
               subjectsChanged,
+              provinceFavoritesCountChanged,
               oldProvince: examInfo?.province,
-              newProvince: localInfo.province
+              newProvince: localInfo.province,
+              previousProvinceFavoritesCount,
+              currentProvinceFavoritesCount
             })
             // 更新 examInfo 状态
-            setExamInfo(localInfo)
+            if (provinceChanged || scoreChanged || rankChanged || subjectsChanged) {
+              setExamInfo(localInfo)
+            }
             // 刷新招生计划数据
             await refreshEnrollmentPlans()
           }

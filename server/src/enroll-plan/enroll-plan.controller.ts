@@ -115,7 +115,7 @@ export class EnrollPlanController {
    * @returns 招生计划列表（包含学校、学校详情、专业组和分数信息）
    */
   @Get('major/:majorId/scores')
-  @Cache(60)
+  @Cache(10)
   @ApiOperation({ summary: '根据专业ID查询招生计划和分数信息' })
   @ApiQuery({
     name: 'minScore',
