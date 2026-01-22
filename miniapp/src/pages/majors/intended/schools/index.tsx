@@ -1,7 +1,7 @@
 // 院校列表页面
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useShareAppMessage } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
@@ -118,6 +118,27 @@ export default function IntendedMajorsSchoolsPage() {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null) // 选中的省份
   // 分段展示：当前已展示的院校条数
   const [visibleSchoolCount, setVisibleSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
+
+  /**
+   * 小程序分享配置
+   * 当用户点击右上角分享或使用 Button 的 openType="share" 时会触发
+   * 分享样式与个人中心的"分享给朋友"保持一致
+   */
+  useShareAppMessage(() => {
+    // 构建分享标题，包含专业名称
+    const shareTitle = majorName 
+      ? `逆袭智愿 - ${majorName} 院校列表`
+      : '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案'
+    
+    // 构建分享路径，包含当前页面的参数
+    const sharePath = `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${majorId || ''}${majorNameParam ? `&majorName=${encodeURIComponent(majorNameParam)}` : ''}${minScoreParam ? `&minScore=${minScoreParam}` : ''}${maxScoreParam ? `&maxScore=${maxScoreParam}` : ''}`
+    
+    return {
+      title: shareTitle,
+      path: sharePath,
+      imageUrl: '', // 可选：分享图片 URL
+    }
+  })
 
   // 从 inRange/notInRange 中提取并去重省份列表（用于同时筛选两段列表）
   const provinces = React.useMemo(() => {
