@@ -732,7 +732,7 @@ export default function IntendedMajorsSchoolsPage() {
     }
   }
 
-  // 判断plan是否已加入志愿（根据专业组名称和备注匹配）
+  // 判断plan是否已加入志愿（根据同院校、同省份、同批次、同专业组、名称和备注一致才匹配）
   const isPlanInWishlist = (plan: MajorGroupInfo): { isIn: boolean; choiceId?: number } => {
     if (!selectedSchoolData || !selectedGroupInfo) {
       return { isIn: false }
@@ -746,6 +746,10 @@ export default function IntendedMajorsSchoolsPage() {
     // 因为 selectedPlanData 可能是第一个 plan 的数据，不是当前 plan 的数据
     const targetRemark = plan.remark || null
     const targetEnrollmentMajor = plan.enrollmentMajor || null
+    // 获取目标批次（优先使用 plan 的 batch，其次使用 selectedPlanData 的 batch）
+    const targetBatch = plan.batch || selectedPlanData?.batch || null
+    // 获取目标省份（从 selectedSchoolData 中获取）
+    const targetProvince = selectedSchoolData.provinceName || null
     
     if (!targetMajorGroupName && !targetMajorGroupId) {
       return { isIn: false }
@@ -780,7 +784,8 @@ export default function IntendedMajorsSchoolsPage() {
               const choiceMajorGroupId = choice.majorGroupId || majorGroup.majorGroup?.mgId || null
               const choiceRemark = choice.remark || null
               const choiceEnrollmentMajor = choice.enrollmentMajor || null
-              
+              const choiceBatch = choice.batch || null
+              const choiceProvince = choice.province || null
               
               // 优先使用 majorGroupId 匹配（最准确）
               let isGroupMatch = false
@@ -829,20 +834,72 @@ export default function IntendedMajorsSchoolsPage() {
                 continue
               }
               
-              // 匹配备注（必须精确匹配）
-              let isRemarkMatch = false
-              if (!targetRemark && !choiceRemark) {
-                isRemarkMatch = true
-              } else if (targetRemark && choiceRemark) {
-                isRemarkMatch = (
-                  choiceRemark === targetRemark ||
-                  choiceRemark.trim() === targetRemark.trim()
-                )
-              } else {
-                isRemarkMatch = false
+              // 匹配省份（必须精确匹配）
+              // 如果目标省份为空，则跳过省份匹配（认为匹配）
+              // 如果目标省份不为空，则必须精确匹配
+              let isProvinceMatch = true
+              if (targetProvince) {
+                if (choiceProvince) {
+                  isProvinceMatch = (
+                    choiceProvince === targetProvince ||
+                    choiceProvince.trim() === targetProvince.trim()
+                  )
+                } else {
+                  // 目标有省份但choice没有，不匹配
+                  isProvinceMatch = false
+                }
+              }
+              // 如果目标省份为空，认为匹配（跳过省份检查）
+              
+              // 如果省份不匹配，直接跳过
+              if (!isProvinceMatch) {
+                continue
               }
               
-              // 当专业组匹配、招生专业匹配、且备注匹配时，认为已加入志愿
+              // 匹配批次（必须精确匹配）
+              // 如果目标批次为空，则跳过批次匹配（认为匹配）
+              // 如果目标批次不为空，则必须精确匹配
+              let isBatchMatch = true
+              if (targetBatch) {
+                if (choiceBatch) {
+                  isBatchMatch = (
+                    choiceBatch === targetBatch ||
+                    choiceBatch.trim() === targetBatch.trim()
+                  )
+                } else {
+                  // 目标有批次但choice没有，不匹配
+                  isBatchMatch = false
+                }
+              }
+              // 如果目标批次为空，认为匹配（跳过批次检查）
+              
+              // 如果批次不匹配，直接跳过
+              if (!isBatchMatch) {
+                continue
+              }
+              
+              // 匹配备注（宽松匹配）
+              // 如果备注都为空，认为匹配；如果都有备注，允许部分匹配（一个包含另一个）；如果只有一个有备注，也认为匹配（备注可能是可选的）
+              let isRemarkMatch = false
+              const targetRemarkTrimmed = targetRemark?.trim() || null
+              const choiceRemarkTrimmed = choiceRemark?.trim() || null
+              if (!targetRemarkTrimmed && !choiceRemarkTrimmed) {
+                // 都不存在，认为匹配
+                isRemarkMatch = true
+              } else if (targetRemarkTrimmed && choiceRemarkTrimmed) {
+                // 都存在，允许部分匹配（一个包含另一个，或者完全匹配）
+                // 这样可以处理备注内容有差异但实际是同一个志愿的情况
+                isRemarkMatch = (
+                  choiceRemarkTrimmed === targetRemarkTrimmed ||
+                  choiceRemarkTrimmed.includes(targetRemarkTrimmed) ||
+                  targetRemarkTrimmed.includes(choiceRemarkTrimmed)
+                )
+              } else {
+                // 只有一个存在，也认为匹配（备注可能是可选的，不影响志愿匹配）
+                isRemarkMatch = true
+              }
+              
+              // 当学校、省份、批次、专业组、招生专业、备注都匹配时，认为已加入志愿
               if (isRemarkMatch) {
                 return { isIn: true, choiceId: choice.id }
               }
@@ -1128,42 +1185,285 @@ export default function IntendedMajorsSchoolsPage() {
                             let isPlanInWishlist = false
                             let planChoiceId: number | undefined = undefined
                             
+                            console.log('[调试] ========== 开始判断plan是否在志愿中 ==========')
+                            console.log('[调试] Plan信息:', {
+                              planIndex,
+                              majorGroupId: plan.majorGroupId,
+                              majorGroupMgId: plan.majorGroup?.mgId,
+                              enrollmentMajor: plan.enrollmentMajor,
+                              batch: plan.batch,
+                              remark: plan.remark,
+                              schoolName: school.schoolName,
+                            })
+                            
                             if (groupedChoices && groupedChoices.volunteers.length > 0) {
                               const volunteer = groupedChoices.volunteers.find(v => v.school.name === school.schoolName)
                               if (volunteer) {
+                                console.log('[调试] 找到匹配的volunteer，专业组数量:', volunteer.majorGroups.length)
+                                console.log('[调试] volunteer完整数据:', JSON.stringify(volunteer, null, 2))
+                                // 获取目标省份和批次
+                                const targetProvince = school.provinceName || null
+                                const targetBatch = plan.batch || null
+                                
                                 for (const majorGroup of volunteer.majorGroups) {
+                                  console.log('[调试] 检查专业组，mgId:', majorGroup.majorGroup.mgId, 'choices数量:', majorGroup.choices.length)
+                                  console.log('[调试] majorGroup完整数据:', JSON.stringify(majorGroup, null, 2))
                                   for (const choice of majorGroup.choices) {
-                                    // 匹配条件：学校代码、专业组ID、招生专业、备注（精确匹配）
+                                    console.log('[调试] choice完整数据:', JSON.stringify(choice, null, 2))
+                                    // 匹配条件：学校代码、省份、批次、专业组ID、招生专业、备注（精确匹配）
                                     const isSchoolMatch = choice.schoolCode === schoolApiData.school.code
-                                    const isGroupMatch = (choice.majorGroupId === plan.majorGroupId) || 
-                                                         (plan.majorGroupId && majorGroup.majorGroup.mgId === plan.majorGroupId)
-                                    const isMajorMatch = choice.enrollmentMajor === plan.enrollmentMajor
                                     
-                                    // 备注匹配（必须精确匹配）
-                                    let isRemarkMatch = false
-                                    const targetRemark = plan.remark || null
-                                    const choiceRemark = choice.remark || null
-                                    if (!targetRemark && !choiceRemark) {
-                                      isRemarkMatch = true
-                                    } else if (targetRemark && choiceRemark) {
-                                      isRemarkMatch = (
-                                        choiceRemark === targetRemark ||
-                                        choiceRemark.trim() === targetRemark.trim()
-                                      )
-                                    } else {
-                                      isRemarkMatch = false
+                                    // 调试日志：开始判断
+                                    console.log('[调试] 开始判断plan是否在志愿中:', {
+                                      planIndex: planIndex,
+                                      planMajorGroupId: plan.majorGroupId,
+                                      planMajorGroupMgId: plan.majorGroup?.mgId,
+                                      planEnrollmentMajor: plan.enrollmentMajor,
+                                      planBatch: plan.batch,
+                                      planRemark: plan.remark,
+                                      schoolName: school.schoolName,
+                                      schoolCode: schoolApiData.school.code,
+                                      choiceId: choice.id,
+                                      choiceSchoolCode: choice.schoolCode,
+                                      choiceMajorGroupId: choice.majorGroupId,
+                                      choiceEnrollmentMajor: choice.enrollmentMajor,
+                                      choiceBatch: choice.batch,
+                                      choiceRemark: choice.remark,
+                                      choiceProvince: choice.province,
+                                      majorGroupMgId: majorGroup.majorGroup.mgId,
+                                    })
+                                    
+                                    // 如果学校代码不匹配，直接跳过
+                                    if (!isSchoolMatch) {
+                                      console.log('[调试] 学校代码不匹配，跳过')
+                                      continue
                                     }
                                     
-                                    if (isSchoolMatch && isGroupMatch && isMajorMatch && isRemarkMatch) {
+                                    console.log('[调试] 学校代码匹配 ✓')
+                                    
+                                    // 专业组匹配（优先使用 majorGroupId，确保类型一致）
+                                    let isGroupMatch = false
+                                    const planMajorGroupId = plan.majorGroupId || plan.majorGroup?.mgId
+                                    const choiceMajorGroupId = choice.majorGroupId
+                                    const majorGroupMgId = majorGroup.majorGroup.mgId
+                                    
+                                    // 优先使用 choice.majorGroupId 匹配
+                                    if (planMajorGroupId && choiceMajorGroupId) {
+                                      // 确保类型一致（都转为数字或字符串）
+                                      isGroupMatch = (
+                                        Number(planMajorGroupId) === Number(choiceMajorGroupId) ||
+                                        String(planMajorGroupId) === String(choiceMajorGroupId)
+                                      )
+                                      console.log('[调试] 专业组匹配(choice.majorGroupId):', {
+                                        planMajorGroupId,
+                                        choiceMajorGroupId,
+                                        isGroupMatch,
+                                        numberMatch: Number(planMajorGroupId) === Number(choiceMajorGroupId),
+                                        stringMatch: String(planMajorGroupId) === String(choiceMajorGroupId),
+                                      })
+                                    }
+                                    
+                                    // 如果 choice.majorGroupId 为空或未匹配，尝试使用 majorGroup.majorGroup.mgId
+                                    if (!isGroupMatch && planMajorGroupId && majorGroupMgId !== null && majorGroupMgId !== undefined) {
+                                      isGroupMatch = (
+                                        Number(planMajorGroupId) === Number(majorGroupMgId) ||
+                                        String(planMajorGroupId) === String(majorGroupMgId)
+                                      )
+                                      console.log('[调试] 专业组匹配(majorGroup.mgId):', {
+                                        planMajorGroupId,
+                                        majorGroupMgId,
+                                        isGroupMatch,
+                                        numberMatch: Number(planMajorGroupId) === Number(majorGroupMgId),
+                                        stringMatch: String(planMajorGroupId) === String(majorGroupMgId),
+                                      })
+                                    }
+                                    
+                                    // 如果专业组不匹配，尝试使用备选匹配逻辑（学校、招生专业、省份、批次都匹配）
+                                    if (!isGroupMatch) {
+                                      console.log('[调试] 专业组ID不匹配，尝试备选匹配逻辑')
+                                      // 先检查其他条件是否匹配
+                                      const targetMajor = plan.enrollmentMajor?.trim() || null
+                                      const choiceMajor = choice.enrollmentMajor?.trim() || null
+                                      const isMajorMatchForFallback = (!targetMajor && !choiceMajor) || (targetMajor && choiceMajor && choiceMajor === targetMajor)
+                                      
+                                      const choiceProvince = choice.province || null
+                                      const isProvinceMatchForFallback = !targetProvince || (targetProvince && choiceProvince && (choiceProvince === targetProvince || choiceProvince.trim() === targetProvince.trim()))
+                                      
+                                      const choiceBatch = choice.batch || null
+                                      const isBatchMatchForFallback = !targetBatch || (targetBatch && choiceBatch && (choiceBatch === targetBatch || choiceBatch.trim() === targetBatch.trim()))
+                                      
+                                      // 如果学校、招生专业、省份、批次都匹配，即使专业组ID不匹配，也认为是同一个志愿
+                                      if (isMajorMatchForFallback && isProvinceMatchForFallback && isBatchMatchForFallback) {
+                                        console.log('[调试] 备选匹配成功：学校、招生专业、省份、批次都匹配，认为是同一个志愿')
+                                        isGroupMatch = true
+                                      } else {
+                                        console.log('[调试] 专业组不匹配，备选匹配也失败，跳过', {
+                                          isMajorMatchForFallback,
+                                          isProvinceMatchForFallback,
+                                          isBatchMatchForFallback,
+                                        })
+                                        continue
+                                      }
+                                    }
+                                    
+                                    console.log('[调试] 专业组匹配 ✓')
+                                    
+                                    // 招生专业匹配（必须精确匹配）
+                                    // 招生专业是区分不同志愿的关键字段，必须严格匹配
+                                    // 如果目标招生专业存在，choice招生专业也必须存在且完全匹配
+                                    // 如果目标招生专业不存在，choice招生专业也必须不存在
+                                    let isMajorMatch = false
+                                    
+                                    // 处理空字符串的情况（空字符串视为不存在）
+                                    const targetMajor = plan.enrollmentMajor?.trim() || null
+                                    const choiceMajor = choice.enrollmentMajor?.trim() || null
+                                    
+                                    if (!targetMajor && !choiceMajor) {
+                                      // 都不存在，认为匹配
+                                      isMajorMatch = true
+                                    } else if (targetMajor && choiceMajor) {
+                                      // 都存在，必须精确匹配（去除首尾空格后比较）
+                                      isMajorMatch = (choiceMajor === targetMajor)
+                                    } else {
+                                      // 只有一个存在，不匹配（这是关键：如果目标有招生专业，choice必须有且匹配）
+                                      isMajorMatch = false
+                                    }
+                                    
+                                    console.log('[调试] 招生专业匹配:', {
+                                      targetMajor,
+                                      choiceMajor,
+                                      isMajorMatch,
+                                      originalTarget: plan.enrollmentMajor,
+                                      originalChoice: choice.enrollmentMajor,
+                                    })
+                                    
+                                    // 如果招生专业不匹配，直接跳过
+                                    if (!isMajorMatch) {
+                                      console.log('[调试] 招生专业不匹配，跳过')
+                                      continue
+                                    }
+                                    
+                                    console.log('[调试] 招生专业匹配 ✓')
+                                    
+                                    // 省份匹配（必须精确匹配）
+                                    // 如果目标省份为空，则跳过省份匹配（认为匹配）
+                                    // 如果目标省份不为空，则必须精确匹配
+                                    let isProvinceMatch = true
+                                    if (targetProvince) {
+                                      const choiceProvince = choice.province || null
+                                      if (choiceProvince) {
+                                        isProvinceMatch = (
+                                          choiceProvince === targetProvince ||
+                                          choiceProvince.trim() === targetProvince.trim()
+                                        )
+                                      } else {
+                                        // 目标有省份但choice没有，不匹配
+                                        isProvinceMatch = false
+                                      }
+                                    }
+                                    // 如果目标省份为空，认为匹配（跳过省份检查）
+                                    
+                                    console.log('[调试] 省份匹配:', {
+                                      targetProvince,
+                                      choiceProvince: choice.province,
+                                      isProvinceMatch,
+                                    })
+                                    
+                                    // 如果省份不匹配，直接跳过
+                                    if (!isProvinceMatch) {
+                                      console.log('[调试] 省份不匹配，跳过')
+                                      continue
+                                    }
+                                    
+                                    console.log('[调试] 省份匹配 ✓')
+                                    
+                                    // 批次匹配（必须精确匹配）
+                                    // 如果目标批次为空，则跳过批次匹配（认为匹配）
+                                    // 如果目标批次不为空，则必须精确匹配
+                                    let isBatchMatch = true
+                                    if (targetBatch) {
+                                      const choiceBatch = choice.batch || null
+                                      if (choiceBatch) {
+                                        isBatchMatch = (
+                                          choiceBatch === targetBatch ||
+                                          choiceBatch.trim() === targetBatch.trim()
+                                        )
+                                      } else {
+                                        // 目标有批次但choice没有，不匹配
+                                        isBatchMatch = false
+                                      }
+                                    }
+                                    // 如果目标批次为空，认为匹配（跳过批次检查）
+                                    
+                                    console.log('[调试] 批次匹配:', {
+                                      targetBatch,
+                                      choiceBatch: choice.batch,
+                                      isBatchMatch,
+                                    })
+                                    
+                                    // 如果批次不匹配，直接跳过
+                                    if (!isBatchMatch) {
+                                      console.log('[调试] 批次不匹配，跳过')
+                                      continue
+                                    }
+                                    
+                                    console.log('[调试] 批次匹配 ✓')
+                                    
+                                    // 备注匹配（宽松匹配）
+                                    // 如果备注都为空，认为匹配；如果都有备注，允许部分匹配（一个包含另一个）；如果只有一个有备注，也认为匹配（备注可能是可选的）
+                                    let isRemarkMatch = false
+                                    const targetRemark = plan.remark?.trim() || null
+                                    const choiceRemark = choice.remark?.trim() || null
+                                    if (!targetRemark && !choiceRemark) {
+                                      // 都不存在，认为匹配
+                                      isRemarkMatch = true
+                                    } else if (targetRemark && choiceRemark) {
+                                      // 都存在，允许部分匹配（一个包含另一个，或者完全匹配）
+                                      // 这样可以处理备注内容有差异但实际是同一个志愿的情况
+                                      isRemarkMatch = (
+                                        choiceRemark === targetRemark ||
+                                        choiceRemark.includes(targetRemark) ||
+                                        targetRemark.includes(choiceRemark)
+                                      )
+                                    } else {
+                                      // 只有一个存在，也认为匹配（备注可能是可选的，不影响志愿匹配）
+                                      isRemarkMatch = true
+                                    }
+                                    
+                                    console.log('[调试] 备注匹配:', {
+                                      targetRemark,
+                                      choiceRemark,
+                                      isRemarkMatch,
+                                      originalTarget: plan.remark,
+                                      originalChoice: choice.remark,
+                                    })
+                                    
+                                    // 当学校、专业组、招生专业、省份、批次、备注都匹配时，认为已加入志愿
+                                    if (isRemarkMatch) {
+                                      console.log('[调试] ✅ 所有条件匹配！plan已加入志愿，choiceId:', choice.id)
                                       isPlanInWishlist = true
                                       planChoiceId = choice.id
                                       break
+                                    } else {
+                                      console.log('[调试] ❌ 备注不匹配，继续查找下一个choice')
                                     }
                                   }
                                   if (isPlanInWishlist) break
                                 }
+                              } else {
+                                console.log('[调试] 未找到匹配的volunteer（学校名称不匹配）')
                               }
+                            } else {
+                              console.log('[调试] groupedChoices为空或没有volunteers')
                             }
+                            
+                            console.log('[调试] ========== 判断结束 ==========')
+                            console.log('[调试] 最终结果:', {
+                              isPlanInWishlist,
+                              planChoiceId,
+                              planMajorGroupId: plan.majorGroupId,
+                              planEnrollmentMajor: plan.enrollmentMajor,
+                            })
                             
                             return (
                               <Text 
