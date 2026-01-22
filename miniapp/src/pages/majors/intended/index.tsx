@@ -1272,18 +1272,22 @@ export default function IntendedMajorsPage() {
   // 如果提供了 updatedInfo，直接使用，避免重复调用 API
   // 刷新招生计划数据的函数
   // - 支持传入指定区间，避免 setTimeout 闭包拿到旧 scoreRange
-  const refreshEnrollmentPlans = async (range?: [number, number]) => {
+  // - 支持传入 shouldUseScoreFilter 参数，避免状态更新延迟导致的问题
+  const refreshEnrollmentPlans = async (range?: [number, number], shouldUseScoreFilter?: boolean) => {
     if (activeTab === '专业赛道' && !fetchingEnrollmentPlansRef.current) {
       try {
         fetchingEnrollmentPlansRef.current = true
         // 如果启用了分数区间筛选，才传入 minScore 和 maxScore
+        // 优先使用传入的 shouldUseScoreFilter，否则使用当前的 enableScoreFilter 状态
+        const useFilter = shouldUseScoreFilter !== undefined ? shouldUseScoreFilter : enableScoreFilter
         let minScore: number | undefined
         let maxScore: number | undefined
-        if (enableScoreFilter) {
+        if (useFilter) {
           const [min, max] = range || scoreRangeRef.current
           minScore = min
           maxScore = max
         }
+        console.log('refreshEnrollmentPlans 调用:', { useFilter, minScore, maxScore, shouldUseScoreFilter, enableScoreFilter })
         const plans = await getUserEnrollmentPlans(minScore, maxScore)
         setEnrollmentPlans(plans)
         console.log('重新获取用户招生计划成功:', plans)
@@ -2343,13 +2347,8 @@ export default function IntendedMajorsPage() {
                     willBeDisabled: !newValue
                   })
                   setEnableScoreFilter(newValue)
-                  // 当启用筛选时，立即刷新数据
-                  if (newValue) {
-                    refreshEnrollmentPlans()
-                  } else {
-                    // 当禁用筛选时，刷新数据（不传分数参数）
-                    refreshEnrollmentPlans()
-                  }
+                  // 立即刷新数据，传入新的筛选状态，避免状态更新延迟导致的问题
+                  refreshEnrollmentPlans(undefined, newValue)
                 }}
               >
                 <View className={`intended-majors-page__score-filter-checkbox ${enableScoreFilter ? 'intended-majors-page__score-filter-checkbox--checked' : ''}`}>
