@@ -241,7 +241,7 @@ export default function IntendedMajorsSchoolsPage() {
     }
 
     const schools: School[] = apiData.map((item) => {
-      // 获取第一个招生计划的专业组信息
+      // 获取第一个招生计划的专业组信息（用于学校级别显示）
       const firstPlan = item.plans[0]
       const majorGroupName = firstPlan?.majorGroup?.mgName || firstPlan?.majorGroupInfo || null
       // 从 plan 对象上直接获取 majorGroupId，而不是从 majorGroup.mgId
@@ -296,6 +296,7 @@ export default function IntendedMajorsSchoolsPage() {
       })
 
       if (historyScoreData.length > 0 && firstYear) {
+        const firstPlan = item.plans[0]
         historyScores.push({
           year: firstYear,
           historyScore: historyScoreData,
@@ -1260,6 +1261,15 @@ export default function IntendedMajorsSchoolsPage() {
                         </View>
                       )}
                       
+                      {/* 显示专业组名称 */}
+                      {(plan.majorGroup?.mgName || plan.majorGroupInfo) && (
+                        <View className="schools-page__school-item-plan-group-name">
+                          <Text className="schools-page__school-item-plan-group-name-text">
+                            专业组: {plan.majorGroup?.mgName || plan.majorGroupInfo}
+                          </Text>
+                        </View>
+                      )}
+                      
                       {(plan.majorGroupInfo || plan.enrollmentQuota) && (
                         <View className="schools-page__school-item-plan-info">
                           {plan.majorGroupInfo && (
@@ -1275,38 +1285,27 @@ export default function IntendedMajorsSchoolsPage() {
                         </View>
                       )}
                       
-                      {school.majorGroupId && (
+                      {(plan.majorGroupId || plan.majorGroup?.mgId) && (
                         <View className="schools-page__school-item-plan-group-button-wrapper">
                           <Text 
                             className="schools-page__school-item-plan-group-button"
                             onClick={async (e) => {
                               e.stopPropagation()
-                              const mgId = school.majorGroupId
+                              const mgId = plan.majorGroupId || plan.majorGroup?.mgId
                               if (!mgId) return
                               
                               try {
                                 setLoadingGroupInfo(true)
+                                const planMajorGroupName = plan.majorGroup?.mgName || plan.majorGroupInfo || '专业组'
                                 setSelectedGroupInfo({
                                   schoolName: school.schoolName,
-                                  majorGroupName: school.majorGroupName || '专业组',
+                                  majorGroupName: planMajorGroupName,
                                   majorGroupId: mgId,
                                 })
                                 // 保存学校数据，用于后续加入志愿
                                 setSelectedSchoolData(school)
-                                
-                                // 找到对应的plan数据（从apiData中）
-                                let matchedPlan: EnrollmentPlanItem | null = null
-                                if (apiData.length > 0) {
-                                  const schoolData = apiData.find(item => item.school.name === school.schoolName)
-                                  if (schoolData) {
-                                    // 找到匹配的plan（通过majorGroupId）
-                                    matchedPlan = schoolData.plans.find(p => 
-                                      (p.majorGroupId && p.majorGroupId === mgId) ||
-                                      (p.majorGroup?.mgId && p.majorGroup.mgId === mgId)
-                                    ) || schoolData.plans[0] || null
-                                  }
-                                }
-                                setSelectedPlanData(matchedPlan)
+                                // 保存当前plan数据
+                                setSelectedPlanData(plan)
                                 
                                 // 调用 API 获取专业组信息
                                 const groupInfo = await getMajorGroupInfo(mgId)
@@ -1323,7 +1322,7 @@ export default function IntendedMajorsSchoolsPage() {
                               }
                             }}
                           >
-                            查看专业组{school.majorGroupName ? `: ${school.majorGroupName}` : ''} 👁️
+                            查看专业组{plan.majorGroup?.mgName ? `: ${plan.majorGroup.mgName}` : ''} 👁️
                           </Text>
                         </View>
                       )}
