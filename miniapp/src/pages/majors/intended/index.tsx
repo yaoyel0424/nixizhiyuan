@@ -2358,7 +2358,7 @@ export default function IntendedMajorsPage() {
                 </View>
               </View>
               <Text className="intended-majors-page__score-filter-tip">
-                使用分数区间查看不同分数区间的院校
+                使用分数区间筛选院校
               </Text>
             </View>
             <View className="intended-majors-page__slider-container">
