@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
-import { getStorage, setStorage } from '@/utils/storage'
+import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import { getCurrentUserDetail, getUserRelatedDataCount } from '@/services/user'
 import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo } from '@/services/enroll-plan'
@@ -95,6 +95,7 @@ function ExamInfoDialog({
   const scoreChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastProcessedScoreRef = useRef<string | null>(null) // 记录上次处理的分数，避免重复调用
   const isLoadingDataRef = useRef(false) // 标记是否正在加载数据
+  const previousProvinceRef = useRef<string | null>(null) // 记录上一次的省份，用于判断是否是用户主动切换
 
   // 获取当前省份的科目配置
   const currentProvinceConfig = gaokaoConfig.find(config => config.province === selectedProvince)
@@ -105,11 +106,18 @@ function ExamInfoDialog({
   // 根据省份变化，重置所有科目选择和分数数据（仅在用户主动切换省份时，不是加载数据时）
   useEffect(() => {
     if (currentProvinceConfig && !isLoadingDataRef.current) {
-      // 切换省份时，清空所有已选数据（但不在加载数据时清空）
-      setFirstChoice(null)
-      setOptionalSubjects(new Set())
-      setTotalScore('')
-      setRanking('')
+      // 只有当省份真正变化时（不是初始化，且不是从 undefined 变为有值），才清空数据
+      // previousProvinceRef.current !== null 表示不是第一次初始化
+      // previousProvinceRef.current !== selectedProvince 表示省份确实变化了
+      if (previousProvinceRef.current !== null && previousProvinceRef.current !== selectedProvince) {
+        // 用户主动切换省份时，清空所有已选数据
+        setFirstChoice(null)
+        setOptionalSubjects(new Set())
+        setTotalScore('')
+        setRanking('')
+      }
+      // 更新记录的省份
+      previousProvinceRef.current = selectedProvince
     }
   }, [selectedProvince, currentProvinceConfig])
 
@@ -133,84 +141,81 @@ function ExamInfoDialog({
       
       const loadData = async () => {
         try {
-          // 标记正在加载数据，防止清空数据的 useEffect 触发
-          isLoadingDataRef.current = true
-          
           // 先加载高考科目配置（如果还没有加载）
           if (gaokaoConfig.length === 0) {
             const config = await getGaokaoConfig()
             setGaokaoConfig(config)
           }
 
-          // 优先使用传入的 examInfo
-          if (examInfo) {
-            // 省份：如果有值就设置
-            if (examInfo.province) {
-              setSelectedProvince(examInfo.province)
+          // 优先使用传入的 examInfo，如果 examInfo 为空，则从本地存储加载
+          let dataToUse = examInfo
+          if (!dataToUse) {
+            // 从本地存储加载
+            const savedProvince = await getStorage<string>('examProvince')
+            const savedFirstChoice = await getStorage<string>('examFirstChoice')
+            const savedOptional = await getStorage<string[]>('examOptionalSubjects')
+            const savedScore = await getStorage<string>('examTotalScore')
+            const savedRanking = await getStorage<string>('examRanking')
+            
+            if (savedProvince || savedFirstChoice || savedScore) {
+              // 如果有任何本地数据，构建 examInfo 对象
+              dataToUse = {
+                province: savedProvince || undefined,
+                preferredSubjects: savedFirstChoice || undefined,
+                secondarySubjects: savedOptional && savedOptional.length > 0 ? savedOptional.join(',') : undefined,
+                score: savedScore ? parseInt(savedScore, 10) : undefined,
+                rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
+              }
             }
+          }
+          
+          // 使用 dataToUse 设置所有状态
+          if (dataToUse) {
+            console.log('弹框加载数据 - dataToUse:', dataToUse)
+            // 先设置其他状态，最后设置省份（避免触发清空逻辑）
             // 首选科目：如果有值就设置
-            if (examInfo.preferredSubjects) {
-              setFirstChoice(examInfo.preferredSubjects)
+            if (dataToUse.preferredSubjects) {
+              console.log('设置首选科目:', dataToUse.preferredSubjects)
+              setFirstChoice(dataToUse.preferredSubjects)
             } else {
+              console.log('清空首选科目')
               setFirstChoice(null)
             }
             // 次选科目：如果有值就设置
-            if (examInfo.secondarySubjects) {
-              const subjects = examInfo.secondarySubjects.split(',').map(s => s.trim()).filter(s => s)
+            if (dataToUse.secondarySubjects) {
+              const subjects = dataToUse.secondarySubjects.split(',').map(s => s.trim()).filter(s => s)
+              console.log('设置次选科目:', subjects)
               setOptionalSubjects(new Set(subjects))
             } else {
+              console.log('清空次选科目')
               setOptionalSubjects(new Set())
             }
             // 分数：如果有值就设置
-            if (examInfo.score !== undefined && examInfo.score !== null) {
-              setTotalScore(String(examInfo.score))
+            if (dataToUse.score !== undefined && dataToUse.score !== null) {
+              console.log('设置分数:', dataToUse.score)
+              setTotalScore(String(dataToUse.score))
             } else {
+              console.log('清空分数')
               setTotalScore('')
             }
             // 排名：如果有值就设置
-            if (examInfo.rank !== undefined && examInfo.rank !== null) {
-              setRanking(String(examInfo.rank))
+            if (dataToUse.rank !== undefined && dataToUse.rank !== null) {
+              console.log('设置排名:', dataToUse.rank)
+              setRanking(String(dataToUse.rank))
             } else {
+              console.log('清空排名')
               setRanking('')
+            }
+            // 省份：最后设置（避免触发清空逻辑）
+            if (dataToUse.province) {
+              console.log('设置省份:', dataToUse.province)
+              setSelectedProvince(dataToUse.province)
             }
           } else {
-            // 从本地存储加载（当 examInfo 为空时）
-            const savedProvince = await getStorage<string>('examProvince')
-            if (savedProvince) {
-              setSelectedProvince(savedProvince)
-            }
-            const savedFirstChoice = await getStorage<string>('examFirstChoice')
-            if (savedFirstChoice) {
-              setFirstChoice(savedFirstChoice)
-            } else {
-              setFirstChoice(null)
-            }
-            const savedOptional = await getStorage<string[]>('examOptionalSubjects')
-            if (savedOptional && savedOptional.length > 0) {
-              setOptionalSubjects(new Set(savedOptional))
-            } else {
-              setOptionalSubjects(new Set())
-            }
-            const savedScore = await getStorage<string>('examTotalScore')
-            if (savedScore) {
-              setTotalScore(savedScore)
-            } else {
-              setTotalScore('')
-            }
-            const savedRanking = await getStorage<string>('examRanking')
-            if (savedRanking) {
-              setRanking(savedRanking)
-            } else {
-              setRanking('')
-            }
+            console.log('弹框加载数据 - 没有找到数据（examInfo 和本地存储都为空）')
           }
         } catch (error) {
           console.error('加载高考信息失败:', error)
-        } finally {
-          // 数据加载完成后，取消标记（使用 setTimeout 确保状态更新完成）
-          setTimeout(() => {
-            isLoadingDataRef.current = false
-          }, 100)
         }
       }
       loadData()
@@ -436,6 +441,13 @@ function ExamInfoDialog({
       await setStorage('examOptionalSubjects', Array.from(optionalSubjects))
       await setStorage('examTotalScore', totalScore)
       await setStorage('examRanking', ranking)
+
+      // 修改高考信息后，删除本地分数区间，让系统根据新的分数重新计算
+      try {
+        await removeStorage('scoreRange')
+      } catch (error) {
+        console.error('删除本地分数区间失败:', error)
+      }
 
       Taro.showToast({
         title: '保存成功',
@@ -705,6 +717,10 @@ export default function IntendedMajorsPage() {
   const [scoreRange, setScoreRange] = useState<[number, number]>([500, 650])
   // 分数区间是否已从本地存储/高考信息初始化完成（避免用默认值触发一次错误请求）
   const [scoreRangeReady, setScoreRangeReady] = useState(false)
+  // 区间输入框的临时值（用于实时显示，不立即更新 scoreRange）
+  // 使用 null 表示未编辑状态，字符串表示正在编辑
+  const [tempMinValue, setTempMinValue] = useState<string | null>(null)
+  const [tempMaxValue, setTempMaxValue] = useState<string | null>(null)
   const [minControlScore, setMinControlScore] = useState<number>(0) // 省份最低省控线
   const [expandedHistoryScores, setExpandedHistoryScores] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -1198,6 +1214,25 @@ export default function IntendedMajorsPage() {
       const score = info.score || 580
       setCurrentScore(score)
       
+      // 如果省份和首选科目都有值，立即获取省控线（不等待useEffect）
+      if (info.province && info.preferredSubjects && !fetchingControlScoreRef.current) {
+        const updateControlScore = async () => {
+          if (fetchingControlScoreRef.current) {
+            return
+          }
+          try {
+            fetchingControlScoreRef.current = true
+            const controlScore = await getMinControlScore()
+            setMinControlScore(controlScore)
+          } catch (error) {
+            console.error('获取省控线失败:', error)
+          } finally {
+            fetchingControlScoreRef.current = false
+          }
+        }
+        updateControlScore()
+      }
+      
       // 优先从本地存储读取 scoreRange
       try {
         const savedScoreRange = await getStorage<[number, number]>('scoreRange')
@@ -1269,6 +1304,38 @@ export default function IntendedMajorsPage() {
       const score = info.score || 580
       setCurrentScore(score)
       
+      // 如果省份和首选科目都有值，立即获取省控线（不等待useEffect）
+      if (info.province && info.preferredSubjects && !fetchingControlScoreRef.current) {
+        const updateControlScore = async () => {
+          if (fetchingControlScoreRef.current) {
+            return
+          }
+          try {
+            fetchingControlScoreRef.current = true
+            const controlScore = await getMinControlScore()
+            setMinControlScore(controlScore)
+            // 如果当前分数区间的最小值低于省控线，则更新左侧滑块位置
+            setScoreRange((prevRange) => {
+              if (prevRange[0] < controlScore) {
+                const newMinValue = Math.max(controlScore, prevRange[0])
+                const newRange: [number, number] = [newMinValue, prevRange[1]]
+                // 保存更新后的区间
+                setStorage('scoreRange', newRange).catch((error) => {
+                  console.error('保存分数区间失败:', error)
+                })
+                return newRange
+              }
+              return prevRange
+            })
+          } catch (error) {
+            console.error('获取省控线失败:', error)
+          } finally {
+            fetchingControlScoreRef.current = false
+          }
+        }
+        updateControlScore()
+      }
+      
       // 如果高考信息或意向省份被更新，且当前是"专业赛道"页面，需要重新加载招生计划数据
       // 因为后台返回的数据会根据高考信息和意向省份变化
       if (updatedInfo) {
@@ -1326,9 +1393,23 @@ export default function IntendedMajorsPage() {
     }
   }
 
-  // 页面加载时，只从本地存储加载，不调用 API
+  // 页面加载时，先从本地存储加载（快速显示），然后从 API 获取最新数据
   useEffect(() => {
-    loadExamInfoFromStorage()
+    const loadData = async () => {
+      // 先从本地存储加载，快速显示
+      await loadExamInfoFromStorage()
+      // 然后从 API 获取最新数据（静默更新，不阻塞页面显示）
+      try {
+        const latestInfo = await getExamInfo()
+        if (latestInfo && (latestInfo.province || latestInfo.preferredSubjects || latestInfo.score)) {
+          setExamInfo(latestInfo)
+        }
+      } catch (error) {
+        console.error('从 API 获取高考信息失败:', error)
+        // 如果 API 失败，继续使用本地存储的数据
+      }
+    }
+    loadData()
   }, [])
 
   // 监听高考信息对话框关闭，刷新数据
@@ -1542,11 +1623,12 @@ export default function IntendedMajorsPage() {
         
         try {
           fetchingUserDetailRef.current = true
-          const userDetail = await getCurrentUserDetail()
-          if (userDetail) {
-            console.log('用户详情:', userDetail)
-            // 这里可以根据需要处理用户详情数据
-            // 例如更新某些状态或执行其他操作
+          // 调用 getExamInfo 获取高考信息（内部会调用 getCurrentUserDetail）
+          // 这样可以同时获取用户详情和高考信息，并设置 examInfo
+          const examInfoData = await getExamInfo()
+          if (examInfoData && (examInfoData.province || examInfoData.preferredSubjects || examInfoData.score)) {
+            console.log('从 API 获取高考信息:', examInfoData)
+            setExamInfo(examInfoData)
           }
           
           // 调用 related-data-count 接口检查用户是否填写了高考信息
@@ -2228,22 +2310,40 @@ export default function IntendedMajorsPage() {
                   <View className="intended-majors-page__slider-label-range-inputs">
                     <Input
                       type="number"
-                      value={String(scoreRange[0])}
+                      value={tempMinValue !== null ? tempMinValue : String(scoreRange[0])}
+                      onInput={(e) => {
+                        // 用户输入时，实时更新临时值（允许为空，让用户继续输入）
+                        setTempMinValue(e.detail.value)
+                      }}
                       onBlur={(e) => {
-                        if (e.detail.value) {
-                          handleMinInputChange(e.detail.value)
+                        const value = e.detail.value
+                        // 清空临时值，恢复显示 scoreRange 的值
+                        setTempMinValue(null)
+                        // 只有在有值且有效时才更新
+                        if (value !== undefined && value !== null && value !== '') {
+                          handleMinInputChange(value)
                         }
+                        // 如果输入为空或无效，不更新，value 会自动恢复为 scoreRange[0]
                       }}
                       className="intended-majors-page__slider-label-input"
                     />
                     <Text className="intended-majors-page__slider-label-separator">-</Text>
                     <Input
                       type="number"
-                      value={String(scoreRange[1])}
+                      value={tempMaxValue !== null ? tempMaxValue : String(scoreRange[1])}
+                      onInput={(e) => {
+                        // 用户输入时，实时更新临时值（允许为空，让用户继续输入）
+                        setTempMaxValue(e.detail.value)
+                      }}
                       onBlur={(e) => {
-                        if (e.detail.value) {
-                          handleMaxInputChange(e.detail.value)
+                        const value = e.detail.value
+                        // 清空临时值，恢复显示 scoreRange 的值
+                        setTempMaxValue(null)
+                        // 只有在有值且有效时才更新
+                        if (value !== undefined && value !== null && value !== '') {
+                          handleMaxInputChange(value)
                         }
+                        // 如果输入为空或无效，不更新，value 会自动恢复为 scoreRange[1]
                       }}
                       className="intended-majors-page__slider-label-input"
                     />
