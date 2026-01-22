@@ -1185,61 +1185,22 @@ export default function IntendedMajorsSchoolsPage() {
                             let isPlanInWishlist = false
                             let planChoiceId: number | undefined = undefined
                             
-                            console.log('[调试] ========== 开始判断plan是否在志愿中 ==========')
-                            console.log('[调试] Plan信息:', {
-                              planIndex,
-                              majorGroupId: plan.majorGroupId,
-                              majorGroupMgId: plan.majorGroup?.mgId,
-                              enrollmentMajor: plan.enrollmentMajor,
-                              batch: plan.batch,
-                              remark: plan.remark,
-                              schoolName: school.schoolName,
-                            })
-                            
                             if (groupedChoices && groupedChoices.volunteers.length > 0) {
                               const volunteer = groupedChoices.volunteers.find(v => v.school.name === school.schoolName)
                               if (volunteer) {
-                                console.log('[调试] 找到匹配的volunteer，专业组数量:', volunteer.majorGroups.length)
-                                console.log('[调试] volunteer完整数据:', JSON.stringify(volunteer, null, 2))
                                 // 获取目标省份和批次
                                 const targetProvince = school.provinceName || null
                                 const targetBatch = plan.batch || null
                                 
                                 for (const majorGroup of volunteer.majorGroups) {
-                                  console.log('[调试] 检查专业组，mgId:', majorGroup.majorGroup.mgId, 'choices数量:', majorGroup.choices.length)
-                                  console.log('[调试] majorGroup完整数据:', JSON.stringify(majorGroup, null, 2))
                                   for (const choice of majorGroup.choices) {
-                                    console.log('[调试] choice完整数据:', JSON.stringify(choice, null, 2))
                                     // 匹配条件：学校代码、省份、批次、专业组ID、招生专业、备注（精确匹配）
                                     const isSchoolMatch = choice.schoolCode === schoolApiData.school.code
                                     
-                                    // 调试日志：开始判断
-                                    console.log('[调试] 开始判断plan是否在志愿中:', {
-                                      planIndex: planIndex,
-                                      planMajorGroupId: plan.majorGroupId,
-                                      planMajorGroupMgId: plan.majorGroup?.mgId,
-                                      planEnrollmentMajor: plan.enrollmentMajor,
-                                      planBatch: plan.batch,
-                                      planRemark: plan.remark,
-                                      schoolName: school.schoolName,
-                                      schoolCode: schoolApiData.school.code,
-                                      choiceId: choice.id,
-                                      choiceSchoolCode: choice.schoolCode,
-                                      choiceMajorGroupId: choice.majorGroupId,
-                                      choiceEnrollmentMajor: choice.enrollmentMajor,
-                                      choiceBatch: choice.batch,
-                                      choiceRemark: choice.remark,
-                                      choiceProvince: choice.province,
-                                      majorGroupMgId: majorGroup.majorGroup.mgId,
-                                    })
-                                    
                                     // 如果学校代码不匹配，直接跳过
                                     if (!isSchoolMatch) {
-                                      console.log('[调试] 学校代码不匹配，跳过')
                                       continue
                                     }
-                                    
-                                    console.log('[调试] 学校代码匹配 ✓')
                                     
                                     // 专业组匹配（优先使用 majorGroupId，确保类型一致）
                                     let isGroupMatch = false
@@ -1254,13 +1215,6 @@ export default function IntendedMajorsSchoolsPage() {
                                         Number(planMajorGroupId) === Number(choiceMajorGroupId) ||
                                         String(planMajorGroupId) === String(choiceMajorGroupId)
                                       )
-                                      console.log('[调试] 专业组匹配(choice.majorGroupId):', {
-                                        planMajorGroupId,
-                                        choiceMajorGroupId,
-                                        isGroupMatch,
-                                        numberMatch: Number(planMajorGroupId) === Number(choiceMajorGroupId),
-                                        stringMatch: String(planMajorGroupId) === String(choiceMajorGroupId),
-                                      })
                                     }
                                     
                                     // 如果 choice.majorGroupId 为空或未匹配，尝试使用 majorGroup.majorGroup.mgId
@@ -1269,18 +1223,10 @@ export default function IntendedMajorsSchoolsPage() {
                                         Number(planMajorGroupId) === Number(majorGroupMgId) ||
                                         String(planMajorGroupId) === String(majorGroupMgId)
                                       )
-                                      console.log('[调试] 专业组匹配(majorGroup.mgId):', {
-                                        planMajorGroupId,
-                                        majorGroupMgId,
-                                        isGroupMatch,
-                                        numberMatch: Number(planMajorGroupId) === Number(majorGroupMgId),
-                                        stringMatch: String(planMajorGroupId) === String(majorGroupMgId),
-                                      })
                                     }
                                     
                                     // 如果专业组不匹配，尝试使用备选匹配逻辑（学校、招生专业、省份、批次都匹配）
                                     if (!isGroupMatch) {
-                                      console.log('[调试] 专业组ID不匹配，尝试备选匹配逻辑')
                                       // 先检查其他条件是否匹配
                                       const targetMajor = plan.enrollmentMajor?.trim() || null
                                       const choiceMajor = choice.enrollmentMajor?.trim() || null
@@ -1294,19 +1240,11 @@ export default function IntendedMajorsSchoolsPage() {
                                       
                                       // 如果学校、招生专业、省份、批次都匹配，即使专业组ID不匹配，也认为是同一个志愿
                                       if (isMajorMatchForFallback && isProvinceMatchForFallback && isBatchMatchForFallback) {
-                                        console.log('[调试] 备选匹配成功：学校、招生专业、省份、批次都匹配，认为是同一个志愿')
                                         isGroupMatch = true
                                       } else {
-                                        console.log('[调试] 专业组不匹配，备选匹配也失败，跳过', {
-                                          isMajorMatchForFallback,
-                                          isProvinceMatchForFallback,
-                                          isBatchMatchForFallback,
-                                        })
                                         continue
                                       }
                                     }
-                                    
-                                    console.log('[调试] 专业组匹配 ✓')
                                     
                                     // 招生专业匹配（必须精确匹配）
                                     // 招生专业是区分不同志愿的关键字段，必须严格匹配
@@ -1329,21 +1267,10 @@ export default function IntendedMajorsSchoolsPage() {
                                       isMajorMatch = false
                                     }
                                     
-                                    console.log('[调试] 招生专业匹配:', {
-                                      targetMajor,
-                                      choiceMajor,
-                                      isMajorMatch,
-                                      originalTarget: plan.enrollmentMajor,
-                                      originalChoice: choice.enrollmentMajor,
-                                    })
-                                    
                                     // 如果招生专业不匹配，直接跳过
                                     if (!isMajorMatch) {
-                                      console.log('[调试] 招生专业不匹配，跳过')
                                       continue
                                     }
-                                    
-                                    console.log('[调试] 招生专业匹配 ✓')
                                     
                                     // 省份匹配（必须精确匹配）
                                     // 如果目标省份为空，则跳过省份匹配（认为匹配）
@@ -1363,19 +1290,10 @@ export default function IntendedMajorsSchoolsPage() {
                                     }
                                     // 如果目标省份为空，认为匹配（跳过省份检查）
                                     
-                                    console.log('[调试] 省份匹配:', {
-                                      targetProvince,
-                                      choiceProvince: choice.province,
-                                      isProvinceMatch,
-                                    })
-                                    
                                     // 如果省份不匹配，直接跳过
                                     if (!isProvinceMatch) {
-                                      console.log('[调试] 省份不匹配，跳过')
                                       continue
                                     }
-                                    
-                                    console.log('[调试] 省份匹配 ✓')
                                     
                                     // 批次匹配（必须精确匹配）
                                     // 如果目标批次为空，则跳过批次匹配（认为匹配）
@@ -1395,19 +1313,10 @@ export default function IntendedMajorsSchoolsPage() {
                                     }
                                     // 如果目标批次为空，认为匹配（跳过批次检查）
                                     
-                                    console.log('[调试] 批次匹配:', {
-                                      targetBatch,
-                                      choiceBatch: choice.batch,
-                                      isBatchMatch,
-                                    })
-                                    
                                     // 如果批次不匹配，直接跳过
                                     if (!isBatchMatch) {
-                                      console.log('[调试] 批次不匹配，跳过')
                                       continue
                                     }
-                                    
-                                    console.log('[调试] 批次匹配 ✓')
                                     
                                     // 备注匹配（宽松匹配）
                                     // 如果备注都为空，认为匹配；如果都有备注，允许部分匹配（一个包含另一个）；如果只有一个有备注，也认为匹配（备注可能是可选的）
@@ -1430,40 +1339,17 @@ export default function IntendedMajorsSchoolsPage() {
                                       isRemarkMatch = true
                                     }
                                     
-                                    console.log('[调试] 备注匹配:', {
-                                      targetRemark,
-                                      choiceRemark,
-                                      isRemarkMatch,
-                                      originalTarget: plan.remark,
-                                      originalChoice: choice.remark,
-                                    })
-                                    
                                     // 当学校、专业组、招生专业、省份、批次、备注都匹配时，认为已加入志愿
                                     if (isRemarkMatch) {
-                                      console.log('[调试] ✅ 所有条件匹配！plan已加入志愿，choiceId:', choice.id)
                                       isPlanInWishlist = true
                                       planChoiceId = choice.id
                                       break
-                                    } else {
-                                      console.log('[调试] ❌ 备注不匹配，继续查找下一个choice')
                                     }
                                   }
                                   if (isPlanInWishlist) break
                                 }
-                              } else {
-                                console.log('[调试] 未找到匹配的volunteer（学校名称不匹配）')
                               }
-                            } else {
-                              console.log('[调试] groupedChoices为空或没有volunteers')
                             }
-                            
-                            console.log('[调试] ========== 判断结束 ==========')
-                            console.log('[调试] 最终结果:', {
-                              isPlanInWishlist,
-                              planChoiceId,
-                              planMajorGroupId: plan.majorGroupId,
-                              planEnrollmentMajor: plan.enrollmentMajor,
-                            })
                             
                             return (
                               <Text 
