@@ -95,14 +95,28 @@ function ElementAnalysesDisplay({
     return null
   }
 
-  // 按类型统计元素数量
-  const typeCounts = analyses.reduce((acc, analysis) => {
+  // 按类型统计元素数量和最高得分
+  const typeStats = analyses.reduce((acc, analysis) => {
     const type = analysis.type
     if (type && (type === 'lexue' || type === 'shanxue' || type === 'yanxue' || type === 'tiaozhan')) {
-      acc[type] = (analysis.elements?.length || 0)
+      const elements = analysis.elements || []
+      const count = elements.length
+      
+      // 获取该类型下所有有效得分（不为 null）
+      const validScores = elements
+        .map(element => element.score)
+        .filter((score): score is number => score !== null && score !== undefined)
+      
+      // 计算最高得分
+      const maxScore = validScores.length > 0 ? Math.max(...validScores) : null
+      
+      acc[type] = {
+        count,
+        maxScore
+      }
     }
     return acc
-  }, {} as Record<string, number>)
+  }, {} as Record<string, { count: number; maxScore: number | null }>)
 
   const handleClick = (type: string, e?: any) => {
     if (e) {
@@ -114,7 +128,13 @@ function ElementAnalysesDisplay({
   return (
     <View className="popular-majors-page__element-analyses">
       {Object.entries(ELEMENT_ANALYSIS_TYPES).map(([type, config]) => {
-        const count = typeCounts[type] || 0
+        const stats = typeStats[type] || { count: 0, maxScore: null }
+        const { count, maxScore } = stats
+        
+        // 显示格式：X项 最高得分: Y分（如果没有得分则只显示X项）
+        const displayText = maxScore !== null && maxScore !== undefined
+          ? `得分: ${maxScore}分`
+          : `${count}项`
         
         return (
           <View
@@ -127,7 +147,7 @@ function ElementAnalysesDisplay({
                 {config.label}
               </Text>
               <Text className="popular-majors-page__element-analysis-count">
-                {count}项
+                {displayText}
               </Text>
             </View>
           </View>

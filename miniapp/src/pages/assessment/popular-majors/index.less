@@ -592,8 +592,41 @@
 
 // 对话框样式
 .popular-majors-page__dialog {
-  max-height: 80vh;
+  max-height: 90vh;
   overflow-y: auto;
+  width: 100%;
+  max-width: 100%;
+  
+  // 竖屏时：增大高度
+  @media (orientation: portrait) {
+    max-height: 92vh;
+  }
+  
+  // 横屏时：增大高度
+  @media (orientation: landscape) {
+    max-height: 95vh;
+  }
+}
+
+// 针对专业匹配度测评对话框容器，增大尺寸
+// 使用 :global 来覆盖 Dialog 组件的样式
+:global {
+  // 当对话框包含 popular-majors-page__dialog 时，增大容器尺寸
+  .ui-dialog__content {
+    // 竖屏时：减少左右边距，增大宽度
+    @media (orientation: portrait) {
+      width: calc(100% - 32rpx) !important;
+      max-width: 1200rpx !important;
+      max-height: 92vh !important;
+    }
+    
+    // 横屏时：减少上下边距，增大宽度
+    @media (orientation: landscape) {
+      width: calc(100% - 32rpx) !important;
+      max-width: 1400rpx !important;
+      max-height: 95vh !important;
+    }
+  }
 }
 
 .popular-majors-page__dialog-title {
