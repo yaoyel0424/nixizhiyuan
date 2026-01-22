@@ -94,6 +94,7 @@ function ExamInfoDialog({
   const [isFetchingRank, setIsFetchingRank] = useState(false)
   const scoreChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastProcessedScoreRef = useRef<string | null>(null) // 记录上次处理的分数，避免重复调用
+  const isLoadingDataRef = useRef(false) // 标记是否正在加载数据
 
   // 获取当前省份的科目配置
   const currentProvinceConfig = gaokaoConfig.find(config => config.province === selectedProvince)
@@ -101,39 +102,14 @@ function ExamInfoDialog({
   // 获取所有省份列表
   const provinceList = gaokaoConfig.map(config => config.province).sort()
 
-  // 根据省份变化，重置科目选择
+  // 根据省份变化，重置所有科目选择和分数数据（仅在用户主动切换省份时，不是加载数据时）
   useEffect(() => {
-    if (currentProvinceConfig) {
-      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
-      
-      // 如果省份配置中没有首选科目要求，清空首选
-      if (!currentProvinceConfig.primarySubjects || currentProvinceConfig.primarySubjects.count === 0) {
-        setFirstChoice(null)
-      } else {
-        // 如果有首选科目要求，但当前选择不在可选列表中，清空
-        if (firstChoice && !currentProvinceConfig.primarySubjects.subjects.includes(firstChoice)) {
-          setFirstChoice(null)
-        }
-        // 如果不是3+3模式，且首选是"综合"，清空（非3+3模式不能选择"综合"）
-        if (!is3Plus3Mode && firstChoice === '综合') {
-          setFirstChoice(null)
-        }
-      }
-      
-      // 清空不在可选列表中的次选科目
-      if (currentProvinceConfig.secondarySubjects) {
-        setOptionalSubjects(prev => {
-          const newSet = new Set<string>()
-          prev.forEach(subject => {
-            if (currentProvinceConfig.secondarySubjects!.subjects.includes(subject)) {
-              newSet.add(subject)
-            }
-          })
-          return newSet
-        })
-      } else {
-        setOptionalSubjects(new Set())
-      }
+    if (currentProvinceConfig && !isLoadingDataRef.current) {
+      // 切换省份时，清空所有已选数据（但不在加载数据时清空）
+      setFirstChoice(null)
+      setOptionalSubjects(new Set())
+      setTotalScore('')
+      setRanking('')
     }
   }, [selectedProvince, currentProvinceConfig])
 
@@ -157,6 +133,9 @@ function ExamInfoDialog({
       
       const loadData = async () => {
         try {
+          // 标记正在加载数据，防止清空数据的 useEffect 触发
+          isLoadingDataRef.current = true
+          
           // 先加载高考科目配置（如果还没有加载）
           if (gaokaoConfig.length === 0) {
             const config = await getGaokaoConfig()
@@ -165,55 +144,73 @@ function ExamInfoDialog({
 
           // 优先使用传入的 examInfo
           if (examInfo) {
-            if (examInfo.province && examInfo.province !== selectedProvince) {
+            // 省份：如果有值就设置
+            if (examInfo.province) {
               setSelectedProvince(examInfo.province)
             }
-            if (examInfo.preferredSubjects && examInfo.preferredSubjects !== firstChoice) {
+            // 首选科目：如果有值就设置
+            if (examInfo.preferredSubjects) {
               setFirstChoice(examInfo.preferredSubjects)
+            } else {
+              setFirstChoice(null)
             }
+            // 次选科目：如果有值就设置
             if (examInfo.secondarySubjects) {
-              const subjects = examInfo.secondarySubjects.split(',').map(s => s.trim())
-              const currentSubjects = Array.from(optionalSubjects).sort().join(',')
-              const newSubjects = subjects.sort().join(',')
-              if (currentSubjects !== newSubjects) {
-                setOptionalSubjects(new Set(subjects))
-              }
+              const subjects = examInfo.secondarySubjects.split(',').map(s => s.trim()).filter(s => s)
+              setOptionalSubjects(new Set(subjects))
+            } else {
+              setOptionalSubjects(new Set())
             }
-            if (examInfo.score !== undefined && String(examInfo.score) !== totalScore) {
+            // 分数：如果有值就设置
+            if (examInfo.score !== undefined && examInfo.score !== null) {
               setTotalScore(String(examInfo.score))
+            } else {
+              setTotalScore('')
             }
-            if (examInfo.rank !== undefined && String(examInfo.rank) !== ranking) {
+            // 排名：如果有值就设置
+            if (examInfo.rank !== undefined && examInfo.rank !== null) {
               setRanking(String(examInfo.rank))
+            } else {
+              setRanking('')
             }
           } else {
-            // 从本地存储加载
+            // 从本地存储加载（当 examInfo 为空时）
             const savedProvince = await getStorage<string>('examProvince')
-            if (savedProvince && savedProvince !== selectedProvince) {
+            if (savedProvince) {
               setSelectedProvince(savedProvince)
             }
             const savedFirstChoice = await getStorage<string>('examFirstChoice')
-            if (savedFirstChoice && savedFirstChoice !== firstChoice) {
+            if (savedFirstChoice) {
               setFirstChoice(savedFirstChoice)
+            } else {
+              setFirstChoice(null)
             }
             const savedOptional = await getStorage<string[]>('examOptionalSubjects')
-            if (savedOptional) {
-              const currentSubjects = Array.from(optionalSubjects).sort().join(',')
-              const newSubjects = savedOptional.sort().join(',')
-              if (currentSubjects !== newSubjects) {
-                setOptionalSubjects(new Set(savedOptional))
-              }
+            if (savedOptional && savedOptional.length > 0) {
+              setOptionalSubjects(new Set(savedOptional))
+            } else {
+              setOptionalSubjects(new Set())
             }
             const savedScore = await getStorage<string>('examTotalScore')
-            if (savedScore && savedScore !== totalScore) {
+            if (savedScore) {
               setTotalScore(savedScore)
+            } else {
+              setTotalScore('')
             }
             const savedRanking = await getStorage<string>('examRanking')
-            if (savedRanking && savedRanking !== ranking) {
+            if (savedRanking) {
               setRanking(savedRanking)
+            } else {
+              setRanking('')
             }
           }
         } catch (error) {
           console.error('加载高考信息失败:', error)
+        } finally {
+          // 数据加载完成后，取消标记（使用 setTimeout 确保状态更新完成）
+          setTimeout(() => {
+            isLoadingDataRef.current = false
+          }, 100)
         }
       }
       loadData()
@@ -345,41 +342,11 @@ function ExamInfoDialog({
     setIsUpdatingProvince(true)
     setShowProvinceDropdown(false)
     
-    // 先更新本地状态
+    // 只更新省份，不清空数据（useEffect 会自动清空）
     setSelectedProvince(province)
     
-    // 更新高考信息中的省份
-    try {
-      // 判断是否为3+3模式省份
-      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(province)
-      
-      const updatedInfo: ExamInfo = {
-        province,
-        // 3+3模式省份：preferredSubjects 统一填写"综合"，选科信息放在 secondarySubjects
-        preferredSubjects: is3Plus3Mode ? '综合' : (firstChoice || undefined),
-        secondarySubjects: optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined,
-        score: totalScore ? parseInt(totalScore, 10) : undefined,
-        rank: ranking ? parseInt(ranking, 10) : undefined,
-      }
-      // updateExamInfo 已经返回更新后的信息，不需要再次调用 API
-      const result = await updateExamInfo(updatedInfo)
-      
-      // 使用返回的数据更新父组件状态，避免重复调用 API
-      if (onUpdate) {
-        // 将更新后的信息传递给父组件，而不是让父组件再次调用 API
-        onUpdate(result)
-      }
-    } catch (error) {
-      console.error('更新省份失败:', error)
-      // 更新失败，恢复原省份
-      setSelectedProvince(examInfo?.province || '四川')
-      Taro.showToast({
-        title: '更新失败，请重试',
-        icon: 'none'
-      })
-    } finally {
-      setIsUpdatingProvince(false)
-    }
+    // 不调用 API，只有用户点击确认时才更新
+    setIsUpdatingProvince(false)
   }
 
   // 判断是否可以提交
@@ -1162,6 +1129,17 @@ export default function IntendedMajorsPage() {
     }
   }, [activeTab])
 
+  /**
+   * 根据省份获取最高分限制
+   * @param province 省份名称
+   * @returns 最高分限制
+   */
+  const getMaxScoreByProvince = (province: string | null | undefined): number => {
+    if (province === '海南') return 900
+    if (province === '上海') return 660
+    return 750
+  }
+
   // 获取省份最低省控线（通过 provincial-control-lines 接口）
   const getMinControlScore = async () => {
     try {
@@ -1220,13 +1198,25 @@ export default function IntendedMajorsPage() {
       const score = info.score || 580
       setCurrentScore(score)
       
-      // 不在这里获取省控线，让 useEffect 统一处理，避免重复调用
-      // 根据新的高考分数计算初始分数区间（下30到上20）
-      // 不再使用保存的旧区间，因为高考分数可能已经变化
+      // 优先从本地存储读取 scoreRange
+      try {
+        const savedScoreRange = await getStorage<[number, number]>('scoreRange')
+        if (savedScoreRange && Array.isArray(savedScoreRange) && savedScoreRange.length === 2) {
+          // 如果本地存储中有数据，直接使用
+          setScoreRange(savedScoreRange)
+          setScoreRangeReady(true)
+          return
+        }
+      } catch (error) {
+        console.error('读取本地存储的分数区间失败:', error)
+      }
+      
+      // 如果没有本地数据，根据 currentScore 计算初始值
+      const maxScoreLimit = getMaxScoreByProvince(info.province)
       const minScore = Math.max(0, score - 30)
-      const maxScore = Math.min(750, score + 20)
+      const maxScore = Math.min(maxScoreLimit, score + 20)
       setScoreRange([minScore, maxScore])
-      // 保存新的分数区间
+      // 保存初始分数区间
       try {
         await setStorage('scoreRange', [minScore, maxScore])
       } catch (error) {
@@ -1304,13 +1294,25 @@ export default function IntendedMajorsPage() {
         }
       }
       
-      // 不在这里获取省控线，让 useEffect 统一处理，避免重复调用
-      // 根据新的高考分数计算初始分数区间（下30到上20）
-      // 如果分数发生变化，重新计算范围，不再使用保存的旧区间
+      // 优先从本地存储读取 scoreRange
+      try {
+        const savedScoreRange = await getStorage<[number, number]>('scoreRange')
+        if (savedScoreRange && Array.isArray(savedScoreRange) && savedScoreRange.length === 2) {
+          // 如果本地存储中有数据，直接使用
+          setScoreRange(savedScoreRange)
+          setScoreRangeReady(true)
+          return
+        }
+      } catch (error) {
+        console.error('读取本地存储的分数区间失败:', error)
+      }
+      
+      // 如果没有本地数据，根据 currentScore 计算初始值
+      const maxScoreLimit = getMaxScoreByProvince(info.province)
       const minScore = Math.max(0, score - 30)
-      const maxScore = Math.min(750, score + 20)
+      const maxScore = Math.min(maxScoreLimit, score + 20)
       setScoreRange([minScore, maxScore])
-      // 保存新的分数区间
+      // 保存初始分数区间
       try {
         await setStorage('scoreRange', [minScore, maxScore])
       } catch (error) {
@@ -1595,48 +1597,35 @@ export default function IntendedMajorsPage() {
     }
   }, [activeTab, wishlistItems.length])
 
-  // 当高考分数变化时，自动调整分数区间范围，确保在有效范围内（下30到上20）
+  // 当省控线或省份最高分变化时，确保分数区间在有效范围内（min 和 max 之间）
   useEffect(() => {
     if (activeTab === '专业赛道' && scoreRangeReady) {
-      const minLimit = Math.max(currentScore - 30, minControlScore || 0)
-      const maxLimit = Math.min(currentScore + 20, 750)
+      const maxScoreLimit = getMaxScoreByProvince(examInfo?.province)
+      const minLimit = minControlScore || 0
+      const maxLimit = maxScoreLimit
       
       // 使用函数式更新，确保使用最新的 scoreRange 值
       setScoreRange(prevRange => {
-        // 计算新的理想范围
-        const idealMin = minLimit
-        const idealMax = maxLimit
-        
-        // 如果当前范围不在理想范围内，则重置为理想范围
-        // 或者如果当前范围的最小值或最大值不在有效范围内，也需要调整
         let newMin = prevRange[0]
         let newMax = prevRange[1]
         let needUpdate = false
         
-        // 如果最小值小于理想最小值，或者最大值大于理想最大值，需要调整
-        if (prevRange[0] < idealMin || prevRange[1] > idealMax) {
-          // 如果整个范围都不在理想范围内，直接重置为理想范围
-          if (prevRange[0] < idealMin && prevRange[1] > idealMax) {
-            newMin = idealMin
-            newMax = idealMax
-            needUpdate = true
-          } else {
-            // 部分超出，调整超出部分
-            if (prevRange[0] < idealMin) {
-              newMin = idealMin
-              needUpdate = true
-            }
-            if (prevRange[1] > idealMax) {
-              newMax = idealMax
-              needUpdate = true
-            }
-          }
+        // 如果最小值小于 min，调整到 min
+        if (prevRange[0] < minLimit) {
+          newMin = minLimit
+          needUpdate = true
+        }
+        
+        // 如果最大值大于 max，调整到 max
+        if (prevRange[1] > maxLimit) {
+          newMax = maxLimit
+          needUpdate = true
         }
         
         // 确保最小值不超过最大值
         if (newMin > newMax) {
-          newMin = idealMin
-          newMax = idealMax
+          newMin = minLimit
+          newMax = maxLimit
           needUpdate = true
         }
         
@@ -1654,17 +1643,92 @@ export default function IntendedMajorsPage() {
         return prevRange
       })
     }
-  }, [currentScore, minControlScore, activeTab, scoreRangeReady])
+  }, [minControlScore, examInfo?.province, activeTab, scoreRangeReady])
+
+  // 处理最低分输入框的变化
+  const handleMinInputChange = async (value: string) => {
+    const minValue = parseInt(value, 10)
+    if (isNaN(minValue)) {
+      return
+    }
+    
+    // 验证范围：使用 RangeSlider 的 min 和 max
+    const maxScoreLimit = getMaxScoreByProvince(examInfo?.province)
+    const minLimit = minControlScore || 0
+    const maxLimit = maxScoreLimit
+    
+    // 验证 min 是否在有效范围内
+    if (minValue < minLimit || minValue > maxLimit) {
+      Taro.showToast({
+        title: `最低分必须在 ${minLimit}-${maxLimit} 之间`,
+        icon: 'none',
+        duration: 2000
+      })
+      return
+    }
+    
+    // 验证 min 不能大于当前的 max
+    if (minValue > scoreRange[1]) {
+      Taro.showToast({
+        title: '最低分不能大于最高分',
+        icon: 'none',
+        duration: 2000
+      })
+      return
+    }
+    
+    // 更新 scoreRange
+    const newRange: [number, number] = [minValue, scoreRange[1]]
+    await handleScoreRangeChange(newRange)
+  }
+
+  // 处理最高分输入框的变化
+  const handleMaxInputChange = async (value: string) => {
+    const maxValue = parseInt(value, 10)
+    if (isNaN(maxValue)) {
+      return
+    }
+    
+    // 验证范围：使用 RangeSlider 的 min 和 max
+    const maxScoreLimit = getMaxScoreByProvince(examInfo?.province)
+    const minLimit = minControlScore || 0
+    const maxLimit = maxScoreLimit
+    
+    // 验证 max 是否在有效范围内
+    if (maxValue < minLimit || maxValue > maxLimit) {
+      Taro.showToast({
+        title: `最高分必须在 ${minLimit}-${maxLimit} 之间`,
+        icon: 'none',
+        duration: 2000
+      })
+      return
+    }
+    
+    // 验证 max 不能小于当前的 min
+    if (maxValue < scoreRange[0]) {
+      Taro.showToast({
+        title: '最高分不能小于最低分',
+        icon: 'none',
+        duration: 2000
+      })
+      return
+    }
+    
+    // 更新 scoreRange
+    const newRange: [number, number] = [scoreRange[0], maxValue]
+    await handleScoreRangeChange(newRange)
+  }
 
   // 处理分数区间变化
   const handleScoreRangeChange = async (newRange: [number, number]) => {
-    // 计算基于当前高考分数的有效范围
-    const minLimit = Math.max(currentScore - 30, minControlScore || 0)
-    const maxLimit = Math.min(currentScore + 20, 750)
+    // 使用 RangeSlider 的 min 和 max 作为限制范围
+    const maxScoreLimit = getMaxScoreByProvince(examInfo?.province)
+    const minLimit = minControlScore || 0
+    const maxLimit = maxScoreLimit
     
-    // 确保最小值不低于省控线，且不小于有效范围的最小值
+    // 确保最小值不低于省控线（min）
     const minValue = Math.max(newRange[0], minLimit)
-    // 确保最大值不超过有效范围的最大值
+    // 确保最大值不超过省份最高分限制（max）
     const maxValue = Math.min(newRange[1], maxLimit)
     const finalRange: [number, number] = [minValue, maxValue]
     
@@ -2147,8 +2211,8 @@ export default function IntendedMajorsPage() {
             </Text>
             <View className="intended-majors-page__slider-container">
               <RangeSlider
-                min={Math.max(currentScore - 30, minControlScore || 0)}
-                max={Math.min(currentScore + 20, 750)}
+                min={minControlScore || 0}
+                max={getMaxScoreByProvince(examInfo?.province)}
                 value={scoreRange}
                 onChange={handleScoreRangeChange}
                 step={1}
@@ -2157,17 +2221,37 @@ export default function IntendedMajorsPage() {
               <View className="intended-majors-page__slider-labels">
                 <View className="intended-majors-page__slider-label">
                   <Text className="intended-majors-page__slider-label-text">最低:</Text>
-                  <Text className="intended-majors-page__slider-label-value">{scoreRange[0]}</Text>
+                  <Text className="intended-majors-page__slider-label-value">{minControlScore || 0}</Text>
                 </View>
                 <View className="intended-majors-page__slider-label">
                   <Text className="intended-majors-page__slider-label-text">区间:</Text>
-                  <Text className="intended-majors-page__slider-label-value intended-majors-page__slider-label-value--range">
-                    {scoreRange[0]}-{scoreRange[1]}
-                  </Text>
+                  <View className="intended-majors-page__slider-label-range-inputs">
+                    <Input
+                      type="number"
+                      value={String(scoreRange[0])}
+                      onBlur={(e) => {
+                        if (e.detail.value) {
+                          handleMinInputChange(e.detail.value)
+                        }
+                      }}
+                      className="intended-majors-page__slider-label-input"
+                    />
+                    <Text className="intended-majors-page__slider-label-separator">-</Text>
+                    <Input
+                      type="number"
+                      value={String(scoreRange[1])}
+                      onBlur={(e) => {
+                        if (e.detail.value) {
+                          handleMaxInputChange(e.detail.value)
+                        }
+                      }}
+                      className="intended-majors-page__slider-label-input"
+                    />
+                  </View>
                 </View>
                 <View className="intended-majors-page__slider-label">
                   <Text className="intended-majors-page__slider-label-text">最高:</Text>
-                  <Text className="intended-majors-page__slider-label-value">{scoreRange[1]}</Text>
+                  <Text className="intended-majors-page__slider-label-value">{getMaxScoreByProvince(examInfo?.province)}</Text>
                 </View>
               </View>
             </View>

@@ -60,7 +60,7 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsNumber()
   @Min(0, { message: '分数不能小于0' })
-  @Max(750, { message: '分数不能大于750' })
+  @Max(900, { message: '分数不能大于900' })
   score?: number;
 
   @ApiProperty({

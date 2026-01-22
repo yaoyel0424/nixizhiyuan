@@ -221,12 +221,35 @@ export class UsersController {
       }
     }
 
-    // 验证分数范围
-    if (
-      updateData.score !== undefined &&
-      (updateData.score < 0 || updateData.score > 750)
-    ) {
-      throw new BadRequestException('无效的分数范围（0-750）');
+    // 验证分数范围（根据省份设置不同的最高分限制）
+    if (updateData.score !== undefined && updateData.score < 0) {
+      throw new BadRequestException('分数不能小于0');
+    }
+    
+    if (updateData.score !== undefined) {
+      // 获取省份（优先使用 updateData.province，否则从数据库获取当前用户的省份）
+      let province: string | null = updateData.province || null;
+      if (!province) {
+        const currentUser = await this.usersService.findOne(user.id);
+        province = currentUser?.province || null;
+      }
+      
+      // 根据省份设置不同的最高分限制
+      let maxScore: number;
+      if (province === '海南') {
+        maxScore = 900;
+      } else if (province === '上海') {
+        maxScore = 660;
+      } else {
+        maxScore = 750;
+      }
+      
+      if (updateData.score > maxScore) {
+        const provinceName = province || '当前省份';
+        throw new BadRequestException(
+          `无效的分数范围（0-${maxScore}），${provinceName}的最高分不能超过${maxScore}分`,
+        );
+      }
     }
 
     // 验证排名范围

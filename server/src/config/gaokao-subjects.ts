@@ -395,7 +395,7 @@ export const GAOKAO_SUBJECT_CONFIG: SubjectConfig[] = [
     province: '西藏',
     mode: GaoKaoMode.MODE_TRADITIONAL,
     primarySubjects: {
-      count: 1,
+      count: 0,
       subjects: ['文理']
     },
     secondarySubjects: {

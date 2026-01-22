@@ -185,8 +185,8 @@ export class PopularMajorsService {
     }
 
     // 获取所有专业详情ID和热门专业ID列表
-    const majorDetailIds = items
-      .map((item) => item.majorDetail?.id)
+      const majorDetailIds = items
+        .map((item) => item.majorDetail?.id)
       .filter((id) => id !== undefined) as number[];
 
     if (majorDetailIds.length === 0) {
@@ -463,7 +463,7 @@ export class PopularMajorsService {
     const items = Array.from(itemsMap.values()) as PopularMajor[];
 
     // 构建进度映射
-    const majorScaleCountMap = new Map<number, number>();
+          const majorScaleCountMap = new Map<number, number>();
     const majorAnsweredCountMap = new Map<number, number>();
 
     results.forEach((row: any) => {
@@ -556,7 +556,7 @@ export class PopularMajorsService {
   ): Promise<void> {
     // 构建进度映射
     const majorScaleCountMap = new Map<number, number>();
-    const majorAnsweredCountMap = new Map<number, number>();
+          const majorAnsweredCountMap = new Map<number, number>();
 
     // 从 SQL 查询结果中提取进度数据
     progressResults.forEach((row: any) => {
@@ -609,49 +609,49 @@ export class PopularMajorsService {
           row.element_score !== null && row.element_score !== undefined
             ? parseFloat(row.element_score)
             : null,
-        );
-    });
+            );
+          });
 
     // 获取每个热门专业的分数（直接调用，内部会处理所有计算）
     const scores = await this.scoresService.calculatePopularMajorScores(
-      userId,
+                userId,
       popularMajorIds,
-    );
+              );
 
     // 使用 popularMajorId 作为 key 创建分数映射
     const scoreMap = new Map<number, any>();
-    scores.forEach((score) => {
+              scores.forEach((score) => {
       if (score.popularMajorId) {
         scoreMap.set(score.popularMajorId, score);
       }
-    });
+              });
 
-    // 将进度和分数信息添加到每个专业
-    items.forEach((item) => {
-      const majorDetailId = item.majorDetail?.id;
-      if (majorDetailId) {
+          // 将进度和分数信息添加到每个专业
+          items.forEach((item) => {
+            const majorDetailId = item.majorDetail?.id;
+            if (majorDetailId) {
         const totalCount = majorScaleCountMap.get(majorDetailId) || 0;
         const completedCount = majorAnsweredCountMap.get(majorDetailId) || 0;
         const scoreInfo = scoreMap.get(item.id);
 
-        (item as any).progress = {
-          completedCount,
-          totalCount,
-          isCompleted: completedCount === totalCount && totalCount > 0,
-        };
+              (item as any).progress = {
+                completedCount,
+                totalCount,
+                isCompleted: completedCount === totalCount && totalCount > 0,
+              };
 
-        if (scoreInfo) {
-          (item as any).score = {
-            score: scoreInfo.score,
-            lexueScore: scoreInfo.lexueScore,
-            shanxueScore: scoreInfo.shanxueScore,
-            yanxueDeduction: scoreInfo.yanxueDeduction,
-            tiaozhanDeduction: scoreInfo.tiaozhanDeduction,
-          };
-        } else {
-          (item as any).score = null;
-        }
-      }
+              if (scoreInfo) {
+                (item as any).score = {
+                  score: scoreInfo.score,
+                  lexueScore: scoreInfo.lexueScore,
+                  shanxueScore: scoreInfo.shanxueScore,
+                  yanxueDeduction: scoreInfo.yanxueDeduction,
+                  tiaozhanDeduction: scoreInfo.tiaozhanDeduction,
+                };
+              } else {
+                (item as any).score = null;
+              }
+            }
 
       // 为 majorElementAnalyses 添加元素分数
       if (item.majorDetail?.majorElementAnalyses) {
