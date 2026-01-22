@@ -380,6 +380,13 @@ export class EnrollPlanService {
       `用户 ${userId} 找到 ${result.length} 个收藏专业，共 ${enrollmentPlans.length} 个匹配的招生计划`,
     );
 
+    // 按照 score 倒序排列（score 高的在前）
+    result.sort((a, b) => {
+      const scoreA = a.score ?? -Infinity;
+      const scoreB = b.score ?? -Infinity;
+      return scoreB - scoreA;
+    });
+
     return result;
   }
 

@@ -1,6 +1,6 @@
 // 志愿方案页面
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import { View, Text, ScrollView, Checkbox } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -717,6 +717,8 @@ export default function IntendedMajorsPage() {
   const [scoreRange, setScoreRange] = useState<[number, number]>([500, 650])
   // 分数区间是否已从本地存储/高考信息初始化完成（避免用默认值触发一次错误请求）
   const [scoreRangeReady, setScoreRangeReady] = useState(false)
+  // 是否启用分数区间筛选
+  const [enableScoreFilter, setEnableScoreFilter] = useState<boolean>(false)
   // 区间输入框的临时值（用于实时显示，不立即更新 scoreRange）
   // 使用 null 表示未编辑状态，字符串表示正在编辑
   const [tempMinValue, setTempMinValue] = useState<string | null>(null)
@@ -1274,7 +1276,14 @@ export default function IntendedMajorsPage() {
     if (activeTab === '专业赛道' && !fetchingEnrollmentPlansRef.current) {
       try {
         fetchingEnrollmentPlansRef.current = true
-        const [minScore, maxScore] = range || scoreRangeRef.current
+        // 如果启用了分数区间筛选，才传入 minScore 和 maxScore
+        let minScore: number | undefined
+        let maxScore: number | undefined
+        if (enableScoreFilter) {
+          const [min, max] = range || scoreRangeRef.current
+          minScore = min
+          maxScore = max
+        }
         const plans = await getUserEnrollmentPlans(minScore, maxScore)
         setEnrollmentPlans(plans)
         console.log('重新获取用户招生计划成功:', plans)
@@ -1748,18 +1757,22 @@ export default function IntendedMajorsPage() {
           setStorage('scoreRange', adjustedRange).catch(error => {
             console.error('保存调整后的分数区间失败:', error)
           })
-          // 刷新院校探索数据
-          refreshEnrollmentPlans(adjustedRange)
+          // 仅在启用筛选时刷新院校探索数据
+          if (enableScoreFilter) {
+            refreshEnrollmentPlans(adjustedRange)
+          }
           return adjustedRange
         }
         
         return prevRange
       })
     }
-  }, [minControlScore, examInfo?.province, activeTab, scoreRangeReady])
+  }, [minControlScore, examInfo?.province, activeTab, scoreRangeReady, enableScoreFilter])
 
   // 处理最低分输入框的变化
   const handleMinInputChange = async (value: string) => {
+    if (!enableScoreFilter) return
+    
     const minValue = parseInt(value, 10)
     if (isNaN(minValue)) {
       return
@@ -1853,8 +1866,8 @@ export default function IntendedMajorsPage() {
         console.error('保存分数区间失败:', error)
       }
 
-      // 专业赛道：分数区间变化后，防抖刷新院校探索数据
-      if (activeTab === '专业赛道') {
+      // 专业赛道：分数区间变化后，防抖刷新院校探索数据（仅在启用筛选时）
+      if (activeTab === '专业赛道' && enableScoreFilter) {
         if (refreshEnrollmentPlansTimerRef.current) {
           clearTimeout(refreshEnrollmentPlansTimerRef.current)
         }
@@ -2319,9 +2332,36 @@ export default function IntendedMajorsPage() {
       {isProfessionalTrack && (
         <View className="intended-majors-page__score-filter">
           <View className="intended-majors-page__score-filter-content">
-            <Text className="intended-majors-page__score-filter-tip">
-              💡 滑动滑块可查看不同分数区间的院校
-            </Text>
+            <View className="intended-majors-page__score-filter-header">
+              <View 
+                className="intended-majors-page__score-filter-checkbox-wrapper"
+                onClick={() => {
+                  const newValue = !enableScoreFilter
+                  console.log('Checkbox clicked:', { 
+                    current: enableScoreFilter, 
+                    newValue,
+                    willBeDisabled: !newValue
+                  })
+                  setEnableScoreFilter(newValue)
+                  // 当启用筛选时，立即刷新数据
+                  if (newValue) {
+                    refreshEnrollmentPlans()
+                  } else {
+                    // 当禁用筛选时，刷新数据（不传分数参数）
+                    refreshEnrollmentPlans()
+                  }
+                }}
+              >
+                <View className={`intended-majors-page__score-filter-checkbox ${enableScoreFilter ? 'intended-majors-page__score-filter-checkbox--checked' : ''}`}>
+                  {enableScoreFilter && (
+                    <Text className="intended-majors-page__score-filter-checkbox-icon">✓</Text>
+                  )}
+                </View>
+              </View>
+              <Text className="intended-majors-page__score-filter-tip">
+                使用分数区间查看不同分数区间的院校
+              </Text>
+            </View>
             <View className="intended-majors-page__slider-container">
               <RangeSlider
                 min={minControlScore || 0}
@@ -2330,6 +2370,7 @@ export default function IntendedMajorsPage() {
                 onChange={handleScoreRangeChange}
                 step={1}
                 currentScore={currentScore}
+                disabled={!enableScoreFilter}
               />
               <View className="intended-majors-page__slider-labels">
                 <View className="intended-majors-page__slider-label">
@@ -2342,11 +2383,14 @@ export default function IntendedMajorsPage() {
                     <Input
                       type="number"
                       value={tempMinValue !== null ? tempMinValue : String(scoreRange[0])}
+                      disabled={!enableScoreFilter}
                       onInput={(e) => {
+                        if (!enableScoreFilter) return
                         // 用户输入时，实时更新临时值（允许为空，让用户继续输入）
                         setTempMinValue(e.detail.value)
                       }}
                       onBlur={(e) => {
+                        if (!enableScoreFilter) return
                         const value = e.detail.value
                         // 清空临时值，恢复显示 scoreRange 的值
                         setTempMinValue(null)
@@ -2362,11 +2406,14 @@ export default function IntendedMajorsPage() {
                     <Input
                       type="number"
                       value={tempMaxValue !== null ? tempMaxValue : String(scoreRange[1])}
+                      disabled={!enableScoreFilter}
                       onInput={(e) => {
+                        if (!enableScoreFilter) return
                         // 用户输入时，实时更新临时值（允许为空，让用户继续输入）
                         setTempMaxValue(e.detail.value)
                       }}
                       onBlur={(e) => {
+                        if (!enableScoreFilter) return
                         const value = e.detail.value
                         // 清空临时值，恢复显示 scoreRange 的值
                         setTempMaxValue(null)
@@ -2944,8 +2991,13 @@ export default function IntendedMajorsPage() {
                           onClick={() => {
                             // 传递 majorId、majorCode 和 majorName，院校列表页面可以根据 majorId 调用 API
                             const majorNameParam = encodeURIComponent(major.name || '')
+                            // 如果启用了分数区间筛选，才传递 minScore 和 maxScore
+                            let url = `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}&majorName=${majorNameParam}`
+                            if (enableScoreFilter) {
+                              url += `&minScore=${scoreRange[0]}&maxScore=${scoreRange[1]}`
+                            }
                             Taro.navigateTo({
-                              url: `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}&majorName=${majorNameParam}&minScore=${scoreRange[0]}&maxScore=${scoreRange[1]}`
+                              url
                             })
                           }}
                           className="intended-majors-page__major-item-link"

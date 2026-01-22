@@ -225,17 +225,25 @@ export class MajorsService {
     }
 
     // 为每个收藏记录添加分数信息
-    const itemsWithScores = favorites.map((favorite) => {
-      const scoreInfo = scoresMap.get(favorite.majorCode);
-      return {
-        ...favorite,
-        score: scoreInfo?.score,
-        lexueScore: scoreInfo?.lexueScore,
-        shanxueScore: scoreInfo?.shanxueScore,
-        yanxueDeduction: scoreInfo?.yanxueDeduction,
-        tiaozhanDeduction: scoreInfo?.tiaozhanDeduction,
-      };
-    });
+    const itemsWithScores = favorites
+      .map((favorite) => {
+        const scoreInfo = scoresMap.get(favorite.majorCode);
+        return {
+          ...favorite,
+          score: scoreInfo?.score,
+          lexueScore: scoreInfo?.lexueScore,
+          shanxueScore: scoreInfo?.shanxueScore,
+          yanxueDeduction: scoreInfo?.yanxueDeduction,
+          tiaozhanDeduction: scoreInfo?.tiaozhanDeduction,
+        };
+      })
+      .sort((a, b) => {
+        // 按照 score 倒序排列（score 高的在前）
+        // 如果 score 为 null 或 undefined，排在后面
+        const scoreA = a.score ?? -Infinity;
+        const scoreB = b.score ?? -Infinity;
+        return scoreB - scoreA;
+      });
 
     // 计算总页数
     const totalPages = Math.ceil(total / limit);

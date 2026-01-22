@@ -110,3 +110,18 @@
   border-top: 8rpx solid #1A4099;
   margin: 0 auto;
 }
+
+// 禁用状态
+.range-slider--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  
+  .range-slider__thumb {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .range-slider__track-bg--active {
+    background: #9ca3af;
+  }
+}

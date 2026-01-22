@@ -11,6 +11,7 @@ interface RangeSliderProps {
   onChange: (value: [number, number]) => void
   step?: number
   currentScore?: number // 用户当前分数，用于显示指示器
+  disabled?: boolean // 是否禁用
 }
 
 /**
@@ -24,6 +25,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
   onChange,
   step = 1,
   currentScore,
+  disabled = false,
 }) => {
   const [minValue, maxValue] = value
   const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null)
@@ -62,6 +64,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
 
   // 处理触摸开始
   const handleTouchStart = (type: 'min' | 'max', e: any) => {
+    if (disabled) return
     e.stopPropagation()
     setIsDragging(type)
     // 更新轨道信息
@@ -127,7 +130,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({
   const currentScorePercent = currentScore ? valueToPercent(currentScore) : null
 
   return (
-    <View className="range-slider">
+    <View className={`range-slider ${disabled ? 'range-slider--disabled' : ''}`}>
       <View 
         className="range-slider__container"
       >

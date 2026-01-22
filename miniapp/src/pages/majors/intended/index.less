@@ -151,12 +151,49 @@
   margin: 0 auto;
 }
 
+.intended-majors-page__score-filter-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.intended-majors-page__score-filter-checkbox-wrapper {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.intended-majors-page__score-filter-checkbox {
+  width: 32rpx;
+  height: 32rpx;
+  border: 2rpx solid #d1d5db;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  transition: all 0.2s;
+  
+  &--checked {
+    background: #1A4099;
+    border-color: #1A4099;
+  }
+}
+
+.intended-majors-page__score-filter-checkbox-icon {
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: bold;
+  line-height: 1;
+}
+
 .intended-majors-page__score-filter-tip {
   font-size: 24rpx;
   color: #666;
   font-weight: 500;
-  margin-bottom: 24rpx;
-  display: block;
+  flex: 1;
 }
 
 .intended-majors-page__slider-container {
