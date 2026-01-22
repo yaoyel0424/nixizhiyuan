@@ -1,7 +1,7 @@
 // 探索成果主页面
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow, useShareAppMessage } from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
@@ -31,19 +31,6 @@ export default function AssessmentPage() {
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0) // 量表答案数量
   const [loading, setLoading] = useState(false)
   const fetchingRef = useRef(false) // 使用 ref 来防止重复调用
-
-  /**
-   * 小程序分享配置
-   * 当用户点击右上角分享或使用 Button 的 openType="share" 时会触发
-   * 分享样式与个人中心的"分享给朋友"保持一致
-   */
-  useShareAppMessage(() => {
-    return {
-      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
-      path: '/pages/assessment/index',
-      imageUrl: '', // 可选：分享图片 URL
-    }
-  })
 
   // 从接口获取用户相关数据统计
   const fetchUserRelatedData = useCallback(async () => {

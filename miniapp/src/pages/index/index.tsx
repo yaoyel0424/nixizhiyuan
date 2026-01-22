@@ -1,7 +1,7 @@
 // 首页
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image } from '@tarojs/components';
-import Taro, { useShareAppMessage } from '@tarojs/taro';
+import Taro from '@tarojs/taro';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { BottomNav } from '@/components/BottomNav';
@@ -79,19 +79,6 @@ export default function IndexPage() {
   const [intendedMajorsCount, setIntendedMajorsCount] = useState(0);
   const [selectedProvincesCount, setSelectedProvincesCount] = useState(0);
   const [hasVisitedMajors, setHasVisitedMajors] = useState(false);
-
-  /**
-   * 小程序分享配置
-   * 当用户点击右上角分享或使用 Button 的 openType="share" 时会触发
-   * 分享样式与个人中心的"分享给朋友"保持一致
-   */
-  useShareAppMessage(() => {
-    return {
-      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
-      path: '/pages/index/index',
-      imageUrl: '', // 可选：分享图片 URL
-    }
-  })
 
   useEffect(() => {
     setIsClient(true);

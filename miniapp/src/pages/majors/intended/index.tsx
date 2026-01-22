@@ -1,7 +1,7 @@
 // 志愿方案页面
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import Taro, { useRouter, useDidShow, useShareAppMessage } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -704,22 +704,6 @@ export default function IntendedMajorsPage() {
   const router = useRouter()
   const tabParam = router.params?.tab || '意向志愿'
   const activeTab = tabParam === '意向志愿' ? '意向志愿' : '专业赛道'
-
-  /**
-   * 小程序分享配置
-   * 当用户点击右上角分享或使用 Button 的 openType="share" 时会触发
-   * 分享样式与个人中心的"分享给朋友"保持一致
-   */
-  useShareAppMessage(() => {
-    // 构建分享路径，包含当前tab参数
-    const sharePath = `/pages/majors/intended/index?tab=${encodeURIComponent(activeTab)}`
-    
-    return {
-      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
-      path: sharePath,
-      imageUrl: '', // 可选：分享图片 URL
-    }
-  })
   
   const [data, setData] = useState<IntentionMajor[]>([])
   const [enrollmentPlans, setEnrollmentPlans] = useState<UserEnrollmentPlan[]>([]) // 用户招生计划数据
