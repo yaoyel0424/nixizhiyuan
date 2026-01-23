@@ -746,8 +746,8 @@ export default function IntendedMajorsSchoolsPage() {
     // 因为 selectedPlanData 可能是第一个 plan 的数据，不是当前 plan 的数据
     const targetRemark = plan.remark || null
     const targetEnrollmentMajor = plan.enrollmentMajor || null
-    // 获取目标批次（优先使用 plan 的 batch，其次使用 selectedPlanData 的 batch）
-    const targetBatch = plan.batch || selectedPlanData?.batch || null
+    // 获取目标批次（从 selectedPlanData 获取，因为 MajorGroupInfo 类型中没有 batch 属性）
+    const targetBatch = selectedPlanData?.batch || null
     // 获取目标省份（从 selectedSchoolData 中获取）
     const targetProvince = selectedSchoolData.provinceName || null
     
