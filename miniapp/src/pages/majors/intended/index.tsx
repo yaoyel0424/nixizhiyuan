@@ -2355,7 +2355,8 @@ export default function IntendedMajorsPage() {
             <View className="intended-majors-page__score-filter-header">
               <View 
                 className="intended-majors-page__score-filter-checkbox-wrapper"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation()
                   const newValue = !enableScoreFilter
                   console.log('Checkbox clicked:', { 
                     current: enableScoreFilter, 
@@ -2366,8 +2367,18 @@ export default function IntendedMajorsPage() {
                   // 立即刷新数据，传入新的筛选状态，避免状态更新延迟导致的问题
                   refreshEnrollmentPlans(undefined, newValue)
                 }}
+                onTouchStart={(e) => {
+                  e.stopPropagation()
+                  console.log('Checkbox touch start')
+                }}
               >
-                <View className={`intended-majors-page__score-filter-checkbox ${enableScoreFilter ? 'intended-majors-page__score-filter-checkbox--checked' : ''}`}>
+                <View 
+                  className={`intended-majors-page__score-filter-checkbox ${enableScoreFilter ? 'intended-majors-page__score-filter-checkbox--checked' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log('Checkbox inner clicked')
+                  }}
+                >
                   {enableScoreFilter && (
                     <Text className="intended-majors-page__score-filter-checkbox-icon">✓</Text>
                   )}
