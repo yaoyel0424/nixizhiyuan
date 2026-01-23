@@ -742,14 +742,16 @@ export default function IntendedMajorsSchoolsPage() {
     const targetMajorGroupName = selectedGroupInfo.majorGroupName
     // 从 selectedGroupInfo 或 selectedPlanData 获取 majorGroupId
     const targetMajorGroupId = selectedGroupInfo.majorGroupId || selectedPlanData?.majorGroupId || selectedPlanData?.majorGroup?.mgId || null
-    // 优先使用当前 plan 的 remark 和 enrollmentMajor，而不是 selectedPlanData 的
+    // 优先使用当前 plan 的 remark、enrollmentMajor 和 studyPeriod，而不是 selectedPlanData 的
     // 因为 selectedPlanData 可能是第一个 plan 的数据，不是当前 plan 的数据
     const targetRemark = plan.remark || null
     const targetEnrollmentMajor = plan.enrollmentMajor || null
-    // 获取目标批次（从 selectedPlanData 获取，因为 MajorGroupInfo 类型中没有 batch 属性）
+    const targetStudyPeriod = plan.studyPeriod || null
+    // 获取目标批次（MajorGroupInfo 没有 batch 字段，从 selectedPlanData 中获取）
     const targetBatch = selectedPlanData?.batch || null
-    // 获取目标省份（从 selectedSchoolData 中获取）
-    const targetProvince = selectedSchoolData.provinceName || null
+    // 获取目标省份（应该从 selectedPlanData.province 获取，而不是 selectedSchoolData.provinceName）
+    // 因为志愿的省份是招生省份（如"江苏"），而学校的省份是学校所在省份（如"广东"）
+    const targetProvince = selectedPlanData?.province || selectedPlanData?.majorScores?.[0]?.province || null
     
     if (!targetMajorGroupName && !targetMajorGroupId) {
       return { isIn: false }
@@ -834,6 +836,30 @@ export default function IntendedMajorsSchoolsPage() {
                 continue
               }
               
+              // 匹配学制（必须精确匹配）
+              // 学制是区分不同志愿的关键字段（如八年制和五年制），必须严格匹配
+              // 如果目标学制为空，则跳过学制匹配（认为匹配）
+              // 如果目标学制不为空，则必须精确匹配
+              let isStudyPeriodMatch = true
+              if (targetStudyPeriod) {
+                const choiceStudyPeriod = choice.studyPeriod || null
+                if (choiceStudyPeriod) {
+                  isStudyPeriodMatch = (
+                    choiceStudyPeriod === targetStudyPeriod ||
+                    choiceStudyPeriod.trim() === targetStudyPeriod.trim()
+                  )
+                } else {
+                  // 目标有学制但choice没有，不匹配
+                  isStudyPeriodMatch = false
+                }
+              }
+              // 如果目标学制为空，认为匹配（跳过学制检查）
+              
+              // 如果学制不匹配，直接跳过
+              if (!isStudyPeriodMatch) {
+                continue
+              }
+              
               // 匹配省份（必须精确匹配）
               // 如果目标省份为空，则跳过省份匹配（认为匹配）
               // 如果目标省份不为空，则必须精确匹配
@@ -899,7 +925,7 @@ export default function IntendedMajorsSchoolsPage() {
                 isRemarkMatch = true
               }
               
-              // 当学校、省份、批次、专业组、招生专业、备注都匹配时，认为已加入志愿
+              // 当学校、省份、批次、专业组、招生专业、学制、备注都匹配时，认为已加入志愿
               if (isRemarkMatch) {
                 return { isIn: true, choiceId: choice.id }
               }
@@ -1190,7 +1216,9 @@ export default function IntendedMajorsSchoolsPage() {
                               const matchedVolunteers = groupedChoices.volunteers.filter(v => v.school.name === school.schoolName)
                               if (matchedVolunteers.length > 0) {
                                 // 获取目标省份和批次
-                                const targetProvince = school.provinceName || null
+                                // 省份应该从 plan.province 获取，而不是 school.provinceName
+                                // 因为志愿的省份是招生省份（如"江苏"），而学校的省份是学校所在省份（如"广东"）
+                                const targetProvince = plan.province || plan.majorScores?.[0]?.province || null
                                 const targetBatch = plan.batch || null
                                 
                                 // 遍历所有匹配的volunteer
@@ -1286,6 +1314,31 @@ export default function IntendedMajorsSchoolsPage() {
                                         continue
                                       }
                                       
+                                      // 学制匹配（必须精确匹配）
+                                      // 学制是区分不同志愿的关键字段（如八年制和五年制），必须严格匹配
+                                      // 如果目标学制为空，则跳过学制匹配（认为匹配）
+                                      // 如果目标学制不为空，则必须精确匹配
+                                      let isStudyPeriodMatch = true
+                                      const targetStudyPeriod = plan.studyPeriod?.trim() || null
+                                      if (targetStudyPeriod) {
+                                        const choiceStudyPeriod = choice.studyPeriod?.trim() || null
+                                        if (choiceStudyPeriod) {
+                                          isStudyPeriodMatch = (
+                                            choiceStudyPeriod === targetStudyPeriod ||
+                                            choiceStudyPeriod.trim() === targetStudyPeriod.trim()
+                                          )
+                                        } else {
+                                          // 目标有学制但choice没有，不匹配
+                                          isStudyPeriodMatch = false
+                                        }
+                                      }
+                                      // 如果目标学制为空，认为匹配（跳过学制检查）
+                                      
+                                      // 如果学制不匹配，直接跳过
+                                      if (!isStudyPeriodMatch) {
+                                        continue
+                                      }
+                                      
                                       // 省份匹配（必须精确匹配）
                                       // 如果目标省份为空，则跳过省份匹配（认为匹配）
                                       // 如果目标省份不为空，则必须精确匹配
@@ -1332,7 +1385,7 @@ export default function IntendedMajorsSchoolsPage() {
                                         continue
                                       }
                                       
-                                      // 当学校、专业组、备注、招生专业、省份、批次都匹配时，认为已加入志愿
+                                      // 当学校、专业组、备注、招生专业、学制、省份、批次都匹配时，认为已加入志愿
                                       // 备注已经在专业组匹配后检查过了（isRemarkMatchForGroup），所以这里直接认为匹配
                                       isPlanInWishlist = true
                                       planChoiceId = choice.id
