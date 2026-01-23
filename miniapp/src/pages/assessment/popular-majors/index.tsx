@@ -1,5 +1,5 @@
 // 热门专业评估页面
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { PageContainer } from '@/components/PageContainer'
@@ -10,7 +10,6 @@ import { Progress } from '@/components/ui/Progress'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
-import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
 // 适配后的专业接口，兼容原有代码
@@ -70,8 +69,6 @@ const scaleToQuestion = (scale: Scale): Question => {
     })),
   }
 }
-
-const STORAGE_KEY = 'popularMajorsResults'
 
 // 元素分析类型配置
 const ELEMENT_ANALYSIS_TYPES = {
@@ -177,8 +174,6 @@ export default function PopularMajorsPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isCompleted, setIsCompleted] = useState(false)
   const [loveEnergy, setLoveEnergy] = useState<number | null>(null)
-  // 保存每个专业的测评结果 { majorCode: loveEnergy }
-  const [majorResults, setMajorResults] = useState<Record<string, number>>({})
   // 学科过滤：all-全部, science-理科, liberal-文科
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all')
   // 元素分析对话框状态
@@ -255,18 +250,6 @@ export default function PopularMajorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory])
 
-  // 从本地存储加载已保存的测评结果
-  useEffect(() => {
-    try {
-      const savedResults = Taro.getStorageSync(STORAGE_KEY)
-      if (savedResults) {
-        setMajorResults(JSON.parse(savedResults))
-      }
-    } catch (error) {
-      console.error('加载保存的测评结果失败:', error)
-    }
-  }, [])
-
   const categories = [
     { key: 'ben' as const, label: '本科' },
     { key: 'gz_ben' as const, label: '本科(职业)' },
@@ -288,30 +271,6 @@ export default function PopularMajorsPage() {
     return filtered
   }, [majors, subjectFilter])
 
-
-  // 随机选择8道题目（从本地问卷数据）
-  const loadRandomQuestions = async () => {
-    try {
-      const allQuestions: Question[] = questionnaireData as any
-
-      // 随机打乱并选择8道题目
-      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5)
-      const selectedQuestions = shuffled.slice(0, 8)
-
-      setQuestions(selectedQuestions)
-      setCurrentQuestionIndex(0)
-      setAnswers({})
-      setIsCompleted(false)
-      setLoveEnergy(null)
-    } catch (error) {
-      console.error('加载题目失败:', error)
-      Taro.showToast({
-        title: '加载题目失败',
-        icon: 'none'
-      })
-      setQuestions([])
-    }
-  }
 
   // 通过热门专业ID获取量表和答案
   const loadScalesByPopularMajorId = async (popularMajorId: number, restoreAnswers: boolean = true) => {
@@ -449,21 +408,9 @@ export default function PopularMajorsPage() {
     setLoveEnergy(energy)
     setIsCompleted(true)
 
-    // 保存测评结果到状态和本地存储
+    // 答案已经在每答一题时同步到数据库，这里只需要刷新列表数据
+    // 刷新数据以获取最新的 progress 和 score
     if (selectedMajor) {
-      const newResults = {
-        ...majorResults,
-        [selectedMajor.code]: energy
-      }
-      setMajorResults(newResults)
-      try {
-        Taro.setStorageSync(STORAGE_KEY, JSON.stringify(newResults))
-      } catch (error) {
-        console.error('保存测评结果失败:', error)
-      }
-
-      // 答案已经在每答一题时同步到数据库，这里只需要刷新列表数据
-      // 刷新数据以获取最新的 progress 和 score
       try {
         loadMajors(selectedCategory)
       } catch (error) {
@@ -481,21 +428,24 @@ export default function PopularMajorsPage() {
 
   // 重新测评
   const handleRetake = async () => {
-    if (selectedMajor) {
-      // 重新加载量表和答案（不恢复已保存的答案，清空重新开始）
-      const popularMajorId = Number(selectedMajor.id)
-      if (isNaN(popularMajorId)) {
-        Taro.showToast({
-          title: '无法获取热门专业ID',
-          icon: 'none'
-        })
-        return
-      }
-      await loadScalesByPopularMajorId(popularMajorId, false)
-    } else {
-      // 如果没有选中的专业，使用本地问卷数据
-      loadRandomQuestions()
+    if (!selectedMajor) {
+      Taro.showToast({
+        title: '未选择专业',
+        icon: 'none'
+      })
+      return
     }
+    
+    // 重新加载量表和答案（不恢复已保存的答案，清空重新开始）
+    const popularMajorId = Number(selectedMajor.id)
+    if (isNaN(popularMajorId)) {
+      Taro.showToast({
+        title: '无法获取热门专业ID',
+        icon: 'none'
+      })
+      return
+    }
+    await loadScalesByPopularMajorId(popularMajorId, false)
   }
 
   const currentQuestion = questions[currentQuestionIndex]
@@ -544,9 +494,6 @@ export default function PopularMajorsPage() {
               const isCompleted = major.progress?.isCompleted === true
               // 使用接口返回的分数数据
               const score = major.score?.score
-              // 兼容本地存储的数据（作为后备方案）
-              const hasLocalResult = majorResults[major.code] !== undefined
-              const localResultEnergy = majorResults[major.code]
               
               // 判断是否应该显示元素分析：只有测评完成或者有得分（>0）时才显示
               const shouldShowElementAnalyses = isCompleted || (score !== undefined && score !== null && Number(score) > 0)
@@ -580,7 +527,7 @@ export default function PopularMajorsPage() {
                       </View>
                     </View>
                     <View className="popular-majors-page__major-actions">
-                      {isCompleted || hasLocalResult ? (
+                      {isCompleted ? (
                         <View className="popular-majors-page__major-actions-row">
                           {score !== undefined && score !== null && (
                             <View className="popular-majors-page__major-score">

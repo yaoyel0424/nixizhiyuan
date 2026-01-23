@@ -14,7 +14,6 @@ import { getMajorDetailByCode, unfavoriteMajor } from '@/services/majors'
 import { getScalesByElementId } from '@/services/scales'
 import { MajorDetailInfo } from '@/types/api'
 import { Scale, ScaleAnswer } from '@/types/api'
-import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
 const STORAGE_KEY = 'questionnaire_answers'

@@ -6,37 +6,92 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AssessmentCompletionModal } from '@/components/AssessmentCompletionModal'
 import { getStorage, setStorage } from '@/utils/storage'
-import { Question } from '@/types/questionnaire'
-import questionsData from '@/data/questionnaire.json'
+import { getScalesWithAnswers } from '@/services/scales'
+import { Scale } from '@/types/api'
 import './index.less'
 
 const STORAGE_KEY = "questionnaire_answers"
 
 export default function QuestionnairePage() {
+  const [questions, setQuestions] = useState<Scale[]>([])
+  const [loading, setLoading] = useState(true)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [sliderValue, setSliderValue] = useState(50)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [showCompletionModal, setShowCompletionModal] = useState(false)
 
-  const questions = questionsData as Question[]
   const currentQuestion = questions[currentQuestionIndex]
   const progress = currentQuestion ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0
 
-  // 加载已保存的答案
+  // 加载题目和答案
   useEffect(() => {
-    const loadAnswers = async () => {
-      const saved = await getStorage<Record<number, number>>(STORAGE_KEY)
-      if (saved) {
-        setAnswers(saved)
-        // 找到第一个未回答的问题
-        const firstUnanswered = questions.findIndex(q => !saved[q.id])
-        if (firstUnanswered >= 0) {
-          setCurrentQuestionIndex(firstUnanswered)
-          setSliderValue(saved[questions[firstUnanswered].id] || 50)
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const response = await getScalesWithAnswers()
+        
+        if (response && response.scales) {
+          // 只获取 direction 为 '168' 的题目
+          const filteredScales = response.scales.filter((scale: Scale) => scale.direction === '168')
+          // 按 dimension 和 id 排序
+          const dimensionOrder = ['看', '听', '说', '记', '想', '做', '运动']
+          filteredScales.sort((a: Scale, b: Scale) => {
+            const indexA = dimensionOrder.indexOf(a.dimension)
+            const indexB = dimensionOrder.indexOf(b.dimension)
+            const finalIndexA = indexA === -1 ? dimensionOrder.length : indexA
+            const finalIndexB = indexB === -1 ? dimensionOrder.length : indexB
+            if (finalIndexA !== finalIndexB) {
+              return finalIndexA - finalIndexB
+            }
+            return a.id - b.id
+          })
+          
+          setQuestions(filteredScales)
+          
+          // 恢复已保存的答案
+          if (response.answers && response.answers.length > 0) {
+            const savedAnswers: Record<number, number> = {}
+            response.answers.forEach((answer: any) => {
+              if (answer.scaleId && answer.score !== undefined) {
+                // 将 score 转换为滑块值（0-100）
+                // score 范围通常是 -2 到 2，需要映射到 0-100
+                const scoreValue = typeof answer.score === 'string' ? parseFloat(answer.score) : Number(answer.score)
+                const sliderValue = Math.min(100, Math.max(0, ((scoreValue + 2) / 4) * 100))
+                savedAnswers[answer.scaleId] = sliderValue
+              }
+            })
+            setAnswers(savedAnswers)
+            
+            // 找到第一个未回答的问题
+            const firstUnanswered = filteredScales.findIndex((scale: Scale) => !savedAnswers[scale.id])
+            if (firstUnanswered >= 0) {
+              setCurrentQuestionIndex(firstUnanswered)
+              setSliderValue(savedAnswers[filteredScales[firstUnanswered].id] || 50)
+            }
+          } else {
+            // 如果没有 API 答案，尝试从本地存储加载（兼容旧数据）
+            const saved = await getStorage<Record<number, number>>(STORAGE_KEY)
+            if (saved) {
+              setAnswers(saved)
+              const firstUnanswered = filteredScales.findIndex((scale: Scale) => !saved[scale.id])
+              if (firstUnanswered >= 0) {
+                setCurrentQuestionIndex(firstUnanswered)
+                setSliderValue(saved[filteredScales[firstUnanswered].id] || 50)
+              }
+            }
+          }
         }
+      } catch (error) {
+        console.error('加载题目失败:', error)
+        Taro.showToast({
+          title: '加载题目失败',
+          icon: 'none'
+        })
+      } finally {
+        setLoading(false)
       }
     }
-    loadAnswers()
+    loadData()
   }, [])
 
   // 计算当前维度进度
@@ -88,7 +143,7 @@ export default function QuestionnairePage() {
     })
   }
 
-  if (!currentQuestion) {
+  if (loading || !currentQuestion) {
     return (
       <View className="questionnaire-page">
         <View className="questionnaire-page__loading">加载中...</View>
@@ -107,7 +162,7 @@ export default function QuestionnairePage() {
           </View>
           <View className="questionnaire-page__progress-info">
             <Text className="questionnaire-page__progress-text">
-              第 {currentQuestionIndex + 1} 题 / 168
+              第 {currentQuestionIndex + 1} 题 / {questions.length}
             </Text>
             <Text className="questionnaire-page__dimension-text">
               当前：{currentDimension} 维度 {currentDimensionIndex}/{totalDimensionQuestions}

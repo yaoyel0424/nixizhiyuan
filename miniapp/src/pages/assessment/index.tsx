@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { BottomNav } from '@/components/BottomNav'
 import { getStorage } from '@/utils/storage'
-import questionnaireData from '@/data/questionnaire.json'
 import { getUserRelatedDataCount } from '@/services/user'
 import './index.less'
 

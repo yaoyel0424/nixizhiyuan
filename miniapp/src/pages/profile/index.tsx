@@ -428,7 +428,7 @@ export default function ProfilePage() {
               </View>
 
               {/* 继续未完成测评（仅当有未完成测评时显示） */}
-              {assessmentStatus === "in_progress" && (
+              {/* {assessmentStatus === "in_progress" && (
                 <View className="profile-page__card-item" onClick={handleContinueAssessment}>
                   <View className="profile-page__card-icon profile-page__card-icon--continue">
                     <Text className="profile-page__card-icon-text">🚀</Text>
@@ -439,7 +439,7 @@ export default function ProfilePage() {
                   </View>
                   <Text className="profile-page__card-arrow">›</Text>
                 </View>
-              )}
+              )} */}
             </View>
           </Card>
 

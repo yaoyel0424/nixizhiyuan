@@ -22,6 +22,7 @@ import { ErrorCode } from '../common/constants/error-code.constant';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { UserRelatedDataResponseDto } from './dto/user-related-data-response.dto';
+import { ContentSecurityService } from '@/common/services/content-security.service';
 
 /**
  * 用户服务
@@ -48,6 +49,7 @@ export class UsersService {
     private readonly choiceRepository: Repository<Choice>,
     private readonly usersRepository: UsersRepository,
     private readonly configService: ConfigService,
+    private readonly contentSecurityService: ContentSecurityService,
   ) {}
 
   /**
@@ -235,6 +237,9 @@ export class UsersService {
    * @returns 更新后的用户信息
    */
   async updateNickname(id: number, nickname: string): Promise<User> {
+    // 内容安全检查
+    await this.contentSecurityService.checkTextSecurity(nickname);
+
     const user = await this.findOne(id);
     user.nickname = nickname;
     return this.userRepository.save(user);

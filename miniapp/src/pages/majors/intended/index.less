@@ -967,8 +967,7 @@
   border-radius: 12rpx;
   box-shadow: 0 10rpx 25rpx -5rpx rgba(0, 0, 0, 0.1), 0 10rpx 10rpx -5rpx rgba(0, 0, 0, 0.04);
   animation: slideDown 0.2s ease-out;
-  max-height: 500rpx;
-  overflow: hidden;
+  /* 移除 max-height 和 overflow，让所有省份全部展开显示 */
 }
 
 @keyframes slideDown {
@@ -984,8 +983,7 @@
 
 .exam-info-dialog__province-dropdown-content {
   padding: 16rpx;
-  max-height: 500rpx;
-  overflow-y: auto;
+  /* 移除 max-height，让所有省份全部展开显示 */
 }
 
 .exam-info-dialog__province-dropdown-loading {

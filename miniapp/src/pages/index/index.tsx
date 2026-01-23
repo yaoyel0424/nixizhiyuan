@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/Dialog';
 import { getStorage } from '@/utils/storage';
 import { getUserRelatedDataCount } from '@/services/user';
-import questionnaireData from '@/data/questionnaire.json';
 import './index.less';
 
 // 步骤完成状态类型
@@ -174,7 +173,7 @@ export default function IndexPage() {
     }
   }, [isGuideDialogOpen, isClient]);
 
-  const totalQuestions = (questionnaireData as any[]).length;
+  const totalQuestions = 168; // 总题目数固定为 168
   const answeredCount = Object.keys(answers).length;
 
   // 完成168个题目后解锁三个功能

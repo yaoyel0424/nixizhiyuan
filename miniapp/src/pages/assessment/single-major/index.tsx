@@ -10,7 +10,6 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { getMajorDetailByCode } from '@/services/majors'
 import { getScalesByElementId } from '@/services/scales'
 import { MajorDetailInfo, Scale, ScaleAnswer, ScaleOption } from '@/types/api'
-import questionnaireData from '@/data/questionnaire.json'
 import './index.less'
 
 const STORAGE_KEY = 'questionnaire_answers'
@@ -170,14 +169,34 @@ function QuestionnaireModal({ open, onOpenChange, elementIds }: { open: boolean;
     if (open && elementIds.length > 0) {
       loadQuestions()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, elementIds])
 
-  const loadQuestions = () => {
+  const loadQuestions = async () => {
     setIsLoading(true)
     try {
-      const allQuestions: any[] = questionnaireData as any[]
-      const filtered = allQuestions.filter((q) => elementIds.includes(q.elementId))
-      setQuestions(filtered)
+      // 通过 API 获取所有相关元素的题目
+      // 由于 API 是按单个 elementId 获取，我们需要合并多个 elementId 的结果
+      const allScales: any[] = []
+      for (const elementId of elementIds) {
+        try {
+          const response = await getScalesByElementId(elementId)
+          if (response && response.scales) {
+            // 只获取 direction 为 '168' 的题目
+            const filtered = response.scales.filter((scale: any) => scale.direction === '168')
+            allScales.push(...filtered)
+          }
+        } catch (error) {
+          console.error(`获取 elementId ${elementId} 的题目失败:`, error)
+        }
+      }
+      
+      // 去重（按 id）
+      const uniqueScales = allScales.filter((scale, index, self) => 
+        index === self.findIndex((s) => s.id === scale.id)
+      )
+      
+      setQuestions(uniqueScales)
       setCurrentQuestionIndex(0)
       setAnswers({})
     } catch (error) {
