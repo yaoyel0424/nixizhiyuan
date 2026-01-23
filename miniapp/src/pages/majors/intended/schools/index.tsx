@@ -746,10 +746,10 @@ export default function IntendedMajorsSchoolsPage() {
     // 因为 selectedPlanData 可能是第一个 plan 的数据，不是当前 plan 的数据
     const targetRemark = plan.remark || null
     const targetEnrollmentMajor = plan.enrollmentMajor || null
-    // 获取目标批次（优先使用 plan 的 batch，其次使用 selectedPlanData 的 batch）
-    const targetBatch = plan.batch || selectedPlanData?.batch || null
-    // 获取目标省份（注意：省份应该使用 selectedPlanData.province（招生计划的省份，即用户选择的省份），而不是 selectedSchoolData.provinceName（学校所在的省份））
-    const targetProvince = selectedPlanData?.province || null
+    // 获取目标批次（从 selectedPlanData 获取，因为 MajorGroupInfo 类型中没有 batch 属性）
+    const targetBatch = selectedPlanData?.batch || null
+    // 获取目标省份（从 selectedSchoolData 中获取）
+    const targetProvince = selectedSchoolData.provinceName || null
     
     if (!targetMajorGroupName && !targetMajorGroupId) {
       return { isIn: false }
@@ -1190,8 +1190,7 @@ export default function IntendedMajorsSchoolsPage() {
                               const matchedVolunteers = groupedChoices.volunteers.filter(v => v.school.name === school.schoolName)
                               if (matchedVolunteers.length > 0) {
                                 // 获取目标省份和批次
-                                // 注意：省份应该使用 plan.province（招生计划的省份，即用户选择的省份），而不是 school.provinceName（学校所在的省份）
-                                const targetProvince = plan.province || null
+                                const targetProvince = school.provinceName || null
                                 const targetBatch = plan.batch || null
                                 
                                 // 遍历所有匹配的volunteer

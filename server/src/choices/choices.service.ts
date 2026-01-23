@@ -82,19 +82,37 @@ export class ChoicesService {
       : null;
  
     // 4. 检查是否已存在相同的志愿选择
-    // 检查条件：userId, province, year, batch, subjectSelectionMode, mgId, enrollmentMajor, remark
-    const existingChoice = await this.choiceRepository.findOne({
-      where: {
-        userId,
-        province,
-        year,
-        batch: createChoiceDto.batch ?? null,
-        subjectSelectionMode: createChoiceDto.subjectSelectionMode ?? null,
-        mgId:  createChoiceDto.mgId  ?? null,
-        enrollmentMajor: createChoiceDto.enrollmentMajor ?? null,
-        remark: createChoiceDto.remark ?? '',
-      },
-    });
+    // 检查条件：userId, province, preferredSubjects, year, batch, subjectSelectionMode, mgId, enrollmentMajor, remark, secondarySubjects
+    // 按照索引顺序：userId, province, preferredSubjects, year
+    const existingChoiceQueryBuilder = this.choiceRepository
+      .createQueryBuilder('choice')
+      .where('choice.userId = :userId', { userId })
+      .andWhere('choice.province = :province', { province })
+      .andWhere('choice.preferredSubjects = :preferredSubjects', { preferredSubjects: preferredSubjects ?? null })
+      .andWhere('choice.year = :year', { year })
+      // 索引字段之后的其他条件
+      .andWhere('choice.batch = :batch', { batch: createChoiceDto.batch ?? null })
+      .andWhere('choice.subjectSelectionMode = :subjectSelectionMode', { 
+        subjectSelectionMode: createChoiceDto.subjectSelectionMode ?? null 
+      })
+      .andWhere('choice.mgId = :mgId', { mgId: createChoiceDto.mgId ?? null })
+      .andWhere('choice.enrollmentMajor = :enrollmentMajor', { 
+        enrollmentMajor: createChoiceDto.enrollmentMajor ?? null 
+      })
+      .andWhere('choice.remark = :remark', { remark: createChoiceDto.remark ?? '' });
+
+    if (secondarySubjects && secondarySubjects.length > 0) {
+      existingChoiceQueryBuilder.andWhere('choice.secondarySubjects = :secondarySubjects', {
+        secondarySubjects,
+      });
+    } else {
+      existingChoiceQueryBuilder.andWhere(
+        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+        { emptyArray: [] },
+      );
+    }
+
+    const existingChoice = await existingChoiceQueryBuilder.getOne();
 
     if (existingChoice) {
       this.logger.warn(
