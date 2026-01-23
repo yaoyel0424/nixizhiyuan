@@ -1442,15 +1442,6 @@ export default function IntendedMajorsSchoolsPage() {
                         </View>
                       )}
                       
-                      {/* 显示专业组名称 */}
-                      {(plan.majorGroup?.mgName || plan.majorGroupInfo) && (
-                        <View className="schools-page__school-item-plan-group-name">
-                          <Text className="schools-page__school-item-plan-group-name-text">
-                            专业组: {plan.majorGroup?.mgName || plan.majorGroupInfo}
-                          </Text>
-                        </View>
-                      )}
-                      
                       {(plan.majorGroupInfo || plan.enrollmentQuota) && (
                         <View className="schools-page__school-item-plan-info">
                           {plan.majorGroupInfo && (
@@ -1503,7 +1494,7 @@ export default function IntendedMajorsSchoolsPage() {
                               }
                             }}
                           >
-                            查看专业组{plan.majorGroup?.mgName ? `: ${plan.majorGroup.mgName}` : ''} 👁️
+                            查看专业组{plan.majorGroup?.mgName ? `: ${plan.majorGroup.mgName}` : ''}
                           </Text>
                         </View>
                       )}
