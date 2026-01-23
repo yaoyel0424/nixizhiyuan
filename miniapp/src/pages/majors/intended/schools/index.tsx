@@ -904,8 +904,9 @@ export default function IntendedMajorsSchoolsPage() {
                 continue
               }
               
-              // 匹配备注（宽松匹配）
-              // 如果备注都为空，认为匹配；如果都有备注，允许部分匹配（一个包含另一个）；如果只有一个有备注，也认为匹配（备注可能是可选的）
+              // 匹配备注（精确匹配）
+              // 备注是区分同专业组下同名专业的关键字段，必须严格匹配
+              // 如果备注都为空，认为匹配；如果都有备注，必须完全相等；如果只有一个有备注，不匹配（它们是不同的专业）
               let isRemarkMatch = false
               const targetRemarkTrimmed = targetRemark?.trim() || null
               const choiceRemarkTrimmed = choiceRemark?.trim() || null
@@ -913,16 +914,11 @@ export default function IntendedMajorsSchoolsPage() {
                 // 都不存在，认为匹配
                 isRemarkMatch = true
               } else if (targetRemarkTrimmed && choiceRemarkTrimmed) {
-                // 都存在，允许部分匹配（一个包含另一个，或者完全匹配）
-                // 这样可以处理备注内容有差异但实际是同一个志愿的情况
-                isRemarkMatch = (
-                  choiceRemarkTrimmed === targetRemarkTrimmed ||
-                  choiceRemarkTrimmed.includes(targetRemarkTrimmed) ||
-                  targetRemarkTrimmed.includes(choiceRemarkTrimmed)
-                )
+                // 都存在，必须精确匹配（完全相等）
+                isRemarkMatch = (choiceRemarkTrimmed === targetRemarkTrimmed)
               } else {
-                // 只有一个存在，也认为匹配（备注可能是可选的，不影响志愿匹配）
-                isRemarkMatch = true
+                // 只有一个存在，不匹配（它们是不同的专业）
+                isRemarkMatch = false
               }
               
               // 当学校、省份、批次、专业组、招生专业、学制、备注都匹配时，认为已加入志愿
@@ -1262,8 +1258,9 @@ export default function IntendedMajorsSchoolsPage() {
                                         continue
                                       }
                                       
-                                      // 备注匹配（宽松匹配，但必须检查）
-                                      // 如果备注都为空，认为匹配；如果都有备注，允许部分匹配（一个包含另一个）；如果只有一个有备注，也认为匹配（备注可能是可选的）
+                                      // 备注匹配（精确匹配）
+                                      // 备注是区分同专业组下同名专业的关键字段，必须严格匹配
+                                      // 如果备注都为空，认为匹配；如果都有备注，必须完全相等；如果只有一个有备注，不匹配（它们是不同的专业）
                                       let isRemarkMatchForGroup = false
                                       const planRemark = plan.remark?.trim() || null
                                       const choiceRemark = choice.remark?.trim() || null
@@ -1271,16 +1268,11 @@ export default function IntendedMajorsSchoolsPage() {
                                         // 都不存在，认为匹配
                                         isRemarkMatchForGroup = true
                                       } else if (planRemark && choiceRemark) {
-                                        // 都存在，允许部分匹配（一个包含另一个，或者完全匹配）
-                                        // 这样可以处理备注内容有差异但实际是同一个志愿的情况
-                                        isRemarkMatchForGroup = (
-                                          choiceRemark === planRemark ||
-                                          choiceRemark.includes(planRemark) ||
-                                          planRemark.includes(choiceRemark)
-                                        )
+                                        // 都存在，必须精确匹配（完全相等）
+                                        isRemarkMatchForGroup = (choiceRemark === planRemark)
                                       } else {
-                                        // 只有一个存在，也认为匹配（备注可能是可选的，不影响志愿匹配）
-                                        isRemarkMatchForGroup = true
+                                        // 只有一个存在，不匹配（它们是不同的专业）
+                                        isRemarkMatchForGroup = false
                                       }
                                       
                                       // 如果备注不匹配，直接跳过（即使专业组ID匹配，备注不同也认为是不同的志愿）
