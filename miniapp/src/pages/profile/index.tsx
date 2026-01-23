@@ -214,7 +214,7 @@ export default function ProfilePage() {
       return
     }
     Taro.navigateTo({
-      url: '/pages/assessment/report/index'
+      url: '/pages/assessment/personal-profile/index'
     })
   }
 
