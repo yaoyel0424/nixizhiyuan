@@ -293,13 +293,15 @@ export class ScalesService {
   }
 
   /**
-   * 根据元素ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）
+   * 根据元素ID和热门专业ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）
    * @param elementId 元素ID
+   * @param popularMajorId 热门专业ID
    * @param userId 用户ID
    * @returns 包含量表列表和答案列表的对象
    */
   async findScalesByElementIdForPopularMajor(
     elementId: number,
+    popularMajorId: number,
     userId: number,
   ): Promise<{
     scales: Scale[];
@@ -338,11 +340,12 @@ export class ScalesService {
     // 4. 提取所有量表的 ID
     const scaleIds = sortedScales.map((scale) => scale.id);
 
-    // 5. 从 popular_major_answers 表查询答案（不限制 popularMajorId）
+    // 5. 从 popular_major_answers 表查询答案（需要指定 popularMajorId）
     const answers = scaleIds.length > 0
       ? await this.popularMajorAnswerRepository.find({
           where: {
             userId,
+            popularMajorId,
             scaleId: In(scaleIds),
           },
         })

@@ -109,9 +109,10 @@ export class ScalesController {
     };
   }
 
-  @Get('element/:elementId/popular-major')
-  @ApiOperation({ summary: '根据元素ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）' })
+  @Get('element/:elementId/popular-major/:popularMajorId')
+  @ApiOperation({ summary: '根据元素ID和热门专业ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）' })
   @ApiParam({ name: 'elementId', description: '元素ID' })
+  @ApiParam({ name: 'popularMajorId', description: '热门专业ID' })
   @ApiResponse({
     status: 200,
     description: '查询成功',
@@ -129,13 +130,15 @@ export class ScalesController {
       },
     },
   })
-  @ApiResponse({ status: 404, description: '元素不存在' })
+  @ApiResponse({ status: 404, description: '元素不存在或热门专业不存在' })
   async findScalesByElementIdForPopularMajor(
     @Param('elementId', ParseIntPipe) elementId: number,
+    @Param('popularMajorId', ParseIntPipe) popularMajorId: number,
     @CurrentUser() user: any,
   ) {
     const result = await this.scalesService.findScalesByElementIdForPopularMajor(
       elementId,
+      popularMajorId,
       user.id,
     );
     return {
