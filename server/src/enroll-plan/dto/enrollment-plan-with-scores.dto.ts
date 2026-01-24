@@ -203,5 +203,8 @@ export class EnrollmentPlansByScoreRangeDto {
   @Expose()
   @Type(() => EnrollmentPlanWithScoresDto)
   notInRange: EnrollmentPlanWithScoresDto[];
+
+  @Expose()
+  provinces: string[];
 }
 

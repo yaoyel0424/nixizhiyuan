@@ -23,6 +23,7 @@ import {
   MajorScoreSimpleDto,
 } from './dto/enrollment-plan-with-scores.dto';
 import { MajorGroupInfoResponseDto, MajorLoveEnergyDto } from './dto/major-group-info-response.dto';
+import { PROVINCE_NAME_TO_CODE } from '@/config/province';
 
 /**
  * 招生计划服务
@@ -422,13 +423,21 @@ export class EnrollPlanService {
       .map((pf) => pf.province?.name)
       .filter((name): name is string => !!name);
 
-    // 3. 验证用户是否收藏了省份
+    // 如果用户没有收藏省份，从配置中加载所有省份名称
+    let allProvinceNames: string[] = [];
     if (favoriteProvinceNames.length === 0) {
-      throw new BadRequestException('请先收藏您的意向省份');
+      allProvinceNames = Object.keys(PROVINCE_NAME_TO_CODE);
     }
 
-    // 使用收藏的省份名称列表
-    const provinceNames = favoriteProvinceNames;
+    // 使用收藏的省份名称列表，如果没有收藏则使用所有省份
+    const provinceNamesList = favoriteProvinceNames.length > 0 
+      ? favoriteProvinceNames 
+      : allProvinceNames;
+
+    // provinceNames 为上面得到的省份的第一个值
+    const provinceNames = provinceNamesList.length > 0 
+      ? [provinceNamesList[0]] 
+      : [];
 
     // 4. 处理次选科目数组
     const secondarySubjectsArray = user.secondarySubjects
@@ -877,9 +886,14 @@ export class EnrollPlanService {
     );
 
     // 使用 plainToInstance 转换，使 @Transform 装饰器生效
-    return plainToInstance(EnrollmentPlansByScoreRangeDto, groupedResult, {
+    const result = plainToInstance(EnrollmentPlansByScoreRangeDto, groupedResult, {
       excludeExtraneousValues: true,
     });
+
+    // 添加 provinces 数组
+    (result as any).provinces = provinceNamesList;
+
+    return result;
   }
 
   /**

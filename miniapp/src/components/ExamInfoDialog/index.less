@@ -1,0 +1,321 @@
+// 高考信息对话框样式
+.exam-info-dialog {
+  width: 100%;
+  max-width: calc(100% - 32rpx);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.exam-info-dialog__content {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding-top: 16rpx;
+}
+
+.exam-info-dialog__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.exam-info-dialog__label {
+  font-size: 28rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.exam-info-dialog__value {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 28rpx;
+}
+
+// 省份选择器容器
+.exam-info-dialog__province-select-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+// 省份选择按钮
+.exam-info-dialog__province-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  border: 2rpx solid #d1d5db;
+  border-radius: 12rpx;
+  background: #fff;
+  font-size: 28rpx;
+  color: #374151;
+  width: 100%;
+}
+
+.exam-info-dialog__province-arrow {
+  font-size: 20rpx;
+  color: #9ca3af;
+  margin-left: 8rpx;
+  transition: transform 0.2s;
+  
+  &--open {
+    transform: rotate(180deg);
+  }
+}
+
+// 浮动下拉框
+.exam-info-dialog__province-dropdown {
+  position: absolute;
+  top: calc(100% + 8rpx);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #fff;
+  border: 2rpx solid #d1d5db;
+  border-radius: 12rpx;
+  box-shadow: 0 10rpx 25rpx -5rpx rgba(0, 0, 0, 0.1), 0 10rpx 10rpx -5rpx rgba(0, 0, 0, 0.04);
+  animation: slideDown 0.2s ease-out;
+  /* 移除 max-height 和 overflow，让所有省份全部展开显示 */
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.exam-info-dialog__province-dropdown-content {
+  padding: 16rpx;
+  /* 移除 max-height，让所有省份全部展开显示 */
+}
+
+.exam-info-dialog__province-dropdown-loading {
+  padding: 40rpx;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 28rpx;
+}
+
+.exam-info-dialog__province-dropdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+}
+
+.exam-info-dialog__province-dropdown-item {
+  padding: 16rpx 8rpx;
+  font-size: 24rpx;
+  border-radius: 8rpx;
+  text-align: center;
+  transition: all 0.2s;
+  min-height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  
+  &--active {
+    background: #1A4099 !important;
+    color: #fff !important;
+    font-weight: 600;
+  }
+  
+  &:hover:not(&--active) {
+    background: #f3f4f6;
+  }
+}
+
+// 省份选择弹出框
+.exam-info-dialog__province-picker-dialog {
+  max-width: 90vw;
+  max-height: 80vh;
+  padding: 0;
+}
+
+.exam-info-dialog__province-picker-content {
+  padding: 24rpx;
+  max-height: 60vh;
+  overflow-y: auto;
+  
+  // 滚动条样式优化
+  &::-webkit-scrollbar {
+    width: 8rpx;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4rpx;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4rpx;
+    
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
+}
+
+.exam-info-dialog__province-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.exam-info-dialog__province-item {
+  padding: 24rpx 16rpx;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  text-align: center;
+  transition: all 0.2s;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &--active {
+    background: #1A4099 !important;
+    color: #fff !important;
+    border-color: #1A4099 !important;
+    font-weight: 600;
+  }
+  
+  &:hover:not(&--active) {
+    background: #f3f4f6;
+  }
+}
+
+.exam-info-dialog__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.exam-info-dialog__section-title {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.exam-info-dialog__divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16rpx 0;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1rpx;
+    background: #e5e7eb;
+  }
+}
+
+.exam-info-dialog__divider-text {
+  position: relative;
+  background: #fff;
+  padding: 0 16rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.exam-info-dialog__button-group {
+  display: flex;
+  gap: 16rpx;
+}
+
+.exam-info-dialog__button-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+// 高考信息对话框按钮样式
+.exam-info-dialog__button {
+  flex: 1;
+  padding: 20rpx 32rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  border: none;
+  min-height: 88rpx;
+  transition: all 0.2s;
+  
+  // 未选中状态 - 灰色背景，深灰色文字
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  
+  // 选中状态 - 蓝色背景，白色文字
+  &--active {
+    background: #1A4099 !important;
+    color: #fff !important;
+  }
+  
+  // 禁用状态 - 浅灰色背景，灰色文字
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #e5e7eb !important;
+    color: #9ca3af !important;
+  }
+  
+  // 悬停效果（未选中状态）
+  &:not(&--active):not(:disabled) {
+    &:hover {
+      background: #e5e7eb !important;
+    }
+  }
+}
+
+.exam-info-dialog__input {
+  width: 160rpx;
+  height: 64rpx;
+  font-size: 28rpx;
+  text-align: right;
+}
+
+.exam-info-dialog__tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+  padding: 20rpx;
+  background: #fef3c7;
+  border-radius: 8rpx;
+}
+
+.exam-info-dialog__tip-icon {
+  font-size: 32rpx;
+  flex-shrink: 0;
+}
+
+.exam-info-dialog__tip-text {
+  font-size: 24rpx;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.exam-info-dialog__confirm-button {
+  width: 100%;
+  background: #1A4099;
+  color: #fff;
+  height: 88rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.exam-info-dialog__loading-text {
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-left: 16rpx;
+}
