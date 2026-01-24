@@ -7,6 +7,8 @@ import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
 import { Element } from '@/entities/element.entity';
 import { Scale } from '@/entities/scale.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
+import { PopularMajor } from '@/entities/popular-major.entity';
+import { PopularMajorAnswer } from '@/entities/popular-major-answer.entity';
 import { User } from '@/entities/user.entity';
 import { SchoolMajor } from '@/entities/school-major.entity';
 import { RedisModule } from '@/redis/redis.module';
@@ -29,6 +31,8 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
       Element,
       Scale,
       ScaleAnswer,
+      PopularMajor,
+      PopularMajorAnswer,
       User,
       SchoolMajor,
     ]),

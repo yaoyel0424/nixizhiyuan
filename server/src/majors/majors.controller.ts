@@ -285,5 +285,40 @@ export class MajorsController {
       excludeExtraneousValues: true,
     });
   }
+
+  /**
+   * 通过专业代码获取热门专业详细信息
+   * 支持可选认证：如果用户已登录，会返回用户对元素的分数（从 popular_major_answers 表查询）
+   * 使用 Redis 缓存，默认缓存 10 分钟
+   */
+  @Get('popular-majors/detail/:majorCode')
+  @Cache(10) // 缓存 10 分钟（600秒），可通过环境变量配置
+  @ApiOperation({ summary: '通过专业代码获取热门专业详细信息' })
+  @ApiParam({
+    name: 'majorCode',
+    description: '专业代码',
+    example: '010101',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: MajorDetailResponseDto,
+  })
+  @ApiResponse({ status: 404, description: '热门专业详情不存在' })
+  async getPopularMajorDetail(
+    @Param('majorCode') majorCode: string,
+    @Req() req: Request,
+  ): Promise<MajorDetailResponseDto> {
+    // 尝试从请求中获取用户信息（如果已认证）
+    const user = req.user as User | undefined;
+    const majorDetail = await this.majorsService.getPopularMajorDetailByCode(
+      majorCode,
+      user?.id,
+    );
+    return plainToInstance(MajorDetailResponseDto, majorDetail, {
+      excludeExtraneousValues: true,
+      enableImplicitConversion: true,
+    });
+  }
 }
 
