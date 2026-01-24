@@ -10,7 +10,6 @@ import { Progress } from '@/components/ui/Progress'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
-import { getFavoriteMajors, favoriteMajor, unfavoriteMajor } from '@/services/majors'
 import './index.less'
 
 // 适配后的专业接口，兼容原有代码
@@ -182,8 +181,6 @@ export default function PopularMajorsPage() {
   const [selectedElementType, setSelectedElementType] = useState<string | null>(null)
   const [selectedElementMajorName, setSelectedElementMajorName] = useState<string>('')
   const [selectedElementAnalyses, setSelectedElementAnalyses] = useState<MajorElementAnalysis[] | null>(null)
-  // 心动专业列表（存储专业代码）
-  const [favoriteMajors, setFavoriteMajors] = useState<Set<string>>(new Set())
 
   // 将 API 响应数据转换为页面使用的格式
   const transformMajorData = (apiData: PopularMajorResponse): Major => {
@@ -252,21 +249,6 @@ export default function PopularMajorsPage() {
     loadMajors(selectedCategory)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory])
-
-  // 加载心动专业列表
-  useEffect(() => {
-    const loadFavoriteMajors = async () => {
-      try {
-        const favorites = await getFavoriteMajors()
-        const majorCodes = favorites.map(fav => fav.majorCode)
-        setFavoriteMajors(new Set(majorCodes))
-      } catch (error: any) {
-        console.error('加载心动专业失败:', error)
-        setFavoriteMajors(new Set())
-      }
-    }
-    loadFavoriteMajors()
-  }, [])
 
   const categories = [
     { key: 'ben' as const, label: '本科' },
@@ -469,66 +451,6 @@ export default function PopularMajorsPage() {
   const currentQuestion = questions[currentQuestionIndex]
   const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0
 
-  // 切换心动专业
-  const toggleFavorite = useCallback(async (majorCode: string) => {
-    // 获取当前状态
-    const isCurrentlyFavorited = favoriteMajors.has(majorCode)
-    
-    // 乐观更新：先更新UI状态
-    const newFavorites = new Set(favoriteMajors)
-    if (isCurrentlyFavorited) {
-      newFavorites.delete(majorCode)
-    } else {
-      newFavorites.add(majorCode)
-    }
-    setFavoriteMajors(newFavorites)
-    
-    try {
-      if (isCurrentlyFavorited) {
-        // 取消收藏
-        await unfavoriteMajor(majorCode)
-        Taro.showToast({
-          title: '已取消心动',
-          icon: 'none',
-          duration: 1500
-        })
-      } else {
-        // 添加收藏
-        await favoriteMajor(majorCode)
-        Taro.showToast({
-          title: '已添加心动',
-          icon: 'success',
-          duration: 1500
-        })
-      }
-    } catch (error: any) {
-      // API调用失败，回滚UI状态
-      setFavoriteMajors(prev => {
-        const rollbackFavorites = new Set(prev)
-        if (isCurrentlyFavorited) {
-          rollbackFavorites.add(majorCode)
-        } else {
-          rollbackFavorites.delete(majorCode)
-        }
-        return rollbackFavorites
-      })
-      console.error('切换收藏状态失败:', error)
-      const errorMsg = error?.message || '操作失败，请稍后重试'
-      Taro.showToast({
-        title: errorMsg,
-        icon: 'none',
-        duration: 2000
-      })
-    }
-  }, [favoriteMajors])
-
-  // 跳转到心动专业列表
-  const navigateToFavoriteList = useCallback(() => {
-    Taro.navigateTo({
-      url: '/pages/assessment/favorite-majors/index'
-    })
-  }, [])
-
   return (
     <PageContainer>
       <View className="popular-majors-page">
@@ -597,9 +519,7 @@ export default function PopularMajorsPage() {
                       <Text className="popular-majors-page__major-index-text">{index + 1}</Text>
                     </View>
                     <View className="popular-majors-page__major-info">
-                      <View className="popular-majors-page__major-name-row">
-                        <Text className="popular-majors-page__major-name">{major.name}</Text>
-                      </View>
+                      <Text className="popular-majors-page__major-name">{major.name}</Text>
                       <View className="popular-majors-page__major-tags">
                         {major.degree && (
                           <Text className="popular-majors-page__major-tag">{major.degree}</Text>
@@ -609,31 +529,19 @@ export default function PopularMajorsPage() {
                     <View className="popular-majors-page__major-actions">
                       {isCompleted ? (
                         <View className="popular-majors-page__major-actions-row">
-                          <View className="popular-majors-page__major-actions-left">
-                            {score !== undefined && score !== null && (
-                              <View className="popular-majors-page__major-score">
-                                <Text className="popular-majors-page__major-score-label">得分</Text>
-                                <Text className="popular-majors-page__major-score-value">{score}</Text>
-                              </View>
-                            )}
-                            <Button
-                              size="sm"
-                              className="popular-majors-page__major-button popular-majors-page__major-button--retake"
-                              onClick={() => handleStartAssessment(major)}
-                            >
-                              🔄 重测
-                            </Button>
-                          </View>
-                          {/* 已测评的专业显示五角星图标 */}
-                          <View 
-                            className={`popular-majors-page__favorite-star ${favoriteMajors.has(major.code) ? 'popular-majors-page__favorite-star--active' : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleFavorite(major.code)
-                            }}
+                          {score !== undefined && score !== null && (
+                            <View className="popular-majors-page__major-score">
+                              <Text className="popular-majors-page__major-score-label">得分</Text>
+                              <Text className="popular-majors-page__major-score-value">{score}</Text>
+                            </View>
+                          )}
+                          <Button
+                            size="sm"
+                            className="popular-majors-page__major-button popular-majors-page__major-button--retake"
+                            onClick={() => handleStartAssessment(major)}
                           >
-                            <Text className="popular-majors-page__favorite-star-icon">⭐</Text>
-                          </View>
+                            🔄 重测
+                          </Button>
                         </View>
                       ) : (
                         <Button
@@ -892,23 +800,6 @@ export default function PopularMajorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* 浮动按钮：显示已选中心动专业数量 */}
-      {favoriteMajors.size > 0 && (
-        <View 
-          className="popular-majors-page__float-button"
-          onClick={navigateToFavoriteList}
-        >
-          <View className="popular-majors-page__float-button-icon">
-            <Text className="popular-majors-page__float-button-star">⭐</Text>
-            {favoriteMajors.size > 0 && (
-              <View className="popular-majors-page__float-button-badge">
-                <Text className="popular-majors-page__float-button-count">{favoriteMajors.size}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
 
     </PageContainer>
   )
