@@ -41,6 +41,8 @@ export default function FavoriteMajorsPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [dragStartTop, setDragStartTop] = useState(0)
+  // 添加专业选择弹窗状态
+  const [showAddMajorDialog, setShowAddMajorDialog] = useState(false)
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -184,9 +186,9 @@ export default function FavoriteMajorsPage() {
     })
   }
 
-  // 跳转到所有专业列表
-  const navigateToAllMajors = useCallback(() => {
-    // 如果正在拖动或刚拖动完，不触发跳转
+  // 打开添加专业选择弹窗
+  const handleAddMajorClick = useCallback(() => {
+    // 如果正在拖动或刚拖动完，不触发弹窗
     if (isDragging) {
       return
     }
@@ -194,12 +196,26 @@ export default function FavoriteMajorsPage() {
     // 延迟检查，避免拖动结束后立即触发点击
     setTimeout(() => {
       if (!isDragging) {
-        Taro.navigateTo({
-          url: '/pages/majors/index'
-        })
+        setShowAddMajorDialog(true)
       }
     }, 150)
   }, [isDragging])
+
+  // 跳转到热门专业页面
+  const navigateToPopularMajors = useCallback(() => {
+    setShowAddMajorDialog(false)
+    Taro.navigateTo({
+      url: '/pages/assessment/popular-majors/index'
+    })
+  }, [])
+
+  // 跳转到所有专业列表
+  const navigateToAllMajors = useCallback(() => {
+    setShowAddMajorDialog(false)
+    Taro.navigateTo({
+      url: '/pages/majors/index'
+    })
+  }, [])
 
   // 处理拖动开始
   const handleTouchStart = useCallback((e: any) => {
@@ -426,7 +442,7 @@ export default function FavoriteMajorsPage() {
         )}
       </View>
 
-      {/* 浮动按钮：跳转到所有专业列表 */}
+      {/* 浮动按钮：添加心动专业 */}
       <View 
         className={`favorite-majors-page__float-button ${isDragging ? 'favorite-majors-page__float-button--dragging' : ''}`}
         style={{ 
@@ -437,10 +453,10 @@ export default function FavoriteMajorsPage() {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={navigateToAllMajors}
+        onClick={handleAddMajorClick}
       >
-        <View className="favorite-majors-page__float-button-content">
-          <Text className="favorite-majors-page__float-button-text">所有专业</Text>
+        <View className="favorite-majors-page__float-button-icon">
+          <View className="favorite-majors-page__float-button-add"></View>
         </View>
       </View>
 
@@ -478,6 +494,48 @@ export default function FavoriteMajorsPage() {
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
       />
+
+      {/* 添加专业选择弹窗 */}
+      <Dialog open={showAddMajorDialog} onOpenChange={setShowAddMajorDialog}>
+        <DialogContent className="favorite-majors-page__add-major-dialog">
+          <DialogHeader>
+            <DialogTitle>添加心动专业</DialogTitle>
+            <DialogDescription>请选择要浏览的专业列表</DialogDescription>
+          </DialogHeader>
+          <View className="favorite-majors-page__add-major-options">
+            <View 
+              className="favorite-majors-page__add-major-option"
+              onClick={navigateToPopularMajors}
+            >
+              <Text className="favorite-majors-page__add-major-option-icon">🔥</Text>
+              <View className="favorite-majors-page__add-major-option-content">
+                <Text className="favorite-majors-page__add-major-option-title">热门专业</Text>
+                <Text className="favorite-majors-page__add-major-option-desc">查看热门专业评估列表</Text>
+              </View>
+              <Text className="favorite-majors-page__add-major-option-arrow">→</Text>
+            </View>
+            <View 
+              className="favorite-majors-page__add-major-option"
+              onClick={navigateToAllMajors}
+            >
+              <Text className="favorite-majors-page__add-major-option-icon">📚</Text>
+              <View className="favorite-majors-page__add-major-option-content">
+                <Text className="favorite-majors-page__add-major-option-title">所有专业</Text>
+                <Text className="favorite-majors-page__add-major-option-desc">浏览所有专业列表</Text>
+              </View>
+              <Text className="favorite-majors-page__add-major-option-arrow">→</Text>
+            </View>
+          </View>
+          <DialogFooter>
+            <Button
+              onClick={() => setShowAddMajorDialog(false)}
+              variant="outline"
+            >
+              取消
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </View>
   )

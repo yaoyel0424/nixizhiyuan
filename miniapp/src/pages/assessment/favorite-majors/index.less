@@ -263,22 +263,105 @@
   }
 }
 
-.favorite-majors-page__float-button-content {
+.favorite-majors-page__float-button-icon {
   position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8rpx;
 }
 
-.favorite-majors-page__float-button-text {
-  font-size: 24rpx;
+.favorite-majors-page__float-button-add {
+  position: relative;
+  width: 48rpx;
+  height: 48rpx;
+  
+  // 绘制横线（加粗）
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 10rpx; // 继续加粗到 10rpx
+    background: #fff;
+    transform: translateY(-50%);
+    border-radius: 5rpx;
+  }
+  
+  // 绘制竖线（加粗）
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 10rpx; // 继续加粗到 10rpx
+    height: 100%;
+    background: #fff;
+    transform: translateX(-50%);
+    border-radius: 5rpx;
+  }
+}
+
+// 添加专业选择弹窗样式
+.favorite-majors-page__add-major-dialog {
+  max-width: 600rpx;
+}
+
+.favorite-majors-page__add-major-options {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  padding: 32rpx 0;
+}
+
+.favorite-majors-page__add-major-option {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 32rpx;
+  background: #f8f9fa;
+  border-radius: 16rpx;
+  border: 2rpx solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:active {
+    background: #e9ecef;
+    border-color: #1A4099;
+    transform: scale(0.98);
+  }
+}
+
+.favorite-majors-page__add-major-option-icon {
+  font-size: 48rpx;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.favorite-majors-page__add-major-option-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.favorite-majors-page__add-major-option-title {
+  font-size: 32rpx;
   font-weight: bold;
-  color: #fff;
-  line-height: 1.2;
-  text-align: center;
-  filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.2));
+  color: #1A4099;
+  line-height: 1.4;
 }
 
+.favorite-majors-page__add-major-option-desc {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.4;
+}
+
+.favorite-majors-page__add-major-option-arrow {
+  font-size: 32rpx;
+  color: #1A4099;
+  flex-shrink: 0;
+}
