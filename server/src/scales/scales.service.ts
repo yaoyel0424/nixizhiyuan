@@ -293,6 +293,68 @@ export class ScalesService {
   }
 
   /**
+   * 根据元素ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）
+   * @param elementId 元素ID
+   * @param userId 用户ID
+   * @returns 包含量表列表和答案列表的对象
+   */
+  async findScalesByElementIdForPopularMajor(
+    elementId: number,
+    userId: number,
+  ): Promise<{
+    scales: Scale[];
+    answers: PopularMajorAnswer[];
+  }> {
+    // 1. 通过 elementId 查询 Scale，条件：direction = '168'
+    const scales = await this.scaleRepository.find({
+      where: {
+        elementId,
+        direction: '168',
+      },
+      relations: ['options'],
+      order: {
+        dimension: 'ASC', // 先按 dimension 排序
+      },
+    });
+
+    // 2. 按照指定顺序排序：'看' | '听' | '说' | '记' | '想' | '做' | '运动'
+    const dimensionOrder = ['看', '听', '说', '记', '想', '做', '运动'];
+    const sortedScales = scales.sort((a, b) => {
+      const indexA = dimensionOrder.indexOf(a.dimension);
+      const indexB = dimensionOrder.indexOf(b.dimension);
+      // 如果 dimension 不在预定义列表中，排在最后
+      const finalIndexA = indexA === -1 ? dimensionOrder.length : indexA;
+      const finalIndexB = indexB === -1 ? dimensionOrder.length : indexB;
+      return finalIndexA - finalIndexB;
+    });
+
+    // 3. 对每个 scale 的 options 按照 id 排序
+    sortedScales.forEach((scale) => {
+      if (scale.options && scale.options.length > 0) {
+        scale.options.sort((a, b) => a.id - b.id);
+      }
+    });
+
+    // 4. 提取所有量表的 ID
+    const scaleIds = sortedScales.map((scale) => scale.id);
+
+    // 5. 从 popular_major_answers 表查询答案（不限制 popularMajorId）
+    const answers = scaleIds.length > 0
+      ? await this.popularMajorAnswerRepository.find({
+          where: {
+            userId,
+            scaleId: In(scaleIds),
+          },
+        })
+      : [];
+
+    return {
+      scales: sortedScales,
+      answers,
+    };
+  }
+
+  /**
    * 根据热门专业ID获取对应的量表列表及用户答案
    * @param popularMajorId 热门专业ID
    * @param userId 用户ID

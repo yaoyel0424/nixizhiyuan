@@ -109,6 +109,45 @@ export class ScalesController {
     };
   }
 
+  @Get('element/:elementId/popular-major')
+  @ApiOperation({ summary: '根据元素ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）' })
+  @ApiParam({ name: 'elementId', description: '元素ID' })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    schema: {
+      type: 'object',
+      properties: {
+        scales: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/ScaleResponseDto' },
+        },
+        answers: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/PopularMajorAnswerResponseDto' },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: '元素不存在' })
+  async findScalesByElementIdForPopularMajor(
+    @Param('elementId', ParseIntPipe) elementId: number,
+    @CurrentUser() user: any,
+  ) {
+    const result = await this.scalesService.findScalesByElementIdForPopularMajor(
+      elementId,
+      user.id,
+    );
+    return {
+      scales: plainToInstance(ScaleResponseDto, result.scales, {
+        excludeExtraneousValues: true,
+      }),
+      answers: plainToInstance(PopularMajorAnswerResponseDto, result.answers, {
+        excludeExtraneousValues: true,
+      }),
+    };
+  }
+
   @Get('popular-major/:popularMajorId')
   @ApiOperation({ summary: '根据热门专业ID获取对应的量表列表及用户答案' })
   @ApiParam({ name: 'popularMajorId', description: '热门专业ID' })
