@@ -115,11 +115,10 @@ export class EnrollPlanService {
     // 使用收藏的省份名称列表
     const provinceNames = favoriteProvinceNames;
 
-    // 3. 获取用户收藏的专业（按收藏顺序排序，先收藏的在前）
+    // 3. 获取用户收藏的专业
     const majorFavorites = await this.majorFavoriteRepository.find({
       where: { userId },
       relations: ['major'],
-      order: { createdAt: 'ASC' }, // 按收藏时间升序，先收藏的在前
     });
 
     if (majorFavorites.length === 0) {
@@ -263,7 +262,7 @@ export class EnrollPlanService {
       this.logger.log(
         `用户 ${userId} 没有找到匹配的招生计划，收藏省份: ${provinceNames.join(', ')}, 批次: ${user.enrollType}, 首选: ${user.preferredSubjects}`,
       );
-      return [];
+      // 即使没有匹配的招生计划，也要返回所有收藏的专业，schoolCount 为 0
     }
 
     // 8. 按收藏专业分组招生计划
@@ -377,6 +376,16 @@ export class EnrollPlanService {
       });
     }
 
+    // 9. 按 score 倒序排序（score 为 null 的排在最后）
+    result.sort((a, b) => {
+      // 如果 a.score 为 null，排在后面
+      if (a.score === null && b.score === null) return 0;
+      if (a.score === null) return 1;
+      if (b.score === null) return -1;
+      // 按 score 倒序排列（分数高的在前）
+      return b.score - a.score;
+    });
+
     this.logger.log(
       `用户 ${userId} 找到 ${result.length} 个收藏专业，共 ${enrollmentPlans.length} 个匹配的招生计划`,
     );
@@ -434,10 +443,8 @@ export class EnrollPlanService {
       ? favoriteProvinceNames 
       : allProvinceNames;
 
-    // provinceNames 为上面得到的省份的第一个值
-    const provinceNames = provinceNamesList.length > 0 
-      ? [provinceNamesList[0]] 
-      : [];
+    // 使用所有省份名称列表
+    const provinceNames = provinceNamesList;
 
     // 4. 处理次选科目数组
     const secondarySubjectsArray = user.secondarySubjects
