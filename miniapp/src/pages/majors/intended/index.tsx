@@ -139,6 +139,9 @@ export default function IntendedMajorsPage() {
   const [expandedChoicesInGroup, setExpandedChoicesInGroup] = useState<Set<string>>(new Set()) // 展开的专业组内的志愿列表
   const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
   const [expandedLoveEnergyChoiceIds, setExpandedLoveEnergyChoiceIds] = useState<Set<number>>(new Set()) // 展开的热爱能量（意向志愿）
+  // 移动动画标记：记录需要高亮的组件ID（志愿的mgIndex或专业的choice.id）
+  const [highlightedVolunteerId, setHighlightedVolunteerId] = useState<number | null>(null) // 高亮的志愿ID（mgIndex）
+  const [highlightedChoiceId, setHighlightedChoiceId] = useState<number | null>(null) // 高亮的专业ID（choice.id）
 
   // 志愿列表刷新：合并短时间内的多次写操作，避免频繁请求与重渲染
   const fetchingChoicesRef = useRef(false)
@@ -1898,7 +1901,10 @@ export default function IntendedMajorsPage() {
                     }
                     
                     return (
-                      <Card key={`volunteer-${volunteer.mgIndex}`} className="intended-majors-page__wishlist-item">
+                      <Card 
+                        key={`volunteer-${volunteer.mgIndex}`} 
+                        className={`intended-majors-page__wishlist-item ${highlightedVolunteerId === volunteer.mgIndex ? 'intended-majors-page__wishlist-item--highlighted' : ''}`}
+                      >
                         <View className="intended-majors-page__wishlist-item-content">
                           {/* 志愿编号和操作按钮（删除、上移、下移）- 同一行 */}
                           <View className="intended-majors-page__wishlist-item-header-row">
@@ -1934,11 +1940,23 @@ export default function IntendedMajorsPage() {
                                   <Button
                                     onClick={async () => {
                                       if (!canMoveUp || volunteer.mgIndex === null) return
+                                      
+                                      // 记录移动前的mgIndex，移动后新的mgIndex会是 mgIndex - 1
+                                      const originalMgIndex = volunteer.mgIndex
+                                      const newMgIndex = originalMgIndex - 1
+                                      
                                       await adjustMgIndex({ 
-                                        mgIndex: volunteer.mgIndex, 
+                                        mgIndex: originalMgIndex, 
                                         direction: 'up' as Direction 
                                       })
                                       await loadChoicesFromAPI()
+                                      
+                                      // 移动完成后，高亮移动后的新位置（发出移动指令的组件）
+                                      setHighlightedVolunteerId(newMgIndex)
+                                      setTimeout(() => {
+                                        setHighlightedVolunteerId(null)
+                                      }, 1200) // 1.2秒后清除高亮
+                                      
                                       Taro.showToast({
                                         title: '移动成功',
                                         icon: 'success',
@@ -1963,11 +1981,23 @@ export default function IntendedMajorsPage() {
                                   <Button
                                     onClick={async () => {
                                       if (!canMoveDown || volunteer.mgIndex === null) return
+                                      
+                                      // 记录移动前的mgIndex，移动后新的mgIndex会是 mgIndex + 1
+                                      const originalMgIndex = volunteer.mgIndex
+                                      const newMgIndex = originalMgIndex + 1
+                                      
                                       await adjustMgIndex({ 
-                                        mgIndex: volunteer.mgIndex, 
+                                        mgIndex: originalMgIndex, 
                                         direction: 'down' as Direction 
                                       })
                                       await loadChoicesFromAPI()
+                                      
+                                      // 移动完成后，高亮移动后的新位置（发出移动指令的组件）
+                                      setHighlightedVolunteerId(newMgIndex)
+                                      setTimeout(() => {
+                                        setHighlightedVolunteerId(null)
+                                      }, 1200) // 1.2秒后清除高亮
+                                      
                                       Taro.showToast({
                                         title: '移动成功',
                                         icon: 'success',
@@ -2178,7 +2208,10 @@ export default function IntendedMajorsPage() {
                                           .join('、')
 
                                       return (
-                                        <View key={choiceIdx} className="intended-majors-page__wishlist-item-plan">
+                                        <View 
+                                          key={choiceIdx} 
+                                          className={`intended-majors-page__wishlist-item-plan ${highlightedChoiceId === choice.id ? 'intended-majors-page__wishlist-item-plan--highlighted' : ''}`}
+                                        >
                                           {/* enrollmentMajor + 操作按钮（移除、上移、下移） */}
                                           {choice.enrollmentMajor && (
                                             <View className="intended-majors-page__wishlist-item-plan-major">
@@ -2208,8 +2241,17 @@ export default function IntendedMajorsPage() {
                                                     onClick={async (e) => {
                                                       e.stopPropagation()
                                                       if (choice.id) {
+                                                        const choiceIdToHighlight = choice.id
+                                                        
                                                         await adjustMajorIndex(choice.id, { direction: 'up' as Direction })
                                                         await loadChoicesFromAPI()
+                                                        
+                                                        // 移动完成后设置高亮动画
+                                                        setHighlightedChoiceId(choiceIdToHighlight)
+                                                        setTimeout(() => {
+                                                          setHighlightedChoiceId(null)
+                                                        }, 1200) // 1.2秒后清除高亮
+                                                        
                                                         Taro.showToast({
                                                           title: '移动成功',
                                                           icon: 'success',
@@ -2230,8 +2272,17 @@ export default function IntendedMajorsPage() {
                                                     onClick={async (e) => {
                                                       e.stopPropagation()
                                                       if (choice.id) {
+                                                        const choiceIdToHighlight = choice.id
+                                                        
                                                         await adjustMajorIndex(choice.id, { direction: 'down' as Direction })
                                                         await loadChoicesFromAPI()
+                                                        
+                                                        // 移动完成后设置高亮动画
+                                                        setHighlightedChoiceId(choiceIdToHighlight)
+                                                        setTimeout(() => {
+                                                          setHighlightedChoiceId(null)
+                                                        }, 1200) // 1.2秒后清除高亮
+                                                        
                                                         Taro.showToast({
                                                           title: '移动成功',
                                                           icon: 'success',
