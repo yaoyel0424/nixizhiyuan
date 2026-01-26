@@ -9,6 +9,9 @@ import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import './index.less'
 
+/** 3+3 选科模式省份列表（与 intended 页保持一致） */
+const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '海南', '西藏', '新疆']
+
 // 高考信息对话框组件
 export function ExamInfoDialog({ 
   open, 
