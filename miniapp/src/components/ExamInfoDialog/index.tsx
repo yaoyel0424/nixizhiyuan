@@ -99,11 +99,22 @@ export function ExamInfoDialog({
             const savedRanking = await getStorage<string>('examRanking')
             
             if (savedProvince || savedFirstChoice || savedScore) {
+              // 在 3+1+2 模式下，确保 secondarySubjects 不包含 preferredSubjects
+              let finalSecondarySubjects: string[] = []
+              if (savedOptional && savedOptional.length > 0) {
+                finalSecondarySubjects = savedOptional
+                // 如果是 3+1+2 模式（非 3+3 模式），过滤掉首选科目
+                const is3Plus3Mode = savedProvince && PROVINCES_3_3_MODE.includes(savedProvince)
+                if (!is3Plus3Mode && savedFirstChoice) {
+                  finalSecondarySubjects = finalSecondarySubjects.filter(subject => subject !== savedFirstChoice)
+                }
+              }
+              
               // 如果有任何本地数据，构建 examInfo 对象
               dataToUse = {
                 province: savedProvince || undefined,
                 preferredSubjects: savedFirstChoice || undefined,
-                secondarySubjects: savedOptional && savedOptional.length > 0 ? savedOptional.join(',') : undefined,
+                secondarySubjects: finalSecondarySubjects.length > 0 ? finalSecondarySubjects.join(',') : undefined,
                 score: savedScore ? parseInt(savedScore, 10) : undefined,
                 rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
               }
@@ -360,11 +371,21 @@ export function ExamInfoDialog({
       }
       
       // 准备更新数据
+      // 在 3+1+2 模式下，确保 secondarySubjects 不包含 preferredSubjects
+      let finalSecondarySubjects: string[] = []
+      if (optionalSubjects.size > 0) {
+        finalSecondarySubjects = Array.from(optionalSubjects)
+        // 如果是 3+1+2 模式，过滤掉首选科目
+        if (!is3Plus3Mode && firstChoice) {
+          finalSecondarySubjects = finalSecondarySubjects.filter(subject => subject !== firstChoice)
+        }
+      }
+
       const updateData: ExamInfo = {
         province: selectedProvince,
         // 3+3模式省份：preferredSubjects 统一填写"综合"，选科信息放在 secondarySubjects
         preferredSubjects: is3Plus3Mode ? '综合' : (firstChoice || undefined),
-        secondarySubjects: optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined,
+        secondarySubjects: finalSecondarySubjects.length > 0 ? finalSecondarySubjects.join(',') : undefined,
         score: totalScore ? parseInt(totalScore, 10) : undefined,
         rank: ranking ? parseInt(ranking, 10) : undefined,
       }

@@ -746,10 +746,22 @@ export default function IntendedMajorsPage() {
       const savedScore = await getStorage<string>('examTotalScore')
       const savedRanking = await getStorage<string>('examRanking')
       
+      // 在 3+1+2 模式下，确保 secondarySubjects 不包含 preferredSubjects
+      let finalSecondarySubjects: string[] = []
+      if (savedOptional && savedOptional.length > 0) {
+        finalSecondarySubjects = savedOptional
+        // 如果是 3+1+2 模式（非 3+3 模式），过滤掉首选科目
+        const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '海南', '西藏', '新疆']
+        const is3Plus3Mode = savedProvince && PROVINCES_3_3_MODE.includes(savedProvince)
+        if (!is3Plus3Mode && savedFirstChoice) {
+          finalSecondarySubjects = finalSecondarySubjects.filter(subject => subject !== savedFirstChoice)
+        }
+      }
+      
       const info: ExamInfo = {
         province: savedProvince || undefined,
         preferredSubjects: savedFirstChoice || undefined,
-        secondarySubjects: savedOptional ? savedOptional.join(',') : undefined,
+        secondarySubjects: finalSecondarySubjects.length > 0 ? finalSecondarySubjects.join(',') : undefined,
         score: savedScore ? parseInt(savedScore, 10) : undefined,
         rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
       }
@@ -1107,11 +1119,23 @@ export default function IntendedMajorsPage() {
           const savedScore = await getStorage<string>('examTotalScore')
           const savedRanking = await getStorage<string>('examRanking')
           
+          // 在 3+1+2 模式下，确保 secondarySubjects 不包含 preferredSubjects
+          let finalSecondarySubjects: string[] = []
+          if (savedOptional && savedOptional.length > 0) {
+            finalSecondarySubjects = savedOptional
+            // 如果是 3+1+2 模式（非 3+3 模式），过滤掉首选科目
+            const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '海南', '西藏', '新疆']
+            const is3Plus3Mode = savedProvince && PROVINCES_3_3_MODE.includes(savedProvince)
+            if (!is3Plus3Mode && savedFirstChoice) {
+              finalSecondarySubjects = finalSecondarySubjects.filter(subject => subject !== savedFirstChoice)
+            }
+          }
+          
           // 构建本地存储的高考信息
           const localInfo: ExamInfo = {
             province: savedProvince || undefined,
             preferredSubjects: savedFirstChoice || undefined,
-            secondarySubjects: savedOptional && savedOptional.length > 0 ? savedOptional.join(',') : undefined,
+            secondarySubjects: finalSecondarySubjects.length > 0 ? finalSecondarySubjects.join(',') : undefined,
             score: savedScore ? parseInt(savedScore, 10) : undefined,
             rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
           }
