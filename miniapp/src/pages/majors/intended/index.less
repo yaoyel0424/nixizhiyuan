@@ -2077,10 +2077,6 @@
 }
 
 // 样式标记：专业组
-[data-major-group="true"] {
-  // 专业组容器标记
-}
-
 [data-major-group-name="true"] {
   // 专业组名称标记
   font-weight: 600;
@@ -2521,4 +2517,16 @@
     box-shadow: none;
     transform: translateY(0) scale(1);
   }
+}
+
+// 导出用的Canvas（隐藏）
+.intended-majors-page__export-canvas {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 375rpx;
+  height: 667rpx;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
 }

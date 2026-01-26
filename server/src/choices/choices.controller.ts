@@ -10,6 +10,7 @@ import {
   UseGuards,
   Logger,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +21,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { ChoicesService } from './choices.service';
+import { PdfExportService } from './pdf-export.service';
 import { CreateChoiceDto } from './dto/create-choice.dto';
 import { ChoiceResponseDto } from './dto/choice-response.dto';
 import { GroupedChoiceResponseDto, SchoolGroupDto } from './dto/grouped-choice-response.dto';
@@ -28,6 +30,7 @@ import { AdjustMgIndexDto } from './dto/adjust-mg-index.dto';
 import { RemoveMultipleDto } from './dto/remove-multiple.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { Response } from 'express';
 
 /**
  * 志愿选择控制器
@@ -39,7 +42,10 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 export class ChoicesController {
   private readonly logger = new Logger(ChoicesController.name);
 
-  constructor(private readonly choicesService: ChoicesService) {}
+  constructor(
+    private readonly choicesService: ChoicesService,
+    private readonly pdfExportService: PdfExportService,
+  ) {}
 
   /**
    * 创建志愿选择
@@ -306,5 +312,69 @@ export class ChoicesController {
   async fixAllIndexes(): Promise<{ fixed: number }> {
     this.logger.log('开始修复所有记录的 mgIndex 和 majorIndex');
     return await this.choicesService.fixAllIndexes();
+  }
+
+  /**
+   * 导出志愿方案PDF
+   * @param user 当前用户
+   * @param res Express响应对象
+   * @param body 请求体，包含分组后的志愿数据和高考信息
+   */
+  @Post('export-pdf')
+  @ApiOperation({ summary: '导出志愿方案PDF' })
+  @ApiResponse({
+    status: 200,
+    description: 'PDF文件',
+    content: {
+      'application/pdf': {
+        schema: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  async exportPdf(
+    @CurrentUser() user: any,
+    @Res({ passthrough: false }) res: Response,
+    @Body() body: { groupedChoices: any; examInfo: any },
+  ): Promise<void> {
+    try {
+      const { groupedChoices, examInfo } = body;
+      this.logger.log('开始生成PDF，志愿数量:', groupedChoices?.volunteers?.length || 0);
+      
+      const pdfBuffer = await this.pdfExportService.generateWishlistPdf(
+        groupedChoices,
+        examInfo,
+      );
+
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        this.logger.error('PDF生成失败：Buffer为空');
+        res.status(500).json({
+          success: false,
+          message: 'PDF生成失败：数据为空',
+        });
+        return;
+      }
+
+      this.logger.log('PDF生成成功，大小:', pdfBuffer.length, 'bytes');
+
+      // 设置响应头
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', pdfBuffer.length.toString());
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="志愿方案_${new Date().getTime()}.pdf"`,
+      );
+      
+      // 发送PDF数据
+      res.send(pdfBuffer);
+    } catch (error) {
+      this.logger.error('导出PDF失败:', error);
+      res.status(500).json({
+        success: false,
+        message: error?.message || '导出PDF失败',
+      });
+    }
   }
 }

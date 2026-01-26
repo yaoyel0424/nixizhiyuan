@@ -9,6 +9,7 @@ import { SchoolDetail } from '@/entities/school-detail.entity';
 import { Major } from '@/entities/major.entity';
 import { ChoicesService } from './choices.service';
 import { ChoicesController } from './choices.controller';
+import { PdfExportService } from './pdf-export.service';
 import { ScoresModule } from '@/scores/scores.module';
 
 /**
@@ -21,7 +22,7 @@ import { ScoresModule } from '@/scores/scores.module';
     ScoresModule,
   ],
   controllers: [ChoicesController],
-  providers: [ChoicesService],
+  providers: [ChoicesService, PdfExportService],
   exports: [ChoicesService],
 })
 export class ChoicesModule {}

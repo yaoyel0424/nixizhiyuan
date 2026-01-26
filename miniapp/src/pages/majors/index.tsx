@@ -751,9 +751,9 @@ export default function MajorsPage() {
               <Text className="majors-page__title">专业探索</Text>
               <Text className="majors-page__subtitle">发现适合你的专业方向</Text>
             </View>
-            <View className="majors-page__share-btn" onClick={handleShareClick}>
+            {/* <View className="majors-page__share-btn" onClick={handleShareClick}>
               <Text className="majors-page__share-icon">📤</Text>
-            </View>
+            </View> */}
           </View>
 
           {/* 搜索框 */}

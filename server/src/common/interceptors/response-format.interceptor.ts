@@ -22,6 +22,15 @@ export class ResponseFormatInterceptor<T>
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<IResponse<T>> {
+    const request = context.switchToHttp().getRequest();
+    const response = context.switchToHttp().getResponse();
+    
+    // 检查响应是否已经被手动处理（例如使用 @Res() 装饰器）
+    // 如果响应头已经设置，说明是手动处理的响应（如PDF文件），跳过格式化
+    if (response.headersSent || response.getHeader('Content-Type') === 'application/pdf') {
+      return next.handle() as Observable<IResponse<T>>;
+    }
+    
     return next.handle().pipe(
       map((data: any) => {
         // 如果已经是标准格式，直接返回

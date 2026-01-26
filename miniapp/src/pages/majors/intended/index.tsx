@@ -1,6 +1,6 @@
 // 志愿方案页面
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { View, Text, ScrollView, Checkbox } from '@tarojs/components'
+import { View, Text, ScrollView, Checkbox, Canvas } from '@tarojs/components'
 import Taro, { useRouter, useDidShow, useShareAppMessage } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { ExportProgressDialog } from '@/components/ExportProgressDialog'
+import { ExportCompleteDialog } from '@/components/ExportCompleteDialog'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
@@ -15,6 +17,7 @@ import { getCurrentUserDetail, getUserRelatedDataCount } from '@/services/user'
 import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo } from '@/services/enroll-plan'
 import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, ChoiceResponse, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
+import { exportWishlistToPdf } from '@/utils/exportPdf'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import intentionData from '@/assets/data/intention.json'
 import groupData from '@/assets/data/group.json'
@@ -143,6 +146,16 @@ export default function IntendedMajorsPage() {
   const [highlightedVolunteerId, setHighlightedVolunteerId] = useState<number | null>(null) // 高亮的志愿ID（mgIndex）
   const [highlightedChoiceId, setHighlightedChoiceId] = useState<number | null>(null) // 高亮的专业ID（choice.id）
 
+  // 导出相关状态
+  const [exportProgress, setExportProgress] = useState(0)
+  const [exportStatus, setExportStatus] = useState('')
+  const [showExportProgress, setShowExportProgress] = useState(false)
+  const [showExportComplete, setShowExportComplete] = useState(false)
+  const [exportFilePath, setExportFilePath] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportPaused, setExportPaused] = useState(false)
+  const exportCancelRef = useRef(false)
+
   // 志愿列表刷新：合并短时间内的多次写操作，避免频繁请求与重渲染
   const fetchingChoicesRef = useRef(false)
   const refreshChoicesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -184,6 +197,141 @@ export default function IntendedMajorsPage() {
     const nestedScores = majorScores.flatMap((ms: any) => (Array.isArray(ms?.scores) ? ms.scores : []))
     if (nestedScores.length > 0) return nestedScores
     return Array.isArray(choice?.scores) ? choice.scores : []
+  }
+
+  /**
+   * 处理导出志愿方案
+   */
+  const handleExportWishlist = async () => {
+    // 防止重复点击
+    if (isExporting) {
+      Taro.showToast({
+        title: '正在导出中，请稍候...',
+        icon: 'none',
+        duration: 2000,
+      })
+      return
+    }
+
+    // 检查是否有志愿数据
+    if (!groupedChoices || !groupedChoices.volunteers || groupedChoices.volunteers.length === 0) {
+      Taro.showToast({
+        title: '暂无志愿数据，无法导出',
+        icon: 'none',
+      })
+      return
+    }
+
+    try {
+      setIsExporting(true)
+      setExportProgress(0)
+      setExportStatus('正在初始化...')
+      setExportPaused(false)
+      exportCancelRef.current = false
+      setShowExportProgress(true)
+
+      // 创建暂停ref，用于在导出函数中获取最新的暂停状态
+      const pausedRef = { current: exportPaused }
+      
+      // 监听暂停状态变化，实时更新ref
+      const pauseCheckInterval = setInterval(() => {
+        pausedRef.current = exportPaused
+      }, 50)
+
+      try {
+        // 调用导出函数
+        const filePath = await exportWishlistToPdf(
+          groupedChoices,
+          examInfo,
+          {
+            onProgress: (progress, status) => {
+              if (!exportCancelRef.current) {
+                setExportProgress(progress)
+                setExportStatus(status)
+                // 注意：不在这里关闭进度对话框，等待导出函数返回后再统一处理
+              }
+            },
+            paused: exportPaused,
+            pausedRef: pausedRef,
+          }
+        )
+
+        if (!exportCancelRef.current) {
+          // 导出成功，设置文件路径
+          setExportFilePath(filePath)
+          // 延迟关闭进度对话框，让用户看到100%完成状态
+          setTimeout(() => {
+            if (!exportCancelRef.current) {
+              setShowExportProgress(false)
+              // 显示完成对话框
+              setShowExportComplete(true)
+            }
+          }, 500) // 500ms延迟，确保用户看到完成状态
+        }
+      } finally {
+        clearInterval(pauseCheckInterval)
+      }
+
+    } catch (error: any) {
+      console.error('导出失败:', error)
+      Taro.showToast({
+        title: error?.message || '导出失败，请重试',
+        icon: 'none',
+        duration: 2000,
+      })
+      setShowExportProgress(false)
+    } finally {
+      setIsExporting(false)
+      setExportPaused(false)
+    }
+  }
+
+  /**
+   * 处理暂停导出
+   */
+  const handlePauseExport = () => {
+    setExportPaused(true)
+    setExportStatus('已暂停')
+  }
+
+  /**
+   * 处理恢复导出
+   */
+  const handleResumeExport = () => {
+    setExportPaused(false)
+    setExportStatus('继续导出中...')
+  }
+
+  /**
+   * 处理取消导出
+   */
+  const handleCancelExport = () => {
+    exportCancelRef.current = true
+    setExportPaused(false)
+    setIsExporting(false)
+    setShowExportProgress(false)
+    setExportProgress(0)
+    setExportStatus('')
+    Taro.showToast({
+      title: '已取消导出',
+      icon: 'none',
+    })
+  }
+
+  /**
+   * 检查是否正在导出，如果是则提示用户
+   */
+  const checkExporting = (): boolean => {
+    if (isExporting) {
+      Taro.showModal({
+        title: '提示',
+        content: '正在导出志愿方案，请等待导出完成后再进行操作',
+        showCancel: false,
+        confirmText: '知道了',
+      })
+      return true
+    }
+    return false
   }
 
   // 检查问卷完成状态
@@ -598,10 +746,22 @@ export default function IntendedMajorsPage() {
       const savedScore = await getStorage<string>('examTotalScore')
       const savedRanking = await getStorage<string>('examRanking')
       
+      // 在 3+1+2 模式下，确保 secondarySubjects 不包含 preferredSubjects
+      let finalSecondarySubjects: string[] = []
+      if (savedOptional && savedOptional.length > 0) {
+        finalSecondarySubjects = savedOptional
+        // 如果是 3+1+2 模式（非 3+3 模式），过滤掉首选科目
+        const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '海南', '西藏', '新疆']
+        const is3Plus3Mode = savedProvince && PROVINCES_3_3_MODE.includes(savedProvince)
+        if (!is3Plus3Mode && savedFirstChoice) {
+          finalSecondarySubjects = finalSecondarySubjects.filter(subject => subject !== savedFirstChoice)
+        }
+      }
+      
       const info: ExamInfo = {
         province: savedProvince || undefined,
         preferredSubjects: savedFirstChoice || undefined,
-        secondarySubjects: savedOptional ? savedOptional.join(',') : undefined,
+        secondarySubjects: finalSecondarySubjects.length > 0 ? finalSecondarySubjects.join(',') : undefined,
         score: savedScore ? parseInt(savedScore, 10) : undefined,
         rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
       }
@@ -959,11 +1119,23 @@ export default function IntendedMajorsPage() {
           const savedScore = await getStorage<string>('examTotalScore')
           const savedRanking = await getStorage<string>('examRanking')
           
+          // 在 3+1+2 模式下，确保 secondarySubjects 不包含 preferredSubjects
+          let finalSecondarySubjects: string[] = []
+          if (savedOptional && savedOptional.length > 0) {
+            finalSecondarySubjects = savedOptional
+            // 如果是 3+1+2 模式（非 3+3 模式），过滤掉首选科目
+            const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '海南', '西藏', '新疆']
+            const is3Plus3Mode = savedProvince && PROVINCES_3_3_MODE.includes(savedProvince)
+            if (!is3Plus3Mode && savedFirstChoice) {
+              finalSecondarySubjects = finalSecondarySubjects.filter(subject => subject !== savedFirstChoice)
+            }
+          }
+          
           // 构建本地存储的高考信息
           const localInfo: ExamInfo = {
             province: savedProvince || undefined,
             preferredSubjects: savedFirstChoice || undefined,
-            secondarySubjects: savedOptional && savedOptional.length > 0 ? savedOptional.join(',') : undefined,
+            secondarySubjects: finalSecondarySubjects.length > 0 ? finalSecondarySubjects.join(',') : undefined,
             score: savedScore ? parseInt(savedScore, 10) : undefined,
             rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
           }
@@ -1698,16 +1870,12 @@ export default function IntendedMajorsPage() {
               )}
               {activeTab === '意向志愿' ? (
                 <Button
-                  onClick={() => {
-                    Taro.showToast({
-                      title: '导出功能开发中',
-                      icon: 'none'
-                    })
-                  }}
+                  onClick={handleExportWishlist}
                   className="intended-majors-page__action-button"
                   size="sm"
+                  disabled={isExporting || !groupedChoices || !groupedChoices.volunteers || groupedChoices.volunteers.length === 0}
                 >
-                  📄 导出志愿
+                  {isExporting ? '导出中...' : '📄 导出志愿'}
                 </Button>
               ) : (
                 <Button
@@ -1916,6 +2084,7 @@ export default function IntendedMajorsPage() {
                               {/* 删除按钮：删除整个志愿（所有 majorGroups） */}
                               <Button
                                 onClick={async () => {
+                                  if (checkExporting()) return
                                   // 收集所有 choices
                                   const allChoices = volunteer.majorGroups.flatMap(mg => mg.choices)
                                   setGroupToDelete({
@@ -2163,6 +2332,7 @@ export default function IntendedMajorsPage() {
                                       <Text 
                                         className="intended-majors-page__wishlist-item-major-group-toggle"
                                         onClick={() => {
+                                          if (checkExporting()) return
                                           setExpandedChoicesInGroup((prev) => {
                                             const newSet = new Set(prev)
                                             if (isChoicesExpanded) {
@@ -2223,6 +2393,7 @@ export default function IntendedMajorsPage() {
                                                 <Button
                                                   onClick={async (e) => {
                                                     e.stopPropagation()
+                                                    if (checkExporting()) return
                                                     setChoiceToDelete({
                                                       choiceId: choice.id,
                                                       majorName: choice.enrollmentMajor || '该专业'
@@ -2525,6 +2696,32 @@ export default function IntendedMajorsPage() {
         onOpenChange={setShowExamInfoDialog}
         examInfo={examInfo || undefined}
         onUpdate={loadExamInfo}
+      />
+
+      {/* 导出进度对话框 */}
+      <ExportProgressDialog
+        open={showExportProgress}
+        progress={exportProgress}
+        status={exportStatus}
+        paused={exportPaused}
+        onPause={handlePauseExport}
+        onResume={handleResumeExport}
+        onCancel={handleCancelExport}
+      />
+
+      {/* 导出完成对话框 */}
+      <ExportCompleteDialog
+        open={showExportComplete}
+        onClose={() => setShowExportComplete(false)}
+        filePath={exportFilePath}
+      />
+
+      {/* 导出用的Canvas（隐藏） */}
+      <Canvas
+        id="exportCanvas"
+        type="2d"
+        canvasId="exportCanvas"
+        className="intended-majors-page__export-canvas"
       />
 
       {/* 删除确认对话框 */}
