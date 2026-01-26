@@ -10,8 +10,8 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
-import { getMajorDetailByCode, unfavoriteMajor } from '@/services/majors'
-import { getScalesByElementId } from '@/services/scales'
+import { getMajorDetailByCode, getPopularMajorDetailByCode, unfavoriteMajor } from '@/services/majors'
+import { getScalesByElementId, getScalesByElementIdForPopularMajor } from '@/services/scales'
 import { MajorDetailInfo } from '@/types/api'
 import { Scale, ScaleAnswer } from '@/types/api'
 import './index.less'
@@ -662,18 +662,27 @@ function AcademicDevelopmentCard({ data, tag }: { data: any; tag?: string }) {
   const displayData = typeof parsedData === 'object' && parsedData !== null
     ? parsedData
     : { 学业发展: parsedData }
-  const academicText = formatCareerText(displayData)
+  
+  // 过滤掉指数得分和标签相关的内容
+  let academicText = formatCareerText(displayData)
+  if (academicText) {
+    // 按分号分割，过滤掉包含"指数得分"或"标签"的项
+    const parts = academicText.split('；').filter(part => {
+      const trimmed = part.trim()
+      // 过滤掉包含"指数得分"、"标签"、"得分"等关键词的项
+      return !trimmed.includes('指数得分') && 
+             !trimmed.includes('标签') && 
+             !trimmed.match(/得分[：:]/) &&
+             !trimmed.match(/标签[：:]/)
+    })
+    academicText = parts.join('；')
+  }
 
   return (
     <View>
       <View className="career-exploration-page__opportunity-header-row">
         <View className="career-exploration-page__opportunity-header">
           <Text className="career-exploration-page__opportunity-label">学业发展：</Text>
-          {tag && (
-            <View className="career-exploration-page__opportunity-tag career-exploration-page__opportunity-tag--blue">
-              <Text>{tag}</Text>
-            </View>
-          )}
         </View>
       </View>
       <View className="career-exploration-page__opportunity-content-inner">
@@ -693,9 +702,13 @@ function AcademicDevelopmentCard({ data, tag }: { data: any; tag?: string }) {
 function MajorAnalysisActionCard({
   analyses,
   majorName,
+  isFromPopularMajors = false,
+  popularMajorId = null,
 }: {
   analyses: any[]
   majorName: string
+  isFromPopularMajors?: boolean
+  popularMajorId?: number | null
 }) {
   const { positiveCount, negativeCount } = getAnalysisCounts(analyses)
   const totalCount = positiveCount + negativeCount
@@ -713,7 +726,7 @@ function MajorAnalysisActionCard({
     {},
   )
   const [questionnaireCacheByElementId, setQuestionnaireCacheByElementId] = useState<
-    Record<number, { scales: Scale[]; answers: ScaleAnswer[] }>
+    Record<number, { scales: Scale[]; answers: Array<ScaleAnswer | { scaleId: number; score: number; [key: string]: any }> }>
   >({})
 
   // 根据分值返回测评结果文本
@@ -823,7 +836,10 @@ function MajorAnalysisActionCard({
         next.add(elementId)
         return next
       })
-      const res = await getScalesByElementId(elementId)
+      // 根据来源页面决定使用哪个接口
+      const res = isFromPopularMajors && popularMajorId !== null
+        ? await getScalesByElementIdForPopularMajor(elementId, popularMajorId)
+        : await getScalesByElementId(elementId)
       setQuestionnaireCacheByElementId((prev) => ({
         ...prev,
         [elementId]: {
@@ -925,9 +941,14 @@ function MajorAnalysisActionCard({
 
                   const answerByScaleId = new Map<number, number>()
                   if (questionnaireData?.answers && Array.isArray(questionnaireData.answers)) {
-                    questionnaireData.answers.forEach((a) => {
-                      if (typeof a?.scaleId === 'number' && typeof a?.score === 'number') {
-                        answerByScaleId.set(a.scaleId, a.score)
+                    questionnaireData.answers.forEach((a: any) => {
+                      // 兼容 ScaleAnswer 和 PopularMajorAnswer 两种类型
+                      const scaleId = a?.scaleId ?? a?.scale_id
+                      const score = a?.score
+                      // 将 score 转换为数字（处理 decimal 类型可能返回字符串的情况）
+                      const scoreNum = typeof score === 'number' ? score : (typeof score === 'string' ? parseFloat(score) : null)
+                      if (typeof scaleId === 'number' && scoreNum !== null && !isNaN(scoreNum)) {
+                        answerByScaleId.set(scaleId, scoreNum)
                       }
                     })
                   }
@@ -1154,12 +1175,17 @@ export default function CareerExplorationPage() {
   
   const router = useRouter()
   const majorCode = router.params?.code || ''
+  const fromPage = router.params?.from || '' // 获取来源页面参数
+  const popularMajorId = router.params?.majorId ? Number(router.params.majorId) : null // 获取热门专业ID
   const [majorName, setMajorName] = useState('')
   const [loading, setLoading] = useState(true)
   const [majorDetail, setMajorDetail] = useState<MajorDetailInfo | null>(null)
   const [activeTab, setActiveTab] = useState('passion')
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  
+  // 判断是否从热门专业页面跳转过来
+  const isFromPopularMajors = fromPage === 'popular-majors'
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1183,7 +1209,10 @@ export default function CareerExplorationPage() {
     const loadMajorDetail = async () => {
       try {
         setLoading(true)
-        const detail = await getMajorDetailByCode(majorCode)
+        // 根据来源页面决定使用哪个接口
+        const detail = isFromPopularMajors
+          ? await getPopularMajorDetailByCode(majorCode)
+          : await getMajorDetailByCode(majorCode)
         // API 返回的字段可能是 analyses，统一转换为 majorElementAnalyses
         if (detail && !detail.majorElementAnalyses && (detail as any).analyses) {
           detail.majorElementAnalyses = (detail as any).analyses
@@ -1231,7 +1260,7 @@ export default function CareerExplorationPage() {
     }
 
     loadMajorDetail()
-  }, [majorCode])
+  }, [majorCode, isFromPopularMajors])
 
   // 处理"该专业不适合我"
   const handleNotSuitable = () => {
@@ -1365,6 +1394,8 @@ export default function CareerExplorationPage() {
                     <MajorAnalysisActionCard
                       analyses={majorDetail.majorElementAnalyses}
                       majorName={majorName}
+                      isFromPopularMajors={isFromPopularMajors}
+                      popularMajorId={popularMajorId}
                     />
                   )}
                 </View>
@@ -1408,15 +1439,17 @@ export default function CareerExplorationPage() {
             </Tabs>
           </View>
 
-          {/* 该专业不适合按钮 */}
-          <View className="career-exploration-page__action-button">
-            <Button
-              onClick={handleNotSuitable}
-              className="career-exploration-page__not-suitable-button"
-            >
-              ⚠️ 该专业不适合我
-            </Button>
-          </View>
+          {/* 该专业不适合按钮 - 从热门专业跳转过来的不显示 */}
+          {!isFromPopularMajors && (
+            <View className="career-exploration-page__action-button">
+              <Button
+                onClick={handleNotSuitable}
+                className="career-exploration-page__not-suitable-button"
+              >
+                ⚠️ 该专业不适合我
+              </Button>
+            </View>
+          )}
         </View>
       </ScrollView>
 

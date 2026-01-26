@@ -8,7 +8,7 @@ import { ScalesWithAnswersResponse, CreateScaleAnswerParams, ScaleAnswer } from 
  */
 function getCurrentUserId(): number | null {
   try {
-    // 尝试从 Redux persist 存储中获取用户信息
+    // 尝试�?Redux persist 存储中获取用户信�?
     // Redux persist 通常使用 'persist:root' 或类似的 key
     const persistRoot = Taro.getStorageSync('persist:root')
     if (persistRoot) {
@@ -57,26 +57,26 @@ export const getScalesWithAnswers = async (): Promise<ScalesWithAnswersResponse>
   
   // 响应拦截器可能返回原始数据或 BaseResponse 格式
   if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提取 data（后端标准格式：{ success, code, message, data: { scales, answers } }）
+    // 如果包含 data 字段，提�?data（后端标准格式：{ success, code, message, data: { scales, answers } }�?
     if (response.data && typeof response.data === 'object') {
-      // 检查 data 中是否包含 scales 和 answers
+      // 检�?data 中是否包�?scales �?answers
       if (response.data.scales || response.data.answers) {
-        console.log('从 response.data 提取数据:', response.data)
+        console.log('�?response.data 提取数据:', response.data)
         return response.data
       }
-      // 如果 data 本身没有 scales 和 answers，但 response 有，说明 data 就是 scales 和 answers
+      // 如果 data 本身没有 scales �?answers，但 response 有，说明 data 就是 scales �?answers
       if (response.scales || response.answers) {
         console.log('直接使用 response:', response)
         return response
       }
     }
-    // 如果直接包含 scales 和 answers 字段，直接返回
+    // 如果直接包含 scales �?answers 字段，直接返�?
     if (response.scales || response.answers) {
-      console.log('直接返回 response（包含 scales/answers）:', response)
+      console.log('直接返回 response（包�?scales/answers�?', response)
       return response
     }
     // 其他情况直接返回
-    console.log('其他情况，直接返回 response:', response)
+    console.log('其他情况，直接返�?response:', response)
     return response
   }
   console.log('响应格式异常:', response)
@@ -84,9 +84,9 @@ export const getScalesWithAnswers = async (): Promise<ScalesWithAnswersResponse>
 }
 
 /**
- * 创建或更新量表答案
- * @param params 答案参数（包含 scaleId, userId, score）
- * @returns 创建或更新后的答案
+ * 创建或更新量表答�?
+ * @param params 答案参数（包�?scaleId, userId, score�?
+ * @returns 创建或更新后的答�?
  */
 export const createOrUpdateScaleAnswer = async (
   params: CreateScaleAnswerParams
@@ -94,11 +94,11 @@ export const createOrUpdateScaleAnswer = async (
   const response: any = await post<ScaleAnswer>('/scales/answers', params)
   // 响应拦截器可能返回原始数据或 BaseResponse 格式
   if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提取 data（后端标准格式）
+    // 如果包含 data 字段，提�?data（后端标准格式）
     if (response.data) {
       return response.data
     }
-    // 如果直接包含答案字段，直接返回
+    // 如果直接包含答案字段，直接返�?
     if (response.id && response.scaleId && response.userId !== undefined) {
       return response
     }
@@ -109,22 +109,22 @@ export const createOrUpdateScaleAnswer = async (
 }
 
 /**
- * 提交量表答案（自动获取 userId）
+ * 提交量表答案（自动获�?userId�?
  * @param scaleId 量表ID
  * @param score 分数
- * @param userId 用户ID（可选，如果不提供则自动获取）
- * @returns 创建或更新后的答案
+ * @param userId 用户ID（可选，如果不提供则自动获取�?
+ * @returns 创建或更新后的答�?
  */
 export const submitScaleAnswer = async (
   scaleId: number,
   score: number,
   userId?: number
 ): Promise<ScaleAnswer> => {
-  // 如果没有提供 userId，尝试自动获取
+  // 如果没有提供 userId，尝试自动获�?
   const finalUserId = userId || getCurrentUserId()
   
   if (!finalUserId) {
-    throw new Error('无法获取用户ID，请先登录')
+    throw new Error('无法获取用户ID，请先登陆')
   }
 
   return createOrUpdateScaleAnswer({
@@ -148,18 +148,18 @@ export const getScalesByMajorDetailId = async (
   
   // 响应拦截器可能返回原始数据或 BaseResponse 格式
   if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提取 data
+    // 如果包含 data 字段，提�?data
     if (response.data && typeof response.data === 'object') {
-      // 检查 data 中是否包含 scales 和 answers
+      // 检�?data 中是否包�?scales �?answers
       if (response.data.scales || response.data.answers) {
         return response.data
       }
-      // 如果 data 本身没有 scales 和 answers，但 response 有，说明 data 就是 scales 和 answers
+      // 如果 data 本身没有 scales �?answers，但 response 有，说明 data 就是 scales �?answers
       if (response.scales || response.answers) {
         return response
       }
     }
-    // 如果直接包含 scales 和 answers 字段，直接返回
+    // 如果直接包含 scales �?answers 字段，直接返�?
     if (response.scales || response.answers) {
       return response
     }
@@ -183,18 +183,18 @@ export const getScalesByPopularMajorId = async (
   
   // 响应拦截器可能返回原始数据或 BaseResponse 格式
   if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提取 data
+    // 如果包含 data 字段，提�?data
     if (response.data && typeof response.data === 'object') {
-      // 检查 data 中是否包含 scales 和 answers
+      // 检�?data 中是否包�?scales �?answers
       if (response.data.scales || response.data.answers) {
         return response.data
       }
-      // 如果 data 本身没有 scales 和 answers，但 response 有，说明 data 就是 scales 和 answers
+      // 如果 data 本身没有 scales �?answers，但 response 有，说明 data 就是 scales �?answers
       if (response.scales || response.answers) {
         return response
       }
     }
-    // 如果直接包含 scales 和 answers 字段，直接返回
+    // 如果直接包含 scales �?answers 字段，直接返�?
     if (response.scales || response.answers) {
       return response
     }
@@ -218,18 +218,18 @@ export const getScalesByElementId = async (
   
   // 响应拦截器可能返回原始数据或 BaseResponse 格式
   if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提取 data
+    // 如果包含 data 字段，提�?data
     if (response.data && typeof response.data === 'object') {
-      // 检查 data 中是否包含 scales 和 answers
+      // 检�?data 中是否包�?scales �?answers
       if (response.data.scales || response.data.answers) {
         return response.data
       }
-      // 如果 data 本身没有 scales 和 answers，但 response 有，说明 data 就是 scales 和 answers
+      // 如果 data 本身没有 scales �?answers，但 response 有，说明 data 就是 scales �?answers
       if (response.scales || response.answers) {
         return response
       }
     }
-    // 如果直接包含 scales 和 answers 字段，直接返回
+    // 如果直接包含 scales �?answers 字段，直接返�?
     if (response.scales || response.answers) {
       return response
     }
@@ -239,3 +239,39 @@ export const getScalesByElementId = async (
   return response
 }
 
+/**
+ * 根据元素ID和热门专业ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）
+ * @param elementId 元素ID
+ * @param popularMajorId 热门专业ID
+ * @returns 包含量表列表和答案列表的响应
+ */
+export const getScalesByElementIdForPopularMajor = async (
+  elementId: number,
+  popularMajorId: number
+): Promise<ScalesWithAnswersResponse> => {
+  const response: any = await get<ScalesWithAnswersResponse>(
+    `/scales/element/${elementId}/popular-major/${popularMajorId}`
+  )
+  
+  // 响应拦截器可能返回原始数据或 BaseResponse 格式
+  if (response && typeof response === 'object') {
+    // 如果包含 data 字段，提�?data
+    if (response.data && typeof response.data === 'object') {
+      // 检�?data 中是否包�?scales �?answers
+      if (response.data.scales || response.data.answers) {
+        return response.data
+      }
+      // 如果 data 本身没有 scales �?answers，但 response 有，说明 data 就是 scales �?answers
+      if (response.scales || response.answers) {
+        return response
+      }
+    }
+    // 如果直接包含 scales �?answers 字段，直接返�?
+    if (response.scales || response.answers) {
+      return response
+    }
+    // 其他情况直接返回
+    return response
+  }
+  return response
+}

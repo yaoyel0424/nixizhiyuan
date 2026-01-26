@@ -246,82 +246,131 @@ export class UsersService {
   }
 
   /**
-   * 获取用户相关数据的数量统计
+   * 获取用户相关数据的数量统计（优化版本）
+   * 使用 COUNT 查询替代加载所有数据，并将多个 COUNT 合并为一条 SQL 查询
    * @param userId 用户ID
    * @returns 用户相关数据的数量统计
    */
   async getUserRelatedDataCount(
     userId: number,
   ): Promise<UserRelatedDataResponseDto> {
-    // 通过 User 实体关联查询，一次性获取所有关联数据
+    // 1. 只查询用户基本信息（不需要关联数据，只选择需要的字段）
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: [
-        'scaleAnswers',
-        'scaleAnswers.scale', // 加载 scaleAnswers 的 scale 关联
-        'majorFavorites',
-        'provinceFavorites',
-      ],
+      select: ['id', 'province', 'preferredSubjects', 'secondarySubjects', 'enrollType'],
     });
 
     if (!user) {
       throw new NotFoundException('用户不存在');
     }
 
-    // 从关联数据中获取数量
-    // 统计 scaleAnswers 中不重复的 scale 数量
-    const uniqueScales = new Set(
-      user.scaleAnswers
-        ?.map((answer) => answer.scale?.id)
-        .filter((id) => id !== undefined && id >112) || [],
-    );
-    const scaleAnswersCount = uniqueScales.size;
-    const majorFavoritesCount = user.majorFavorites?.length || 0;
-    const provinceFavoritesCount = user.provinceFavorites?.length || 0;
+    // 2. 使用一条 SQL 查询同时获取三个 COUNT 统计和省份数组
+    // 使用子查询将 scaleAnswers、majorFavorites、provinceFavorites 的统计合并
+    // 使用 json_agg 聚合省份信息为 JSON 数组
+    const countsResult = await this.userRepository
+      .createQueryBuilder('user')
+      .select(
+        `(SELECT COUNT(DISTINCT sa.scale_id) 
+          FROM scale_answers sa 
+          WHERE sa.user_id = :userId AND sa.scale_id > 112)`,
+        'scaleAnswersCount',
+      )
+      .addSelect(
+        `(SELECT COUNT(*) 
+          FROM major_favorites mf 
+          WHERE mf.user_id = :userId)`,
+        'majorFavoritesCount',
+      )
+      .addSelect(
+        `(SELECT COUNT(*) 
+          FROM province_favorites pf 
+          WHERE pf.user_id = :userId)`,
+        'provinceFavoritesCount',
+      )
+      .addSelect(
+        `(SELECT COALESCE(json_agg(p.name ORDER BY pf.created_at DESC), '[]'::json)
+          FROM province_favorites pf
+          INNER JOIN provinces p ON p.id = pf.province_id
+          WHERE pf.user_id = :userId)`,
+        'provinceFavorites',
+      )
+      .where('user.id = :userId', { userId })
+      .getRawOne();
 
+    const scaleAnswersCount = parseInt(
+      countsResult?.scaleAnswersCount || '0',
+      10,
+    );
+    const majorFavoritesCount = parseInt(
+      countsResult?.majorFavoritesCount || '0',
+      10,
+    );
+    const provinceFavoritesCount = parseInt(
+      countsResult?.provinceFavoritesCount || '0',
+      10,
+    );
+
+    // 3. 解析省份名称数组 JSON（如果查询结果为空，返回空数组）
+    let provinceFavoritesList: string[] = [];
+    try {
+      const provinceFavoritesJson = countsResult?.provinceFavorites;
+      if (provinceFavoritesJson) {
+        provinceFavoritesList = Array.isArray(provinceFavoritesJson)
+          ? provinceFavoritesJson
+          : JSON.parse(provinceFavoritesJson);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `解析省份收藏数组失败，userId: ${userId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      provinceFavoritesList = [];
+    }
+
+    // 4. 查询 choices 数量（暂时注释掉，直接返回 0）
     // 根据 user 的 id, province, preferredSubjects, secondarySubjects, enrollType (对应 batch), year 查询 mgIndex 的数量
-    const year = this.configService.get<string>('CURRENT_YEAR') || '2025';
-    const province = user.province || null;
-    const preferredSubjects = user.preferredSubjects || null;
-    const secondarySubjects = user.secondarySubjects
-      ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
-      : null;
-    const batch = user.enrollType || null;
+    // const year = this.configService.get<string>('CURRENT_YEAR') || '2025';
+    // const province = user.province || null;
+    // const preferredSubjects = user.preferredSubjects || null;
+    // const secondarySubjects = user.secondarySubjects
+    //   ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
+    //   : null;
+    // const batch = user.enrollType || null;
 
     // 查询符合条件的 choices，统计不重复的 mgIndex 数量
     // 按照索引顺序：userId, province, preferredSubjects, year
     let choicesCount = 0;
-    if (province && preferredSubjects) {
-      const choicesQueryBuilder = this.choiceRepository
-        .createQueryBuilder('choice')
-        .select('DISTINCT choice.mgIndex', 'mgIndex')
-        .where('choice.userId = :userId', { userId })
-        .andWhere('choice.province = :province', { province })
-        .andWhere('choice.preferredSubjects = :preferredSubjects', {
-          preferredSubjects,
-        })
-        .andWhere('choice.year = :year', { year })
-        .andWhere('choice.mgIndex IS NOT NULL');
+    // if (province && preferredSubjects) {
+    //   const choicesQueryBuilder = this.choiceRepository
+    //     .createQueryBuilder('choice')
+    //     .select('DISTINCT choice.mgIndex', 'mgIndex')
+    //     .where('choice.userId = :userId', { userId })
+    //     .andWhere('choice.province = :province', { province })
+    //     .andWhere('choice.preferredSubjects = :preferredSubjects', {
+    //       preferredSubjects,
+    //     })
+    //     .andWhere('choice.year = :year', { year })
+    //     .andWhere('choice.mgIndex IS NOT NULL');
 
-      if (batch) {
-        choicesQueryBuilder.andWhere('choice.batch = :batch', { batch });
-      }
+    //   if (batch) {
+    //     choicesQueryBuilder.andWhere('choice.batch = :batch', { batch });
+    //   }
 
-      if (secondarySubjects && secondarySubjects.length > 0) {
-        choicesQueryBuilder.andWhere(
-          'choice.secondarySubjects = :secondarySubjects',
-          { secondarySubjects },
-        );
-      } else {
-        choicesQueryBuilder.andWhere(
-          '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
-          { emptyArray: [] },
-        );
-      }
+    //   if (secondarySubjects && secondarySubjects.length > 0) {
+    //     choicesQueryBuilder.andWhere(
+    //       'choice.secondarySubjects = :secondarySubjects',
+    //       { secondarySubjects },
+    //     );
+    //   } else {
+    //     choicesQueryBuilder.andWhere(
+    //       '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+    //       { emptyArray: [] },
+    //     );
+    //   }
 
-      const distinctMgIndexes = await choicesQueryBuilder.getRawMany();
-      choicesCount = distinctMgIndexes.length;
-    }
+    //   const distinctMgIndexes = await choicesQueryBuilder.getRawMany();
+    //   choicesCount = distinctMgIndexes.length;
+    // }
 
     this.logger.log(
       `用户 ${userId} 相关数据统计：scaleAnswers=${scaleAnswersCount}, majorFavorites=${majorFavoritesCount}, provinceFavorites=${provinceFavoritesCount}, choices=${choicesCount}`,
@@ -335,6 +384,8 @@ export class UsersService {
         provinceFavoritesCount,
         choicesCount,
         preferredSubjects: user.preferredSubjects || null,
+        provinceFavorites: provinceFavoritesList,
+        province: user.province || null,
       },
       {
         excludeExtraneousValues: true,

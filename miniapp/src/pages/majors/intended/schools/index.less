@@ -1,6 +1,7 @@
 // 院校列表页面样式
 @import '@/styles/variables.less';
 @import '@/styles/mixins.less';
+@import '@/pages/majors/intended/index.less';
 
 .schools-page {
   min-height: 100vh;
@@ -31,12 +32,28 @@
   max-width: 1024rpx;
   margin: 0 auto;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
 }
 
 .schools-page__title {
   font-size: 40rpx;
   font-weight: bold;
   color: #fff;
+  flex: 1;
+}
+
+.schools-page__exam-info-button {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 }
 
 .schools-page__wave {

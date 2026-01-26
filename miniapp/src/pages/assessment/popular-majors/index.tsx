@@ -17,6 +17,7 @@ interface Major {
   id: string | number
   name: string
   code: string
+  majorId?: number // 专业详情ID，用于跳转到院校列表
   degree: string | null
   limit_year: string | null
   boy_rate?: string
@@ -72,48 +73,53 @@ const scaleToQuestion = (scale: Scale): Question => {
 
 // 元素分析类型配置
 const ELEMENT_ANALYSIS_TYPES = {
-  lexue: { label: '乐学元素', color: '#4CAF50' },
-  shanxue: { label: '善学元素', color: '#2196F3' },
-  yanxue: { label: '厌学元素', color: '#FF9800' },
-  tiaozhan: { label: '阻学元素', color: '#F44336' },
+  lexue: { label: '乐学', color: '#4CAF50' },
+  shanxue: { label: '善学', color: '#2196F3' },
+  yanxue: { label: '厌学', color: '#FF9800' },
+  tiaozhan: { label: '阻学', color: '#F44336' },
 } as const
 
 // 元素分析显示组件（简化版，对话框在父组件中管理）
 function ElementAnalysesDisplay({ 
   analyses, 
   majorName,
+  score,
+  isCompleted,
   onTypeClick
 }: { 
   analyses: MajorElementAnalysis[] | null | undefined
   majorName: string
+  score?: {
+    score: number
+    lexueScore: number
+    shanxueScore: number
+    yanxueDeduction: number
+    tiaozhanDeduction: number
+  } | null
+  isCompleted?: boolean
   onTypeClick: (type: string, analyses: MajorElementAnalysis[], majorName: string) => void
 }) {
-  if (!analyses || analyses.length === 0) {
+  // 如果未完成测评，不显示元素分析
+  if (!isCompleted || !score || !analyses || analyses.length === 0) {
     return null
   }
 
-  // 按类型统计元素数量和最高得分
-  const typeStats = analyses.reduce((acc, analysis) => {
-    const type = analysis.type
-    if (type && (type === 'lexue' || type === 'shanxue' || type === 'yanxue' || type === 'tiaozhan')) {
-      const elements = analysis.elements || []
-      const count = elements.length
-      
-      // 获取该类型下所有有效得分（不为 null）
-      const validScores = elements
-        .map(element => element.score)
-        .filter((score): score is number => score !== null && score !== undefined)
-      
-      // 计算最高得分
-      const maxScore = validScores.length > 0 ? Math.max(...validScores) : null
-      
-      acc[type] = {
-        count,
-        maxScore
-      }
+  // 从 score 对象中获取各类型的分值
+  const getScoreByType = (type: string): number | null => {
+    if (!score) return null
+    switch (type) {
+      case 'lexue':
+        return score.lexueScore ?? null
+      case 'shanxue':
+        return score.shanxueScore ?? null
+      case 'yanxue':
+        return score.yanxueDeduction ?? null
+      case 'tiaozhan':
+        return score.tiaozhanDeduction ?? null
+      default:
+        return null
     }
-    return acc
-  }, {} as Record<string, { count: number; maxScore: number | null }>)
+  }
 
   const handleClick = (type: string, e?: any) => {
     if (e) {
@@ -122,34 +128,67 @@ function ElementAnalysesDisplay({
     onTypeClick(type, analyses, majorName)
   }
 
+  // 获取各类型的分值
+  const lexueScore = getScoreByType('lexue') ?? 0
+  const shanxueScore = getScoreByType('shanxue') ?? 0
+  const yanxueScore = getScoreByType('yanxue') ?? 0
+  const tiaozhanScore = getScoreByType('tiaozhan') ?? 0
+  const totalScore = score?.score ?? 0
+
+  // 定义元素顺序和运算符：乐学+善学-厌学-阻学=score
+  const elementOrder = [
+    { type: 'lexue', operator: '+' },
+    { type: 'shanxue', operator: '-' },
+    { type: 'yanxue', operator: '-' },
+    { type: 'tiaozhan', operator: '=' },
+  ]
+
   return (
     <View className="popular-majors-page__element-analyses">
-      {Object.entries(ELEMENT_ANALYSIS_TYPES).map(([type, config]) => {
-        const stats = typeStats[type] || { count: 0, maxScore: null }
-        const { count, maxScore } = stats
-        
-        // 显示格式：X项 最高得分: Y分（如果没有得分则只显示X项）
-        const displayText = maxScore !== null && maxScore !== undefined
-          ? `得分: ${maxScore}分`
-          : `${count}项`
-        
-        return (
-          <View
-            key={type}
-            className="popular-majors-page__element-analysis-item"
-            onClick={(e) => handleClick(type, e)}
-          >
-            <View className="popular-majors-page__element-analysis-info">
-              <Text className="popular-majors-page__element-analysis-label">
-                {config.label}
-              </Text>
-              <Text className="popular-majors-page__element-analysis-count">
-                {displayText}
-              </Text>
-            </View>
-          </View>
-        )
-      })}
+      <View className="popular-majors-page__element-analyses-row">
+        {elementOrder.map((item, index) => {
+          const config = ELEMENT_ANALYSIS_TYPES[item.type as keyof typeof ELEMENT_ANALYSIS_TYPES]
+          const typeScore = getScoreByType(item.type)
+          const isLast = index === elementOrder.length - 1
+          
+          return (
+            <React.Fragment key={item.type}>
+              <View
+                className="popular-majors-page__element-analysis-item"
+                onClick={(e) => handleClick(item.type, e)}
+              >
+                <View className="popular-majors-page__element-analysis-info">
+                  <Text className="popular-majors-page__element-analysis-label">
+                    {config.label}
+                  </Text>
+                  {typeScore !== null && typeScore !== undefined && (
+                    <Text className="popular-majors-page__element-analysis-score">
+                      {typeScore}分
+                    </Text>
+                  )}
+                </View>
+              </View>
+              {!isLast && (
+                <Text className="popular-majors-page__element-analysis-operator">
+                  {item.operator}
+                </Text>
+              )}
+              {isLast && (
+                <>
+                  <Text className="popular-majors-page__element-analysis-operator">
+                    =
+                  </Text>
+                  <View className="popular-majors-page__element-analysis-total">
+                    <Text className="popular-majors-page__element-analysis-total-text">
+                      {totalScore}分
+                    </Text>
+                  </View>
+                </>
+              )}
+            </React.Fragment>
+          )
+        })}
+      </View>
     </View>
   )
 }
@@ -188,6 +227,7 @@ export default function PopularMajorsPage() {
       id: String(apiData.id),
       name: apiData.name || '',
       code: apiData.code || apiData.majorDetail?.code || '',
+      majorId: apiData.majorDetail?.id, // 专业详情ID，用于跳转到院校列表
       degree: apiData.degree || apiData.majorDetail?.awardedDegree || null,
       limit_year: apiData.limitYear || apiData.majorDetail?.studyPeriod || null,
       salaryavg: apiData.averageSalary || null,
@@ -347,6 +387,42 @@ export default function PopularMajorsPage() {
       return
     }
     await loadScalesByPopularMajorId(popularMajorId)
+  }
+
+  // 处理专业卡片点击，跳转到深度探索页面
+  const handleMajorCardClick = (major: Major) => {
+    if (!major.code) {
+      Taro.showToast({
+        title: '专业代码不存在',
+        icon: 'none'
+      })
+      return
+    }
+    const popularMajorId = Number(major.id)
+    const url = `/pages/assessment/career-exploration/index?code=${major.code}&from=popular-majors${!isNaN(popularMajorId) ? `&majorId=${popularMajorId}` : ''}`
+    Taro.navigateTo({
+      url
+    })
+  }
+
+  // 处理查看院校按钮点击，跳转到院校列表页面
+  const handleViewSchools = (e: any, major: Major) => {
+    e.stopPropagation() // 阻止事件冒泡到卡片
+    if (!major.code) {
+      Taro.showToast({
+        title: '专业代码不存在',
+        icon: 'none'
+      })
+      return
+    }
+    const majorNameParam = encodeURIComponent(major.name || '')
+    let url = `/pages/majors/intended/schools/index?majorCode=${major.code}&majorName=${majorNameParam}&from=popular-majors`
+    if (major.majorId) {
+      url += `&majorId=${major.majorId}`
+    }
+    Taro.navigateTo({
+      url
+    })
   }
 
   // 处理答题（每答完一题立即同步到数据库）
@@ -513,13 +589,19 @@ export default function PopularMajorsPage() {
               
 
               return (
-                <Card key={major.id} className="popular-majors-page__major-card">
+                <Card 
+                  key={major.id} 
+                  className="popular-majors-page__major-card"
+                  onClick={() => handleMajorCardClick(major)}
+                >
                   <View className="popular-majors-page__major-content">
                     <View className="popular-majors-page__major-index">
                       <Text className="popular-majors-page__major-index-text">{index + 1}</Text>
                     </View>
                     <View className="popular-majors-page__major-info">
-                      <Text className="popular-majors-page__major-name">{major.name}</Text>
+                      <View className="popular-majors-page__major-name-wrapper">
+                        <Text className="popular-majors-page__major-name">{major.name}</Text>
+                      </View>
                       <View className="popular-majors-page__major-tags">
                         {major.degree && (
                           <Text className="popular-majors-page__major-tag">{major.degree}</Text>
@@ -528,26 +610,36 @@ export default function PopularMajorsPage() {
                     </View>
                     <View className="popular-majors-page__major-actions">
                       {isCompleted ? (
-                        <View className="popular-majors-page__major-actions-row">
-                          {score !== undefined && score !== null && (
-                            <View className="popular-majors-page__major-score">
-                              <Text className="popular-majors-page__major-score-label">得分</Text>
-                              <Text className="popular-majors-page__major-score-value">{score}</Text>
-                            </View>
-                          )}
-                          <Button
-                            size="sm"
-                            className="popular-majors-page__major-button popular-majors-page__major-button--retake"
-                            onClick={() => handleStartAssessment(major)}
-                          >
-                            🔄 重测
-                          </Button>
+                        <View className="popular-majors-page__major-actions-container">
+                          {/* 查看院校和重测 */}
+                          <View className="popular-majors-page__major-actions-row">
+                            <Button
+                              size="sm"
+                              className="popular-majors-page__major-button popular-majors-page__major-button--view-schools popular-majors-page__major-action-item"
+                              onClick={(e) => handleViewSchools(e, major)}
+                            >
+                              查看院校
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="popular-majors-page__major-button popular-majors-page__major-button--retake popular-majors-page__major-action-item"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleStartAssessment(major)
+                              }}
+                            >
+                              重测
+                            </Button>
+                          </View>
                         </View>
                       ) : (
                         <Button
                           size="sm"
                           className="popular-majors-page__major-button"
-                          onClick={() => handleStartAssessment(major)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleStartAssessment(major)
+                          }}
                         >
                           测评
                         </Button>
@@ -569,8 +661,8 @@ export default function PopularMajorsPage() {
                       )}
                     </View>
                   </View>
-                  {/* 元素分析显示：所有专业都显示 */}
-                  {major.elementAnalyses && major.elementAnalyses.length > 0 && (
+                  {/* 元素分析显示：只有测评完成的专业才显示 */}
+                  {isCompleted && major.elementAnalyses && major.elementAnalyses.length > 0 && (
                     <View 
                       className="popular-majors-page__major-element-analyses-wrapper"
                       onClick={(e) => {
@@ -581,6 +673,8 @@ export default function PopularMajorsPage() {
                       <ElementAnalysesDisplay 
                         analyses={major.elementAnalyses} 
                         majorName={major.name}
+                        score={major.score}
+                        isCompleted={isCompleted}
                         onTypeClick={(type, analyses, majorName) => {
                           setSelectedElementType(type)
                           setSelectedElementAnalyses(analyses)

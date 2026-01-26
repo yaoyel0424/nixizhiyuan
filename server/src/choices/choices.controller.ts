@@ -110,7 +110,7 @@ export class ChoicesController {
     return await this.choicesService.findByUser(user.id, year);
   }
 
-  /**
+  /** 
    * 批量删除志愿选择
    * @param user 当前用户
    * @param removeMultipleDto 批量删除的 DTO（包含 ids 数组）

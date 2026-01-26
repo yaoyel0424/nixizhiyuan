@@ -253,12 +253,42 @@
   min-width: 0;
 }
 
+.popular-majors-page__major-name-wrapper {
+  display: inline-flex;
+  align-items: flex-start;
+  margin-bottom: 16rpx;
+  position: relative;
+}
+
 .popular-majors-page__major-name {
   font-size: 28rpx;
   font-weight: 600;
   color: #000;
-  margin-bottom: 16rpx;
-  display: block;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+.popular-majors-page__major-retake-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28rpx;
+  height: 28rpx;
+  font-size: 20rpx;
+  margin-left: 8rpx;
+  margin-top: 2rpx;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.popular-majors-page__major-score-inline {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FF7F50;
+  margin-left: 12rpx;
+  display: inline-block;
+  line-height: 1.4;
+  font-family: "KaiTi", "楷体", "STKaiti", "华文楷体", "PingFang SC", "Microsoft YaHei", serif;
 }
 
 .popular-majors-page__major-tags {
@@ -285,22 +315,63 @@
 // 元素分析显示样式
 .popular-majors-page__element-analyses {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 16rpx;
+}
+
+.popular-majors-page__element-analyses-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4rpx;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
 }
 
 .popular-majors-page__element-analysis-item {
   display: flex;
   align-items: center;
   gap: 12rpx;
-  padding: 12rpx 20rpx;
+  padding: 6rpx 10rpx;
   background: #fff;
   border: 2rpx solid #e5e7eb;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   cursor: pointer;
   flex: 1;
-  min-width: 140rpx;
-  max-width: calc(50% - 8rpx);
+  min-width: 0;
+  max-width: 100%;
+  justify-content: center;
+}
+
+.popular-majors-page__element-analysis-operator {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #333;
+  flex-shrink: 0;
+  padding: 0 2rpx;
+  min-width: 20rpx;
+  text-align: center;
+}
+
+.popular-majors-page__element-analysis-total {
+  display: flex;
+  align-items: center;
+  padding: 6rpx 10rpx;
+  background: #fff;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 20rpx;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: center;
+}
+
+.popular-majors-page__element-analysis-total-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FF7F50;
+  white-space: nowrap;
 }
 
 .popular-majors-page__element-analysis-item:active {
@@ -315,16 +386,25 @@
 .popular-majors-page__element-analysis-info {
   display: flex;
   flex-direction: column;
-  gap: 4rpx;
-  flex: 1;
+  gap: 2rpx;
+  align-items: center;
   min-width: 0;
 }
 
 .popular-majors-page__element-analysis-label {
-  font-size: 26rpx;
+  font-size: 24rpx;
   font-weight: 600;
   color: #333;
   line-height: 1.2;
+  white-space: nowrap;
+}
+
+.popular-majors-page__element-analysis-score {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #666;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .popular-majors-page__element-analysis-count {
@@ -454,37 +534,76 @@
   gap: 16rpx;
   align-items: flex-end;
   flex-shrink: 0;
-  min-width: 200rpx;
+  min-width: auto;
   position: relative;
   z-index: 2;
+}
+
+.popular-majors-page__major-actions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.popular-majors-page__major-action-item {
+  align-self: flex-end !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.popular-majors-page__major-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .popular-majors-page__major-actions-row {
   display: flex;
   align-items: center;
   gap: 16rpx;
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .popular-majors-page__major-score {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 8rpx 16rpx;
+  gap: 6rpx;
+  padding: 6rpx 12rpx;
   background: rgba(26, 64, 153, 0.1);
-  border-radius: 12rpx;
+  border-radius: 10rpx;
   border: 2rpx solid rgba(26, 64, 153, 0.2);
+  margin-left: auto;
+  margin-right: 0;
 }
 
 .popular-majors-page__major-score-label {
-  font-size: 24rpx;
-  color: #666;
+  font-size: 22rpx;
+  color: #1A4099;
   font-weight: 500;
 }
 
 .popular-majors-page__major-score-value {
-  font-size: 28rpx;
+  font-size: 24rpx;
   font-weight: 600;
   color: #1A4099;
+  font-family: "KaiTi", "楷体", "STKaiti", "华文楷体", "PingFang SC", "Microsoft YaHei", serif;
+  position: relative;
+  display: inline-block;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2rpx;
+    width: 100%;
+    height: 2rpx;
+    border-bottom: 2rpx solid #1A4099;
+    box-shadow: 0 -4rpx 0 0 #1A4099;
+  }
 }
 
 .popular-majors-page__major-result {
@@ -509,16 +628,28 @@
 }
 
 .popular-majors-page__major-button {
-  min-width: 120rpx;
-  height: 56rpx;
-  font-size: 24rpx;
+  min-width: 100rpx;
+  height: 48rpx;
+  font-size: 22rpx;
   background: #FF7F50;
   color: #fff;
-  border-radius: 12rpx;
+  border-radius: 10rpx;
+}
+
+.popular-majors-page__major-button--view-schools {
+  min-width: auto !important;
+  width: fit-content !important;
+  background: #1A4099 !important;
+  color: #fff !important;
+  border: 2rpx solid #1A4099 !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
 }
 
 .popular-majors-page__major-button--retake {
-  background: #1A4099;
+  background: #1A4099 !important;
+  color: #fff !important;
+  border: 2rpx solid #1A4099 !important;
 }
 
 // 测评进度样式（绝对定位，不占用布局空间）

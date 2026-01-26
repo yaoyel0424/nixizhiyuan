@@ -18,5 +18,8 @@ export class UserRelatedDataResponseDto {
 
   @Expose()
   preferredSubjects?: string;
+
+  @Expose()
+  provinceFavorites?: string[];
 }
 

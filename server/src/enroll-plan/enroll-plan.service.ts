@@ -23,6 +23,7 @@ import {
   MajorScoreSimpleDto,
 } from './dto/enrollment-plan-with-scores.dto';
 import { MajorGroupInfoResponseDto, MajorLoveEnergyDto } from './dto/major-group-info-response.dto';
+import { PROVINCE_NAME_TO_CODE } from '@/config/province';
 
 /**
  * 招生计划服务
@@ -114,11 +115,10 @@ export class EnrollPlanService {
     // 使用收藏的省份名称列表
     const provinceNames = favoriteProvinceNames;
 
-    // 3. 获取用户收藏的专业（按收藏顺序排序，先收藏的在前）
+    // 3. 获取用户收藏的专业
     const majorFavorites = await this.majorFavoriteRepository.find({
       where: { userId },
       relations: ['major'],
-      order: { createdAt: 'ASC' }, // 按收藏时间升序，先收藏的在前
     });
 
     if (majorFavorites.length === 0) {
@@ -262,7 +262,7 @@ export class EnrollPlanService {
       this.logger.log(
         `用户 ${userId} 没有找到匹配的招生计划，收藏省份: ${provinceNames.join(', ')}, 批次: ${user.enrollType}, 首选: ${user.preferredSubjects}`,
       );
-      return [];
+      // 即使没有匹配的招生计划，也要返回所有收藏的专业，schoolCount 为 0
     }
 
     // 8. 按收藏专业分组招生计划
@@ -376,6 +376,16 @@ export class EnrollPlanService {
       });
     }
 
+    // 9. 按 score 倒序排序（score 为 null 的排在最后）
+    result.sort((a, b) => {
+      // 如果 a.score 为 null，排在后面
+      if (a.score === null && b.score === null) return 0;
+      if (a.score === null) return 1;
+      if (b.score === null) return -1;
+      // 按 score 倒序排列（分数高的在前）
+      return b.score - a.score;
+    });
+
     this.logger.log(
       `用户 ${userId} 找到 ${result.length} 个收藏专业，共 ${enrollmentPlans.length} 个匹配的招生计划`,
     );
@@ -422,13 +432,19 @@ export class EnrollPlanService {
       .map((pf) => pf.province?.name)
       .filter((name): name is string => !!name);
 
-    // 3. 验证用户是否收藏了省份
+    // 如果用户没有收藏省份，从配置中加载所有省份名称
+    let allProvinceNames: string[] = [];
     if (favoriteProvinceNames.length === 0) {
-      throw new BadRequestException('请先收藏您的意向省份');
+      allProvinceNames = Object.keys(PROVINCE_NAME_TO_CODE);
     }
 
-    // 使用收藏的省份名称列表
-    const provinceNames = favoriteProvinceNames;
+    // 使用收藏的省份名称列表，如果没有收藏则使用所有省份
+    const provinceNamesList = favoriteProvinceNames.length > 0 
+      ? favoriteProvinceNames 
+      : allProvinceNames;
+
+    // 使用所有省份名称列表
+    const provinceNames = provinceNamesList;
 
     // 4. 处理次选科目数组
     const secondarySubjectsArray = user.secondarySubjects
@@ -877,9 +893,14 @@ export class EnrollPlanService {
     );
 
     // 使用 plainToInstance 转换，使 @Transform 装饰器生效
-    return plainToInstance(EnrollmentPlansByScoreRangeDto, groupedResult, {
+    const result = plainToInstance(EnrollmentPlansByScoreRangeDto, groupedResult, {
       excludeExtraneousValues: true,
     });
+
+    // 添加 provinces 数组
+    (result as any).provinces = provinceNamesList;
+
+    return result;
   }
 
   /**

@@ -1,6 +1,6 @@
 // 院校列表页面
-import React, { useState, useEffect } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { View, Text, ScrollView, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
-import { getStorage, setStorage } from '@/utils/storage'
+import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import {
   getEnrollmentPlansByMajorId,
   EnrollmentPlanWithScores,
@@ -18,6 +18,9 @@ import {
   EnrollmentPlanItem,
 } from '@/services/enroll-plan'
 import { createChoice, CreateChoiceDto, getChoices, deleteChoice, GroupedChoiceResponse } from '@/services/choices'
+import { getExamInfo, updateExamInfo, ExamInfo } from '@/services/exam-info'
+import { getUserRelatedDataCount } from '@/services/user'
+import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import './index.less'
 
 interface HistoryScore {
@@ -84,6 +87,9 @@ export default function IntendedMajorsSchoolsPage() {
   const maxScoreParam = router.params?.maxScore
   const minScore = minScoreParam ? Number(minScoreParam) : undefined
   const maxScore = maxScoreParam ? Number(maxScoreParam) : undefined
+  // 判断是否从热门专业页面跳转过来
+  const fromPage = router.params?.from || ''
+  const isFromPopularMajors = fromPage === 'popular-majors'
   
   const [data, setData] = useState<IntentionMajor | null>(null)
   // 保存接口返回的两组数据
@@ -116,6 +122,9 @@ export default function IntendedMajorsSchoolsPage() {
   const [expandedPlans, setExpandedPlans] = useState<Set<number>>(new Set()) // 展开的 plan 索引（用于旧结构，保留兼容）
   const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null) // 选中的省份
+  // 高考信息弹框状态
+  const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
+  const [examInfo, setExamInfo] = useState<ExamInfo | undefined>(undefined)
   // 分段展示：当前已展示的院校条数
   const [visibleSchoolCount, setVisibleSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
 
@@ -457,7 +466,26 @@ export default function IntendedMajorsSchoolsPage() {
     
     loadChoicesFromAPI()
     loadPlanWishlist()
-  }, [majorCode, majorId, minScoreParam, maxScoreParam])
+    
+    // 如果从热门专业页面跳转过来，检查高考信息
+    if (isFromPopularMajors) {
+      const checkExamInfo = async () => {
+        try {
+          const relatedData = await getUserRelatedDataCount()
+          // 如果 preferredSubjects 为空或 null，自动打开高考信息对话框
+          if (!relatedData.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
+            // 先获取高考信息
+            const examInfoData = await getExamInfo()
+            setExamInfo(examInfoData)
+            setShowExamInfoDialog(true)
+          }
+        } catch (error) {
+          console.error('检查高考信息失败:', error)
+        }
+      }
+      checkExamInfo()
+    }
+  }, [majorCode, majorId, minScoreParam, maxScoreParam, isFromPopularMajors])
 
   // 当筛选条件变化/重新加载数据时，重置分页展示数量
   useEffect(() => {
@@ -1391,6 +1419,11 @@ export default function IntendedMajorsSchoolsPage() {
                               }
                             }
                             
+                            // 如果从热门专业页面跳转过来，不显示添加志愿按钮
+                            if (isFromPopularMajors) {
+                              return null
+                            }
+                            
                             return (
                               <Text 
                                 className={`schools-page__school-item-plan-major-action ${isPlanInWishlist ? 'schools-page__school-item-plan-major-action--active' : ''}`}
@@ -1584,6 +1617,26 @@ export default function IntendedMajorsSchoolsPage() {
           <Text className="schools-page__title">
             {majorName || data.major.name} ({data.major.code}) - 院校列表
           </Text>
+          {/* 如果从热门专业页面跳转过来，显示高考信息按钮 */}
+          {isFromPopularMajors && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="schools-page__exam-info-button"
+              onClick={() => {
+                // 打开弹框前先获取最新的高考信息
+                getExamInfo().then((info) => {
+                  setExamInfo(info)
+                  setShowExamInfoDialog(true)
+                }).catch((error) => {
+                  console.error('获取高考信息失败:', error)
+                  setShowExamInfoDialog(true)
+                })
+              }}
+            >
+              高考信息
+            </Button>
+          )}
         </View>
         <View className="schools-page__wave" />
       </View>
@@ -1800,6 +1853,11 @@ export default function IntendedMajorsSchoolsPage() {
                           )}
                         </View>
                         {(() => {
+                          // 如果从热门专业页面跳转过来，不显示添加志愿按钮
+                          if (isFromPopularMajors) {
+                            return null
+                          }
+                          
                           const { isIn, choiceId } = isPlanInWishlist(plan)
                           if (isIn && choiceId) {
                             return (
@@ -1911,6 +1969,18 @@ export default function IntendedMajorsSchoolsPage() {
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
       />
+
+      {/* 高考信息对话框 */}
+      {isFromPopularMajors && (
+        <ExamInfoDialog
+          open={showExamInfoDialog}
+          onOpenChange={setShowExamInfoDialog}
+          examInfo={examInfo}
+          onUpdate={(updatedInfo) => {
+            setExamInfo(updatedInfo)
+          }}
+        />
+      )}
     </View>
   )
 }

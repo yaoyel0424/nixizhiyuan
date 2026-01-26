@@ -13,6 +13,8 @@ import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
 import { Element } from '@/entities/element.entity';
 import { Scale } from '@/entities/scale.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
+import { PopularMajor } from '@/entities/popular-major.entity';
+import { PopularMajorAnswer } from '@/entities/popular-major-answer.entity';
 import { User } from '@/entities/user.entity';
 import { SchoolMajor } from '@/entities/school-major.entity';
 import { ScoresService } from '@/scores/scores.service';
@@ -44,6 +46,10 @@ export class MajorsService {
     private readonly scaleRepository: Repository<Scale>,
     @InjectRepository(ScaleAnswer)
     private readonly scaleAnswerRepository: Repository<ScaleAnswer>,
+    @InjectRepository(PopularMajor)
+    private readonly popularMajorRepository: Repository<PopularMajor>,
+    @InjectRepository(PopularMajorAnswer)
+    private readonly popularMajorAnswerRepository: Repository<PopularMajorAnswer>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(SchoolMajor)
@@ -467,6 +473,113 @@ export class MajorsService {
     );
 
     return result;
+  }
+
+  /**
+   * 通过专业代码获取热门专业详细信息
+   * @param majorCode 专业代码
+   * @param userId 用户ID（可选，用于计算用户分数）
+   * @returns 专业详情信息，包含分析信息和用户分数
+   */
+  async getPopularMajorDetailByCode(
+    majorCode: string,
+    userId?: number,
+  ): Promise<MajorDetail & { analyses: any[]; name?: string }> {
+    // 查找热门专业，同时加载关联的 majorDetail 信息
+    const popularMajor = await this.popularMajorRepository.findOne({
+      where: { code: majorCode },
+      relations: ['majorDetail', 'majorDetail.major'],
+    });
+
+    if (!popularMajor || !popularMajor.majorDetail) {
+      this.logger.warn(`热门专业详情不存在: ${majorCode}`);
+      throw new NotFoundException({
+        code: ErrorCode.RESOURCE_NOT_FOUND,
+        message: '热门专业详情不存在',
+      });
+    }
+
+    const majorDetail = popularMajor.majorDetail;
+
+    // 查找专业元素分析记录（包含元素信息）
+    const analyses = await this.majorElementAnalysisRepository.find({
+      where: { majorDetailId: majorDetail.id },
+      relations: ['element'],
+      order: { type: 'ASC', id: 'ASC' },
+    });
+
+    // 如果提供了用户ID，计算用户对每个元素的分数（从 popular_major_answers 表查询）
+    if (userId) {
+      // 获取所有相关的元素ID
+      const elementIds = analyses.map((analysis) => analysis.elementId);
+
+      if (elementIds.length > 0) {
+        // 使用一条 SQL 查询一次性获取所有元素的分数总和
+        // 从 popular_major_answers 表查询，而不是 scale_answers 表
+        const elementScores = await this.elementRepository
+          .createQueryBuilder('element')
+          .innerJoin(
+            'scales',
+            'scale',
+            'scale.element_id = element.id',
+          )
+          .innerJoin(
+            'popular_major_answers',
+            'answer',
+            'answer.scale_id = scale.id AND answer.user_id = :userId AND answer.popular_major_id = :popularMajorId',
+            { userId, popularMajorId: popularMajor.id },
+          )
+          .select('element.id', 'elementId')
+          .addSelect('SUM(answer.score)', 'totalScore')
+          .where('element.id IN (:...elementIds)', { elementIds })
+          .groupBy('element.id')
+          .getRawMany();
+
+        // 创建 elementId -> totalScore 的映射
+        const elementScoreMap = new Map<number, number>();
+        elementScores.forEach((item) => {
+          elementScoreMap.set(
+            item.elementId,
+            Number(Number(item.totalScore).toFixed(2)),
+          );
+        });
+
+        // 为每个分析记录设置用户分数
+        for (const analysis of analyses) {
+          const totalScore = elementScoreMap.get(analysis.elementId);
+          if (totalScore !== undefined) {
+            (analysis as any).userElementScore = totalScore;
+          }
+        }
+      }
+    }
+
+    return {
+      ...majorDetail,
+      // 从关联的 major 实体中获取 name
+      name: majorDetail.major?.name || null,
+      analyses: analyses.map((analysis) => ({
+        id: analysis.id,
+        type: analysis.type,
+        weight: analysis.weight,
+        element: analysis.element
+          ? {
+              id: analysis.element.id,
+              name: analysis.element.name,
+              type: analysis.element.type,
+              dimension: analysis.element.dimension,
+              ownedNaturalState: analysis.element.ownedNaturalState,
+              unownedNaturalState: analysis.element.unownedNaturalState,
+            }
+          : null,
+        summary: analysis.summary,
+        matchReason: analysis.matchReason,
+        theoryBasis: analysis.theoryBasis,
+        potentialConversionReason: analysis.potentialConversionReason,
+        potentialConversionValue: analysis.potentialConversionValue,
+        userElementScore: (analysis as any).userElementScore,
+      })),
+    };
   }
 }
 
