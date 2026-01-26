@@ -352,3 +352,4 @@ export const fixIndexes = async (): Promise<void> => {
     throw error
   }
 }
+
