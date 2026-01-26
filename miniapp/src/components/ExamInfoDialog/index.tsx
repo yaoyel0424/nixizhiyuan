@@ -9,8 +9,6 @@ import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import './index.less'
 
-const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '海南', '西藏', '新疆']
-
 // 高考信息对话框组件
 export function ExamInfoDialog({ 
   open, 
@@ -40,7 +38,14 @@ export function ExamInfoDialog({
 
   // 获取当前省份的科目配置
   const currentProvinceConfig = gaokaoConfig.find(config => config.province === selectedProvince)
-  
+  // 按接口 mode 区分模式，不再用省名硬编码
+  const is3Plus3Mode = currentProvinceConfig?.mode === '3+3' || currentProvinceConfig?.mode === '3+4'
+  const isWenliKeMode = currentProvinceConfig?.mode === '文理科'
+  // 文理科使用 secondarySubjects 作为科类选项；其他省若接口有 traditionalSubjects 则用其展示「选择科类」
+  const keleiSubjects = isWenliKeMode
+    ? (currentProvinceConfig?.secondarySubjects?.subjects ?? [])
+    : (currentProvinceConfig?.traditionalSubjects ?? [])
+
   // 获取所有省份列表
   const provinceList = gaokaoConfig.map(config => config.province).sort()
 
@@ -173,8 +178,7 @@ export function ExamInfoDialog({
   // 处理首选科目选择
   const handlePrimarySubjectChange = (subject: string) => {
     if (currentProvinceConfig?.primarySubjects) {
-      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
-      // 如果不是3+3模式，不能选择"综合"
+      // 非 3+3/3+4 模式下不能选择「综合」
       if (!is3Plus3Mode && subject === '综合') {
         Taro.showToast({
           title: '非3+3模式不能选择"综合"',
@@ -225,12 +229,8 @@ export function ExamInfoDialog({
     if (!score || score.trim() === '' || isNaN(Number(score))) {
       return
     }
-    
-    // 判断是否为3+3模式省份
-    const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
-    // 3+3模式省份使用"综合"，其他模式需要 firstChoice
-    const subjectType = is3Plus3Mode ? '综合' : firstChoice
-    
+    // 文理科用所选科类（文科/理科），3+3/3+4 用「综合」，其余用首选科目
+    const subjectType = isWenliKeMode ? firstChoice : (is3Plus3Mode ? '综合' : firstChoice)
     // 检查必要参数是否齐全
     if (!selectedProvince || !subjectType) {
       return
@@ -297,89 +297,71 @@ export function ExamInfoDialog({
 
   // 判断是否可以提交
   const canConfirm = useMemo(() => {
-    const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
-    
-    // 如果是3+3模式（首选科目是"综合"），次选科目必须选择三科
+    // 文理科：仅需选择科类（文科/理科）
+    if (isWenliKeMode) {
+      return !!firstChoice
+    }
+    // 3+3/3+4：次选必须选满要求数量（如 3 门）
     if (is3Plus3Mode) {
-      return optionalSubjects.size === 3
+      const required = currentProvinceConfig?.secondarySubjects?.count ?? 3
+      return optionalSubjects.size === required
     }
-    
-    // 如果不是3+3模式，必须要有首选科目，且不能是"综合"
-    if (!is3Plus3Mode) {
-      // 必须有首选科目
-      if (!firstChoice) {
-        return false
-      }
-      // 首选科目不能是"综合"
-      if (firstChoice === '综合') {
-        return false
-      }
+    // 其他模式（如 3+1+2）：必须有首选且不能是「综合」
+    if (!firstChoice || firstChoice === '综合') {
+      return false
     }
-    
     return true
-  }, [selectedProvince, optionalSubjects.size, firstChoice])
+  }, [isWenliKeMode, is3Plus3Mode, currentProvinceConfig?.secondarySubjects?.count, optionalSubjects.size, firstChoice])
 
   const handleConfirm = async () => {
     try {
       setLoading(true)
-      
-      // 判断是否为3+3模式省份
-      const is3Plus3Mode = PROVINCES_3_3_MODE.includes(selectedProvince)
-      
-      // 验证：如果首选科目是"综合"，次选科目必须选择三科
-      if (is3Plus3Mode && optionalSubjects.size !== 3) {
-        Taro.showToast({
-          title: '次选科目必须选择三科',
-          icon: 'none',
-          duration: 2000
-        })
-        setLoading(false)
-        return
-      }
-      
-      // 验证：如果不是3+3模式，必须要有首选科目，且不能是"综合"
-      if (!is3Plus3Mode) {
+      // 文理科：必须选择科类
+      if (isWenliKeMode) {
         if (!firstChoice) {
+          Taro.showToast({ title: '请选择科类（文科或理科）', icon: 'none', duration: 2000 })
+          setLoading(false)
+          return
+        }
+      } else if (is3Plus3Mode) {
+        const required = currentProvinceConfig?.secondarySubjects?.count ?? 3
+        if (optionalSubjects.size !== required) {
           Taro.showToast({
-            title: '请选择首选科目',
+            title: `次选科目必须选择${required}门`,
             icon: 'none',
             duration: 2000
           })
+          setLoading(false)
+          return
+        }
+      } else {
+        if (!firstChoice) {
+          Taro.showToast({ title: '请选择首选科目', icon: 'none', duration: 2000 })
           setLoading(false)
           return
         }
         if (firstChoice === '综合') {
-          Taro.showToast({
-            title: '非3+3模式不能选择"综合"',
-            icon: 'none',
-            duration: 2000
-          })
+          Taro.showToast({ title: '非3+3模式不能选择"综合"', icon: 'none', duration: 2000 })
           setLoading(false)
           return
         }
       }
-      
-      // 准备更新数据
+      // 文理科：preferredSubjects 为所选科类，不提交次选；3+3 为「综合」+ 次选；其余为首选 + 次选
+      const preferred = isWenliKeMode ? firstChoice : (is3Plus3Mode ? '综合' : firstChoice)
+      const secondary = isWenliKeMode ? undefined : (optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined)
       const updateData: ExamInfo = {
         province: selectedProvince,
-        // 3+3模式省份：preferredSubjects 统一填写"综合"，选科信息放在 secondarySubjects
-        preferredSubjects: is3Plus3Mode ? '综合' : (firstChoice || undefined),
-        secondarySubjects: optionalSubjects.size > 0 ? Array.from(optionalSubjects).join(',') : undefined,
+        preferredSubjects: preferred || undefined,
+        secondarySubjects: secondary,
         score: totalScore ? parseInt(totalScore, 10) : undefined,
         rank: ranking ? parseInt(ranking, 10) : undefined,
       }
-
-      // 调用 API 更新
       const updatedInfo = await updateExamInfo(updateData)
-
-      // 同时保存到本地存储（作为备份）
       await setStorage('examProvince', selectedProvince)
-      // 3+3模式省份保存"综合"，其他模式保存 firstChoice
-      const savedFirstChoice = is3Plus3Mode ? '综合' : firstChoice
-      if (savedFirstChoice) {
-        await setStorage('examFirstChoice', savedFirstChoice)
+      if (preferred) {
+        await setStorage('examFirstChoice', preferred)
       }
-      await setStorage('examOptionalSubjects', Array.from(optionalSubjects))
+      await setStorage('examOptionalSubjects', isWenliKeMode ? [] : Array.from(optionalSubjects))
       await setStorage('examTotalScore', totalScore)
       await setStorage('examRanking', ranking)
 
@@ -477,9 +459,27 @@ export function ExamInfoDialog({
               <Text className="exam-info-dialog__section-title">
                 选择科目 ({currentProvinceConfig.mode})
               </Text>
-              
-              {/* 首选科目 */}
-              {currentProvinceConfig.primarySubjects && currentProvinceConfig.primarySubjects.count > 0 && (
+              {/* 文理科：仅展示「选择科类」（文科/理科），不展示首选、次选 */}
+              {isWenliKeMode && keleiSubjects.length > 0 && (
+                <>
+                  <View className="exam-info-dialog__divider">
+                    <Text className="exam-info-dialog__divider-text">选择科类</Text>
+                  </View>
+                  <View className="exam-info-dialog__button-group">
+                    {keleiSubjects.map((subject) => (
+                      <Button
+                        key={subject}
+                        onClick={() => setFirstChoice(subject)}
+                        className={`exam-info-dialog__button ${firstChoice === subject ? 'exam-info-dialog__button--active' : ''}`}
+                      >
+                        {subject}
+                      </Button>
+                    ))}
+                  </View>
+                </>
+              )}
+              {/* 非文理科：首选科目 */}
+              {!isWenliKeMode && currentProvinceConfig.primarySubjects && currentProvinceConfig.primarySubjects.count > 0 && (
                 <>
                   <View className="exam-info-dialog__divider">
                     <Text className="exam-info-dialog__divider-text">
@@ -499,9 +499,8 @@ export function ExamInfoDialog({
                   </View>
                 </>
               )}
-
-              {/* 次选科目 */}
-              {currentProvinceConfig.secondarySubjects && currentProvinceConfig.secondarySubjects.count > 0 && (
+              {/* 非文理科：次选科目 */}
+              {!isWenliKeMode && currentProvinceConfig.secondarySubjects && currentProvinceConfig.secondarySubjects.count > 0 && (
                 <>
                   <View className="exam-info-dialog__divider">
                     <Text className="exam-info-dialog__divider-text">
@@ -522,15 +521,14 @@ export function ExamInfoDialog({
                   </View>
                 </>
               )}
-
-              {/* 传统文理科模式 */}
-              {currentProvinceConfig.traditionalSubjects && currentProvinceConfig.traditionalSubjects.length > 0 && (
+              {/* 非文理科、接口带 traditionalSubjects 时的「选择科类」 */}
+              {!isWenliKeMode && keleiSubjects.length > 0 && (
                 <>
                   <View className="exam-info-dialog__divider">
                     <Text className="exam-info-dialog__divider-text">选择科类</Text>
                   </View>
                   <View className="exam-info-dialog__button-group">
-                    {currentProvinceConfig.traditionalSubjects.map((subject) => (
+                    {keleiSubjects.map((subject) => (
                       <Button
                         key={subject}
                         onClick={() => setFirstChoice(subject)}
@@ -555,7 +553,7 @@ export function ExamInfoDialog({
 
           {/* 预估或实际总分 */}
           <View className="exam-info-dialog__row">
-            <Text className="exam-info-dialog__label">预估或实际总分</Text>
+            <Text className="exam-info-dialog__label">我的分数</Text>
             <Input
               type="number"
               value={totalScore}
@@ -592,7 +590,7 @@ export function ExamInfoDialog({
 
           {/* 高考排名 */}
           <View className="exam-info-dialog__row">
-            <Text className="exam-info-dialog__label">高考排名</Text>
+            <Text className="exam-info-dialog__label">我的位次</Text>
             <Input
               type="number"
               value={ranking}
@@ -600,12 +598,7 @@ export function ExamInfoDialog({
               className="exam-info-dialog__input"
             />
           </View>
-
-          {/* 提示信息 */}
-          <View className="exam-info-dialog__tip">
-            <Text className="exam-info-dialog__tip-icon">💡</Text>
-            <Text className="exam-info-dialog__tip-text">输入分数后系统将自动获取排名位次</Text>
-          </View>
+ 
 
           {/* 确认按钮 */}
           <Button
@@ -616,15 +609,22 @@ export function ExamInfoDialog({
           >
             确认
           </Button>
-          {/* 提示信息：如果首选科目是"综合"但次选科目未选择三科 */}
-          {PROVINCES_3_3_MODE.includes(selectedProvince) && optionalSubjects.size !== 3 && (
+          {/* 提示：3+3/3+4 模式下次选未选满 */}
+          {is3Plus3Mode && optionalSubjects.size !== (currentProvinceConfig?.secondarySubjects?.count ?? 3) && (
             <View className="exam-info-dialog__tip">
               <Text className="exam-info-dialog__tip-icon">⚠️</Text>
-              <Text className="exam-info-dialog__tip-text">次选科目必须选择三科</Text>
+              <Text className="exam-info-dialog__tip-text">次选科目须选择{currentProvinceConfig?.secondarySubjects?.count ?? 3}门</Text>
             </View>
           )}
-          {/* 提示信息：如果不是3+3模式，必须选择首选科目 */}
-          {!PROVINCES_3_3_MODE.includes(selectedProvince) && !firstChoice && currentProvinceConfig?.primarySubjects && currentProvinceConfig.primarySubjects.count > 0 && (
+          {/* 提示：文理科未选择科类 */}
+          {isWenliKeMode && !firstChoice && (
+            <View className="exam-info-dialog__tip">
+              <Text className="exam-info-dialog__tip-icon">⚠️</Text>
+              <Text className="exam-info-dialog__tip-text">请选择科类（文科或理科）</Text>
+            </View>
+          )}
+          {/* 提示：非 3+3、非文理科 且未选首选 */}
+          {!is3Plus3Mode && !isWenliKeMode && !firstChoice && currentProvinceConfig?.primarySubjects && currentProvinceConfig.primarySubjects.count > 0 && (
             <View className="exam-info-dialog__tip">
               <Text className="exam-info-dialog__tip-icon">⚠️</Text>
               <Text className="exam-info-dialog__tip-text">请选择首选科目</Text>

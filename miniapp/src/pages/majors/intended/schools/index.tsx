@@ -511,7 +511,8 @@ export default function IntendedMajorsSchoolsPage() {
         // 查找匹配的专业组
         const mgId = schoolData.majorGroupId
         for (const majorGroup of volunteer.majorGroups) {
-          if (majorGroup.majorGroup.mgId === mgId || (!mgId && majorGroup.majorGroup.mgId === null)) {
+          const groupMgId = majorGroup.majorGroup?.mgId
+          if (groupMgId === mgId || (!mgId && groupMgId === null)) {
             // 找到匹配的专业组，返回第一个choice的ID
             if (majorGroup.choices.length > 0) {
               return { isIn: true, choiceId: majorGroup.choices[0].id }
@@ -1261,7 +1262,7 @@ export default function IntendedMajorsSchoolsPage() {
                                       let isGroupMatch = false
                                       const planMajorGroupId = plan.majorGroupId || plan.majorGroup?.mgId
                                       const choiceMajorGroupId = choice.majorGroupId
-                                      const majorGroupMgId = majorGroup.majorGroup.mgId
+                                      const majorGroupMgId = majorGroup.majorGroup?.mgId
                                       
                                       // 优先使用 choice.majorGroupId 匹配
                                       if (planMajorGroupId && choiceMajorGroupId) {
@@ -1535,7 +1536,8 @@ export default function IntendedMajorsSchoolsPage() {
                         </View>
                       )}
                       
-                      {(plan.majorGroupId || plan.majorGroup?.mgId) && (
+                      {/* majorGroup 为 null 时不显示查看专业组按钮 */}
+                      {plan.majorGroup != null && (plan.majorGroupId || plan.majorGroup?.mgId) && (
                         <View className="schools-page__school-item-plan-group-button-wrapper">
                           <Text 
                             className="schools-page__school-item-plan-group-button"

@@ -126,18 +126,21 @@ export class ChoicesService {
     // 查询是否存在相同的 user_id, province, preferred_subjects, secondary_subjects, year, mg_id 组合
     // 注意：secondarySubjects 是数组，需要使用数组比较
     // 按照索引顺序：userId, province, preferredSubjects, year
-    const sameGroupChoice = await this.choiceRepository
+    // mgId 为 0 时不加入 mgId 条件（0 表示无专业组，不按专业组区分）
+    const sameGroupChoiceBuilder = this.choiceRepository
       .createQueryBuilder('choice')
       .where('choice.userId = :userId', { userId })
       .andWhere('choice.province = :province', { province })
       .andWhere('choice.preferredSubjects = :preferredSubjects', {
         preferredSubjects: preferredSubjects ?? null,
       })
-      .andWhere('choice.year = :year', { year })
-      // 索引字段之后的其他条件
-      .andWhere('choice.mgId = :mgId', {
+      .andWhere('choice.year = :year', { year });
+    if (createChoiceDto.mgId !== 0) {
+      sameGroupChoiceBuilder.andWhere('choice.mgId = :mgId', {
         mgId: createChoiceDto.mgId ?? null,
-      })
+      });
+    }
+    const sameGroupChoice = await sameGroupChoiceBuilder
       .andWhere(
         secondarySubjects && secondarySubjects.length > 0
           ? 'choice.secondarySubjects = :secondarySubjects'
