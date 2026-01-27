@@ -380,6 +380,7 @@ export class PopularMajorsService {
         md.study_period,
         md.awarded_degree,
         md.major_brief,
+        m.id as major_id,
         m.name as major_name,
         mea.id as element_analysis_id,
         mea.type as element_analysis_type,
@@ -424,7 +425,7 @@ export class PopularMajorsService {
           limitYear: row.limit_year,
           averageSalary: row.average_salary,
           majorDetail: row.major_detail_id ? {
-            id: row.major_detail_id,
+            id: row.major_id,
             code: row.major_detail_code,
             educationLevel: row.education_level,
             studyPeriod: row.study_period,
