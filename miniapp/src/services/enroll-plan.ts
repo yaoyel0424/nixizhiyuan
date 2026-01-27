@@ -129,10 +129,12 @@ export interface EnrollmentPlanWithScores {
  * 按分数段分组的院校列表
  * - inRange：满足分数段的招生计划（同一学校只保留满足的 plans）
  * - notInRange：不满足分数段的招生计划（同一学校只保留不满足的 plans，包含无分数）
+ * - provinces：省份列表（从接口返回）
  */
 export interface EnrollmentPlansByScoreRange {
   inRange: EnrollmentPlanWithScores[]
   notInRange: EnrollmentPlanWithScores[]
+  provinces?: string[]
 }
 
 /**

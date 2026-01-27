@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, ArrayOverlap } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
@@ -107,13 +107,25 @@ export class EnrollPlanService {
       .map((pf) => pf.province?.name)
       .filter((name): name is string => !!name);
 
-    // 验证用户是否收藏了省份
+    // 如果用户没有收藏省份，从配置中加载所有省份名称
+    let allProvinceNames: string[] = [];
     if (favoriteProvinceNames.length === 0) {
-      throw new BadRequestException('请先收藏您的意向省份');
+      allProvinceNames = Object.keys(PROVINCE_NAME_TO_CODE);
     }
 
-    // 使用收藏的省份名称列表
-    const provinceNames = favoriteProvinceNames;
+    // 使用收藏的省份名称列表，如果没有收藏则使用所有省份
+    const provinceNamesList = favoriteProvinceNames.length > 0 
+      ? favoriteProvinceNames 
+      : allProvinceNames;
+
+    // 如果 user.province 不为空，将其排在第一个位置
+    let provinceNames = [...provinceNamesList];
+    if (user.province && user.province.trim()) {
+      // 从列表中移除 user.province（如果存在）
+      provinceNames = provinceNames.filter(name => name !== user.province);
+      // 将 user.province 添加到第一个位置
+      provinceNames.unshift(user.province);
+    }
 
     // 3. 获取用户收藏的专业
     const majorFavorites = await this.majorFavoriteRepository.find({

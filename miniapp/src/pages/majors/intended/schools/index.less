@@ -66,13 +66,36 @@
   clip-path: ellipse(70% 100% at 50% 100%);
 }
 
+.schools-page__province-filter-wrapper {
+  background: #fff;
+  border-bottom: 1rpx solid #e5e7eb;
+}
+
 .schools-page__province-filter {
+  position: relative;
+  padding: 24rpx 32rpx;
+  transition: max-height 0.3s ease;
+  overflow: hidden;
+  max-height: none; // 默认不限制高度
+  
+  &--collapsed {
+    max-height: 80rpx !important; // 大约一行的高度，使用 !important 确保生效
+  }
+  
+  &--expanded {
+    max-height: none !important;
+  }
+}
+
+.schools-page__province-filter-content {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
-  padding: 24rpx 32rpx;
-  background: #fff;
-  border-bottom: 1rpx solid #e5e7eb;
+  
+  // 当未展开时，为绝对定位的展开按钮留出空间
+  .schools-page__province-filter--collapsed & {
+    padding-right: 120rpx;
+  }
 }
 
 .schools-page__province-filter-item {
@@ -95,6 +118,52 @@
   &--active {
     color: #1A4099;
     font-weight: 600;
+  }
+}
+
+.schools-page__province-filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 8rpx 16rpx;
+  cursor: pointer;
+  background: #f9fafb;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 8rpx;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  
+  &:active {
+    background: #f3f4f6;
+  }
+  
+  // 折叠状态下：绝对定位在右上角
+  &--absolute {
+    position: absolute;
+    top: 24rpx;
+    right: 32rpx;
+    z-index: 10;
+  }
+  
+  // 展开状态下：作为 flex 项目显示在列表末尾
+  &--inline {
+    position: static;
+  }
+}
+
+.schools-page__province-filter-toggle-text {
+  font-size: 26rpx;
+  color: #1A4099;
+}
+
+.schools-page__province-filter-toggle-icon {
+  font-size: 20rpx;
+  color: #1A4099;
+  transition: transform 0.3s ease;
+  
+  &--expanded {
+    transform: rotate(180deg);
   }
 }
 

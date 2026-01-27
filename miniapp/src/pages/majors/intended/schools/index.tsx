@@ -127,9 +127,21 @@ export default function IntendedMajorsSchoolsPage() {
   const [examInfo, setExamInfo] = useState<ExamInfo | undefined>(undefined)
   // 分段展示：当前已展示的院校条数
   const [visibleSchoolCount, setVisibleSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
+  // 从接口返回的省份列表
+  const [apiProvinces, setApiProvinces] = useState<string[]>([])
+  // 省份列表是否展开
+  const [isProvincesExpanded, setIsProvincesExpanded] = useState(false)
+  // 省份列表是否超过一行
+  const [isProvincesOverflow, setIsProvincesOverflow] = useState(false)
+  // 省份列表容器的 ref
+  const provinceFilterRef = useRef<HTMLDivElement>(null)
 
-  // 从 inRange/notInRange 中提取并去重省份列表（用于同时筛选两段列表）
+  // 优先使用接口返回的 provinces，如果没有则从数据中提取
   const provinces = React.useMemo(() => {
+    if (apiProvinces && apiProvinces.length > 0) {
+      return apiProvinces
+    }
+    // 降级方案：从 inRange/notInRange 中提取并去重省份列表
     const all = [...(inRangeApiData || []), ...(notInRangeApiData || [])]
     if (all.length === 0) return []
     const provinceSet = new Set<string>()
@@ -139,7 +151,7 @@ export default function IntendedMajorsSchoolsPage() {
       }
     })
     return Array.from(provinceSet).sort()
-  }, [inRangeApiData, notInRangeApiData])
+  }, [apiProvinces, inRangeApiData, notInRangeApiData])
 
   // 根据选中的省份筛选数据
   const filteredData = React.useMemo(() => {
@@ -379,6 +391,10 @@ export default function IntendedMajorsSchoolsPage() {
         )
         const inRangeList = grouped?.inRange || []
         const notInRangeList = grouped?.notInRange || []
+        // 保存接口返回的省份列表
+        if (grouped?.provinces && grouped.provinces.length > 0) {
+          setApiProvinces(grouped.provinces)
+        }
         setInRangeApiData(inRangeList)
         setNotInRangeApiData(notInRangeList)
         // 默认展示 inRange
@@ -486,6 +502,28 @@ export default function IntendedMajorsSchoolsPage() {
       checkExamInfo()
     }
   }, [majorCode, majorId, minScoreParam, maxScoreParam, isFromPopularMajors])
+
+  // 检测省份列表是否超过一行（使用估算方法，避免 Taro 查询问题）
+  useEffect(() => {
+    if (provinces.length === 0) {
+      setIsProvincesOverflow(false)
+      setIsProvincesExpanded(false) // 重置展开状态
+      return
+    }
+    
+    // 使用估算方法：根据省份数量和屏幕宽度估算
+    // 估算：每个省份项大约 80-120rpx 宽（包括文字和 padding）
+    // 屏幕宽度约 750rpx，一行大约可以放 5-6 个省份
+    // 如果省份数量（包括"全部"）超过 6 个，很可能超过一行
+    const totalItems = provinces.length + 1 // 包括"全部"按钮
+    const likelyOverflow = totalItems > 6
+    
+    setIsProvincesOverflow(likelyOverflow)
+    // 如果超过一行，默认折叠
+    if (likelyOverflow) {
+      setIsProvincesExpanded(false)
+    }
+  }, [provinces])
 
   // 当筛选条件变化/重新加载数据时，重置分页展示数量
   useEffect(() => {
@@ -1645,23 +1683,43 @@ export default function IntendedMajorsSchoolsPage() {
 
       {/* 省份筛选 */}
       {provinces.length > 0 && (
-        <View className="schools-page__province-filter">
-          <View className="schools-page__province-filter-item" onClick={() => setSelectedProvince(null)}>
-            <Text className={`schools-page__province-filter-text ${selectedProvince === null ? 'schools-page__province-filter-text--active' : ''}`}>
-              全部
-            </Text>
-          </View>
-          {provinces.map((province) => (
-            <View
-              key={province}
-              className="schools-page__province-filter-item"
-              onClick={() => setSelectedProvince(province)}
-            >
-              <Text className={`schools-page__province-filter-text ${selectedProvince === province ? 'schools-page__province-filter-text--active' : ''}`}>
-                {province}
-              </Text>
+        <View className="schools-page__province-filter-wrapper">
+          <View 
+            ref={provinceFilterRef as any}
+            className={`schools-page__province-filter ${isProvincesExpanded ? 'schools-page__province-filter--expanded' : (isProvincesOverflow ? 'schools-page__province-filter--collapsed' : '')}`}
+          >
+            <View className="schools-page__province-filter-content">
+              <View className="schools-page__province-filter-item" onClick={() => setSelectedProvince(null)}>
+                <Text className={`schools-page__province-filter-text ${selectedProvince === null ? 'schools-page__province-filter-text--active' : ''}`}>
+                  全部
+                </Text>
+              </View>
+              {provinces.map((province) => (
+                <View
+                  key={province}
+                  className="schools-page__province-filter-item"
+                  onClick={() => setSelectedProvince(province)}
+                >
+                  <Text className={`schools-page__province-filter-text ${selectedProvince === province ? 'schools-page__province-filter-text--active' : ''}`}>
+                    {province}
+                  </Text>
+                </View>
+              ))}
+              {isProvincesOverflow && (
+                <View 
+                  className={`schools-page__province-filter-toggle ${isProvincesExpanded ? 'schools-page__province-filter-toggle--inline' : 'schools-page__province-filter-toggle--absolute'}`}
+                  onClick={() => setIsProvincesExpanded(!isProvincesExpanded)}
+                >
+                  <Text className="schools-page__province-filter-toggle-text">
+                    {isProvincesExpanded ? '收起' : '展开'}
+                  </Text>
+                  <Text className={`schools-page__province-filter-toggle-icon ${isProvincesExpanded ? 'schools-page__province-filter-toggle-icon--expanded' : ''}`}>
+                    ▼
+                  </Text>
+                </View>
+              )}
             </View>
-          ))}
+          </View>
         </View>
       )}
 
