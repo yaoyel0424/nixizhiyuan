@@ -128,7 +128,7 @@ export default function IntendedMajorsSchoolsPage() {
   // 分段展示：当前已展示的院校条数
   const [visibleSchoolCount, setVisibleSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
   // 从接口返回的省份列表
-  const [apiProvinces, setApiProvinces] = useState<string[]>([])
+  const [apiProvinces, setApiProvinces] = useState<string[] | null>(null) // 使用 null 来区分"未设置"和"空数组"
   // 省份列表是否展开
   const [isProvincesExpanded, setIsProvincesExpanded] = useState(false)
   // 省份列表是否超过一行
@@ -138,7 +138,8 @@ export default function IntendedMajorsSchoolsPage() {
 
   // 优先使用接口返回的 provinces，如果没有则从数据中提取
   const provinces = React.useMemo(() => {
-    if (apiProvinces && apiProvinces.length > 0) {
+    // 如果 apiProvinces 不为 null，说明接口返回了 provinces（可能是空数组），直接使用
+    if (apiProvinces !== null) {
       return apiProvinces
     }
     // 降级方案：从 inRange/notInRange 中提取并去重省份列表
@@ -391,9 +392,12 @@ export default function IntendedMajorsSchoolsPage() {
         )
         const inRangeList = grouped?.inRange || []
         const notInRangeList = grouped?.notInRange || []
-        // 保存接口返回的省份列表
-        if (grouped?.provinces && grouped.provinces.length > 0) {
+        // 保存接口返回的省份列表（只要接口返回了 provinces，就使用它）
+        if (grouped?.provinces !== undefined) {
           setApiProvinces(grouped.provinces)
+        } else {
+          // 如果接口没有返回 provinces，设置为 null，使用降级方案
+          setApiProvinces(null)
         }
         setInRangeApiData(inRangeList)
         setNotInRangeApiData(notInRangeList)

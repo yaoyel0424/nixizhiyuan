@@ -167,11 +167,12 @@ export const getEnrollmentPlansByMajorId = async (
     if (response && typeof response === 'object') {
       // 如果包含 data 字段，提取 data
       if (response.data && typeof response.data === 'object') {
-        // 新结构：{ inRange, notInRange }
+        // 新结构：{ inRange, notInRange, provinces }
         if (Array.isArray(response.data.inRange) || Array.isArray(response.data.notInRange)) {
           return {
             inRange: Array.isArray(response.data.inRange) ? response.data.inRange : [],
             notInRange: Array.isArray(response.data.notInRange) ? response.data.notInRange : [],
+            provinces: Array.isArray(response.data.provinces) ? response.data.provinces : undefined,
           }
         }
         // 兼容旧结构：data 直接是数组
@@ -182,6 +183,14 @@ export const getEnrollmentPlansByMajorId = async (
       // 兼容旧结构：response 直接是数组
       if (Array.isArray(response)) {
         return { inRange: response, notInRange: [] }
+      }
+      // 如果 response 直接包含 inRange, notInRange, provinces
+      if (Array.isArray(response.inRange) || Array.isArray(response.notInRange)) {
+        return {
+          inRange: Array.isArray(response.inRange) ? response.inRange : [],
+          notInRange: Array.isArray(response.notInRange) ? response.notInRange : [],
+          provinces: Array.isArray(response.provinces) ? response.provinces : undefined,
+        }
       }
     }
     return { inRange: [], notInRange: [] }
