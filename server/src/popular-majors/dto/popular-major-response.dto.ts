@@ -129,6 +129,9 @@ export class PopularMajorResponseDto {
   code: string; 
 
   @Expose()
+  majorId: number;
+
+  @Expose()
   @Type(() => MajorDetailInfoDto)
   majorDetail?: MajorDetailInfoDto;
 

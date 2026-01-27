@@ -420,12 +420,13 @@ export class PopularMajorsService {
         const item: any = {
           id: row.popular_major_id,
           name: row.name,
+          majorId: row.major_id,
           code: row.code,
           degree: row.degree,
           limitYear: row.limit_year,
           averageSalary: row.average_salary,
           majorDetail: row.major_detail_id ? {
-            id: row.major_id,
+            id: row.major_detail_id,
             code: row.major_detail_code,
             educationLevel: row.education_level,
             studyPeriod: row.study_period,
