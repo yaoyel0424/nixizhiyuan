@@ -442,10 +442,16 @@ export class EnrollPlanService {
     const provinceNamesList = favoriteProvinceNames.length > 0 
       ? favoriteProvinceNames 
       : allProvinceNames;
-
-    // 使用所有省份名称列表
-    const provinceNames = provinceNamesList;
-
+ 
+    // 如果 user.province 不为空，将其排在第一个位置
+    let provinceNames = [...provinceNamesList];
+    if (user.province && user.province.trim()) {
+      // 从列表中移除 user.province（如果存在）
+      provinceNames = provinceNames.filter(name => name !== user.province);
+      // 将 user.province 添加到第一个位置
+      provinceNames.unshift(user.province);
+    }
+ 
     // 4. 处理次选科目数组
     const secondarySubjectsArray = user.secondarySubjects
       ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
@@ -898,7 +904,7 @@ export class EnrollPlanService {
     });
 
     // 添加 provinces 数组
-    (result as any).provinces = provinceNamesList;
+    (result as any).provinces = provinceNames;
 
     return result;
   }

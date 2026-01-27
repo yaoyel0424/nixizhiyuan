@@ -227,7 +227,7 @@ export default function PopularMajorsPage() {
       id: String(apiData.id),
       name: apiData.name || '',
       code: apiData.code || apiData.majorDetail?.code || '',
-      majorId: apiData.majorDetail?.id, // 专业详情ID，用于跳转到院校列表
+      majorId: apiData.majorId, // 专业详情ID，用于跳转到院校列表
       degree: apiData.degree || apiData.majorDetail?.awardedDegree || null,
       limit_year: apiData.limitYear || apiData.majorDetail?.studyPeriod || null,
       salaryavg: apiData.averageSalary || null,

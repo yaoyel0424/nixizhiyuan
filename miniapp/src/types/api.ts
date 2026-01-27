@@ -208,6 +208,7 @@ export interface ScoreInfo {
  */
 export interface PopularMajorResponse {
   id: number
+  majorId:number
   averageSalary: string | null
   majorDetail?: MajorDetailInfo
   progress?: ProgressInfo
