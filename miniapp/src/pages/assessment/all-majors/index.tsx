@@ -12,9 +12,6 @@ import { getScalesWithAnswers, submitScaleAnswer } from '@/services/scales'
 import { useAppSelector } from '@/store/hooks'
 import './index.less'
 
-const STORAGE_KEY = 'questionnaire_answers'
-const PREVIOUS_ANSWERS_KEY = 'questionnaire_previous_answers'
-
 const DIMENSION_ORDER = ['看', '听', '说', '记', '想', '做', '运动']
 
 // 排序题目：按维度顺序，然后按类型（like优先），最后按id
@@ -34,46 +31,6 @@ function sortQuestions(questions: Question[]): Question[] {
     }
     return a.id - b.id
   })
-}
-
-// 加载答案
-function loadAnswersFromStorage(): Record<number, number> {
-  try {
-    const stored = Taro.getStorageSync(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : {}
-  } catch (error) {
-    console.error('加载答案失败:', error)
-    return {}
-  }
-}
-
-// 保存答案
-function saveAnswersToStorage(answers: Record<number, number>) {
-  try {
-    Taro.setStorageSync(STORAGE_KEY, JSON.stringify(answers))
-  } catch (error) {
-    console.error('保存答案失败:', error)
-  }
-}
-
-// 加载上一次答案
-function loadPreviousAnswersFromStorage(): Record<number, number> {
-  try {
-    const stored = Taro.getStorageSync(PREVIOUS_ANSWERS_KEY)
-    return stored ? JSON.parse(stored) : {}
-  } catch (error) {
-    console.error('加载上一次答案失败:', error)
-    return {}
-  }
-}
-
-// 保存上一次答案
-function savePreviousAnswersToStorage(answers: Record<number, number>) {
-  try {
-    Taro.setStorageSync(PREVIOUS_ANSWERS_KEY, JSON.stringify(answers))
-  } catch (error) {
-    console.error('保存上一次答案失败:', error)
-  }
 }
 
 // 查找第一个未答题的索引
@@ -156,49 +113,33 @@ export default function AllMajorsPage() {
         // 设置 API 返回的答案
         setApiAnswers(result.answers || [])
         
+        // 将 API 答案转换为本地答案格式
+        // 注意：answer.scaleId 对应 question.id，answer.score 对应 option.optionValue
+        const apiAnswersMap: Record<number, number> = {}
+        if (result.answers && Array.isArray(result.answers)) {
+          result.answers.forEach((answer) => {
+            if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
+              // 确保 scaleId 和 score 都是数字类型
+              const scaleId = Number(answer.scaleId)
+              const score = Number(answer.score)
+              if (!isNaN(scaleId) && !isNaN(score)) {
+                apiAnswersMap[scaleId] = score
+              }
+            }
+          })
+        }
+        
+        console.log('API 返回的答案数组:', result.answers)
+        console.log('API 答案映射:', apiAnswersMap)
+        
         // 如果是重新开始，不加载任何答案，从头开始
         if (isRestart) {
-          // 清空所有答案，从头开始
           setAnswers({})
           setPreviousAnswers({})
-          // 确保本地存储也被清空（双重保险）
-          Taro.removeStorageSync(STORAGE_KEY)
-          Taro.removeStorageSync(PREVIOUS_ANSWERS_KEY)
         } else {
-          // 正常流程：加载答案
-          // 将 API 答案转换为本地答案格式
-          // 注意：answer.scaleId 对应 question.id，answer.score 对应 option.optionValue
-          const apiAnswersMap: Record<number, number> = {}
-          if (result.answers && Array.isArray(result.answers)) {
-            result.answers.forEach((answer) => {
-              if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
-                // 确保 scaleId 和 score 都是数字类型
-                const scaleId = Number(answer.scaleId)
-                const score = Number(answer.score)
-                if (!isNaN(scaleId) && !isNaN(score)) {
-                  apiAnswersMap[scaleId] = score
-                }
-              }
-            })
-          }
-          
-          console.log('API 返回的答案数组:', result.answers)
-          console.log('API 答案映射:', apiAnswersMap)
-          
-          // 加载本地存储的答案
-          const storedAnswers = loadAnswersFromStorage()
-          const storedPreviousAnswers = loadPreviousAnswersFromStorage()
-          
-          console.log('本地存储的答案:', storedAnswers)
-          
-          // 合并 API 答案和本地答案（本地答案优先，用于未提交的答案）
-          // 注意：这里本地答案会覆盖 API 答案，因为本地可能有未提交的新答案
-          const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
-          console.log('合并后的答案:', mergedAnswers)
-          console.log('题目总数:', result.scales?.length || 0)
-          
-          setAnswers(mergedAnswers)
-          setPreviousAnswers(storedPreviousAnswers)
+          // 正常流程：只使用 API 返回的答案
+          setAnswers(apiAnswersMap)
+          setPreviousAnswers({})
         }
         
         // 如果有题目数据，初始化当前索引
@@ -211,8 +152,7 @@ export default function AllMajorsPage() {
             setCurrentIndex(0)
           } else {
             // 正常流程：找到第一个未答题的题目
-            // 需要重新获取合并后的答案（因为 setAnswers 是异步的）
-            const storedAnswers = loadAnswersFromStorage()
+            // 只使用 API 返回的答案
             const apiAnswersMap: Record<number, number> = {}
             if (result.answers && Array.isArray(result.answers)) {
               result.answers.forEach((answer) => {
@@ -225,15 +165,14 @@ export default function AllMajorsPage() {
                 }
               })
             }
-            const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
             // 查找第一个未答题的题目索引
-            const firstUnanswered = findFirstUnansweredIndex(sorted, mergedAnswers)
+            const firstUnanswered = findFirstUnansweredIndex(sorted, apiAnswersMap)
             // 查找所有未答题的题目
-            const unansweredIndices = findUnansweredQuestions(sorted, mergedAnswers)
+            const unansweredIndices = findUnansweredQuestions(sorted, apiAnswersMap)
             
             // 检查完成状态：只有当所有题目都有答案时才认为完成
             // 注意：不仅要检查答案数量，还要确保没有未答的题目
-            const answeredCount = Object.keys(mergedAnswers).length
+            const answeredCount = Object.keys(apiAnswersMap).length
             const hasUnansweredQuestions = unansweredIndices.length > 0
             
             if (answeredCount === sorted.length && !hasUnansweredQuestions) {
@@ -313,7 +252,6 @@ export default function AllMajorsPage() {
     // 清空当前答案
     const emptyAnswers: Record<number, number> = {}
     setAnswers(emptyAnswers)
-    saveAnswersToStorage(emptyAnswers)
     // 回到第一题
     setCurrentIndex(0)
     // 关闭确认对话框
@@ -351,7 +289,6 @@ export default function AllMajorsPage() {
       [currentQuestion.id]: optionValue,
     }
     setAnswers(newAnswers)
-    saveAnswersToStorage(newAnswers)
 
     // 提交答案到服务器
     try {
@@ -519,16 +456,22 @@ export default function AllMajorsPage() {
                 setScales(result.scales || [])
                 setApiAnswers(result.answers || [])
                 const apiAnswersMap: Record<number, number> = {}
-                result.answers?.forEach((answer) => {
-                  apiAnswersMap[answer.scaleId] = answer.score
-                })
-                const storedAnswers = loadAnswersFromStorage()
-                const mergedAnswers = { ...apiAnswersMap, ...storedAnswers }
-                setAnswers(mergedAnswers)
+                if (result.answers && Array.isArray(result.answers)) {
+                  result.answers.forEach((answer) => {
+                    if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
+                      const scaleId = Number(answer.scaleId)
+                      const score = Number(answer.score)
+                      if (!isNaN(scaleId) && !isNaN(score)) {
+                        apiAnswersMap[scaleId] = score
+                      }
+                    }
+                  })
+                }
+                setAnswers(apiAnswersMap)
                 if (result.scales && result.scales.length > 0) {
                   const questions = result.scales.map(convertScaleToQuestion)
                   const sorted = sortQuestions(questions)
-                  setCurrentIndex(findFirstUnansweredIndex(sorted, mergedAnswers))
+                  setCurrentIndex(findFirstUnansweredIndex(sorted, apiAnswersMap))
                 }
                 setIsInitialized(true)
               } catch (error: any) {

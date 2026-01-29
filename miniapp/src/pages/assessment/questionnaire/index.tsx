@@ -5,12 +5,12 @@ import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AssessmentCompletionModal } from '@/components/AssessmentCompletionModal'
-import { getStorage, setStorage } from '@/utils/storage'
-import { getScalesWithAnswers } from '@/services/scales'
+// 不再使用本地存储，全部使用 API 返回的数据
+import { getScalesWithAnswers, submitScaleAnswer } from '@/services/scales'
 import { Scale } from '@/types/api'
 import './index.less'
 
-const STORAGE_KEY = "questionnaire_answers"
+// 不再使用本地存储，全部使用 API 返回的数据
 
 export default function QuestionnairePage() {
   const [questions, setQuestions] = useState<Scale[]>([])
@@ -49,7 +49,9 @@ export default function QuestionnairePage() {
           setQuestions(filteredScales)
           
           // 恢复已保存的答案
-          if (response.answers && response.answers.length > 0) {
+          const hasApiAnswers = response.answers && Array.isArray(response.answers) && response.answers.length > 0
+          
+          if (hasApiAnswers) {
             const savedAnswers: Record<number, number> = {}
             response.answers.forEach((answer: any) => {
               if (answer.scaleId && answer.score !== undefined) {
@@ -69,16 +71,12 @@ export default function QuestionnairePage() {
               setSliderValue(savedAnswers[filteredScales[firstUnanswered].id] || 50)
             }
           } else {
-            // 如果没有 API 答案，尝试从本地存储加载（兼容旧数据）
-            const saved = await getStorage<Record<number, number>>(STORAGE_KEY)
-            if (saved) {
-              setAnswers(saved)
-              const firstUnanswered = filteredScales.findIndex((scale: Scale) => !saved[scale.id])
-              if (firstUnanswered >= 0) {
-                setCurrentQuestionIndex(firstUnanswered)
-                setSliderValue(saved[filteredScales[firstUnanswered].id] || 50)
-              }
-            }
+            // 如果 API 返回空答案数组，不加载任何答案
+            console.log('API 返回空答案数组，不加载任何答案')
+            setAnswers({})
+            // 从第一题开始
+            setCurrentQuestionIndex(0)
+            setSliderValue(50)
           }
         }
       } catch (error) {
@@ -103,25 +101,74 @@ export default function QuestionnairePage() {
   const handleNext = async () => {
     if (!currentQuestion) return
 
-    // 保存答案
-    const newAnswers = {
-      ...answers,
-      [currentQuestion.id]: sliderValue,
+    try {
+      // 将滑块值（0-100）转换为 score（-2 到 2）
+      // score = (sliderValue / 100) * 4 - 2
+      const score = (sliderValue / 100) * 4 - 2
+
+      // 提交答案到服务器
+      const response: any = await submitScaleAnswer(currentQuestion.id, score)
+      
+      // 检查返回的 code 字段，必须为 'SUCCESS' 才跳转
+      // 注意：API拦截器可能已经处理了错误，但这里再次检查确保数据完整性
+      const responseCode = response?.code
+      const isSuccess = responseCode === 'SUCCESS' || responseCode === '0' || responseCode === 0
+      
+      if (!isSuccess) {
+        console.error('提交答案失败，返回 code 不是 SUCCESS:', responseCode, response)
+        // 给出友好的错误提示
+        const errorMessage = response?.message || '答案提交失败，请稍后重试'
+        Taro.showToast({
+          title: errorMessage,
+          icon: 'none',
+          duration: 3000
+        })
+        // 不跳转，停留在当前题目，等待用户重试
+        return
+      }
+
+      // 更新答案状态（不保存到本地，只使用 API 数据）
+      const newAnswers = {
+        ...answers,
+        [currentQuestion.id]: sliderValue,
+      }
+      setAnswers(newAnswers)
+
+      const nextIndex = currentQuestionIndex + 1
+
+      // 检查是否完成
+      if (nextIndex >= questions.length) {
+        setShowCompletionModal(true)
+        return
+      }
+
+      // 移动到下一题
+      setCurrentQuestionIndex(nextIndex)
+      setSliderValue(newAnswers[questions[nextIndex].id] || 50)
+    } catch (error: any) {
+      // API调用失败（网络错误、服务器错误等）
+      console.error('提交答案失败:', error)
+      
+      // 提取友好的错误信息
+      let errorMessage = '答案提交失败，请稍后重试'
+      if (error?.message) {
+        // 如果是网络相关错误，给出更友好的提示
+        if (error.message.includes('timeout') || error.message.includes('超时')) {
+          errorMessage = '网络请求超时，请检查网络后重试'
+        } else if (error.message.includes('网络') || error.message.includes('network')) {
+          errorMessage = '网络连接失败，请检查网络设置'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      Taro.showToast({
+        title: errorMessage,
+        icon: 'none',
+        duration: 3000
+      })
+      // 不跳转，停留在当前题目，等待用户重试
     }
-    setAnswers(newAnswers)
-    await setStorage(STORAGE_KEY, newAnswers)
-
-    const nextIndex = currentQuestionIndex + 1
-
-    // 检查是否完成
-    if (nextIndex >= questions.length) {
-      setShowCompletionModal(true)
-      return
-    }
-
-    // 移动到下一题
-    setCurrentQuestionIndex(nextIndex)
-    setSliderValue(newAnswers[questions[nextIndex].id] || 50)
   }
 
   const handleExit = () => {

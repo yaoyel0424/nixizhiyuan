@@ -90,21 +90,11 @@ export const getScalesWithAnswers = async (): Promise<ScalesWithAnswersResponse>
  */
 export const createOrUpdateScaleAnswer = async (
   params: CreateScaleAnswerParams
-): Promise<ScaleAnswer> => {
+): Promise<any> => {
   const response: any = await post<ScaleAnswer>('/scales/answers', params)
+  // 返回完整响应，包含 code 字段，用于检查是否成功
   // 响应拦截器可能返回原始数据或 BaseResponse 格式
-  if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提�?data（后端标准格式）
-    if (response.data) {
-      return response.data
-    }
-    // 如果直接包含答案字段，直接返�?
-    if (response.id && response.scaleId && response.userId !== undefined) {
-      return response
-    }
-    // 其他情况直接返回
-    return response
-  }
+  // 但我们需要保留完整的响应对象，以便检查 code 字段
   return response
 }
 
@@ -119,7 +109,7 @@ export const submitScaleAnswer = async (
   scaleId: number,
   score: number,
   userId?: number
-): Promise<ScaleAnswer> => {
+): Promise<any> => {
   // 如果没有提供 userId，尝试自动获�?
   const finalUserId = userId || getCurrentUserId()
   
