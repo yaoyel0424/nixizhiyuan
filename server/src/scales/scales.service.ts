@@ -93,6 +93,16 @@ export class ScalesService {
   }
 
   /**
+   * 删除当前用户在 scale_answers 表中的所有记录
+   * @param userId 用户ID
+   * @returns 删除的记录数
+   */
+  async deleteAnswersByUserId(userId: number): Promise<{ deleted: number }> {
+    const result = await this.scaleAnswerRepository.delete({ userId });
+    return { deleted: result.affected ?? 0 };
+  }
+
+  /**
    * 获取所有量表列表及用户答案
    * @param userId 用户ID
    * @returns 包含量表列表和答案列表的对象

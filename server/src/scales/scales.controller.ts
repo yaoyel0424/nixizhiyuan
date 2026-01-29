@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
   ParseIntPipe,
@@ -209,6 +210,24 @@ export class ScalesController {
     return plainToInstance(ScaleAnswerResponseDto, scaleAnswer, {
       excludeExtraneousValues: true,
     });
+  }
+
+  @Delete('answers')
+  @ApiOperation({ summary: '删除当前用户在 scale_answers 表中的所有答案' })
+  @ApiResponse({
+    status: 200,
+    description: '删除成功',
+    schema: {
+      type: 'object',
+      properties: {
+        deleted: { type: 'number', description: '删除的记录数' },
+      },
+    },
+  })
+  async deleteMyAnswers(
+    @CurrentUser() user: any,
+  ): Promise<{ deleted: number }> {
+    return this.scalesService.deleteAnswersByUserId(user.id);
   }
 }
 
