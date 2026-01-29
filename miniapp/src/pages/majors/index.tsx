@@ -41,6 +41,8 @@ export default function MajorsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   // 数据缓存：避免切换标签时重复请求
   const dataCacheRef = useRef<Record<string, MajorScoreResponse[]>>({})
+  // 防抖定时器：避免快速滚动时多次触发加载
+  const loadMoreTimerRef = useRef<NodeJS.Timeout | null>(null)
   // 心动专业列表（存储专业代码）
   const [favoriteMajors, setFavoriteMajors] = useState<Set<string>>(new Set())
   // 展开的专业简介（存储专业代码）
@@ -177,6 +179,17 @@ export default function MajorsPage() {
     loadAllMajors(activeTab)
   }, [activeTab, loadAllMajors])
 
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (loadMoreTimerRef.current) {
+        clearTimeout(loadMoreTimerRef.current)
+      }
+      // 确保隐藏加载提示
+      Taro.hideLoading()
+    }
+  }, [])
+
   // 处理标签切换
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
@@ -195,21 +208,41 @@ export default function MajorsPage() {
 
     if (nextData.length > 0) {
       setLoadingMore(true)
-      // 模拟加载延迟，提升用户体验
-      setTimeout(() => {
-        setDisplayedMajors(prev => [...prev, ...nextData])
-        setCurrentPage(nextPage)
-        setHasMore(endIndex < allMajors.length)
-        setLoadingMore(false)
-      }, 300)
+      // 显示加载提示，让用户知道正在加载
+      Taro.showLoading({
+        title: '加载中...',
+        mask: true // 显示遮罩，防止用户在加载时操作
+      })
+
+      // 使用 requestAnimationFrame 优化渲染性能，避免阻塞主线程
+      // 双重 requestAnimationFrame 确保在浏览器完成重绘后再更新数据
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // 更新数据
+          setDisplayedMajors(prev => [...prev, ...nextData])
+          setCurrentPage(nextPage)
+          setHasMore(endIndex < allMajors.length)
+          setLoadingMore(false)
+          // 隐藏加载提示
+          Taro.hideLoading()
+        })
+      })
     } else {
       setHasMore(false)
     }
   }, [currentPage, allMajors, hasMore, loadingMore])
 
-  // 处理滚动到底部
+  // 处理滚动到底部（添加防抖处理）
   const handleScrollToLower = useCallback(() => {
-    loadMore()
+    // 清除之前的定时器
+    if (loadMoreTimerRef.current) {
+      clearTimeout(loadMoreTimerRef.current)
+    }
+    
+    // 防抖：延迟100ms执行，避免快速滚动时多次触发
+    loadMoreTimerRef.current = setTimeout(() => {
+      loadMore()
+    }, 100)
   }, [loadMore])
 
   // 切换心动专业
@@ -921,10 +954,11 @@ export default function MajorsPage() {
                 })}
               </View>
               
-              {/* 加载更多提示 */}
+              {/* 加载更多提示（作为备用提示，主要使用 Taro.showLoading） */}
               {loadingMore && (
                 <View className="majors-page__load-more">
-                  <Text className="majors-page__load-more-text">加载中...</Text>
+                  <View className="majors-page__load-more-spinner" />
+                  <Text className="majors-page__load-more-text">正在加载更多...</Text>
                 </View>
               )}
               

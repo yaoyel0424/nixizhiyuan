@@ -411,14 +411,35 @@
 
 .majors-page__load-more {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 40rpx 0;
+  padding: 60rpx 0;
+  gap: 24rpx;
+}
+
+.majors-page__load-more-spinner {
+  width: 48rpx;
+  height: 48rpx;
+  border: 4rpx solid rgba(26, 64, 153, 0.1);
+  border-top-color: #1A4099;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .majors-page__load-more-text {
   font-size: 28rpx;
-  color: #999;
+  color: #666;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .majors-page__no-more {

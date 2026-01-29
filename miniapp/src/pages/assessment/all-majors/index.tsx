@@ -95,6 +95,7 @@ export default function AllMajorsPage() {
   const [progressAnimation, setProgressAnimation] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
   const [showUnansweredDialog, setShowUnansweredDialog] = useState(false)
+  const [submittingQuestionId, setSubmittingQuestionId] = useState<number | null>(null) // 正在提交的题目ID
   const [showUnansweredBlink, setShowUnansweredBlink] = useState(false)
 
   // 从 API 加载数据
@@ -281,82 +282,177 @@ export default function AllMajorsPage() {
   const handleAnswer = async (optionValue: number) => {
     if (!currentQuestion) return
 
+    // 防止重复提交：如果当前题目正在提交中，直接返回
+    if (submittingQuestionId === currentQuestion.id) {
+      console.log('当前题目正在提交中，忽略重复点击')
+      return
+    }
+
+    // 防止在提交过程中点击：如果有任何题目正在提交，直接返回
+    if (submittingQuestionId !== null) {
+      console.log('有其他题目正在提交中，忽略点击，等待提交完成')
+      Taro.showToast({
+        title: '请等待当前答案提交完成',
+        icon: 'none',
+        duration: 1500
+      })
+      return
+    }
+
     // 清除闪烁状态
     setShowUnansweredBlink(false)
 
-    const newAnswers = {
-      ...answers,
-      [currentQuestion.id]: optionValue,
-    }
-    setAnswers(newAnswers)
+    // 记录当前正在提交的题目ID和当前索引
+    const currentQuestionId = currentQuestion.id
+    const currentIndexAtSubmit = currentIndex // 记录提交时的索引
+    setSubmittingQuestionId(currentQuestionId)
 
     // 提交答案到服务器
     try {
       // 获取 userId（优先使用 Redux store，否则使用自动获取）
       const userId = userInfo?.id ? parseInt(userInfo.id, 10) : undefined
-      await submitScaleAnswer(currentQuestion.id, optionValue, userId)
-      // 提交成功，静默处理（不显示提示，避免干扰用户体验）
+      const response: any = await submitScaleAnswer(currentQuestionId, optionValue, userId)
+      
+      // 验证响应：检查 code 是否为 SUCCESS
+      const responseCode = response?.code
+      const isSuccess = responseCode === 'SUCCESS' || responseCode === '0' || responseCode === 0
+      
+      if (!isSuccess) {
+        console.error('提交答案失败，返回 code 不是 SUCCESS:', responseCode, response)
+        setSubmittingQuestionId(null) // 清除提交状态
+        Taro.showToast({
+          title: response?.message || '答案提交失败，请稍后重试',
+          icon: 'none',
+          duration: 3000
+        })
+        return // 提交失败，不更新状态，不跳转
+      }
+
+      // 验证响应的 scaleId 是否与当前题目 id 匹配
+      const responseScaleId = response?.data?.scaleId || response?.scaleId
+      if (responseScaleId !== undefined && Number(responseScaleId) !== currentQuestionId) {
+        console.error('提交答案失败，响应的 scaleId 与当前题目 id 不匹配:', {
+          responseScaleId,
+          currentQuestionId,
+          response
+        })
+        setSubmittingQuestionId(null) // 清除提交状态
+        Taro.showToast({
+          title: '答案提交验证失败，请重试',
+          icon: 'none',
+          duration: 3000
+        })
+        return // 验证失败，不更新状态，不跳转
+      }
+
+      console.log('答案提交成功，验证通过:', {
+        questionId: currentQuestionId,
+        responseScaleId: responseScaleId,
+        responseCode
+      })
+
+      // 提交成功且验证通过，更新答案状态
+      const newAnswers = {
+        ...answers,
+        [currentQuestionId]: optionValue,
+      }
+      setAnswers(newAnswers)
+      setSubmittingQuestionId(null) // 清除提交状态
+
+      // 提交成功后的处理逻辑
+      const answeredCount = Object.keys(newAnswers).length
+      // 检查是否有未答题的题目
+      const unansweredIndices = findUnansweredQuestions(sortedQuestions, newAnswers)
+      const hasUnansweredQuestions = unansweredIndices.length > 0
+
+      if (answeredCount % 24 === 0 && answeredCount < totalQuestions) {
+        const completedDimensionIndex = Math.floor(answeredCount / 24) - 1
+        const dimensionName = DIMENSION_ORDER[completedDimensionIndex]
+
+        setProgressAnimation(true)
+        setTimeout(() => setProgressAnimation(false), 1000)
+
+        // 计算个人特质解锁项数（已完成的维度数）
+        const completedDimensionsCount = DIMENSION_ORDER.filter((dim) => {
+          const dimQuestions = sortedQuestions.filter((q) => q.dimension === dim)
+          const dimAnswered = dimQuestions.filter((q) => q.id in newAnswers).length
+          return dimAnswered === dimQuestions.length
+        }).length
+
+        // 计算匹配专业数（每20题一个专业）
+        const matchedMajorsCount = Math.floor(answeredCount / 20)
+
+        Taro.showToast({
+          title: `🎉 维度解锁：${dimensionName}！`,
+          icon: 'none',
+          duration: 3000
+        })
+      }
+      
+      // 如果有未答题的题目，提示用户
+      if (hasUnansweredQuestions && currentIndex === totalQuestions - 1) {
+        // 如果当前是最后一题，但还有未答题的题目，跳转到第一个未答题的题目
+        const firstUnanswered = unansweredIndices[0]
+        if (firstUnanswered !== undefined) {
+          setTimeout(() => {
+            setCurrentIndex(firstUnanswered)
+            Taro.showToast({
+              title: `检测到 ${unansweredIndices.length} 道未答题，已跳转`,
+              icon: 'none',
+              duration: 2000
+            })
+          }, 500)
+          return
+        }
+      }
+
+      // 只有提交成功且验证通过后，才跳转到下一题
+      // 重要：使用提交时的索引，而不是当前的索引，防止快速点击导致跳转错误
+      if (currentIndexAtSubmit < totalQuestions - 1) {
+        // 再次确认当前索引仍然是提交时的索引（防止在提交过程中用户跳转到其他题目）
+        if (currentIndex === currentIndexAtSubmit) {
+          setTimeout(() => {
+            setCurrentIndex((prev) => {
+              // 再次确认，防止并发问题
+              if (prev === currentIndexAtSubmit) {
+                return prev + 1
+              }
+              console.warn('索引已变化，取消跳转', { prev, currentIndexAtSubmit })
+              return prev
+            })
+          }, 200)
+        } else {
+          console.warn('提交完成时索引已变化，取消自动跳转', {
+            currentIndex,
+            currentIndexAtSubmit,
+            questionId: currentQuestionId
+          })
+        }
+      }
     } catch (error: any) {
-      // 提交失败，记录错误但不影响用户操作
+      // 提交失败，清除提交状态
+      setSubmittingQuestionId(null)
       console.error('提交答案失败:', error)
-      // 可以选择显示一个不干扰的提示，或者静默失败（因为本地已保存）
-      // Taro.showToast({
-      //   title: '答案已保存到本地',
-      //   icon: 'none',
-      //   duration: 1500
-      // })
-    }
-
-    const answeredCount = Object.keys(newAnswers).length
-    // 检查是否有未答题的题目
-    const unansweredIndices = findUnansweredQuestions(sortedQuestions, newAnswers)
-    const hasUnansweredQuestions = unansweredIndices.length > 0
-
-    if (answeredCount % 24 === 0 && answeredCount < totalQuestions) {
-      const completedDimensionIndex = Math.floor(answeredCount / 24) - 1
-      const dimensionName = DIMENSION_ORDER[completedDimensionIndex]
-
-      setProgressAnimation(true)
-      setTimeout(() => setProgressAnimation(false), 1000)
-
-      // 计算个人特质解锁项数（已完成的维度数）
-      const completedDimensionsCount = DIMENSION_ORDER.filter((dim) => {
-        const dimQuestions = sortedQuestions.filter((q) => q.dimension === dim)
-        const dimAnswered = dimQuestions.filter((q) => q.id in newAnswers).length
-        return dimAnswered === dimQuestions.length
-      }).length
-
-      // 计算匹配专业数（每20题一个专业）
-      const matchedMajorsCount = Math.floor(answeredCount / 20)
-
+      
+      // 提取友好的错误信息
+      let errorMessage = '答案提交失败，请稍后重试'
+      if (error?.message) {
+        if (error.message.includes('timeout') || error.message.includes('超时')) {
+          errorMessage = '网络请求超时，请检查网络后重试'
+        } else if (error.message.includes('网络') || error.message.includes('network')) {
+          errorMessage = '网络连接失败，请检查网络设置'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       Taro.showToast({
-        title: `🎉 维度解锁：${dimensionName}！`,
+        title: errorMessage,
         icon: 'none',
         duration: 3000
       })
-    }
-    
-    // 如果有未答题的题目，提示用户
-    if (hasUnansweredQuestions && currentIndex === totalQuestions - 1) {
-      // 如果当前是最后一题，但还有未答题的题目，跳转到第一个未答题的题目
-      const firstUnanswered = unansweredIndices[0]
-      if (firstUnanswered !== undefined) {
-        setTimeout(() => {
-          setCurrentIndex(firstUnanswered)
-          Taro.showToast({
-            title: `检测到 ${unansweredIndices.length} 道未答题，已跳转`,
-            icon: 'none',
-            duration: 2000
-          })
-        }, 500)
-        return
-      }
-    }
-
-    if (currentIndex < totalQuestions - 1) {
-      setTimeout(() => {
-        setCurrentIndex((prev) => prev + 1)
-      }, 200)
+      // 提交失败，不更新状态，不跳转，停留在当前题目
+      return
     }
   }
 
@@ -610,12 +706,22 @@ export default function AllMajorsPage() {
                   .map((line) => line.trim())
                   .filter(Boolean)
                 const additionalInfoText = additionalInfoLines.join('；')
+                
+                // 如果当前题目正在提交中，禁用所有选项
+                const isSubmitting = submittingQuestionId === currentQuestion.id
+                // 如果有任何题目正在提交，也禁用选项（防止快速点击）
+                const isAnySubmitting = submittingQuestionId !== null
 
                 return (
                   <View
                     key={option.id}
-                    onClick={() => handleAnswer(option.optionValue)}
-                    className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${wasPreviousAnswer ? 'all-majors-page__option--previous' : ''}`}
+                    onClick={() => {
+                      if (!isAnySubmitting) {
+                        handleAnswer(option.optionValue)
+                      }
+                    }}
+                    className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${wasPreviousAnswer ? 'all-majors-page__option--previous' : ''} ${isAnySubmitting ? 'all-majors-page__option--disabled' : ''}`}
+                    style={isAnySubmitting ? { opacity: 0.5, pointerEvents: 'none' } : {}}
                   >
                     <View className="all-majors-page__option-content">
                       <View className="all-majors-page__option-text-wrapper">
