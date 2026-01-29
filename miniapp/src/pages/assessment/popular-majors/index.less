@@ -546,12 +546,17 @@
 
 .popular-majors-page__pre-assessment-content {
   padding: 12rpx 0 12rpx;
-  height: 50vh;
-  max-height: 50vh;
+  // 考虑底部导航栏和按钮区域，调整高度
+  // 使用 vh 单位，约为 40vh（留出底部导航栏和按钮空间）
+  height: 40vh;
+  max-height: 40vh;
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  // iOS 平滑滚动支持
   -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .popular-majors-page__pre-assessment-block {
@@ -809,19 +814,27 @@
 
 // 对话框样式
 .popular-majors-page__dialog {
-  max-height: 90vh;
+  // 考虑底部导航栏高度，避免内容被遮挡
+  // 底部导航栏高度约为 13-15vh（包括 safe-area）
+  // 使用 vh 单位确保兼容性
+  max-height: 75vh;
+  // iOS 低版本需要明确设置才能滚动
+  height: auto;
+  min-height: 0;
   overflow-y: auto;
+  // iOS 平滑滚动支持（关键：解决 iOS 低版本无法滚动的问题）
+  -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 100%;
   
-  // 竖屏时：增大高度
+  // 竖屏时：增大高度，但仍需考虑底部导航栏
   @media (orientation: portrait) {
-    max-height: 92vh;
+    max-height: 77vh;
   }
   
-  // 横屏时：增大高度
+  // 横屏时：增大高度，但仍需考虑底部导航栏
   @media (orientation: landscape) {
-    max-height: 95vh;
+    max-height: 80vh;
   }
 }
 
@@ -830,18 +843,25 @@
 :global {
   // 当对话框包含 popular-majors-page__dialog 时，增大容器尺寸
   .ui-dialog__content {
-    // 竖屏时：减少左右边距，增大宽度
+    // iOS 平滑滚动支持
+    -webkit-overflow-scrolling: touch !important;
+    
+    // 竖屏时：减少左右边距，增大宽度，但考虑底部导航栏
     @media (orientation: portrait) {
       width: calc(100% - 32rpx) !important;
       max-width: 1200rpx !important;
-      max-height: 92vh !important;
+      max-height: 77vh !important;
+      height: auto !important;
+      min-height: 0 !important;
     }
     
-    // 横屏时：减少上下边距，增大宽度
+    // 横屏时：减少上下边距，增大宽度，但考虑底部导航栏
     @media (orientation: landscape) {
       width: calc(100% - 32rpx) !important;
       max-width: 1400rpx !important;
-      max-height: 95vh !important;
+      max-height: 80vh !important;
+      height: auto !important;
+      min-height: 0 !important;
     }
   }
 }
@@ -933,6 +953,9 @@
   display: flex;
   flex-direction: column;
   gap: 32rpx;
+  // 确保内容可以滚动，避免被底部导航栏遮挡
+  padding-bottom: 32rpx;
+  min-height: 0;
 }
 
 .popular-majors-page__question {

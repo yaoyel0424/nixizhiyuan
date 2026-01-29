@@ -4,11 +4,16 @@
   top: 0;
   left: 0;
   right: 0;
+  // 考虑底部导航栏高度，避免 Dialog 被遮挡
+  // 底部导航栏高度约为 100rpx + safe-area，使用 bottom: 0 但通过 max-height 控制内容高度
   bottom: 0;
   z-index: 1000; // 高于顶部导航条和底部导航条（它们都是 z-index: 50）
   display: flex;
   align-items: center;
   justify-content: center;
+  // iOS 低版本需要确保可以正确显示
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .ui-dialog__overlay {
@@ -26,8 +31,15 @@
   z-index: 1;
   width: calc(100% - 64rpx);
   max-width: 1024rpx;
-  max-height: 90vh;
+  // 考虑底部导航栏高度（约 13-15vh，包括 safe-area）
+  // 使用 vh 单位，确保在不同设备上都能正确计算
+  max-height: 75vh;
+  // iOS 低版本需要明确设置高度才能滚动
+  height: auto;
+  min-height: 0;
   overflow-y: auto;
+  // iOS 平滑滚动支持（关键：解决 iOS 低版本无法滚动的问题）
+  -webkit-overflow-scrolling: touch;
   display: flex;
   align-items: center;
   justify-content: center;
