@@ -87,10 +87,10 @@ const compression = require('compression');
       provide: APP_GUARD,
       useClass: IpBlockGuard, // IP 封禁守卫
     },
-    {
-      provide: APP_GUARD,
-      useClass: RateLimitGuard, // 速率限制守卫
-    },
+//    {
+//      provide: APP_GUARD,
+//      useClass: RateLimitGuard, // 速率限制守卫
+//    },
   ],
 })
 export class AppModule implements NestModule {

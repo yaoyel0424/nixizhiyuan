@@ -1,6 +1,6 @@
 // 热门专业评估页面
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { PageContainer } from '@/components/PageContainer'
 import { Button } from '@/components/ui/Button'
@@ -71,12 +71,12 @@ const scaleToQuestion = (scale: Scale): Question => {
   }
 }
 
-// 元素分析类型配置
+// 元素分析类型配置（含维度描述）
 const ELEMENT_ANALYSIS_TYPES = {
-  lexue: { label: '乐学', color: '#4CAF50' },
-  shanxue: { label: '善学', color: '#2196F3' },
-  yanxue: { label: '厌学', color: '#FF9800' },
-  tiaozhan: { label: '阻学', color: '#F44336' },
+  lexue: { label: '乐学', desc: '始终保有学习的动力', color: '#4CAF50' },
+  shanxue: { label: '善学', desc: '学习轻松高效', color: '#2196F3' },
+  yanxue: { label: '厌学', desc: '学习动力逐步衰减', color: '#FF9800' },
+  tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },
 } as const
 
 // 元素分析显示组件（简化版，对话框在父组件中管理）
@@ -220,6 +220,10 @@ export default function PopularMajorsPage() {
   const [selectedElementType, setSelectedElementType] = useState<string | null>(null)
   const [selectedElementMajorName, setSelectedElementMajorName] = useState<string>('')
   const [selectedElementAnalyses, setSelectedElementAnalyses] = useState<MajorElementAnalysis[] | null>(null)
+
+  // 测评内容预览弹窗（completedCount 为 0 时点击测评先展示测量内容）
+  const [showPreAssessmentIntro, setShowPreAssessmentIntro] = useState(false)
+  const [preAssessmentMajor, setPreAssessmentMajor] = useState<Major | null>(null)
 
   // 将 API 响应数据转换为页面使用的格式
   const transformMajorData = (apiData: PopularMajorResponse): Major => {
@@ -387,6 +391,28 @@ export default function PopularMajorsPage() {
       return
     }
     await loadScalesByPopularMajorId(popularMajorId)
+  }
+
+  // 点击测评按钮：completedCount 为 0 且有 elementAnalyses 时先展示测评内容，否则直接进入测评
+  const handleAssessmentButtonClick = (major: Major) => {
+    const completedCount = Number(major.progress?.completedCount ?? 0)
+    const hasElementAnalyses = major.elementAnalyses && major.elementAnalyses.length > 0
+    if (completedCount === 0 && hasElementAnalyses) {
+      setPreAssessmentMajor(major)
+      setShowPreAssessmentIntro(true)
+    } else {
+      handleStartAssessment(major)
+    }
+  }
+
+  // 测评内容预览中点击「开始测评」，关闭预览并进入测评页
+  const handleConfirmPreAssessment = () => {
+    if (preAssessmentMajor) {
+      const major = preAssessmentMajor
+      setShowPreAssessmentIntro(false)
+      setPreAssessmentMajor(null)
+      handleStartAssessment(major)
+    }
   }
 
   // 处理专业卡片点击，跳转到深度探索页面
@@ -601,6 +627,17 @@ export default function PopularMajorsPage() {
                     <View className="popular-majors-page__major-info">
                       <View className="popular-majors-page__major-name-wrapper">
                         <Text className="popular-majors-page__major-name">{major.name}</Text>
+                        {isCompleted && (
+                          <View
+                            className="popular-majors-page__major-retake-icon"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleStartAssessment(major)
+                            }}
+                          >
+                            <Text className="popular-majors-page__major-retake-icon-text">🔄</Text>
+                          </View>
+                        )}
                       </View>
                       <View className="popular-majors-page__major-tags">
                         {major.degree && (
@@ -611,24 +648,23 @@ export default function PopularMajorsPage() {
                     <View className="popular-majors-page__major-actions">
                       {isCompleted ? (
                         <View className="popular-majors-page__major-actions-container">
-                          {/* 查看院校和重测 */}
                           <View className="popular-majors-page__major-actions-row">
+                            <Button
+                              size="sm"
+                              className="popular-majors-page__major-button popular-majors-page__major-button--view-report popular-majors-page__major-action-item"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleMajorCardClick(major)
+                              }}
+                            >
+                              报告
+                            </Button>
                             <Button
                               size="sm"
                               className="popular-majors-page__major-button popular-majors-page__major-button--view-schools popular-majors-page__major-action-item"
                               onClick={(e) => handleViewSchools(e, major)}
                             >
-                              查看院校
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="popular-majors-page__major-button popular-majors-page__major-button--retake popular-majors-page__major-action-item"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleStartAssessment(major)
-                              }}
-                            >
-                              重测
+                              院校
                             </Button>
                           </View>
                         </View>
@@ -638,7 +674,7 @@ export default function PopularMajorsPage() {
                           className="popular-majors-page__major-button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleStartAssessment(major)
+                            handleAssessmentButtonClick(major)
                           }}
                         >
                           测评
@@ -816,6 +852,59 @@ export default function PopularMajorsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* 测评内容预览对话框（completedCount 为 0 时先展示将测量的内容） */}
+      <Dialog
+        open={showPreAssessmentIntro}
+        onOpenChange={(open) => {
+          setShowPreAssessmentIntro(open)
+          if (!open) setPreAssessmentMajor(null)
+        }}
+      >
+        <DialogContent className="popular-majors-page__dialog popular-majors-page__pre-assessment-dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle className="popular-majors-page__dialog-title">
+              {preAssessmentMajor?.name} 
+            </DialogTitle>
+            <DialogDescription className="popular-majors-page__pre-assessment-desc">
+              将测量以下维度，请根据您的真实感受作答。
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollView className="popular-majors-page__pre-assessment-content" scrollY>
+            {preAssessmentMajor?.elementAnalyses && (['lexue', 'shanxue', 'yanxue', 'tiaozhan'] as const).map((typeKey) => {
+              const analysis = preAssessmentMajor.elementAnalyses!.find((a) => a.type === typeKey)
+              if (!analysis || !analysis.elements?.length) return null
+              const config = ELEMENT_ANALYSIS_TYPES[typeKey]
+              return (
+                <View key={typeKey} className="popular-majors-page__pre-assessment-block">
+                  <Text className="popular-majors-page__pre-assessment-type-line">
+                    <Text style={{ color: config?.color, fontWeight: 600 }}>{config?.label ?? typeKey}</Text>
+                    {config?.desc && (
+                      <Text className="popular-majors-page__pre-assessment-type-desc"> {config.desc}</Text>
+                    )}
+                  </Text>
+                  <View className="popular-majors-page__pre-assessment-elements">
+                    {analysis.elements.map((el, idx) => (
+                      <Text key={idx} className="popular-majors-page__pre-assessment-element">
+                        · {el.elementName}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              )
+            })}
+          </ScrollView>
+          <DialogFooter className="popular-majors-page__pre-assessment-footer">
+            <Button
+              onClick={handleConfirmPreAssessment}
+              className="popular-majors-page__dialog-button popular-majors-page__dialog-button--primary"
+              size="lg"
+            >
+              开始测评
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 元素分析详情对话框 */}
       <Dialog open={showElementDialog} onOpenChange={setShowElementDialog}>
         <DialogContent className="popular-majors-page__element-dialog" showCloseButton={true}>
@@ -823,6 +912,11 @@ export default function PopularMajorsPage() {
             <DialogTitle>
               {selectedElementType && ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.label} - {selectedElementMajorName}
             </DialogTitle>
+            {selectedElementType && ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.desc && (
+              <DialogDescription className="popular-majors-page__element-dialog-type-desc">
+                {ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES].desc}
+              </DialogDescription>
+            )}
           </DialogHeader>
           <View className="popular-majors-page__element-dialog-content">
             {(() => {

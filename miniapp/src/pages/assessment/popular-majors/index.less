@@ -133,7 +133,7 @@
   color: #fff;
   padding: 48rpx 32rpx 128rpx;
   position: relative;
-  margin-top: 0; // 导航栏是固定定位，头部不需要margin-top
+  margin-top: 0;
 }
 
 .popular-majors-page__header-content {
@@ -257,7 +257,7 @@
   display: inline-flex;
   align-items: flex-start;
   margin-bottom: 16rpx;
-  position: relative;
+  max-width: 100%;
 }
 
 .popular-majors-page__major-name {
@@ -266,19 +266,29 @@
   color: #000;
   display: inline-block;
   line-height: 1.4;
+  vertical-align: top;
 }
 
 .popular-majors-page__major-retake-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28rpx;
-  height: 28rpx;
-  font-size: 20rpx;
+  width: 36rpx;
+  height: 36rpx;
   margin-left: 8rpx;
   margin-top: 2rpx;
-  cursor: pointer;
   flex-shrink: 0;
+  cursor: pointer;
+  vertical-align: top;
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.popular-majors-page__major-retake-icon-text {
+  font-size: 28rpx;
+  line-height: 1;
 }
 
 .popular-majors-page__major-score-inline {
@@ -306,6 +316,7 @@
 
 .popular-majors-page__major-element-analyses-wrapper {
   width: 100%;
+  margin-top: -12rpx; /* 整体上移，与专业名称区域更近 */
   padding-top: 16rpx;
   border-top: 1rpx solid #f0f0f0;
   box-sizing: border-box;
@@ -418,6 +429,13 @@
   max-height: 80vh;
 }
 
+.popular-majors-page__element-dialog-type-desc {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.4;
+}
+
 .popular-majors-page__element-dialog-content {
   max-height: 60vh;
   overflow-y: auto;
@@ -506,6 +524,73 @@
   font-size: 32rpx;
   background: #1A4099;
   color: #fff;
+}
+
+// 测评内容预览对话框（未开始测评时先展示将测量的内容）
+.popular-majors-page__pre-assessment-dialog {
+  max-height: 85vh;
+
+  .ui-dialog-header {
+    margin-bottom: 12rpx;
+    gap: 6rpx;
+  }
+}
+
+.popular-majors-page__pre-assessment-desc.ui-dialog-description {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.4;
+}
+
+.popular-majors-page__pre-assessment-content {
+  padding: 12rpx 0 12rpx;
+  height: 50vh;
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  -webkit-overflow-scrolling: touch;
+}
+
+.popular-majors-page__pre-assessment-block {
+  padding: 20rpx 24rpx;
+  background: #f9fafb;
+  border-radius: 16rpx;
+  border-left: 6rpx solid #1A4099;
+}
+
+.popular-majors-page__pre-assessment-type-line {
+  font-size: 28rpx;
+  font-weight: 700; // 维度名称与描述加粗
+  line-height: 1.4;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.popular-majors-page__pre-assessment-type-desc {
+  font-size: 26rpx;
+  color: #666;
+  font-weight: 700; // 继承加粗
+}
+
+.popular-majors-page__pre-assessment-elements {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.popular-majors-page__pre-assessment-element {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.5;
+}
+
+.popular-majors-page__pre-assessment-footer {
+  padding-top: 8rpx;
+  margin-top: -24rpx; // 整体上移，与上方内容更紧凑
 }
 
 .popular-majors-page__major-desc-wrapper {
@@ -636,6 +721,7 @@
   border-radius: 10rpx;
 }
 
+.popular-majors-page__major-button--view-report,
 .popular-majors-page__major-button--view-schools {
   min-width: auto !important;
   width: fit-content !important;

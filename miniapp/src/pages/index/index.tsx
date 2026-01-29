@@ -339,7 +339,7 @@ export default function IndexPage() {
                 <Text className="index-page__card-icon-text">⚡</Text>
               </View>
               <View className="index-page__card-title-section">
-                <Text className="index-page__card-title">快速测评</Text>
+                <Text className="index-page__card-title">热门专业测评</Text>
                 <Text className="index-page__card-time">约3分钟</Text>
               </View>
             </View>
@@ -370,7 +370,7 @@ export default function IndexPage() {
               </View>
             </View>
             <Text className="index-page__card-desc">
-              全面解锁你的喜欢与天赋，定制
+              解锁全部专业，定制
               <Text className="index-page__card-desc-highlight">专属志愿规划</Text>
             </Text>
             <Button className="index-page__card-button index-page__card-button--orange" size="lg">

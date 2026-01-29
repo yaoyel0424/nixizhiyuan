@@ -53,7 +53,7 @@ export class RateLimitGuard implements CanActivate {
   ) {
     // 从环境变量读取默认配置
     this.defaultMaxRequests =
-      parseInt(this.configService.get<string>('RATE_LIMIT_MAX_REQUESTS', '100'), 10) || 100;
+      parseInt(this.configService.get<string>('RATE_LIMIT_MAX_REQUESTS', '300'), 10) || 300;
     this.defaultWindowSeconds =
       parseInt(this.configService.get<string>('RATE_LIMIT_WINDOW_SECONDS', '60'), 10) || 60;
   }
