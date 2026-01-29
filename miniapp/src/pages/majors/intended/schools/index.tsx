@@ -87,10 +87,10 @@ export default function IntendedMajorsSchoolsPage() {
   const maxScoreParam = router.params?.maxScore
   const minScore = minScoreParam ? Number(minScoreParam) : undefined
   const maxScore = maxScoreParam ? Number(maxScoreParam) : undefined
-  // 判断是否从热门专业页面跳转过来
+  // 判断是否从热门专业页面跳转过来（从热门专业进入不校验 168 题完成）
   const fromPage = router.params?.from || ''
   const isFromPopularMajors = fromPage === 'popular-majors'
-  
+
   const [data, setData] = useState<IntentionMajor | null>(null)
   // 保存接口返回的两组数据
   const [inRangeApiData, setInRangeApiData] = useState<EnrollmentPlanWithScores[]>([])
@@ -186,12 +186,13 @@ export default function IntendedMajorsSchoolsPage() {
     return schools
   }, [notInRangeData, selectedProvince])
 
-  // 检查问卷完成状态
+  // 检查问卷完成状态（从热门专业进入时跳过校验）
   useEffect(() => {
+    if (isFromPopularMajors) return
     if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
       setShowQuestionnaireModal(true)
     }
-  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
+  }, [isFromPopularMajors, isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 对话框打开时，重新加载志愿状态
   useEffect(() => {

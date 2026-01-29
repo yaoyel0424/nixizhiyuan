@@ -73,7 +73,7 @@ const scaleToQuestion = (scale: Scale): Question => {
 
 // 元素分析类型配置（含维度描述）
 const ELEMENT_ANALYSIS_TYPES = {
-  lexue: { label: '乐学', desc: '始终保有学习的动力', color: '#4CAF50' },
+  lexue: { label: '乐学', desc: '始终保有学习动力', color: '#4CAF50' },
   shanxue: { label: '善学', desc: '学习轻松高效', color: '#2196F3' },
   yanxue: { label: '厌学', desc: '学习动力逐步衰减', color: '#FF9800' },
   tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },

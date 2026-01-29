@@ -1184,15 +1184,16 @@ export default function CareerExplorationPage() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
-  // 判断是否从热门专业页面跳转过来
+  // 判断是否从热门专业页面跳转过来（从热门专业进入不校验 168 题完成）
   const isFromPopularMajors = fromPage === 'popular-majors'
 
-  // 检查问卷完成状态
+  // 检查问卷完成状态（从热门专业进入时跳过校验）
   useEffect(() => {
+    if (isFromPopularMajors) return
     if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
       setShowQuestionnaireModal(true)
     }
-  }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
+  }, [isFromPopularMajors, isCheckingQuestionnaire, isQuestionnaireCompleted])
 
   // 加载专业详情
   useEffect(() => {
