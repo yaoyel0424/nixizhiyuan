@@ -813,17 +813,12 @@
 }
 
 // 对话框样式
+// 注意：滚动现在在 .ui-dialog-content 上，这里只需要设置最大高度
 .popular-majors-page__dialog {
   // 考虑底部导航栏高度，避免内容被遮挡
   // 底部导航栏高度约为 13-15vh（包括 safe-area）
   // 使用 vh 单位确保兼容性
   max-height: 75vh;
-  // iOS 低版本需要明确设置才能滚动
-  height: auto;
-  min-height: 0;
-  overflow-y: auto;
-  // iOS 平滑滚动支持（关键：解决 iOS 低版本无法滚动的问题）
-  -webkit-overflow-scrolling: touch;
   width: 100%;
   max-width: 100%;
   
@@ -843,26 +838,41 @@
 :global {
   // 当对话框包含 popular-majors-page__dialog 时，增大容器尺寸
   .ui-dialog__content {
-    // iOS 平滑滚动支持
-    -webkit-overflow-scrolling: touch !important;
-    
-    // 竖屏时：减少左右边距，增大宽度，但考虑底部导航栏
+    // iOS 低版本关键修复：父容器必须有明确的高度
+    // 竖屏时：减少左右边距，增大宽度
     @media (orientation: portrait) {
       width: calc(100% - 32rpx) !important;
       max-width: 1200rpx !important;
       max-height: 77vh !important;
-      height: auto !important;
-      min-height: 0 !important;
+      height: 77vh !important;
     }
     
-    // 横屏时：减少上下边距，增大宽度，但考虑底部导航栏
+    // 横屏时：减少上下边距，增大宽度
     @media (orientation: landscape) {
       width: calc(100% - 32rpx) !important;
       max-width: 1400rpx !important;
       max-height: 80vh !important;
-      height: auto !important;
-      min-height: 0 !important;
+      height: 80vh !important;
     }
+  }
+  
+  // ScrollView 容器样式（真机 iOS 低版本使用 ScrollView 组件）
+  .ui-dialog-content.popular-majors-page__dialog {
+    // 确保使用 flex 布局
+    display: flex !important;
+    flex-direction: column !important;
+    // 关键：使用 100% 高度，让内容填满父容器
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  // ScrollView 内部容器样式
+  .ui-dialog-content__scroll {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
   }
 }
 

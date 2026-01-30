@@ -1,6 +1,6 @@
 // 对话框组件
 import React, { useState, useEffect, createContext, useContext } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { cn } from '@/utils/cn'
 import './index.less'
@@ -91,14 +91,36 @@ const DialogContent: React.FC<DialogContentProps> = ({
 }) => {
   const context = useContext(DialogContext)
   const handleClose = onClose || context?.onClose || (() => {})
+  
+  // 检查是否需要滚动（通过 className 判断，如 popular-majors-page__dialog）
+  // 真机 iOS 低版本需要使用 ScrollView 组件才能滚动
+  const needsScroll = className.includes('popular-majors-page__dialog') || 
+                      className.includes('pre-assessment-dialog') ||
+                      className.includes('element-dialog')
 
   return (
     <View className={cn('ui-dialog-content', className)}>
-      {children}
       {showCloseButton && (
         <View className="ui-dialog-content__close" onClick={handleClose}>
           <Text>×</Text>
         </View>
+      )}
+      {needsScroll ? (
+        // 真机 iOS 低版本需要使用 ScrollView 组件才能滚动
+        <ScrollView 
+          className="ui-dialog-content__scroll"
+          scrollY
+          enableBackToTop={false}
+          scrollWithAnimation={false}
+          // 关键：阻止事件冒泡，避免被 catchMove 捕获
+          onTouchMove={(e) => {
+            e.stopPropagation()
+          }}
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        children
       )}
     </View>
   )

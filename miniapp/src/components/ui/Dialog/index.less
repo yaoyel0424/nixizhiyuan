@@ -33,31 +33,14 @@
   max-width: 1024rpx;
   // 考虑底部导航栏高度（约 13-15vh，包括 safe-area）
   // 使用 vh 单位，确保在不同设备上都能正确计算
+  // iOS 低版本关键修复：父容器必须有明确的高度限制，子容器才能滚动
   max-height: 75vh;
-  // iOS 低版本需要明确设置高度才能滚动
-  height: auto;
-  min-height: 0;
-  overflow-y: auto;
-  // iOS 平滑滚动支持（关键：解决 iOS 低版本无法滚动的问题）
-  -webkit-overflow-scrolling: touch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  // 隐藏滚动条（仍可滚动），避免出现"滚动条"视觉
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  
-  &::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
-  }
-  
-  // 分享弹窗特殊处理，禁用滚动
-  &.share-modal__content {
-    overflow-y: hidden;
-    max-height: 85vh;
-  }
+  height: 75vh;
+  // iOS 低版本：移除 flex 布局，避免与滚动冲突
+  // 使用简单的定位，让内部内容自己处理滚动
+  display: block;
+  // 隐藏滚动条（滚动由内部 .ui-dialog-content 处理）
+  overflow: hidden;
 }
 
 .ui-dialog-content {
@@ -68,6 +51,38 @@
   box-shadow: 0 20rpx 30rpx -6rpx rgba(0, 0, 0, 0.1);
   animation: zoomIn 0.2s;
   position: relative;
+  // iOS 低版本滚动修复：将滚动容器移到这里
+  // 关键：必须使用 100% 高度，让内容填满父容器，然后才能滚动
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  // 当使用 ScrollView 时，不需要 overflow
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  
+  // 分享弹窗特殊处理，禁用滚动
+  &.share-modal__content {
+    overflow-y: hidden;
+    max-height: 85vh;
+    height: auto;
+  }
+}
+
+// ScrollView 容器样式（用于真机 iOS 低版本滚动）
+.ui-dialog-content__scroll {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  // 确保内容区域有正确的 padding，避免被关闭按钮遮挡
+  box-sizing: border-box;
+  // 隐藏滚动条
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
 }
 
 .ui-dialog-content__close {
@@ -83,6 +98,9 @@
   opacity: 0.7;
   transition: opacity 0.2s;
   cursor: pointer;
+  z-index: 10;
+  // 确保关闭按钮在滚动容器之上
+  background: rgba(255, 255, 255, 0.9);
   
   &:hover {
     opacity: 1;
