@@ -109,20 +109,20 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
       return
     }
 
-    // 获取系统信息，检查基础库版本
-    const systemInfo = Taro.getSystemInfoSync()
-    const SDKVersion = systemInfo.SDKVersion || '0.0.0'
-    const versionParts = SDKVersion.split('.').map(Number)
-    const majorVersion = versionParts[0] || 0
-    const minorVersion = versionParts[1] || 0
-    const isVersionSupported = majorVersion > 2 || (majorVersion === 2 && minorVersion >= 19)
+    // 使用推荐 API 获取基础库版本（兼容同步/异步返回值）
+    Promise.resolve(Taro.getAppBaseInfo()).then((baseInfo) => {
+      const SDKVersion = baseInfo.SDKVersion || '0.0.0'
+      const versionParts = SDKVersion.split('.').map(Number)
+      const majorVersion = versionParts[0] || 0
+      const minorVersion = versionParts[1] || 0
+      const isVersionSupported = majorVersion > 2 || (majorVersion === 2 && minorVersion >= 19)
 
-    console.log('微信基础库版本:', SDKVersion, '是否支持分享文件:', isVersionSupported)
+      console.log('微信基础库版本:', SDKVersion, '是否支持分享文件:', isVersionSupported)
 
-    // 在微信小程序环境中，直接使用 wx.shareFileMessage API
-    // 注意：需要基础库版本 >= 2.19.0，且必须在用户交互事件中直接调用（同步）
-    if (isVersionSupported) {
-      try {
+      // 在微信小程序环境中，直接使用 wx.shareFileMessage API
+      // 注意：需要基础库版本 >= 2.19.0，且必须在用户交互事件中直接调用（同步）
+      if (isVersionSupported) {
+        try {
         // 直接使用全局 wx 对象（在 Taro 编译到微信小程序时，wx 是全局可用的）
         // 使用多种方式尝试访问 wx 对象
         const wxObj = typeof wx !== 'undefined' ? wx : (typeof globalThis !== 'undefined' && (globalThis as any).wx) || (typeof window !== 'undefined' && (window as any).wx) || null
@@ -184,10 +184,10 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
             shareFileMessageExists: typeof wx !== 'undefined' && wx ? typeof wx.shareFileMessage : 'N/A'
           })
         }
-      } catch (error: any) {
-        console.error('调用 shareFileMessage 失败:', error)
+        } catch (error: any) {
+          console.error('调用 shareFileMessage 失败:', error)
+        }
       }
-    }
 
       // 如果不支持或调用失败，使用降级方案
       console.log('使用降级方案：打开PDF让用户手动分享')
@@ -235,6 +235,7 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
           },
         })
       }
+    })
   }
 
   return (

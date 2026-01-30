@@ -25,8 +25,7 @@ function SystemNavBar() {
   const [systemInfo, setSystemInfo] = useState<any>(null);
 
   useEffect(() => {
-    const info = Taro.getSystemInfoSync();
-    setSystemInfo(info);
+    Promise.resolve(Taro.getWindowInfo()).then(setSystemInfo);
   }, []);
 
   if (!systemInfo) return null;
@@ -97,9 +96,8 @@ export default function IndexPage() {
     const storedAnswers = loadAnswersFromStorage();
     setAnswers(storedAnswers);
 
-    // 获取系统信息，用于计算导航栏高度
-    const info = Taro.getSystemInfoSync();
-    setSystemInfo(info);
+    // 使用推荐 API 获取窗口信息（含 statusBarHeight），兼容同步/异步返回值
+    Promise.resolve(Taro.getWindowInfo()).then(setSystemInfo);
   }, []);
 
   // 当对话框打开时，从 API 获取用户相关数据统计

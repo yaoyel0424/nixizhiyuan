@@ -1,12 +1,22 @@
 import Taro from '@tarojs/taro'
 
 /**
- * 获取系统信息
+ * 获取系统信息（合并 getWindowInfo / getAppBaseInfo / getDeviceInfo，替代已弃用的 getSystemInfo）
  * @returns 系统信息
  */
 export const getSystemInfo = async () => {
   try {
-    return await Taro.getSystemInfo()
+    // 小程序部分环境返回同步值，用 Promise.resolve 统一成 Promise
+    const [windowInfo, appBaseInfo, deviceInfo] = await Promise.all([
+      Promise.resolve(Taro.getWindowInfo()),
+      Promise.resolve(Taro.getAppBaseInfo()),
+      Promise.resolve(Taro.getDeviceInfo()),
+    ])
+    return {
+      ...windowInfo,
+      ...appBaseInfo,
+      ...deviceInfo,
+    } as any
   } catch (error) {
     console.error('获取系统信息失败:', error)
     throw error
@@ -58,24 +68,28 @@ export const canIUse = (api: string): boolean => {
 }
 
 /**
- * 获取设备信息
+ * 获取设备信息（使用 getWindowInfo + getDeviceInfo + getAppBaseInfo）
  * @returns 设备信息
  */
 export const getDeviceInfo = async () => {
   try {
-    const systemInfo = await getSystemInfo()
+    const [windowInfo, appBaseInfo, deviceInfo] = await Promise.all([
+      Promise.resolve(Taro.getWindowInfo()),
+      Promise.resolve(Taro.getAppBaseInfo()),
+      Promise.resolve(Taro.getDeviceInfo()),
+    ])
     return {
-      platform: systemInfo.platform,
-      system: systemInfo.system,
-      version: systemInfo.version,
-      model: systemInfo.model,
-      pixelRatio: systemInfo.pixelRatio,
-      screenWidth: systemInfo.screenWidth,
-      screenHeight: systemInfo.screenHeight,
-      windowWidth: systemInfo.windowWidth,
-      windowHeight: systemInfo.windowHeight,
-      statusBarHeight: systemInfo.statusBarHeight,
-      safeArea: systemInfo.safeArea
+      platform: deviceInfo.platform,
+      system: deviceInfo.system,
+      version: appBaseInfo.version,
+      model: deviceInfo.model,
+      pixelRatio: windowInfo.pixelRatio,
+      screenWidth: windowInfo.screenWidth,
+      screenHeight: windowInfo.screenHeight,
+      windowWidth: windowInfo.windowWidth,
+      windowHeight: windowInfo.windowHeight,
+      statusBarHeight: windowInfo.statusBarHeight,
+      safeArea: windowInfo.safeArea,
     }
   } catch (error) {
     console.error('获取设备信息失败:', error)

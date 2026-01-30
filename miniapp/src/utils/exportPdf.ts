@@ -142,8 +142,8 @@ export async function exportWishlistToPdf(
     onProgress?.(0, '正在初始化...')
 
     // 获取系统信息（使用新的 API）
-    const windowInfo = await Taro.getWindowInfo()
-    const deviceInfo = await Taro.getDeviceInfo()
+    const windowInfo = await Promise.resolve(Taro.getWindowInfo())
+    const deviceInfo = await Promise.resolve(Taro.getDeviceInfo())
     const windowWidth = windowInfo.windowWidth || 375
     // pixelRatio 在 deviceInfo 中，如果不存在则使用默认值
     const dpr = (deviceInfo as any).pixelRatio || windowInfo.pixelRatio || 2

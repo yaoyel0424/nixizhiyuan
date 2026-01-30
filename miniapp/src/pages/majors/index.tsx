@@ -57,6 +57,7 @@ export default function MajorsPage() {
   // 引导相关状态
   const [showGuide, setShowGuide] = useState(false)
   const [guideStep, setGuideStep] = useState<1 | 2 | null>(null) // 1: 收藏专业, 2: 查看心动专业
+  const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null)
   // 搜索关键词
   const [searchQuery, setSearchQuery] = useState('')
   // 分享相关状态
@@ -188,6 +189,12 @@ export default function MajorsPage() {
       // 确保隐藏加载提示
       Taro.hideLoading()
     }
+  }, [])
+
+  useEffect(() => {
+    Promise.resolve(Taro.getWindowInfo()).then((info) => {
+      windowInfoRef.current = { windowWidth: info.windowWidth, windowHeight: info.windowHeight }
+    })
   }, [])
 
   // 处理标签切换
@@ -342,18 +349,17 @@ export default function MajorsPage() {
     }
   }, [])
 
-  // 处理拖动开始
+  // 处理拖动开始（使用 getWindowInfo 缓存，替代已弃用的 getSystemInfoSync）
   const handleTouchStart = useCallback((e: any) => {
     e.stopPropagation()
     const touch = e.touches[0]
     setIsDragging(false) // 先设为false，等待移动距离判断
     setDragStartY(touch.clientY || touch.y)
-    // 如果已经有位置，使用当前位置；否则使用默认位置
-    const systemInfo = Taro.getSystemInfoSync()
-    const defaultBottom = 160 * (systemInfo.windowWidth / 750) // rpx转px
+    const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 }
+    const defaultBottom = 160 * (win.windowWidth / 750) // rpx转px
     const currentTop = floatButtonTop > 0 
       ? floatButtonTop 
-      : systemInfo.windowHeight - defaultBottom - 112 * (systemInfo.windowWidth / 750)
+      : win.windowHeight - defaultBottom - 112 * (win.windowWidth / 750)
     setDragStartTop(currentTop)
   }, [floatButtonTop])
 
@@ -371,19 +377,13 @@ export default function MajorsPage() {
     
     if (deltaY > 5) {
       const newTop = dragStartTop + (currentY - dragStartY)
-      
-      // 获取系统信息，计算可拖动范围
-      const systemInfo = Taro.getSystemInfoSync()
-      const windowHeight = systemInfo.windowHeight
-      const rpxToPx = systemInfo.windowWidth / 750
+      const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 }
+      const rpxToPx = win.windowWidth / 750
       const buttonHeight = 112 * rpxToPx // 按钮高度
       const bottomNavHeight = 100 * rpxToPx // 底部导航栏高度
       const headerHeight = 200 * rpxToPx // 顶部区域高度
-      
-      // 限制拖动范围：不能超出屏幕上下边界
       const minTop = headerHeight
-      const maxTop = windowHeight - buttonHeight - bottomNavHeight
-      
+      const maxTop = win.windowHeight - buttonHeight - bottomNavHeight
       const clampedTop = Math.max(minTop, Math.min(maxTop, newTop))
       setFloatButtonTop(clampedTop)
     }
@@ -498,13 +498,12 @@ export default function MajorsPage() {
       )
       Taro.hideLoading()
 
-      // 获取系统信息
-      const systemInfo = await Taro.getSystemInfo()
-      const { windowWidth } = systemInfo
-      const dpr = systemInfo.pixelRatio || 2
+      Promise.resolve(Taro.getWindowInfo()).then((windowInfo) => {
+        const windowWidth = windowInfo.windowWidth
+        const dpr = windowInfo.pixelRatio || 2
 
-      // Canvas 尺寸（设计稿尺寸，单位：rpx）
-      const canvasWidth = 750 // rpx
+        // Canvas 尺寸（设计稿尺寸，单位：rpx）
+        const canvasWidth = 750 // rpx
       // 根据内容动态计算高度：标题区域 + 每个专业卡片高度（包含匹配理由时更高）
       const headerHeight = 120 // 标题区域高度（减小）
       const baseCardHeight = 140 // 基础卡片高度（减小）
@@ -734,6 +733,7 @@ export default function MajorsPage() {
             })
           }, 500)
         })
+      })
     } catch (error: any) {
       console.error('生成分享图片失败:', error)
       Taro.showToast({

@@ -109,35 +109,36 @@ function DimensionsChart({
     };
   }, []);
 
-  // 初始化设备信息
+  // 初始化设备信息（兼容同步/异步返回值）
   useEffect(() => {
-    const windowInfo = Taro.getWindowInfo();
-    const windowWidth = windowInfo.windowWidth;
+    Promise.resolve(Taro.getWindowInfo()).then((windowInfo) => {
+      const windowWidth = windowInfo.windowWidth;
 
-    // 获取设备像素比
-    let deviceDpr = 2; // 默认值
-    try {
-      deviceDpr = windowInfo.pixelRatio || 2;
-    } catch (e) {
-      console.log('获取DPI失败:', e);
-    }
+      // 获取设备像素比
+      let deviceDpr = 2; // 默认值
+      try {
+        deviceDpr = windowInfo.pixelRatio || 2;
+      } catch (e) {
+        console.log('获取DPI失败:', e);
+      }
 
-    setDpr(deviceDpr);
+      setDpr(deviceDpr);
 
-    // 根据设备宽度计算Canvas尺寸
-    const config = getChartConfig(windowWidth);
-    const canvasWidth = config.canvasSize;
+      // 根据设备宽度计算Canvas尺寸
+      const config = getChartConfig(windowWidth);
+      const canvasWidth = config.canvasSize;
 
-    console.log('设备信息:', {
-      windowWidth,
-      dpr: deviceDpr,
-      canvasWidth,
-      config,
-    });
+      console.log('设备信息:', {
+        windowWidth,
+        dpr: deviceDpr,
+        canvasWidth,
+        config,
+      });
 
-    setCanvasSize({
-      width: canvasWidth,
-      height: canvasWidth,
+      setCanvasSize({
+        width: canvasWidth,
+        height: canvasWidth,
+      });
     });
   }, [getChartConfig]);
 

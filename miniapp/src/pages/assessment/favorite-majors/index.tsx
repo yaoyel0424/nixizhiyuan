@@ -1,5 +1,5 @@
 // 心动专业页面
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
@@ -41,6 +41,7 @@ export default function FavoriteMajorsPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [dragStartTop, setDragStartTop] = useState(0)
+  const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null)
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -48,6 +49,12 @@ export default function FavoriteMajorsPage() {
       setShowQuestionnaireModal(true)
     }
   }, [isCheckingQuestionnaire, isCompleted])
+
+  useEffect(() => {
+    Promise.resolve(Taro.getWindowInfo()).then((info) => {
+      windowInfoRef.current = { windowWidth: info.windowWidth, windowHeight: info.windowHeight }
+    })
+  }, [])
 
   // 加载心动专业列表
   useEffect(() => {
@@ -207,12 +214,11 @@ export default function FavoriteMajorsPage() {
     const touch = e.touches[0]
     setIsDragging(false) // 先设为false，等待移动距离判断
     setDragStartY(touch.clientY || touch.y)
-    // 如果已经有位置，使用当前位置；否则使用默认位置
-    const systemInfo = Taro.getSystemInfoSync()
-    const defaultBottom = 160 * (systemInfo.windowWidth / 750) // rpx转px
+    const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 }
+    const defaultBottom = 160 * (win.windowWidth / 750) // rpx转px
     const currentTop = floatButtonTop > 0 
       ? floatButtonTop 
-      : systemInfo.windowHeight - defaultBottom - 112 * (systemInfo.windowWidth / 750)
+      : win.windowHeight - defaultBottom - 112 * (win.windowWidth / 750)
     setDragStartTop(currentTop)
   }, [floatButtonTop])
 
@@ -230,19 +236,13 @@ export default function FavoriteMajorsPage() {
     
     if (deltaY > 5) {
       const newTop = dragStartTop + (currentY - dragStartY)
-      
-      // 获取系统信息，计算可拖动范围
-      const systemInfo = Taro.getSystemInfoSync()
-      const windowHeight = systemInfo.windowHeight
-      const rpxToPx = systemInfo.windowWidth / 750
+      const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 }
+      const rpxToPx = win.windowWidth / 750
       const buttonHeight = 112 * rpxToPx // 按钮高度
       const bottomNavHeight = 100 * rpxToPx // 底部导航栏高度
       const headerHeight = 200 * rpxToPx // 顶部区域高度
-      
-      // 限制拖动范围：不能超出屏幕上下边界
       const minTop = headerHeight
-      const maxTop = windowHeight - buttonHeight - bottomNavHeight
-      
+      const maxTop = win.windowHeight - buttonHeight - bottomNavHeight
       const clampedTop = Math.max(minTop, Math.min(maxTop, newTop))
       setFloatButtonTop(clampedTop)
     }

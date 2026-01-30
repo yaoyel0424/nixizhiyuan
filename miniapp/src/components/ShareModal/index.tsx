@@ -39,14 +39,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         })
       }
 
-      // 获取系统信息
-      const systemInfo = await Taro.getSystemInfo()
-      const { windowWidth } = systemInfo
+      const windowInfo = await Promise.resolve(Taro.getWindowInfo())
+      const windowWidth = windowInfo.windowWidth
 
       // Canvas 尺寸（设计稿尺寸，单位：rpx，需要转换为 px）
       const canvasWidth = 750 // rpx
       const canvasHeight = 1334 // rpx
-      const dpr = systemInfo.pixelRatio || 2
+      const dpr = windowInfo.pixelRatio || 2
       const canvasWidthPx = (canvasWidth / 750) * windowWidth * dpr
       const canvasHeightPx = (canvasHeight / 750) * windowWidth * dpr
 
