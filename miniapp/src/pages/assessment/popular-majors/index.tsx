@@ -742,7 +742,7 @@ export default function PopularMajorsPage() {
       </View>
 
       {/* 测评对话框 */}
-      <Dialog open={showQuestionnaire} onOpenChange={setShowQuestionnaire}>
+      <Dialog open={showQuestionnaire} onOpenChange={setShowQuestionnaire} className="popular-majors-page__dialog-wrapper">
         <DialogContent className="popular-majors-page__dialog" showCloseButton={true}>
           <DialogHeader>
             <DialogTitle className="popular-majors-page__dialog-title">

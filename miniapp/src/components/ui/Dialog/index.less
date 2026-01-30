@@ -33,9 +33,9 @@
   max-width: 1024rpx;
   // 考虑底部导航栏高度（约 13-15vh，包括 safe-area）
   // 使用 vh 单位，确保在不同设备上都能正确计算
-  // iOS 低版本关键修复：父容器必须有明确的高度限制，子容器才能滚动
+  // 使用 auto 高度，让内容少的对话框自适应，内容多的对话框限制在 max-height
   max-height: 75vh;
-  height: 75vh;
+  height: auto;
   // iOS 低版本：移除 flex 布局，避免与滚动冲突
   // 使用简单的定位，让内部内容自己处理滚动
   display: block;
@@ -51,9 +51,8 @@
   box-shadow: 0 20rpx 30rpx -6rpx rgba(0, 0, 0, 0.1);
   animation: zoomIn 0.2s;
   position: relative;
-  // iOS 低版本滚动修复：将滚动容器移到这里
-  // 关键：必须使用 100% 高度，让内容填满父容器，然后才能滚动
-  height: 100%;
+  // 默认使用 auto 高度，让内容自适应
+  height: auto;
   max-height: 100%;
   min-height: 0;
   // 当使用 ScrollView 时，不需要 overflow
