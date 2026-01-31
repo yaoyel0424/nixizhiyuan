@@ -1121,26 +1121,5 @@ export class EnrollPlanService {
       secondarySubjects,
     });
   }
-
-  /**
-   * 根据当前用户选科条件，返回符合选科的 majors 表 id 列表（用于前端“符合选科的专业”筛选）
-   * @param userId 用户ID
-   * @returns majors.id 数组
-   */
-  async getMatchSubjectMajorIds(userId: number): Promise<number[]> {
-    const level3Ids = await this.getDistinctLevel3MajorIdsByCurrentUser(userId);
-    if (level3Ids.length === 0) return [];
-
-    const sql = `
-      SELECT DISTINCT m.id
-      FROM majors m
-      INNER JOIN major_details md ON md.code = m.code
-      WHERE md.id = ANY($1::integer[])
-    `;
-    const rows = await this.enrollmentPlanRepository.manager.query(sql, [
-      level3Ids,
-    ]);
-    return rows.map((r: { id: number }) => r.id);
-  }
 }
 

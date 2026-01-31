@@ -16,7 +16,10 @@ import {
   getFavoriteMajorsCount,
   getMajorDetailByCode
 } from '@/services/majors'
+import { getLevel3MajorIds } from '@/services/enroll-plan'
+import { getExamInfo, ExamInfo } from '@/services/exam-info'
 import { MajorScoreResponse } from '@/types/api'
+import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import { getStorage, setStorage } from '@/utils/storage'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
@@ -33,11 +36,8 @@ export default function MajorsPage() {
   const [activeTab, setActiveTab] = useState<string>("本科")
   // 存储所有数据（缓存）
   const [allMajors, setAllMajors] = useState<MajorScoreResponse[]>([])
-  // 当前显示的数据（分页后的数据）
-  const [displayedMajors, setDisplayedMajors] = useState<MajorScoreResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   // 数据缓存：避免切换标签时重复请求
   const dataCacheRef = useRef<Record<string, MajorScoreResponse[]>>({})
@@ -60,6 +60,13 @@ export default function MajorsPage() {
   const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null)
   // 搜索关键词
   const [searchQuery, setSearchQuery] = useState('')
+  // 符合选科的专业：勾选时仅显示符合当前用户选科的专业（点击时调用 level3-major-ids）
+  const [onlyMatchSubject, setOnlyMatchSubject] = useState(false)
+  // api/v1/enroll-plan/level3-major-ids 返回的 level3MajorIds，用于筛选：只显示 level3MajorId 在其中的专业
+  const [matchSubjectLevel3Ids, setMatchSubjectLevel3Ids] = useState<Set<number>>(new Set())
+  // 高考信息弹窗（与意向专业页一致）
+  const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
+  const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
   // 分享相关状态
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [showShareGuide, setShowShareGuide] = useState(false)
@@ -72,12 +79,46 @@ export default function MajorsPage() {
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
+  // 勾选「符合选科的专业」时调用 api/v1/enroll-plan/level3-major-ids，用返回的 level3MajorIds 筛选；出错或为空则不改动页面
+  useEffect(() => {
+    if (!onlyMatchSubject) {
+      setMatchSubjectLevel3Ids(new Set())
+      return
+    }
+    let cancelled = false
+    getLevel3MajorIds()
+      .then((res) => {
+        if (cancelled) return
+        if (res.level3MajorIds && res.level3MajorIds.length > 0) {
+          setMatchSubjectLevel3Ids(new Set(res.level3MajorIds))
+        }
+      })
+      .catch(() => {
+        // 接口出错：不更新任何状态，页面不变
+      })
+    return () => { cancelled = true }
+  }, [onlyMatchSubject])
+
   // 教育层次映射：页面标签 -> API 参数
   const eduLevelMap: Record<string, string> = {
     '本科': 'ben',
     '本科(职业)': 'gao_ben',
     '专科': 'zhuan'
   }
+
+  // 符合选科时的有效列表：用 allMajors 中的 majorId 与接口返回值匹配，只显示 majorId 在接口返回中的专业
+  const effectiveList = useMemo(() => {
+    if (!onlyMatchSubject || matchSubjectLevel3Ids.size === 0) return allMajors
+    return allMajors.filter((m) => (m as any).majorId  != null && matchSubjectLevel3Ids.has((m as any).majorId ))
+  }, [allMajors, onlyMatchSubject, matchSubjectLevel3Ids])
+
+  // 当前页显示的专业（由 effectiveList 与 currentPage 推导）
+  const displayedMajors = useMemo(
+    () => effectiveList.slice(0, currentPage * PAGE_SIZE),
+    [effectiveList, currentPage],
+  )
+
+  const hasMore = effectiveList.length > currentPage * PAGE_SIZE
 
   // 加载所有专业分数数据（一次性加载，然后缓存）
   const loadAllMajors = useCallback(async (tab: string, useCache: boolean = true) => {
@@ -88,11 +129,7 @@ export default function MajorsPage() {
     if (useCache && dataCacheRef.current[cacheKey]) {
       const cachedData = dataCacheRef.current[cacheKey]
       setAllMajors(cachedData)
-      // 重置分页
       setCurrentPage(1)
-      setHasMore(cachedData.length > PAGE_SIZE)
-      // 显示第一页数据
-      setDisplayedMajors(cachedData.slice(0, PAGE_SIZE))
       setLoading(false)
       return
     }
@@ -111,13 +148,7 @@ export default function MajorsPage() {
       // 缓存数据
       dataCacheRef.current[cacheKey] = sortedData
       setAllMajors(sortedData)
-      
-      // 重置分页
       setCurrentPage(1)
-      setHasMore(sortedData.length > PAGE_SIZE)
-      
-      // 显示第一页数据
-      setDisplayedMajors(sortedData.slice(0, PAGE_SIZE))
     } catch (error) {
       console.error('加载专业分数失败:', error)
       Taro.showToast({
@@ -125,7 +156,6 @@ export default function MajorsPage() {
         icon: 'none'
       })
       setAllMajors([])
-      setDisplayedMajors([])
     } finally {
       setLoading(false)
     }
@@ -207,37 +237,16 @@ export default function MajorsPage() {
     if (loadingMore || !hasMore) {
       return
     }
-
-    const nextPage = currentPage + 1
-    const startIndex = currentPage * PAGE_SIZE
-    const endIndex = startIndex + PAGE_SIZE
-    const nextData = allMajors.slice(startIndex, endIndex)
-
-    if (nextData.length > 0) {
-      setLoadingMore(true)
-      // 显示加载提示，让用户知道正在加载
-      Taro.showLoading({
-        title: '加载中...',
-        mask: true // 显示遮罩，防止用户在加载时操作
-      })
-
-      // 使用 requestAnimationFrame 优化渲染性能，避免阻塞主线程
-      // 双重 requestAnimationFrame 确保在浏览器完成重绘后再更新数据
+    setLoadingMore(true)
+    Taro.showLoading({ title: '加载中...', mask: true })
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // 更新数据
-          setDisplayedMajors(prev => [...prev, ...nextData])
-          setCurrentPage(nextPage)
-          setHasMore(endIndex < allMajors.length)
-          setLoadingMore(false)
-          // 隐藏加载提示
-          Taro.hideLoading()
-        })
+        setCurrentPage((prev) => prev + 1)
+        setLoadingMore(false)
+        Taro.hideLoading()
       })
-    } else {
-      setHasMore(false)
-    }
-  }, [currentPage, allMajors, hasMore, loadingMore])
+    })
+  }, [hasMore, loadingMore])
 
   // 处理滚动到底部（添加防抖处理）
   const handleScrollToLower = useCallback(() => {
@@ -757,21 +766,18 @@ export default function MajorsPage() {
     setShowShareDialog(true)
   }
 
-  // 根据搜索关键词过滤专业列表
+  // 根据搜索关键词过滤专业列表（有搜索时在 effectiveList 上过滤）
   const filteredMajors = useMemo(() => {
     if (!searchQuery.trim()) {
       return displayedMajors
     }
-    
     const query = searchQuery.trim().toLowerCase()
-    // 全局搜索：基于全量 allMajors 过滤
-    return allMajors.filter(major => {
-      // 搜索专业名称或代码
+    return effectiveList.filter((major) => {
       const nameMatch = major.majorName?.toLowerCase().includes(query) || false
       const codeMatch = major.majorCode?.toLowerCase().includes(query) || false
       return nameMatch || codeMatch
     })
-  }, [displayedMajors, allMajors, searchQuery])
+  }, [displayedMajors, effectiveList, searchQuery])
 
   return (
     <View className="majors-page">
@@ -784,20 +790,40 @@ export default function MajorsPage() {
               <Text className="majors-page__title">专业探索</Text>
               <Text className="majors-page__subtitle">发现适合你的专业方向</Text>
             </View>
-            {/* <View className="majors-page__share-btn" onClick={handleShareClick}>
-              <Text className="majors-page__share-icon">📤</Text>
-            </View> */}
+            <View
+              className="majors-page__gaokao-btn"
+              onClick={() => {
+                setShowExamInfoDialog(true)
+                getExamInfo().then((info) => setExamInfo(info ?? null))
+              }}
+            >
+              <Text className="majors-page__gaokao-btn-text">高考信息</Text>
+            </View>
           </View>
 
-          {/* 搜索框 */}
-          <View className="majors-page__search">
-            <View className="majors-page__search-icon">🔍</View>
-            <Input
-              className="majors-page__search-input"
-              placeholder="搜索专业名称或代码..."
-              value={searchQuery}
-              onInput={(e) => setSearchQuery(e.detail.value)}
-            />
+          {/* 搜索框 + 符合选科复选框（同一行铺满） */}
+          <View className="majors-page__search-row">
+            <View className="majors-page__search">
+              <View className="majors-page__search-icon">🔍</View>
+              <Input
+                className="majors-page__search-input"
+                placeholder="搜索专业名称或代码..."
+                value={searchQuery}
+                onInput={(e) => setSearchQuery(e.detail.value)}
+              />
+            </View>
+            <View
+              className="majors-page__subject-checkbox"
+              onClick={() => {
+                setOnlyMatchSubject((prev) => !prev)
+                setCurrentPage(1)
+              }}
+            >
+              <View className={`majors-page__checkbox-icon ${onlyMatchSubject ? 'majors-page__checkbox-icon--checked' : ''}`}>
+                {onlyMatchSubject ? '✓' : ''}
+              </View>
+              <Text className="majors-page__checkbox-label">符合选科的专业</Text>
+            </View>
           </View>
 
           {/* 标签页 */}
@@ -835,6 +861,15 @@ export default function MajorsPage() {
             <View className="majors-page__empty">
               <Text className="majors-page__empty-text">暂无专业数据</Text>
               <Text className="majors-page__empty-desc">请先完成专业测评问卷</Text>
+            </View>
+          ) : onlyMatchSubject && matchSubjectLevel3Ids.size === 0 ? (
+            <View className="majors-page__empty">
+              <Text className="majors-page__empty-text">正在加载符合选科的专业...</Text>
+            </View>
+          ) : effectiveList.length === 0 ? (
+            <View className="majors-page__empty">
+              <Text className="majors-page__empty-text">暂无符合您选科条件的专业</Text>
+              <Text className="majors-page__empty-desc">可取消勾选「符合选科的专业」查看全部</Text>
             </View>
           ) : filteredMajors.length === 0 ? (
             <View className="majors-page__empty">
@@ -1034,6 +1069,16 @@ export default function MajorsPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
+      />
+
+      {/* 高考信息弹窗（与意向专业页一致） */}
+      <ExamInfoDialog
+        open={showExamInfoDialog}
+        onOpenChange={setShowExamInfoDialog}
+        examInfo={examInfo ?? undefined}
+        onUpdate={(updatedInfo) => {
+          if (updatedInfo) setExamInfo(updatedInfo)
+        }}
       />
 
       {/* 分享对话框 */}

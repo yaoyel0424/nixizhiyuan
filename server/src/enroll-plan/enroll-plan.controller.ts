@@ -226,22 +226,5 @@ export class EnrollPlanController {
       );
     return { level3MajorIds };
   }
-
-  /**
-   * 获取符合当前用户选科条件的专业 ID 列表（majors 表 id，用于“符合选科的专业”筛选）
-   */
-  @Get('match-subject-major-ids')
-  @Cache(60)
-  @ApiOperation({
-    summary: '获取符合当前用户选科条件的专业 ID 列表',
-    description: '用于专业探索页“符合选科的专业”复选框筛选',
-  })
-  @ApiResponse({ status: 200, description: 'majorIds 数组' })
-  async getMatchSubjectMajorIds(
-    @CurrentUser() user: any,
-  ): Promise<{ majorIds: number[] }> {
-    const majorIds =
-      await this.enrollPlanService.getMatchSubjectMajorIds(user.id);
-    return { majorIds };
-  }
+ 
 } 

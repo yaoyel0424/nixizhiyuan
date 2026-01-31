@@ -286,3 +286,41 @@ export const getMajorGroupInfo = async (mgId: number): Promise<MajorGroupInfo[]>
     return []
   }
 }
+
+/**
+ * 获取符合当前用户选科条件的专业 ID 列表（majors 表 id）
+ * 用于专业探索页「符合选科的专业」筛选
+ */
+export const getMatchSubjectMajorIds = async (): Promise<number[]> => {
+  try {
+    const response: any = await get<{ majorIds: number[] }>('/enroll-plan/match-subject-major-ids')
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response.majorIds)) return response.majorIds
+      if (response.data && Array.isArray(response.data.majorIds)) return response.data.majorIds
+    }
+    return []
+  } catch (error) {
+    console.error('获取符合选科专业ID失败:', error)
+    return []
+  }
+}
+
+/**
+ * 调用 level3-major-ids 接口：返回去重 level3_major_id 列表（用于符合选科筛选）
+ */
+export const getLevel3MajorIds = async (): Promise<{
+  level3MajorIds: number[]
+}> => {
+  try {
+    const response: any = await get('/enroll-plan/level3-major-ids')
+    if (response && typeof response === 'object') {
+      const data = response.data ?? response
+      const level3MajorIds = Array.isArray(data.level3MajorIds) ? data.level3MajorIds : []
+      return { level3MajorIds }
+    }
+    return { level3MajorIds: [] }
+  } catch (error) {
+    console.error('获取 level3MajorIds 失败:', error)
+    return { level3MajorIds: [] }
+  }
+} 

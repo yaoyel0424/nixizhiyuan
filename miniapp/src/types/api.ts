@@ -259,6 +259,8 @@ export interface QueryPopularMajorParams {
  * 注意：API 返回的分数字段可能是字符串类型
  */
 export interface MajorScoreResponse {
+  majorId?: number
+  level3MajorId?: number
   majorCode: string
   majorName: string
   majorBrief: string | null
