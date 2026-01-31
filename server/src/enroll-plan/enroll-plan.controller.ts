@@ -214,23 +214,17 @@ export class EnrollPlanController {
     description:
       'year 从配置 CURRENT_YEAR 读取（默认 2025），province/batch/primarySubject/secondarySubjects 从 users 表当前用户读取',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'level3_major_id 与对应 majorIds（用于符合选科筛选）',
-  })
+  @ApiResponse({ status: 200, description: '去重后的 level3_major_id 数组' })
   async getDistinctLevel3MajorIds(
     @CurrentUser() user: any,
-  ): Promise<{ level3MajorIds: number[]; majorIds: number[] }> {
+  ): Promise<{ level3MajorIds: number[] }> {
     const year = process.env.CURRENT_YEAR || '2025';
     const level3MajorIds =
       await this.enrollPlanService.getDistinctLevel3MajorIdsByCurrentUser(
         user.id,
         year,
       );
-    const majorIds = await this.enrollPlanService.getMatchSubjectMajorIds(
-      user.id,
-    );
-    return { level3MajorIds, majorIds };
+    return { level3MajorIds };
   }
 
   /**
