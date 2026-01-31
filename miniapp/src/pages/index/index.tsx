@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/Dialog';
 import { getStorage } from '@/utils/storage';
 import { getUserRelatedDataCount } from '@/services/user';
+import { withErrorHandler, withAsyncErrorHandler } from '@/utils/errorHandler';
 import './index.less';
 
 // 步骤完成状态类型
@@ -220,15 +221,15 @@ export default function IndexPage() {
     return 'locked';
   };
 
-  const handleConfirmStart = () => {
+  const handleConfirmStart = withErrorHandler(() => {
     setIsGuideDialogOpen(false);
     Taro.navigateTo({
       url: '/pages/assessment/all-majors/index',
     });
-  };
+  }, '开始测评功能暂时不可用，请稍后重试');
 
   // 处理三个功能的点击事件
-  const handleMajorExploration = () => {
+  const handleMajorExploration = withErrorHandler(() => {
     if (!isUnlocked) {
       Taro.showToast({
         title: `完成${UNLOCK_THRESHOLD}个题目后即可解锁此功能`,
@@ -242,9 +243,9 @@ export default function IndexPage() {
       url: '/pages/majors/index',
     });
     setIsGuideDialogOpen(false);
-  };
+  }, '专业探索功能暂时不可用，请稍后重试');
 
-  const handleCityExploration = () => {
+  const handleCityExploration = withErrorHandler(() => {
     if (!isUnlocked) {
       Taro.showToast({
         title: `完成${UNLOCK_THRESHOLD}个题目后即可解锁此功能`,
@@ -256,9 +257,9 @@ export default function IndexPage() {
     Taro.navigateTo({
       url: '/pages/assessment/provinces/index',
     });
-  };
+  }, '城市探索功能暂时不可用，请稍后重试');
 
-  const handleSchoolExploration = () => {
+  const handleSchoolExploration = withErrorHandler(() => {
     if (!isUnlocked) {
       Taro.showToast({
         title: `完成${UNLOCK_THRESHOLD}个题目后即可解锁此功能`,
@@ -270,29 +271,29 @@ export default function IndexPage() {
     Taro.navigateTo({
       url: '/pages/majors/intended/index?tab=专业赛道',
     });
-  };
+  }, '院校探索功能暂时不可用，请稍后重试');
 
   // 处理深度自我洞察点击事件
-  const handleSelfInsight = () => {
+  const handleSelfInsight = withErrorHandler(() => {
     setIsGuideDialogOpen(false);
     // 使用 reLaunch 跳转到探索成果页面
     Taro.navigateTo({
       url: '/pages/assessment/all-majors/index',
     });
-  };
+  }, '深度自我洞察功能暂时不可用，请稍后重试');
 
   // 处理重新探索点击事件
-  const handleReExplore = (e: any) => {
+  const handleReExplore = withErrorHandler((e: any) => {
     e.stopPropagation(); // 阻止事件冒泡，避免触发步骤点击
     setIsGuideDialogOpen(false);
     // 跳转到评估页面重新开始，传递 restart=true 参数
     Taro.navigateTo({
       url: '/pages/assessment/all-majors/index?restart=true',
     });
-  };
+  }, '重新探索功能暂时不可用，请稍后重试');
 
   // 处理步骤点击（带锁定检查）
-  const handleStepClick = (stepNumber: number, handler: () => void) => {
+  const handleStepClick = withErrorHandler((stepNumber: number, handler: () => void) => {
     const status = getStepStatus(stepNumber);
     if (status === 'locked') {
       Taro.showToast({
@@ -303,13 +304,15 @@ export default function IndexPage() {
       return;
     }
     handler();
-  };
+  }, '操作失败，请稍后重试');
 
-  const handleQuickAssessment = () => {
+  const handleQuickAssessment = withErrorHandler(() => {
+    // @ts-ignore - 测试错误处理：故意调用未定义的函数
+    // assaas();
     Taro.navigateTo({
       url: '/pages/assessment/popular-majors/index',
     });
-  };
+  }, '快速测评功能暂时不可用，请稍后重试');
 
   // 计算顶部间距（系统导航栏高度）
   const statusBarHeight = systemInfo?.statusBarHeight || 0;
