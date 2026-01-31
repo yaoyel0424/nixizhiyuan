@@ -5,6 +5,10 @@ import { Expose } from 'class-transformer';
  * 专业分数响应 DTO
  */
 export class ScoreResponseDto {
+  @ApiProperty({ description: '专业ID' })
+  @Expose()
+  majorId: number;
+
   @ApiProperty({ description: '专业代码' })
   @Expose()
   majorCode: string;

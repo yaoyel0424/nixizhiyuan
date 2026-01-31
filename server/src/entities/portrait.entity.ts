@@ -142,9 +142,10 @@ export class Portrait {
   @Column({
     type: 'text',
     name: 'part_one_description',
+    nullable: true,
     comment: '第一部分描述',
   })
-  partOneDescription: string;
+  partOneDescription: string | null;
 
   /**
    * 第二部分描述

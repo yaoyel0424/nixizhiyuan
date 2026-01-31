@@ -54,6 +54,7 @@ export class ScoresService {
     // 构建 major_base_data CTE
     const majorBaseDataCte = `major_base_data AS (
       SELECT 
+        m.id as major_id,
         pm.id as popular_major_id,
         pm.code as major_code, 
         pm.name as major_name,
@@ -85,6 +86,7 @@ export class ScoresService {
       ${userAnswersCte},
       ${majorBaseDataCte}
       SELECT 
+        major_id as "majorId",
         popular_major_id as "popularMajorId",
         major_code as "majorCode",
         major_name as "majorName",
@@ -158,6 +160,7 @@ export class ScoresService {
     // 构建 major_base_data CTE
     const majorBaseDataCte = `major_base_data AS (
       SELECT 
+        m.id as major_id,
         md.code as major_code, 
         m.name as major_name,
         m.edu_level as edu_level,
@@ -187,6 +190,7 @@ export class ScoresService {
       ${userAnswersCte},
       ${majorBaseDataCte}
       SELECT 
+        major_id as "majorId",
         major_code as "majorCode",
         major_name as "majorName",
         edu_level as "eduLevel",
@@ -269,6 +273,7 @@ export class ScoresService {
       if (rows.length === 0) continue;
 
       const firstRow = rows[0];
+      const majorId = firstRow.majorId;
       const majorCode = firstRow.majorCode;
       const majorName = firstRow.majorName;
       const eduLevel = firstRow.eduLevel;
@@ -426,6 +431,7 @@ export class ScoresService {
       );
 
       const result: any = {
+        majorId,
         majorCode,
         majorName,
         majorBrief,
@@ -494,6 +500,7 @@ export class ScoresService {
     majorCodes?: string | string[],
   ): Promise<
     Array<{
+      majorId: number;
       majorCode: string;
       majorName: string;
       majorBrief: string | null;
@@ -536,6 +543,7 @@ export class ScoresService {
     popularMajorIds?: number | number[],
   ): Promise<
     Array<{
+      majorId: number;
       popularMajorId: number;
       majorCode: string;
       majorName: string;

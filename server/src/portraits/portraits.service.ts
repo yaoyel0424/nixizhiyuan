@@ -53,6 +53,22 @@ export class PortraitsService {
     private readonly elementRepository: Repository<Element>,
     @InjectRepository(FourQuadrant)
     private readonly fourQuadrantRepository: Repository<FourQuadrant>,
+    @InjectRepository(QuadrantChallenge)
+    private readonly quadrant1ChallengeRepository: Repository<QuadrantChallenge>,
+    @InjectRepository(QuadrantNiche)
+    private readonly quadrant1NicheRepository: Repository<QuadrantNiche>,
+    @InjectRepository(Quadrant2LifeChallenge)
+    private readonly quadrant2LifeChallengeRepository: Repository<Quadrant2LifeChallenge>,
+    @InjectRepository(Quadrant2FeasibilityStudy)
+    private readonly quadrant2FeasibilityStudyRepository: Repository<Quadrant2FeasibilityStudy>,
+    @InjectRepository(Quadrant3Weakness)
+    private readonly quadrant3WeaknessRepository: Repository<Quadrant3Weakness>,
+    @InjectRepository(Quadrant3Compensation)
+    private readonly quadrant3CompensationRepository: Repository<Quadrant3Compensation>,
+    @InjectRepository(Quadrant4Dilemma)
+    private readonly quadrant4DilemmaRepository: Repository<Quadrant4Dilemma>,
+    @InjectRepository(Quadrant4GrowthPath)
+    private readonly quadrant4GrowthPathRepository: Repository<Quadrant4GrowthPath>,
   ) {}
 
   /**
@@ -275,8 +291,11 @@ export class PortraitsService {
    * @returns 用户画像信息
    */
   async getUserPortrait(userId: number) {
-    // 1. 计算用户所有元素的得分
-    const elementScores = await this.calculateUserElementScores(userId);
+    // 1. 并行：用户元素得分 + 四象限配置（无依赖，一次往返）
+    const [elementScores, allQuadrants] = await Promise.all([
+      this.calculateUserElementScores(userId),
+      this.fourQuadrantRepository.find(),
+    ]);
 
     // 2. 找出得分最高的喜欢元素和天赋元素（A 或 C 分类）
     const likeElements = elementScores.filter(
@@ -313,8 +332,7 @@ export class PortraitsService {
       };
     }
 
-    // 1. 预先批量查询所有象限信息（只有 4 个象限，一次性查询）
-    const allQuadrants = await this.fourQuadrantRepository.find();
+    // 象限信息已在步骤 1 与 elementScores 并行查回
     const quadrantMap = new Map<number, typeof allQuadrants[0]>();
     const quadrantConditionMap = new Map<
       string,
@@ -409,24 +427,15 @@ export class PortraitsService {
 
     // 4. 构建所有需要的关联关系
     // 为了确保所有象限的数据都能正确加载，我们加载所有象限的关联关系
-    // 收集查询条件中涉及的所有象限编号
+    // 收集查询条件中涉及的所有象限编号（统一为 number，避免字符串导致第三/四象限被漏掉）
     const involvedQuadrants = new Set<number>();
     for (const condition of queryConditions) {
-      involvedQuadrants.add(condition.quadrant.quadrants);
+      involvedQuadrants.add(Number(condition.quadrant.quadrants));
     }
 
-    // 记录涉及的象限，用于调试
-    this.logger.log(
-      `查询条件涉及的象限: ${Array.from(involvedQuadrants).sort().join(', ')}`,
-    );
-    this.logger.log(
-      `查询条件总数: ${queryConditions.length}, 涉及象限数: ${involvedQuadrants.size}`,
-    );
-    
-    // 记录查询条件的详细信息（按象限分组）
     const conditionsByQuadrant = new Map<number, any[]>();
     for (const condition of queryConditions) {
-      const quadrantNum = condition.quadrant.quadrants;
+      const quadrantNum = Number(condition.quadrant.quadrants);
       if (!conditionsByQuadrant.has(quadrantNum)) {
         conditionsByQuadrant.set(quadrantNum, []);
       }
@@ -436,108 +445,46 @@ export class PortraitsService {
         quadrantId: condition.quadrantId,
       });
     }
-    for (const [quadrantNum, conditions] of conditionsByQuadrant.entries()) {
-      this.logger.log(
-        `象限 ${quadrantNum} 的查询条件数量: ${conditions.length}, 示例: ${JSON.stringify(conditions.slice(0, 3))}`,
+    if ((conditionsByQuadrant.get(3)?.length ?? 0) === 0) {
+      this.logger.warn(
+        '第三象限查询条件数为 0：当前用户无「喜欢不明显+天赋不明显」的 (like,talent) 组合，不会返回第三象限画像。',
       );
     }
 
-    // 5. 使用 QueryBuilder 构建 OR 条件一次性查询所有需要的画像
+    // 5. 只按精确的 (likeId, talentId, quadrantId) 组合查询 portrait + like/talent/quadrant，不 JOIN 象限子表，避免结果集爆炸、OOM
     const queryBuilder = this.portraitRepository
       .createQueryBuilder('portrait')
       .leftJoinAndSelect('portrait.likeElement', 'likeElement')
       .leftJoinAndSelect('portrait.talentElement', 'talentElement')
       .leftJoinAndSelect('portrait.quadrant', 'quadrant');
 
-    // 根据涉及的象限动态加载对应的关联关系
-    if (involvedQuadrants.has(1)) {
-      queryBuilder.leftJoinAndSelect(
-        'portrait.quadrant1Challenges',
-        'quadrant1Challenges',
-      );
-      queryBuilder.leftJoinAndSelect('portrait.quadrant1Niches', 'quadrant1Niches');
-    }
-    if (involvedQuadrants.has(2)) {
-      queryBuilder.leftJoinAndSelect(
-        'portrait.quadrant2LifeChallenges',
-        'quadrant2LifeChallenges',
-      );
-      queryBuilder.leftJoinAndSelect(
-        'portrait.quadrant2FeasibilityStudies',
-        'quadrant2FeasibilityStudies',
-      );
-    }
-    if (involvedQuadrants.has(3)) {
-      queryBuilder.leftJoinAndSelect(
-        'portrait.quadrant3Weaknesses',
-        'quadrant3Weaknesses',
-      );
-      queryBuilder.leftJoinAndSelect(
-        'portrait.quadrant3Compensations',
-        'quadrant3Compensations',
-      );
-    }
-    if (involvedQuadrants.has(4)) {
-      queryBuilder.leftJoinAndSelect(
-        'portrait.quadrant4Dilemmas',
-        'quadrant4Dilemmas',
-      );
-      queryBuilder.leftJoinAndSelect(
-        'portrait.quadrant4GrowthPaths',
-        'quadrant4GrowthPaths',
-      );
-    }
+    // 使用 (like_id, talent_id, quadrant_id) IN (SELECT ... FROM (VALUES ...)) 替代大量 OR；子查询内显式 ::integer 避免 integer = text 报错
+    const valuesPlaceholders = queryConditions
+      .map(
+        (_, i) =>
+          `(:likeId${i}, :talentId${i}, :quadrantId${i})`,
+      )
+      .join(', ');
+    const exactParams: Record<string, number> = {};
+    queryConditions.forEach((c, i) => {
+      exactParams[`likeId${i}`] = c.likeId;
+      exactParams[`talentId${i}`] = c.talentId;
+      exactParams[`quadrantId${i}`] = c.quadrantId;
+    });
+    queryBuilder.where(
+      `(portrait.like_id, portrait.talent_id, portrait.quadrant_id) IN (SELECT v.a::integer, v.b::integer, v.c::integer FROM (VALUES ${valuesPlaceholders}) AS v(a, b, c))`,
+      exactParams,
+    );
 
-    // 构建查询条件：使用 IN 查询和内存过滤，避免生成大量 OR 条件
-    if (queryConditions.length > 0) {
-      // 收集所有唯一的 likeId、talentId、quadrantId
-      const likeIds = new Set<number>();
-      const talentIds = new Set<number>();
-      const quadrantIds = new Set<number>();
-      const conditionSet = new Set<string>();
-
-      for (const condition of queryConditions) {
-        likeIds.add(condition.likeId);
-        talentIds.add(condition.talentId);
-        quadrantIds.add(condition.quadrantId);
-        conditionSet.add(
-          `${condition.likeId}-${condition.talentId}-${condition.quadrantId}`,
-        );
-      }
-
-      // 使用 IN 查询获取所有可能的 portrait（范围稍大，但查询简单）
-      queryBuilder.where('portrait.likeId IN (:...likeIds)', {
-        likeIds: Array.from(likeIds),
-      });
-      queryBuilder.andWhere('portrait.talentId IN (:...talentIds)', {
-        talentIds: Array.from(talentIds),
-      });
-      queryBuilder.andWhere('portrait.quadrantId IN (:...quadrantIds)', {
-        quadrantIds: Array.from(quadrantIds),
-      });
-    }
-
-    // 6. 一次性查询所有可能的画像（使用 IN 查询，查询简单高效）
+    // 6. 一次性查询画像（结果集仅包含 queryConditions 中的组合）
     const allPortraitsData = await queryBuilder.getMany();
-    
-    // 记录查询到的所有画像（过滤前）
-    const allPortraitsByQuadrant = new Map<number, any[]>();
-    for (const portrait of allPortraitsData) {
-      const quadrantNum = portrait.quadrant?.quadrants || 0;
-      if (!allPortraitsByQuadrant.has(quadrantNum)) {
-        allPortraitsByQuadrant.set(quadrantNum, []);
-      }
-      allPortraitsByQuadrant.get(quadrantNum)!.push({
-        id: portrait.id,
-        name: portrait.name,
-        likeId: portrait.likeId,
-        talentId: portrait.talentId,
-        quadrantId: portrait.quadrantId,
-      });
-    }
-    for (const [quadrantNum, portraits] of allPortraitsByQuadrant.entries()) {
-      this.logger.log(
-        `查询到的象限 ${quadrantNum} 的画像数量（过滤前）: ${portraits.length}, 示例: ${JSON.stringify(portraits.slice(0, 3))}`,
+    const q3Conditions = conditionsByQuadrant.get(3)?.length ?? 0;
+    const q3PortraitCount = allPortraitsData.filter(
+      (p) => Number(p.quadrant?.quadrants) === 3,
+    ).length;
+    if (q3Conditions > 0 && q3PortraitCount === 0) {
+      this.logger.warn(
+        '第三象限有查询条件但 portraits 表未返回记录：请检查 portraits 表中是否存在对应的 (like_id, talent_id, quadrant_id=第三象限id) 数据。',
       );
     }
 
@@ -556,18 +503,102 @@ export class PortraitsService {
       return conditionSet.has(key);
     });
 
-    // 记录查询结果，用于调试
-    const quadrantCounts = new Map<number, number>();
+    // 按象限收集 portrait id，再一次性并行加载 8 个关联表（减少往返）
+    const portraitIdsByQuadrant = new Map<number, number[]>();
     for (const portrait of matchedPortraits) {
-      const quadrantNum = portrait.quadrant?.quadrants || 0;
-      quadrantCounts.set(
-        quadrantNum,
-        (quadrantCounts.get(quadrantNum) || 0) + 1,
-      );
+      const q = Number(portrait.quadrant?.quadrants ?? 0);
+      if (!portraitIdsByQuadrant.has(q)) {
+        portraitIdsByQuadrant.set(q, []);
+      }
+      portraitIdsByQuadrant.get(q)!.push(portrait.id);
     }
-    this.logger.log(
-      `查询到的画像数量: ${matchedPortraits.length}, 各象限数量: ${JSON.stringify(Object.fromEntries(quadrantCounts))}`,
-    );
+    const ids1 = portraitIdsByQuadrant.get(1) ?? [];
+    const ids2 = portraitIdsByQuadrant.get(2) ?? [];
+    const ids3 = portraitIdsByQuadrant.get(3) ?? [];
+    const ids4 = portraitIdsByQuadrant.get(4) ?? [];
+    const [
+      challenges1,
+      niches1,
+      lifeChallenges2,
+      feasibilityStudies2,
+      weaknesses3,
+      compensations3,
+      dilemmas4,
+      growthPaths4,
+    ] = await Promise.all([
+      ids1.length
+        ? this.quadrant1ChallengeRepository.find({
+            where: { portraitId: In(ids1) },
+          })
+        : Promise.resolve([]),
+      ids1.length
+        ? this.quadrant1NicheRepository.find({
+            where: { portraitId: In(ids1) },
+          })
+        : Promise.resolve([]),
+      ids2.length
+        ? this.quadrant2LifeChallengeRepository.find({
+            where: { portraitId: In(ids2) },
+          })
+        : Promise.resolve([]),
+      ids2.length
+        ? this.quadrant2FeasibilityStudyRepository.find({
+            where: { portraitId: In(ids2) },
+          })
+        : Promise.resolve([]),
+      ids3.length
+        ? this.quadrant3WeaknessRepository.find({
+            where: { portraitId: In(ids3) },
+          })
+        : Promise.resolve([]),
+      ids3.length
+        ? this.quadrant3CompensationRepository.find({
+            where: { portraitId: In(ids3) },
+          })
+        : Promise.resolve([]),
+      ids4.length
+        ? this.quadrant4DilemmaRepository.find({
+            where: { portraitId: In(ids4) },
+          })
+        : Promise.resolve([]),
+      ids4.length
+        ? this.quadrant4GrowthPathRepository.find({
+            where: { portraitId: In(ids4) },
+          })
+        : Promise.resolve([]),
+    ]);
+    for (const portrait of matchedPortraits) {
+      const q = Number(portrait.quadrant?.quadrants ?? 0);
+      if (q === 1) {
+        portrait.quadrant1Challenges = challenges1.filter(
+          (c) => c.portraitId === portrait.id,
+        );
+        portrait.quadrant1Niches = niches1.filter(
+          (n) => n.portraitId === portrait.id,
+        );
+      } else if (q === 2) {
+        portrait.quadrant2LifeChallenges = lifeChallenges2.filter(
+          (c) => c.portraitId === portrait.id,
+        );
+        portrait.quadrant2FeasibilityStudies = feasibilityStudies2.filter(
+          (s) => s.portraitId === portrait.id,
+        );
+      } else if (q === 3) {
+        portrait.quadrant3Weaknesses = weaknesses3.filter(
+          (w) => w.portraitId === portrait.id,
+        );
+        portrait.quadrant3Compensations = compensations3.filter(
+          (c) => c.portraitId === portrait.id,
+        );
+      } else if (q === 4) {
+        portrait.quadrant4Dilemmas = dilemmas4.filter(
+          (d) => d.portraitId === portrait.id,
+        );
+        portrait.quadrant4GrowthPaths = growthPaths4.filter(
+          (g) => g.portraitId === portrait.id,
+        );
+      }
+    }
 
     // 确保所有关联属性都被初始化（即使为空数组）
     for (const portrait of matchedPortraits) {
@@ -637,70 +668,57 @@ export class PortraitsService {
               title: portrait.quadrant.title,
             }
           : null,
-        // 根据象限编号只返回对应的数据
+        // 根据象限编号只返回对应的数据（用 Number 统一比较，避免 DB 返回字符串导致第三/四象限数据缺失）
         quadrant1Challenges:
-          quadrant.quadrants === 1
+          Number(quadrant.quadrants) === 1
             ? (Array.isArray(portrait.quadrant1Challenges)
                 ? portrait.quadrant1Challenges
                 : [])
             : undefined,
         quadrant1Niches:
-          quadrant.quadrants === 1
+          Number(quadrant.quadrants) === 1
             ? (Array.isArray(portrait.quadrant1Niches)
                 ? portrait.quadrant1Niches
                 : [])
             : undefined,
         quadrant2LifeChallenges:
-          quadrant.quadrants === 2
+          Number(quadrant.quadrants) === 2
             ? (Array.isArray(portrait.quadrant2LifeChallenges)
                 ? portrait.quadrant2LifeChallenges
                 : [])
             : undefined,
         quadrant2FeasibilityStudies:
-          quadrant.quadrants === 2
+          Number(quadrant.quadrants) === 2
             ? (Array.isArray(portrait.quadrant2FeasibilityStudies)
                 ? portrait.quadrant2FeasibilityStudies
                 : [])
             : undefined,
         quadrant3Weaknesses:
-          quadrant.quadrants === 3
+          Number(quadrant.quadrants) === 3
             ? (Array.isArray(portrait.quadrant3Weaknesses)
                 ? portrait.quadrant3Weaknesses
                 : [])
             : undefined,
         quadrant3Compensations:
-          quadrant.quadrants === 3
+          Number(quadrant.quadrants) === 3
             ? (Array.isArray(portrait.quadrant3Compensations)
                 ? portrait.quadrant3Compensations
                 : [])
             : undefined,
         quadrant4Dilemmas:
-          quadrant.quadrants === 4
+          Number(quadrant.quadrants) === 4
             ? (Array.isArray(portrait.quadrant4Dilemmas)
                 ? portrait.quadrant4Dilemmas
                 : [])
             : undefined,
         quadrant4GrowthPaths:
-          quadrant.quadrants === 4
+          Number(quadrant.quadrants) === 4
             ? (Array.isArray(portrait.quadrant4GrowthPaths)
                 ? portrait.quadrant4GrowthPaths
                 : [])
             : undefined,
       });
     }
-
-    // 记录画像详情
-    const portraitDetails = allPortraits.map((p) => ({
-      id: p.id,
-      name: p.name,
-      quadrant: p.quadrant?.quadrants || 0,
-    }));
-    this.logger.log(
-      `用户 ${userId} 查询画像成功，找到 ${allPortraits.length} 个匹配的画像`,
-    );
-    this.logger.log(
-      `画像详情: ${JSON.stringify(portraitDetails, null, 2)}`,
-    );
 
     // 格式化返回数据
     return {

@@ -202,4 +202,52 @@ export class EnrollPlanController {
   ): Promise<MajorGroupInfoResponseDto[]> {
     return await this.enrollPlanService.getMajorGroupInfoByMgId(mgId, user.id);
   }
+
+  /**
+   * 按当前用户及配置年份查询去重后的三级专业ID列表
+   * year 从配置 process.env.CURRENT_YEAR 读取，默认 2025；其余条件从 users 表当前用户读取
+   */
+  @Get('level3-major-ids')
+  @Cache(60)
+  @ApiOperation({
+    summary: '按当前用户及配置年份查询去重后的 level3_major_id 列表',
+    description:
+      'year 从配置 CURRENT_YEAR 读取（默认 2025），province/batch/primarySubject/secondarySubjects 从 users 表当前用户读取',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'level3_major_id 与对应 majorIds（用于符合选科筛选）',
+  })
+  async getDistinctLevel3MajorIds(
+    @CurrentUser() user: any,
+  ): Promise<{ level3MajorIds: number[]; majorIds: number[] }> {
+    const year = process.env.CURRENT_YEAR || '2025';
+    const level3MajorIds =
+      await this.enrollPlanService.getDistinctLevel3MajorIdsByCurrentUser(
+        user.id,
+        year,
+      );
+    const majorIds = await this.enrollPlanService.getMatchSubjectMajorIds(
+      user.id,
+    );
+    return { level3MajorIds, majorIds };
+  }
+
+  /**
+   * 获取符合当前用户选科条件的专业 ID 列表（majors 表 id，用于“符合选科的专业”筛选）
+   */
+  @Get('match-subject-major-ids')
+  @Cache(60)
+  @ApiOperation({
+    summary: '获取符合当前用户选科条件的专业 ID 列表',
+    description: '用于专业探索页“符合选科的专业”复选框筛选',
+  })
+  @ApiResponse({ status: 200, description: 'majorIds 数组' })
+  async getMatchSubjectMajorIds(
+    @CurrentUser() user: any,
+  ): Promise<{ majorIds: number[] }> {
+    const majorIds =
+      await this.enrollPlanService.getMatchSubjectMajorIds(user.id);
+    return { majorIds };
+  }
 } 

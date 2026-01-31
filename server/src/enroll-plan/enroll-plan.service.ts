@@ -1033,5 +1033,114 @@ export class EnrollPlanService {
       excludeExtraneousValues: true,
     });
   }
+
+  /**
+   * 按招生计划条件查询去重后的 level3_major_id 列表
+   * @param params 查询条件：year, province, batch, primarySubject, enrollmentType, secondarySubjects
+   * @returns 去重后的 level3_major_id 数组
+   */
+  async getDistinctLevel3MajorIds(params: {
+    year: string;
+    province: string;
+    batch: string;
+    primarySubject: string;
+    enrollmentType: string;
+    secondarySubjects: string[];
+  }): Promise<number[]> {
+    const {
+      year,
+      province,
+      batch,
+      primarySubject,
+      enrollmentType,
+      secondarySubjects,
+    } = params;
+
+    const sql = `
+      SELECT DISTINCT elem AS level3_major_id
+      FROM enrollment_plans,
+           LATERAL unnest(COALESCE(level3_major_id, ARRAY[]::integer[])) AS elem
+      WHERE year = $1
+        AND province = $2
+        AND batch = $3
+        AND primary_subject = $4
+        AND enrollment_type = $5
+        AND (
+          (secondary_subjects IS NULL OR secondary_subjects = '{}')
+          OR (secondary_subject_type = true AND secondary_subjects <@ $6::character varying[])
+          OR (secondary_subject_type = false AND secondary_subjects && $6::character varying[])
+        )
+      ORDER BY level3_major_id
+    `;
+
+    const rows = await this.enrollmentPlanRepository.manager.query(sql, [
+      year,
+      province,
+      batch,
+      primarySubject,
+      enrollmentType,
+      secondarySubjects,
+    ]);
+
+    return rows.map((r: { level3_major_id: number }) => r.level3_major_id);
+  }
+
+  /**
+   * 根据当前用户（users 表）及配置年份，查询去重后的 level3_major_id 列表
+   * @param userId 用户ID
+   * @param year 年份，不传则从 process.env.CURRENT_YEAR 读取，默认 2025
+   * @returns 去重后的 level3_major_id 数组
+   */
+  async getDistinctLevel3MajorIdsByCurrentUser(
+    userId: number,
+    year?: string,
+  ): Promise<number[]> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      this.logger.warn(`getDistinctLevel3MajorIdsByCurrentUser: 用户 ${userId} 不存在`);
+      return [];
+    }
+
+    const resolvedYear = year || process.env.CURRENT_YEAR || '2025';
+    const province = user.province?.trim() || '';
+    const batch = user.enrollType?.trim() || '';
+    const primarySubject = user.preferredSubjects?.trim() || '';
+    const secondarySubjects = user.secondarySubjects
+      ? user.secondarySubjects
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s)
+      : [];
+
+    return this.getDistinctLevel3MajorIds({
+      year: resolvedYear,
+      province,
+      batch,
+      primarySubject,
+      enrollmentType: '普通类',
+      secondarySubjects,
+    });
+  }
+
+  /**
+   * 根据当前用户选科条件，返回符合选科的 majors 表 id 列表（用于前端“符合选科的专业”筛选）
+   * @param userId 用户ID
+   * @returns majors.id 数组
+   */
+  async getMatchSubjectMajorIds(userId: number): Promise<number[]> {
+    const level3Ids = await this.getDistinctLevel3MajorIdsByCurrentUser(userId);
+    if (level3Ids.length === 0) return [];
+
+    const sql = `
+      SELECT DISTINCT m.id
+      FROM majors m
+      INNER JOIN major_details md ON md.code = m.code
+      WHERE md.id = ANY($1::integer[])
+    `;
+    const rows = await this.enrollmentPlanRepository.manager.query(sql, [
+      level3Ids,
+    ]);
+    return rows.map((r: { id: number }) => r.id);
+  }
 }
 

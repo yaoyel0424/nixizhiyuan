@@ -91,7 +91,8 @@ export class ScoresController {
     type: ScoreResponseDto,
     isArray: true,
   })
-  @Cache(600)
+
+  @Cache(120)
   async getAllScores(
     @Query('eduLevel') eduLevel?: string,
     @CurrentUser() user?: any,
@@ -106,5 +107,8 @@ export class ScoresController {
       excludeExtraneousValues: true,
     });
   }
+
+  
+
 }
 
