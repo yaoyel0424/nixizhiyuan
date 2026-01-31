@@ -5,6 +5,7 @@ import Taro, { useShareAppMessage } from '@tarojs/taro';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { BottomNav } from '@/components/BottomNav';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   Dialog,
   DialogContent,
@@ -316,8 +317,17 @@ export default function IndexPage() {
   const topPadding = statusBarHeight + navigationBarHeight;
 
   return (
-    <View className="index-page" style={{ paddingTop: `${topPadding}px` }}>
-      <SystemNavBar />
+    <ErrorBoundary
+      fallbackTitle="首页加载出错"
+      fallbackMessage="首页出现异常，请返回或重试。"
+    >
+      <View className="index-page" style={{ paddingTop: `${topPadding}px` }}>
+        <ErrorBoundary
+          fallbackTitle="导航栏出错"
+          fallbackMessage="导航栏出现异常，但不影响页面其他功能。"
+        >
+          <SystemNavBar />
+        </ErrorBoundary>
 
       {/* 头部横幅 */}
       <View className="index-page__banner">
@@ -723,7 +733,13 @@ export default function IndexPage() {
         </DialogContent>
       </Dialog>
 
-      <BottomNav />
-    </View>
+        <ErrorBoundary
+          fallbackTitle="底部导航出错"
+          fallbackMessage="底部导航出现异常，但不影响页面其他功能。"
+        >
+          <BottomNav />
+        </ErrorBoundary>
+      </View>
+    </ErrorBoundary>
   );
 }

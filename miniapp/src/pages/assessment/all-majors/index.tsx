@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Question } from '@/types/questionnaire'
 import { Scale, ScaleAnswer } from '@/types/api'
 import { getScalesWithAnswers, submitScaleAnswer } from '@/services/scales'
@@ -13,6 +14,18 @@ import { useAppSelector } from '@/store/hooks'
 import './index.less'
 
 const DIMENSION_ORDER = ['看', '听', '说', '记', '想', '做', '运动']
+
+// 保存上一次答案到本地存储
+const PREVIOUS_ANSWERS_STORAGE_KEY = 'previous_questionnaire_answers'
+
+function savePreviousAnswersToStorage(answers: Record<number, number>): void {
+  try {
+    Taro.setStorageSync(PREVIOUS_ANSWERS_STORAGE_KEY, JSON.stringify(answers))
+  } catch (error) {
+    console.error('保存上一次答案到本地存储失败:', error)
+    // 不抛出错误，避免影响主流程
+  }
+}
 
 // 排序题目：按维度顺序，然后按类型（like优先），最后按id
 function sortQuestions(questions: Question[]): Question[] {
@@ -245,24 +258,35 @@ export default function AllMajorsPage() {
 
   // 确认重新探索
   const confirmRestartExploration = () => {
-    // 保存当前答案为上一次答案
-    if (Object.keys(answers).length > 0) {
-      savePreviousAnswersToStorage(answers)
-      setPreviousAnswers(answers)
+    try {
+      // 保存当前答案为上一次答案
+      if (Object.keys(answers).length > 0) {
+        savePreviousAnswersToStorage(answers)
+        setPreviousAnswers(answers)
+      }
+      // 清空当前答案
+      const emptyAnswers: Record<number, number> = {}
+      setAnswers(emptyAnswers)
+      // 回到第一题
+      setCurrentIndex(0)
+      // 关闭确认对话框
+      setShowRestartConfirm(false)
+      // 显示提示
+      Taro.showToast({
+        title: '已开始重新探索',
+        icon: 'success',
+        duration: 2000
+      })
+    } catch (error) {
+      console.error('重新探索失败:', error)
+      Taro.showToast({
+        title: '操作失败，请稍后重试',
+        icon: 'none',
+        duration: 2000
+      })
+      // 即使出错也关闭对话框，避免卡住
+      setShowRestartConfirm(false)
     }
-    // 清空当前答案
-    const emptyAnswers: Record<number, number> = {}
-    setAnswers(emptyAnswers)
-    // 回到第一题
-    setCurrentIndex(0)
-    // 关闭确认对话框
-    setShowRestartConfirm(false)
-    // 显示提示
-    Taro.showToast({
-      title: '已开始重新探索',
-      icon: 'success',
-      duration: 2000
-    })
   }
 
   const dimensionProgress = DIMENSION_ORDER.map((dim) => {
@@ -599,8 +623,12 @@ export default function AllMajorsPage() {
   const sortedOptions = [...(currentQuestion.options || [])].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
 
   return (
-    <View className="all-majors-page__fullscreen">
-      <View className="all-majors-page">
+    <ErrorBoundary
+      fallbackTitle="页面加载出错"
+      fallbackMessage="页面出现异常，请返回首页或重试。"
+    >
+      <View className="all-majors-page__fullscreen">
+        <View className="all-majors-page">
         {/* 顶部进度条 */}
         <View className="all-majors-page__header">
           <View className="all-majors-page__header-top">
@@ -608,14 +636,14 @@ export default function AllMajorsPage() {
             <Text className={`all-majors-page__header-title ${progressAnimation ? 'all-majors-page__header-title--animated' : ''}`}>
               第 {currentIndex + 1} / {totalQuestions}题
             </Text>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={handleRestartExploration}
               className="all-majors-page__header-clear"
             >
               重新探索
-            </Button>
+            </Button> */}
           </View>
 
           {/* 维度进度条 */}
@@ -788,31 +816,36 @@ export default function AllMajorsPage() {
       </View>
 
       {/* 重新探索确认对话框 */}
-      <Dialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>确认重新探索</DialogTitle>
-            <DialogDescription>
-              确定要重新探索吗？当前答案将被保存为参考，答题进度将归零重新开始。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowRestartConfirm(false)}
-              className="all-majors-page__dialog-button"
-            >
-              取消
-            </Button>
-            <Button
-              onClick={confirmRestartExploration}
-              className="all-majors-page__dialog-button all-majors-page__dialog-button--primary"
-            >
-              确定
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ErrorBoundary
+        fallbackTitle="对话框加载出错"
+        fallbackMessage="对话框出现异常，请关闭后重试。"
+      >
+        <Dialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>确认重新探索</DialogTitle>
+              <DialogDescription>
+                确定要重新探索吗？当前答案将被保存为参考，答题进度将归零重新开始。
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRestartConfirm(false)}
+                className="all-majors-page__dialog-button"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={confirmRestartExploration}
+                className="all-majors-page__dialog-button all-majors-page__dialog-button--primary"
+              >
+                确定
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </ErrorBoundary>
 
       {/* 未答题提示对话框 */}
       <Dialog open={showUnansweredDialog} onOpenChange={setShowUnansweredDialog}>
@@ -869,6 +902,7 @@ export default function AllMajorsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </View>
+      </View>
+    </ErrorBoundary>
   )
 }
