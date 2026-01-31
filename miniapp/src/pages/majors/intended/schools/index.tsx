@@ -125,6 +125,8 @@ export default function IntendedMajorsSchoolsPage() {
   // 高考信息弹框状态
   const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
   const [examInfo, setExamInfo] = useState<ExamInfo | undefined>(undefined)
+  // 从热门专业进入时，用户修改高考信息后触发页面数据刷新
+  const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0)
   // 分段展示：当前已展示的院校条数
   const [visibleSchoolCount, setVisibleSchoolCount] = useState<number>(SCHOOLS_PAGE_SIZE)
   // 从接口返回的省份列表
@@ -506,7 +508,7 @@ export default function IntendedMajorsSchoolsPage() {
       }
       checkExamInfo()
     }
-  }, [majorCode, majorId, minScoreParam, maxScoreParam, isFromPopularMajors])
+  }, [majorCode, majorId, minScoreParam, maxScoreParam, isFromPopularMajors, dataRefreshTrigger])
 
   // 检测省份列表是否超过一行（使用估算方法，避免 Taro 查询问题）
   useEffect(() => {
@@ -2042,7 +2044,11 @@ export default function IntendedMajorsSchoolsPage() {
           onOpenChange={setShowExamInfoDialog}
           examInfo={examInfo}
           onUpdate={(updatedInfo) => {
-            setExamInfo(updatedInfo)
+            if (updatedInfo) {
+              setExamInfo(updatedInfo)
+              // 从热门专业进入时，修改高考信息后重新获取院校列表等数据
+              setDataRefreshTrigger((prev) => prev + 1)
+            }
           }}
         />
       )}

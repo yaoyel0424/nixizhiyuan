@@ -390,7 +390,7 @@ export default function IndexPage() {
             <DialogTitle className="index-page__dialog-title">【探索之旅说明】</DialogTitle>
             <DialogDescription>
               <Text className="index-page__dialog-desc">
-                欢迎开启你的深度探索！为了给你最精准的规划，请按顺序完成以下步骤：
+                欢迎开启你的深度探索！请按以下步骤随心而行，自在发现。
               </Text>
             </DialogDescription>
           </DialogHeader>

@@ -208,7 +208,7 @@ export class EnrollPlanController {
    * year 从配置 process.env.CURRENT_YEAR 读取，默认 2025；其余条件从 users 表当前用户读取
    */
   @Get('level3-major-ids')
-  @Cache(60)
+  @Cache(30)
   @ApiOperation({
     summary: '按当前用户及配置年份查询去重后的 level3_major_id 列表',
     description:

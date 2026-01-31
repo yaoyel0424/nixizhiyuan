@@ -18,6 +18,7 @@ import {
 } from '@/services/majors'
 import { getLevel3MajorIds } from '@/services/enroll-plan'
 import { getExamInfo, ExamInfo } from '@/services/exam-info'
+import { getUserRelatedDataCount } from '@/services/user'
 import { MajorScoreResponse } from '@/types/api'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import { getStorage, setStorage } from '@/utils/storage'
@@ -67,6 +68,8 @@ export default function MajorsPage() {
   // 高考信息弹窗（与意向专业页一致）
   const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
+  // 是否因「符合选科」时 preferredSubjects 为空而打开的高考信息弹窗（填写完成后勾选 checkbox）
+  const openedExamInfoForSubjectCheckRef = useRef(false)
   // 分享相关状态
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [showShareGuide, setShowShareGuide] = useState(false)
@@ -79,7 +82,7 @@ export default function MajorsPage() {
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
-  // 勾选「符合选科的专业」时调用 api/v1/enroll-plan/level3-major-ids，用返回的 level3MajorIds 筛选；出错或为空则不改动页面
+  // 勾选「符合选科的专业」时调用 api/v1/enroll-plan/level3-major-ids，用返回的 level3MajorIds 筛选；出错或返回空数组则不修改页面（取消勾选并显示全部）
   useEffect(() => {
     if (!onlyMatchSubject) {
       setMatchSubjectLevel3Ids(new Set())
@@ -91,10 +94,16 @@ export default function MajorsPage() {
         if (cancelled) return
         if (res.level3MajorIds && res.level3MajorIds.length > 0) {
           setMatchSubjectLevel3Ids(new Set(res.level3MajorIds))
+        } else {
+          // 返回空数组：不修改页面，取消勾选并显示全部专业，避免一直显示「正在加载符合选科的专业...」
+          setOnlyMatchSubject(false)
+          setMatchSubjectLevel3Ids(new Set())
         }
       })
       .catch(() => {
-        // 接口出错：不更新任何状态，页面不变
+        // 接口出错：不修改页面，取消勾选并显示全部
+        setOnlyMatchSubject(false)
+        setMatchSubjectLevel3Ids(new Set())
       })
     return () => { cancelled = true }
   }, [onlyMatchSubject])
@@ -814,8 +823,28 @@ export default function MajorsPage() {
             </View>
             <View
               className="majors-page__subject-checkbox"
-              onClick={() => {
-                setOnlyMatchSubject((prev) => !prev)
+              onClick={async () => {
+                if (onlyMatchSubject) {
+                  setOnlyMatchSubject(false)
+                  setCurrentPage(1)
+                  return
+                }
+                try {
+                  const relatedData = await getUserRelatedDataCount()
+                  const hasPreferredSubjects = relatedData?.preferredSubjects != null && String(relatedData.preferredSubjects).trim() !== ''
+                  if (!hasPreferredSubjects) {
+                    openedExamInfoForSubjectCheckRef.current = true
+                    setShowExamInfoDialog(true)
+                    getExamInfo().then((info) => setExamInfo(info ?? null))
+                    return
+                  }
+                } catch (_) {
+                  openedExamInfoForSubjectCheckRef.current = true
+                  setShowExamInfoDialog(true)
+                  getExamInfo().then((info) => setExamInfo(info ?? null))
+                  return
+                }
+                setOnlyMatchSubject(true)
                 setCurrentPage(1)
               }}
             >
@@ -1077,7 +1106,19 @@ export default function MajorsPage() {
         onOpenChange={setShowExamInfoDialog}
         examInfo={examInfo ?? undefined}
         onUpdate={(updatedInfo) => {
-          if (updatedInfo) setExamInfo(updatedInfo)
+          if (updatedInfo) {
+            setExamInfo(updatedInfo)
+            if (openedExamInfoForSubjectCheckRef.current) {
+              // 因 preferredSubjects 为空而打开，填写完成后勾选「符合选科的专业」
+              openedExamInfoForSubjectCheckRef.current = false
+              setOnlyMatchSubject(true)
+              setCurrentPage(1)
+            } else {
+              // 用户从高考信息按钮进入修改后，取消勾选，页面显示 allMajors
+              setOnlyMatchSubject(false)
+              setMatchSubjectLevel3Ids(new Set())
+            }
+          }
         }}
       />
 

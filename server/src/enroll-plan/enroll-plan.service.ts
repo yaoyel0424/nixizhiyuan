@@ -127,7 +127,7 @@ export class EnrollPlanService {
       provinceNames.unshift(user.province);
     }
 
-    // 3. 获取用户收藏的专业
+    // 3. 获取用户收藏的专业  
     const majorFavorites = await this.majorFavoriteRepository.find({
       where: { userId },
       relations: ['major'],
