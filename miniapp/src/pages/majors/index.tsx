@@ -29,6 +29,20 @@ import './index.less'
 // 每页显示的数据量
 const PAGE_SIZE = 30
 
+// 元素分析类型配置（与热门专业页显示一致，仅展示不点击）
+const ELEMENT_ANALYSIS_TYPES = {
+  lexue: { label: '乐学', color: '#4CAF50' },
+  shanxue: { label: '善学', color: '#2196F3' },
+  yanxue: { label: '厌学', color: '#FF9800' },
+  tiaozhan: { label: '阻学', color: '#F44336' },
+} as const
+const ELEMENT_ORDER = [
+  { type: 'lexue' as const, operator: '+' },
+  { type: 'shanxue' as const, operator: '-' },
+  { type: 'yanxue' as const, operator: '-' },
+  { type: 'tiaozhan' as const, operator: '=' },
+]
+
 export default function MajorsPage() {
   // 检查问卷完成状态
   const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
@@ -442,13 +456,13 @@ export default function MajorsPage() {
     })
   }, [])
 
-  // 格式化分数显示（处理字符串和数字类型）
+  // 格式化分数显示（处理字符串和数字类型，不显示小数点）
   const formatScore = (score: number | string): string => {
     const numScore = typeof score === 'string' ? parseFloat(score) : score
     if (isNaN(numScore)) {
-      return '0.00'
+      return '0'
     }
-    return numScore.toFixed(2)
+    return String(Math.round(numScore))
   }
 
   // 生成分享图片（包含前10个专业的详细信息）
@@ -979,38 +993,46 @@ export default function MajorsPage() {
                         </Text>
                       </View>
                       {expandedScores.has(major.majorCode) && (
-                        <View className="majors-page__major-scores-detail">
-                          <View className="majors-page__score-item">
-                            <Text className="majors-page__score-item-label">乐学分数</Text>
-                            <Text className="majors-page__score-item-value">{formatScore(major.lexueScore)}</Text>
+                        <View className="majors-page__element-analyses">
+                          <View className="majors-page__element-analyses-row">
+                            {ELEMENT_ORDER.map((item, index) => {
+                              const config = ELEMENT_ANALYSIS_TYPES[item.type]
+                              const raw = item.type === 'lexue' ? major.lexueScore : item.type === 'shanxue' ? major.shanxueScore : item.type === 'yanxue' ? major.yanxueDeduction : major.tiaozhanDeduction
+                              const numVal = raw === null || raw === undefined || raw === '' ? null : typeof raw === 'string' ? parseFloat(raw) : Number(raw)
+                              const typeScore = numVal != null && !Number.isNaN(numVal) ? formatScore(numVal) : '—'
+                              const isLast = index === ELEMENT_ORDER.length - 1
+                              const totalScore = major.score != null && major.score !== '' ? formatScore(typeof major.score === 'string' ? parseFloat(major.score) : major.score) : '—'
+                              return (
+                                <React.Fragment key={item.type}>
+                                  <View className="majors-page__element-analysis-item">
+                                    <View className="majors-page__element-analysis-info">
+                                      <Text className="majors-page__element-analysis-label" style={{ color: config.color }}>
+                                        {config.label}
+                                      </Text>
+                                      <Text className="majors-page__element-analysis-score">
+                                        {typeScore}分
+                                      </Text>
+                                    </View>
+                                  </View>
+                                  {!isLast && (
+                                    <Text className="majors-page__element-analysis-operator">
+                                      {item.operator}
+                                    </Text>
+                                  )}
+                                  {isLast && (
+                                    <>
+                                      <Text className="majors-page__element-analysis-operator">=</Text>
+                                      <View className="majors-page__element-analysis-total">
+                                        <Text className="majors-page__element-analysis-total-text">
+                                          {totalScore}分
+                                        </Text>
+                                      </View>
+                                    </>
+                                  )}
+                                </React.Fragment>
+                              )
+                            })}
                           </View>
-                          <View className="majors-page__score-item">
-                            <Text className="majors-page__score-item-label">善学分数</Text>
-                            <Text className="majors-page__score-item-value">{formatScore(major.shanxueScore)}</Text>
-                          </View>
-                          <View className="majors-page__score-item">
-                            <Text className="majors-page__score-item-label">阻学分数</Text>
-                            <Text className="majors-page__score-item-value">{formatScore(major.tiaozhanDeduction)}</Text>
-                          </View>
-                          {(() => {
-                            // 厌学分数：取值 yanxueDeduction（为扣分项时以负号展示）
-                            const raw = major.yanxueDeduction
-                            if (raw === null || raw === undefined || raw === '') return null
-                            const yanxue = typeof raw === 'string' ? parseFloat(raw) : Number(raw)
-                            if (Number.isNaN(yanxue)) return null
-
-                            const isDeduction = yanxue > 0
-                            return (
-                              <View className="majors-page__score-item">
-                                <Text className="majors-page__score-item-label">厌学分数</Text>
-                                <Text
-                                  className={`majors-page__score-item-value ${isDeduction ? 'majors-page__score-item-value--deduction' : ''}`}
-                                >
-                                  {isDeduction ? `-${formatScore(yanxue)}` : formatScore(yanxue)}
-                                </Text>
-                              </View>
-                            )
-                          })()}
                         </View>
                       )}
                     </Card>

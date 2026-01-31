@@ -14,12 +14,12 @@ import './index.less'
 
 const STORAGE_KEY = 'questionnaire_answers'
 
-// 元素分析类型配置
+// 元素分析类型配置（含注释，同一行显示）
 const ELEMENT_ANALYSIS_TYPES = {
-  lexue: { label: '乐学', color: '#4CAF50' },
-  shanxue: { label: '善学', color: '#2196F3' },
-  yanxue: { label: '厌学', color: '#FF9800' },
-  tiaozhan: { label: '阻学', color: '#F44336' },
+  lexue: { label: '乐学', desc: '始终保有学习的动力', color: '#4CAF50' },
+  shanxue: { label: '善学', desc: '学习更轻松高效', color: '#2196F3' },
+  yanxue: { label: '厌学', desc: '学习动力逐步衰减', color: '#FF9800' },
+  tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },
 } as const
 
 // 字段标签映射
@@ -929,7 +929,23 @@ function MajorAnalysisActionCard({ analyses, onViewDetail, onRedoQuestionnaire, 
           <View className="single-major-page__element-inline">
             <View className="single-major-page__element-inline-header">
               <Text className="single-major-page__element-inline-title">
-                {ELEMENT_ANALYSIS_TYPES[expandedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.label} - {expandedElementMajorName}
+                {(() => {
+                  const key = expandedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES
+                  const config = ELEMENT_ANALYSIS_TYPES[key]
+                  if (!config) return expandedElementMajorName
+                  const label = config.label
+                  const desc = 'desc' in config ? config.desc : undefined
+                  if (!desc) return `${label} - ${expandedElementMajorName}`
+                  return (
+                    <>
+                      {label}{' '}
+                      <Text className="single-major-page__element-inline-title-desc">
+                        （{desc}）
+                      </Text>
+                      {' - '}{expandedElementMajorName}
+                    </>
+                  )
+                })()}
               </Text>
               <Text
                 className="single-major-page__element-inline-toggle"

@@ -437,34 +437,93 @@
 }
 
 .majors-page__major-scores-detail {
-  display: flex;
-  gap: 16rpx;
   padding-top: 12rpx;
   margin-top: 12rpx;
   border-top: 1rpx solid #f0f0f0;
 }
 
-.majors-page__score-item {
-  flex: 1;
+// 乐学善学厌学阻学展示（与热门专业页一致，仅展示不点击）
+.majors-page__element-analyses {
   display: flex;
   flex-direction: column;
+  gap: 16rpx;
+}
+
+.majors-page__element-analyses-row {
+  display: flex;
   align-items: center;
+  flex-wrap: nowrap;
+  gap: 4rpx;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
 }
 
-.majors-page__score-item-label {
-  font-size: 24rpx;
-  color: #999;
-  margin-bottom: 8rpx;
+.majors-page__element-analysis-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 6rpx 10rpx;
+  background: #fff;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 20rpx;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: center;
 }
 
-.majors-page__score-item-value {
-  font-size: 28rpx;
+.majors-page__element-analysis-operator {
+  font-size: 22rpx;
   font-weight: 600;
   color: #333;
-  
-  &--deduction {
-    color: #ff6b6b;
-  }
+  flex-shrink: 0;
+  padding: 0 2rpx;
+  min-width: 20rpx;
+  text-align: center;
+}
+
+.majors-page__element-analysis-total {
+  display: flex;
+  align-items: center;
+  padding: 6rpx 10rpx;
+  background: #fff;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 20rpx;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: center;
+}
+
+.majors-page__element-analysis-total-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FF7F50;
+  white-space: nowrap;
+}
+
+.majors-page__element-analysis-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  align-items: center;
+  min-width: 0;
+}
+
+.majors-page__element-analysis-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.majors-page__element-analysis-score {
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #666;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .majors-page__load-more {
