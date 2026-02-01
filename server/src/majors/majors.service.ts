@@ -508,14 +508,13 @@ export class MajorsService {
       order: { type: 'ASC', id: 'ASC' },
     });
 
-    // 如果提供了用户ID，计算用户对每个元素的分数（从 popular_major_answers 表查询）
+    // 如果提供了用户ID，计算用户对每个元素的分数（从 scale_answers 表查询）
     if (userId) {
       // 获取所有相关的元素ID
       const elementIds = analyses.map((analysis) => analysis.elementId);
 
       if (elementIds.length > 0) {
-        // 使用一条 SQL 查询一次性获取所有元素的分数总和
-        // 从 popular_major_answers 表查询，而不是 scale_answers 表
+        // 使用一条 SQL 查询一次性获取所有元素的分数总和（从 scale_answers 表）
         const elementScores = await this.elementRepository
           .createQueryBuilder('element')
           .innerJoin(
@@ -524,10 +523,10 @@ export class MajorsService {
             'scale.element_id = element.id',
           )
           .innerJoin(
-            'popular_major_answers',
+            'scale_answers',
             'answer',
-            'answer.scale_id = scale.id AND answer.user_id = :userId AND answer.popular_major_id = :popularMajorId',
-            { userId, popularMajorId: popularMajor.id },
+            'answer.scale_id = scale.id AND answer.user_id = :userId',
+            { userId },
           )
           .select('element.id', 'elementId')
           .addSelect('SUM(answer.score)', 'totalScore')
