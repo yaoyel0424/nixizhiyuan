@@ -227,13 +227,12 @@ export class PopularMajorsService {
         SELECT 
           md.id as major_detail_id,
           pm.id as popular_major_id,
-          COUNT(DISTINCT pma.scale_id) as completed_count
+          COUNT(DISTINCT sa.scale_id) as completed_count
         FROM major_details md
         INNER JOIN popular_majors pm ON pm.code = md.code
         INNER JOIN major_scales ms ON ms.major_detail_id = md.id
-        LEFT JOIN popular_major_answers pma ON pma.scale_id = ms.scale_id 
-          AND pma.popular_major_id = pm.id
-          AND pma.user_id = $${majorDetailIds.length + 1}
+        LEFT JOIN scale_answers sa ON sa.scale_id = ms.scale_id 
+          AND sa.user_id = $${majorDetailIds.length + 1}
         WHERE md.id IN (${majorDetailPlaceholders})
           AND pm.id IN (${popularMajorPlaceholders})
         GROUP BY md.id, pm.id
@@ -334,13 +333,12 @@ export class PopularMajorsService {
         SELECT 
           md.id as major_detail_id,
           pm.id as popular_major_id,
-          COUNT(DISTINCT pma.scale_id) as completed_count
+          COUNT(DISTINCT sa.scale_id) as completed_count
         FROM major_details md
         INNER JOIN filtered_popular_majors pm ON pm.code = md.code
         INNER JOIN major_scales ms ON ms.major_detail_id = md.id
-        LEFT JOIN popular_major_answers pma ON pma.scale_id = ms.scale_id 
-          AND pma.popular_major_id = pm.id
-          AND pma.user_id = $2
+        LEFT JOIN scale_answers sa ON sa.scale_id = ms.scale_id 
+          AND sa.user_id = $2
         GROUP BY md.id, pm.id
       ),
       progress_data AS (
@@ -356,18 +354,17 @@ export class PopularMajorsService {
         SELECT 
           pm.id as popular_major_id,
           mea.element_id,
-          Sum(pma.score) as element_score
+          Sum(sa.score) as element_score
         FROM filtered_popular_majors pm
         INNER JOIN major_details md ON md.code = pm.code
         INNER JOIN major_element_analysis mea ON mea.major_id = md.id
         INNER JOIN elements e ON e.id = mea.element_id
         INNER JOIN scales s ON s.element_id = e.id
-        LEFT JOIN popular_major_answers pma ON pma.scale_id = s.id 
-          AND pma.popular_major_id = pm.id
-          AND pma.user_id = $2
+        LEFT JOIN scale_answers sa ON sa.scale_id = s.id 
+          AND sa.user_id = $2
         WHERE s.direction = '168'
           AND s.id > 112
-          AND pma.score IS NOT NULL
+          AND sa.score IS NOT NULL
         GROUP BY pm.id, mea.element_id
       )
       SELECT 
@@ -408,15 +405,15 @@ export class PopularMajorsService {
       return { items: [], total: 0 };
     }
 
-    // 按 popularMajorId 分组构建 items
+    // 按 popularMajorId 分组构建 items（用 Set 记录已添加的 element_analysis_id，避免循环内线性查找）
     const itemsMap = new Map<number, any>();
     const popularMajorIds: number[] = [];
+    const addedElementAnalysisIds = new Map<number, Set<number>>();
 
     results.forEach((row: any) => {
       const popularMajorId = row.popular_major_id;
-      
+
       if (!itemsMap.has(popularMajorId)) {
-        // 创建 PopularMajor 对象
         const item: any = {
           id: row.popular_major_id,
           name: row.name,
@@ -432,22 +429,23 @@ export class PopularMajorsService {
             studyPeriod: row.study_period,
             awardedDegree: row.awarded_degree,
             majorBrief: row.major_brief,
-            name: row.major_name, // 映射 major.name 到 majorDetail.name
+            name: row.major_name,
             major: row.major_name ? { name: row.major_name } : null,
             majorElementAnalyses: [],
           } : null,
         };
         itemsMap.set(popularMajorId, item);
         popularMajorIds.push(popularMajorId);
+        if (item.majorDetail) {
+          addedElementAnalysisIds.set(popularMajorId, new Set());
+        }
       }
 
-      // 添加 majorElementAnalyses（如果有）
       const item = itemsMap.get(popularMajorId);
-      if (item.majorDetail && row.element_analysis_id) {
-        const existing = item.majorDetail.majorElementAnalyses.find(
-          (ea: any) => ea.id === row.element_analysis_id,
-        );
-        if (!existing) {
+      if (item?.majorDetail && row.element_analysis_id) {
+        const addedIds = addedElementAnalysisIds.get(popularMajorId)!;
+        if (!addedIds.has(row.element_analysis_id)) {
+          addedIds.add(row.element_analysis_id);
           item.majorDetail.majorElementAnalyses.push({
             id: row.element_analysis_id,
             type: row.element_analysis_type,
@@ -465,7 +463,7 @@ export class PopularMajorsService {
     const items = Array.from(itemsMap.values()) as PopularMajor[];
 
     // 构建进度映射
-          const majorScaleCountMap = new Map<number, number>();
+    const majorScaleCountMap = new Map<number, number>();
     const majorAnsweredCountMap = new Map<number, number>();
 
     results.forEach((row: any) => {
@@ -477,16 +475,18 @@ export class PopularMajorsService {
       }
     });
 
-    // 获取分数
-    const scores = await this.scoresService.calculatePopularMajorScores(
+    // 使用 calculateScores，传入 level1 和 items 中热门专业的 code 集合
+    const popularMajorCodes = [...new Set(items.map((i) => i.code).filter(Boolean))] as string[];
+    const scores = await this.scoresService.calculateScores(
       userId,
-      popularMajorIds,
+      level1,
+      popularMajorCodes.length > 0 ? popularMajorCodes : undefined,
     );
 
-    const scoreMap = new Map<number, any>();
+    const scoreMap = new Map<string, any>();
     scores.forEach((score) => {
-      if (score.popularMajorId) {
-        scoreMap.set(score.popularMajorId, score);
+      if (score.majorCode) {
+        scoreMap.set(score.majorCode, score);
       }
     });
 
@@ -496,7 +496,7 @@ export class PopularMajorsService {
       if (majorDetailId) {
         const totalCount = majorScaleCountMap.get(majorDetailId) || 0;
         const completedCount = majorAnsweredCountMap.get(majorDetailId) || 0;
-        const scoreInfo = scoreMap.get(item.id);
+        const scoreInfo = scoreMap.get(item.code);
 
         (item as any).progress = {
           completedCount,
@@ -558,7 +558,7 @@ export class PopularMajorsService {
   ): Promise<void> {
     // 构建进度映射
     const majorScaleCountMap = new Map<number, number>();
-          const majorAnsweredCountMap = new Map<number, number>();
+    const majorAnsweredCountMap = new Map<number, number>();
 
     // 从 SQL 查询结果中提取进度数据
     progressResults.forEach((row: any) => {
@@ -573,23 +573,23 @@ export class PopularMajorsService {
       }
     });
 
-    // 查询元素分数
+    // 查询元素分数（基于 scale_answers 表）
     const elementScoresSql = `
       SELECT 
         pm.id as popular_major_id,
+        pm.code,
         mea.element_id,
-        AVG(pma.score) as element_score
+        AVG(sa.score) as element_score
       FROM popular_majors pm
       INNER JOIN major_details md ON md.code = pm.code
       INNER JOIN major_element_analysis mea ON mea.major_id = md.id
       INNER JOIN elements e ON e.id = mea.element_id
       INNER JOIN scales s ON s.element_id = e.id
-      LEFT JOIN popular_major_answers pma ON pma.scale_id = s.id 
-        AND pma.popular_major_id = pm.id
-        AND pma.user_id = $1
+      LEFT JOIN scale_answers sa ON sa.scale_id = s.id 
+        AND sa.user_id = $1
       WHERE s.direction = '168'
         AND s.id > 112
-        AND pma.score IS NOT NULL
+        AND sa.score IS NOT NULL
         AND pm.id = ANY($2::int[])
       GROUP BY pm.id, mea.element_id
     `;
@@ -614,27 +614,29 @@ export class PopularMajorsService {
             );
           });
 
-    // 获取每个热门专业的分数（直接调用，内部会处理所有计算）
-    const scores = await this.scoresService.calculatePopularMajorScores(
-                userId,
-      popularMajorIds,
-              );
+    // 从当前热门专业列表中提取 code 集合，使用 calculateScores 计算分数
+    const popularMajorCodes = [...new Set(items.map((i) => i.code).filter(Boolean))] as string[];
+    const scores = await this.scoresService.calculateScores(
+      userId,
+      undefined,
+      popularMajorCodes.length > 0 ? popularMajorCodes : undefined,
+    );
 
-    // 使用 popularMajorId 作为 key 创建分数映射
-    const scoreMap = new Map<number, any>();
-              scores.forEach((score) => {
-      if (score.popularMajorId) {
-        scoreMap.set(score.popularMajorId, score);
+    // 使用 majorCode 作为 key 创建分数映射
+    const scoreMap = new Map<string, any>();
+    scores.forEach((score) => {
+      if (score.majorCode) {
+        scoreMap.set(score.majorCode, score);
       }
-              });
+    });
 
-          // 将进度和分数信息添加到每个专业
-          items.forEach((item) => {
-            const majorDetailId = item.majorDetail?.id;
-            if (majorDetailId) {
+    // 将进度和分数信息添加到每个专业
+    items.forEach((item) => {
+      const majorDetailId = item.majorDetail?.id;
+      if (majorDetailId) {
         const totalCount = majorScaleCountMap.get(majorDetailId) || 0;
         const completedCount = majorAnsweredCountMap.get(majorDetailId) || 0;
-        const scoreInfo = scoreMap.get(item.id);
+        const scoreInfo = scoreMap.get(item.code);
 
               (item as any).progress = {
                 completedCount,
@@ -727,10 +729,10 @@ export class PopularMajorsService {
   }
 
   /**
-   * 创建或更新热门专业问卷答案
+   * 创建或更新热门专业问卷答案（存入 scale_answers 表）
    * @param createDto 创建答案 DTO
    * @param userId 用户ID（从当前登录用户获取）
-   * @returns 创建或更新的答案
+   * @returns 创建或更新的答案（含 popularMajorId 以兼容响应 DTO）
    */
   async createAnswer(
     createDto: CreatePopularMajorAnswerDto,
@@ -760,35 +762,37 @@ export class PopularMajorsService {
       });
     }
 
-    // 检查是否已存在相同的答案（同一用户、同一专业、同一题目）
-    const existingAnswer = await this.popularMajorAnswerRepository.findOne({
+    // 检查 scale_answers 中是否已存在同一用户、同一量表的答案
+    const existingAnswer = await this.scaleAnswerRepository.findOne({
       where: {
         userId,
-        popularMajorId: createDto.popularMajorId,
         scaleId: createDto.scaleId,
       },
     });
 
+    let saved: ScaleAnswer;
     if (existingAnswer) {
-      // 如果答案已存在，更新它
       existingAnswer.score = createDto.score;
-      existingAnswer.submittedAt = new Date();
-      const updatedAnswer = await this.popularMajorAnswerRepository.save(
-        existingAnswer,
-      );
-      return updatedAnswer;
+      (existingAnswer as any).submittedAt = new Date();
+      saved = await this.scaleAnswerRepository.save(existingAnswer);
+    } else {
+      const answer = this.scaleAnswerRepository.create({
+        userId,
+        scaleId: createDto.scaleId,
+        score: createDto.score,
+      });
+      saved = await this.scaleAnswerRepository.save(answer);
     }
 
-    // 如果答案不存在，创建新的
-    const answer = this.popularMajorAnswerRepository.create({
-      userId,
+    // 返回与 PopularMajorAnswerResponseDto 兼容的结构（含 popularMajorId 用于前端）
+    return {
+      id: saved.id,
+      userId: saved.userId,
       popularMajorId: createDto.popularMajorId,
-      scaleId: createDto.scaleId,
-      score: createDto.score,
-    });
-
-    const savedAnswer = await this.popularMajorAnswerRepository.save(answer);
-    return savedAnswer;
+      scaleId: saved.scaleId,
+      score: saved.score,
+      submittedAt: saved.submittedAt,
+    } as PopularMajorAnswer;
   }
 
   /**
