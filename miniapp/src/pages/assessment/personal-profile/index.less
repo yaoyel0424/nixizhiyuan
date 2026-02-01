@@ -4,10 +4,17 @@
 
 .personal-profile-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  height: 100vh;
+  // 使用柔和的渐变背景，从浅蓝到白色再到浅灰
+  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 50%, #f9fafb 100%);
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(128rpx + env(safe-area-inset-bottom));
+  overflow: hidden;
+  box-sizing: border-box;
+  position: relative;
+  
+  // 注意：小程序不支持 ::before 伪元素和复杂的 radial-gradient
+  // 装饰性背景已在 Canvas 中绘制
 }
 
 .personal-profile-page__loading,
@@ -23,82 +30,19 @@
 .personal-profile-page__content {
   flex: 1;
   padding: 24rpx 16rpx;
+  padding-bottom: calc(24rpx + 128rpx + env(safe-area-inset-bottom)); // 为底部导航栏留出空间
   display: flex;
   flex-direction: column;
   gap: 24rpx;
   overflow-y: auto;
-}
-
-// 图表容器
-.personal-profile-page__chart-container {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 20rpx 0;
-  background: #fff;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
-}
-
-// 提示文字
-.personal-profile-page__chart-tip {
-  width: 100%;
-  padding: 12rpx 0;
-  text-align: center;
-  margin-bottom: 8rpx;
-}
-
-.personal-profile-page__chart-tip-text {
-  font-size: 24rpx;
-  color: #999;
-  font-weight: 500;
-}
-
-.personal-profile-page__chart-wrapper {
-  width: 600rpx;
-  height: 600rpx;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.personal-profile-page__chart-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  transition: transform 0.2s ease;
-  will-change: transform;
-}
-
-// 维度节点点击区域（透明覆盖层）
-.personal-profile-page__chart-node-click-area {
-  position: absolute;
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 50%;
-  z-index: 10;
-  // 不设置背景，完全透明，只用于点击检测
+  box-sizing: border-box;
 }
 
 // 详情卡片容器
 .personal-profile-page__detail-container {
   width: 100%;
-  animation: slideUpFade 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes slideUpFade {
-  from {
-    opacity: 0;
-    transform: translateY(30rpx) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
 // 详情卡片
 .personal-profile-page__detail-card {
@@ -141,6 +85,7 @@
 // 详情卡片内容区域
 .personal-profile-page__detail-body {
   padding: 20rpx;
+  padding-bottom: 40rpx; // 增加底部内边距，避免内容被遮挡
   display: flex;
   flex-direction: column;
   gap: 16rpx;
@@ -242,6 +187,174 @@
   font-weight: 500;
 }
 
+// 副标题
+.personal-profile-page__detail-subtitle {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  margin-top: 8rpx;
+}
+
+// 核心元素
+.personal-profile-page__detail-element {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rpx;
+  margin-bottom: 12rpx;
+}
+
+.personal-profile-page__detail-element-label {
+  font-size: 24rpx;
+  color: #333;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.personal-profile-page__detail-element-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  flex: 1;
+}
+
+// 核心挑战
+.personal-profile-page__detail-challenge {
+  margin-bottom: 24rpx;
+  padding: 16rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  border-left: 4rpx solid #1a56db;
+}
+
+.personal-profile-page__detail-challenge-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.personal-profile-page__detail-challenge-type {
+  font-size: 22rpx;
+  color: #fff;
+  background: #ef4444;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+  font-weight: 500;
+}
+
+.personal-profile-page__detail-challenge-name {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: 600;
+  flex: 1;
+}
+
+.personal-profile-page__detail-challenge-description {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 12rpx;
+}
+
+.personal-profile-page__detail-challenge-strategy {
+  margin-bottom: 12rpx;
+}
+
+.personal-profile-page__detail-challenge-strategy-title {
+  font-size: 24rpx;
+  color: #1a56db;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.personal-profile-page__detail-challenge-strategy-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  padding-left: 16rpx;
+}
+
+.personal-profile-page__detail-challenge-building {
+  margin-top: 12rpx;
+}
+
+.personal-profile-page__detail-challenge-building-title {
+  font-size: 24rpx;
+  color: #1a56db;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.personal-profile-page__detail-challenge-building-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+// 核心生态位
+.personal-profile-page__detail-niche {
+  margin-bottom: 24rpx;
+  padding: 16rpx;
+  background: #f9fafb;
+  border-radius: 12rpx;
+  border-left: 4rpx solid #10b981;
+}
+
+.personal-profile-page__detail-niche-title {
+  font-size: 26rpx;
+  color: #1a56db;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+.personal-profile-page__detail-niche-description {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 12rpx;
+}
+
+.personal-profile-page__detail-niche-roles {
+  margin-bottom: 12rpx;
+}
+
+.personal-profile-page__detail-niche-roles-label {
+  font-size: 24rpx;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.personal-profile-page__detail-niche-roles-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+.personal-profile-page__detail-niche-suggestions {
+  margin-top: 12rpx;
+}
+
+.personal-profile-page__detail-niche-suggestions-label {
+  font-size: 24rpx;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+  display: block;
+}
+
+.personal-profile-page__detail-niche-suggestions-text {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
 // 兼容旧样式（保留以防其他地方使用）
 .personal-profile-page__dimensions {
   margin: -48rpx 16rpx 16rpx;
@@ -287,4 +400,50 @@
 .personal-profile-page__dimension-count {
   font-size: 24rpx;
   color: #666;
+}
+
+// 词云容器
+.personal-profile-page__word-cloud-container {
+  width: 100%;
+  flex: 1;
+  position: relative;
+  // 使用柔和的渐变背景，从浅蓝到白色
+  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 50%, #f9fafb 100%);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  // 确保不覆盖底部导航栏（128rpx = 64px，加上安全区域）
+  padding-bottom: env(safe-area-inset-bottom);
+  max-height: calc(100vh - 128rpx - env(safe-area-inset-bottom));
+}
+
+.personal-profile-page__word-cloud-canvas {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+}
+
+// 返回按钮
+.personal-profile-page__back-button {
+  padding: 16rpx 24rpx;
+  margin-bottom: 16rpx;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.personal-profile-page__back-button-text {
+  font-size: 28rpx;
+  color: #1a56db;
+  font-weight: 500;
 }

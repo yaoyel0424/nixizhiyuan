@@ -42,6 +42,30 @@ export interface Niche {
 }
 
 /**
+ * 第四象限困境接口（核心挑战）
+ */
+export interface Quadrant4Dilemma {
+  id: number
+  type: string
+  name: string
+  description: string
+  cultivationStrategy: string
+  strategy: string
+  capabilityBuilding?: string
+}
+
+/**
+ * 第四象限成长路径接口（核心生态位）
+ */
+export interface Quadrant4GrowthPath {
+  id: number
+  title: string
+  description: string
+  possibleRoles: string
+  explorationSuggestions: string
+}
+
+/**
  * 画像接口
  */
 export interface Portrait {
@@ -56,6 +80,8 @@ export interface Portrait {
   talentElement: ElementInfo
   quadrant: QuadrantInfo
   quadrant1Niches?: Niche[]
+  quadrant4Dilemmas?: Quadrant4Dilemma[]
+  quadrant4GrowthPaths?: Quadrant4GrowthPath[]
   // 兼容旧字段
   like_id?: number
   talent_id?: number
