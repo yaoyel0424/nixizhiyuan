@@ -264,6 +264,13 @@ export class PopularMajorsService {
       progressResults,
       popularMajorIds,
     );
+
+    // 按分数倒序排序（无分数的排在最后）
+    items.sort((a, b) => {
+      const scoreA = (a as any).score?.score ?? -Infinity;
+      const scoreB = (b as any).score?.score ?? -Infinity;
+      return scoreB - scoreA;
+    });
   }
 
   /**

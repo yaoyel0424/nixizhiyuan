@@ -303,7 +303,7 @@ export class ScalesService {
   }
 
   /**
-   * 根据元素ID和热门专业ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）
+   * 根据元素ID和热门专业ID获取对应的量表列表及用户答案（从 scale_answers 表查询）
    * @param elementId 元素ID
    * @param popularMajorId 热门专业ID
    * @param userId 用户ID
@@ -315,7 +315,7 @@ export class ScalesService {
     userId: number,
   ): Promise<{
     scales: Scale[];
-    answers: PopularMajorAnswer[];
+    answers: ScaleAnswer[];
   }> {
     // 1. 通过 elementId 查询 Scale，条件：direction = '168'
     const scales = await this.scaleRepository.find({
@@ -350,12 +350,11 @@ export class ScalesService {
     // 4. 提取所有量表的 ID
     const scaleIds = sortedScales.map((scale) => scale.id);
 
-    // 5. 从 popular_major_answers 表查询答案（需要指定 popularMajorId）
+    // 5. 从 scale_answers 表查询答案（按 userId、scaleId 查询）
     const answers = scaleIds.length > 0
-      ? await this.popularMajorAnswerRepository.find({
+      ? await this.scaleAnswerRepository.find({
           where: {
             userId,
-            popularMajorId,
             scaleId: In(scaleIds),
           },
         })
@@ -378,7 +377,7 @@ export class ScalesService {
     userId: number,
   ): Promise<{
     scales: Scale[];
-    answers: PopularMajorAnswer[];
+    answers: ScaleAnswer[];
   }> {
     // 1. 通过热门专业ID查询 PopularMajor，获取关联的 majorDetail
     const popularMajor = await this.popularMajorRepository.findOne({
@@ -457,12 +456,11 @@ export class ScalesService {
     // 6. 提取所有量表的 ID
     const scaleIds = sortedScales.map((scale) => scale.id);
 
-    // 7. 从 popular_major_answers 表查询答案
+    // 7. 从 scale_answers 表查询答案（按 userId、scaleId 查询）
     const answers = scaleIds.length > 0
-      ? await this.popularMajorAnswerRepository.find({
+      ? await this.scaleAnswerRepository.find({
           where: {
             userId,
-            popularMajorId,
             scaleId: In(scaleIds),
           },
         })
