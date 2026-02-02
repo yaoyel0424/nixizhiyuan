@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { View, Text, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import cloud from 'd3-cloud'
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
@@ -179,24 +178,23 @@ interface WordCloudItem {
 }
 
 /**
- * d3-cloud 词云项接口
+ * 卡片项接口
  */
-interface D3WordCloudItem {
+interface CardItem {
   id: number;
   prefix: string;
   core: string;
-  fontSize: number;
   color: string;
-  x: number;
-  y: number;
-  rotate: number;
   portrait: Portrait;
   isQuadrant1: boolean;
-  text: string; // 完整文本（前缀+核心词）
+  status: string; // status 字段
+  likeElement?: { name: string; dimension?: string }; // 喜欢元素
+  talentElement?: { name: string; dimension?: string }; // 天赋元素
+  maxStatusLines: number; // 最大显示行数（用于错落有致的效果）
 }
 
 /**
- * 基于 d3-cloud 的语义分层词云组件
+ * 卡片瀑布流组件
  */
 function WordCloudCSS({
   portraits,
@@ -205,222 +203,93 @@ function WordCloudCSS({
   portraits: Portrait[];
   onItemClick?: (portrait: Portrait) => void;
 }) {
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [hoveredId, setHoveredId] = useState<number | null>(null);
-  const [wordCloudItems, setWordCloudItems] = useState<D3WordCloudItem[]>([]);
-  const layoutRef = useRef<any>(null);
-  const measureCanvasRef = useRef<any>(null);
 
-  // 初始化容器尺寸
-  useEffect(() => {
-    const initContainerSize = () => {
-      Promise.resolve(Taro.getWindowInfo()).then((windowInfo) => {
-        const windowWidth = windowInfo.windowWidth;
-        const statusBarHeight = windowInfo.statusBarHeight || 0;
-
-        // 使用 Taro.createSelectorQuery 查询词云容器的实际高度
-        const query = Taro.createSelectorQuery();
-        query.select('.personal-profile-page__word-cloud-container').boundingClientRect();
-        
-        query.exec((res) => {
-          if (res && res[0] && res[0].height > 0) {
-            const containerHeight = res[0].height;
-            setContainerSize({
-              width: windowWidth,
-              height: containerHeight,
-            });
-          } else {
-            // 如果查询失败，使用保守计算
-            const windowHeight = windowInfo.windowHeight;
-            const navigationBarHeight = 44;
-            const bottomNavHeight = 100;
-            const availableHeight = windowHeight - statusBarHeight - navigationBarHeight - bottomNavHeight;
-
-            setContainerSize({
-              width: windowWidth,
-              height: Math.max(availableHeight, 400),
-            });
-          }
-        });
-      });
-    };
-
-    const timer = setTimeout(() => {
-      initContainerSize();
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // 获取测量 Canvas 节点（用于 d3-cloud 测量文本）
-  const getMeasureCanvas = useCallback(() => {
-    return new Promise<any>((resolve) => {
-      const query = Taro.createSelectorQuery();
-      query
-        .select('#d3-cloud-measure-canvas')
-        .fields({ node: true, size: true })
-        .exec((res) => {
-          if (res && res[0] && res[0].node) {
-            const canvas = res[0].node;
-            // 设置 Canvas 尺寸
-            canvas.width = 2000;
-            canvas.height = 200;
-            measureCanvasRef.current = canvas;
-            resolve(canvas);
-          } else {
-            resolve(null);
-          }
-        });
-    });
-  }, []);
-
-  // 初始化测量 Canvas
-  useEffect(() => {
-    getMeasureCanvas();
-  }, [getMeasureCanvas]);
-
-  // 使用 d3-cloud 计算词云布局
-  useEffect(() => {
-    if (portraits.length === 0 || containerSize.width === 0) {
-      setWordCloudItems([]);
-      return;
+  // 准备卡片数据
+  const cardItems = useMemo(() => {
+    if (portraits.length === 0) {
+      return [];
     }
 
-    const calculateLayout = async () => {
-      // 确保测量 Canvas 已准备好
-      let measureCanvas = measureCanvasRef.current;
-      if (!measureCanvas) {
-        measureCanvas = await getMeasureCanvas();
-      }
+    // 分离第一象限和其他象限的词语
+    const quadrant1Items: CardItem[] = [];
+    const otherItems: CardItem[] = [];
 
-      if (!measureCanvas) {
-        console.error('无法创建测量 Canvas');
-        return;
-      }
-
-      const sortedPortraits = [...portraits].sort((a, b) => a.id - b.id);
-      const topMargin = 100; // 顶部边距，为提示文字留出空间
+    portraits.forEach((portrait) => {
+      const { prefix, core } = parseTraitName(portrait.name);
+      const isQuadrant1 = portrait.quadrant?.quadrants === 1;
       
-      // 准备 d3-cloud 的 words 数据
-      const wordsData = sortedPortraits.map((portrait, index) => {
-        const { prefix, core } = parseTraitName(portrait.name);
-        const total = sortedPortraits.length;
-        const weight = Math.pow(1 - index / total, 0.7);
-        
-        const isQuadrant1 = portrait.quadrant?.quadrants === 1;
-        const quadrantMultiplier = isQuadrant1 ? 1.6 : 1.0;
-        
-        const baseFontSize = 18 + weight * 14;
-        const fontSize = Math.min(baseFontSize * quadrantMultiplier, 50);
-        
-        // 计算颜色
-        let color: string;
-        const colorRatio = weight;
-        const coreLower = core.toLowerCase();
-        
-        if (coreLower.includes('逻辑') || coreLower.includes('结构') || coreLower.includes('解码')) {
-          const r1 = 0x3b, g1 = 0x82, b1 = 0xf6;
-          const r2 = 0x1e, g2 = 0x40, b2 = 0xaf;
-          const r = Math.round(r1 + (r2 - r1) * colorRatio);
-          const g = Math.round(g1 + (g2 - g1) * colorRatio);
-          const b = Math.round(b1 + (b2 - b1) * colorRatio);
-          color = `rgb(${r}, ${g}, ${b})`;
-        } else if (coreLower.includes('自然') || coreLower.includes('美学') || coreLower.includes('爱好者')) {
-          const r1 = 0x6e, g1 = 0xd4, b1 = 0x8f;
-          const r2 = 0x10, g2 = 0xb9, b2 = 0x81;
-          const r = Math.round(r1 + (r2 - r1) * colorRatio);
-          const g = Math.round(g1 + (g2 - g1) * colorRatio);
-          const b = Math.round(b1 + (b2 - b1) * colorRatio);
-          color = `rgb(${r}, ${g}, ${b})`;
-        } else if (coreLower.includes('苦行') || coreLower.includes('极简')) {
-          const r1 = 0xfb, g1 = 0xbf, b1 = 0x24;
-          const r2 = 0xf5, g2 = 0x9e, b2 = 0x0b;
-          const r = Math.round(r1 + (r2 - r1) * colorRatio);
-          const g = Math.round(g1 + (g2 - g1) * colorRatio);
-          const b = Math.round(b1 + (b2 - b1) * colorRatio);
-          color = `rgb(${r}, ${g}, ${b})`;
-        } else {
-          const r1 = 0x60, g1 = 0xa5, b1 = 0xfa;
-          const r2 = 0x1a, g2 = 0x56, b2 = 0xdb;
-          const r = Math.round(r1 + (r2 - r1) * colorRatio);
-          const g = Math.round(g1 + (g2 - g1) * colorRatio);
-          const b = Math.round(b1 + (b2 - b1) * colorRatio);
-          color = `rgb(${r}, ${g}, ${b})`;
-        }
-
-        return {
-          text: core, // d3-cloud 需要的 text 字段
-          size: fontSize, // d3-cloud 使用 size 字段，直接使用 fontSize
-          fontSize,
-          color,
-          prefix,
-          core,
-          id: portrait.id,
-          portrait,
-          isQuadrant1,
-        };
-      });
-
-      // 创建 d3-cloud 布局
-      const layout = cloud()
-        .size([containerSize.width, containerSize.height - topMargin])
-        .words(wordsData as any)
-        .padding(12) // 词语之间的内边距，增加以避免重叠
-        .canvas(() => {
-          // 为 d3-cloud 提供 Canvas 元素
-          return measureCanvas;
-        })
-        .rotate((d: any) => {
-          // 旋转角度：-15° 到 +15°
-          const wordData = wordsData.find((w: any) => w.text === d.text);
-          if (wordData) {
-            const rotationSeed = wordData.id * 0.1;
-            return Math.sin(rotationSeed) * 15;
-          }
-          return 0;
-        })
-        .font('PingFang SC')
-        .fontSize((d: any) => d.size)
-        .on('end', (words: any[]) => {
-          // 布局完成，转换数据格式
-          // d3-cloud 的坐标是相对于画布中心的，需要转换为绝对坐标
-          const centerX = containerSize.width / 2;
-          const centerY = (containerSize.height - topMargin) / 2;
-          
-          const items: D3WordCloudItem[] = words.map((word: any) => {
-            const originalWord = wordsData.find((w: any) => w.text === word.text);
-            return {
-              id: originalWord?.id || 0,
-              prefix: originalWord?.prefix || '',
-              core: originalWord?.core || word.text,
-              fontSize: word.size || originalWord?.fontSize || 18,
-              color: originalWord?.color || PRIMARY_COLORS.main,
-              x: word.x || 0, // d3-cloud 的 x 是相对于中心的
-              y: word.y || 0, // d3-cloud 的 y 是相对于中心的
-              rotate: word.rotate || 0,
-              portrait: originalWord?.portrait || portraits[0],
-              isQuadrant1: originalWord?.isQuadrant1 || false,
-              text: word.text || '',
-            };
-          });
-          
-          setWordCloudItems(items);
-        });
-
-      // 启动布局计算
-      layout.start();
-      layoutRef.current = layout;
-    };
-
-    calculateLayout();
-
-    // 清理函数
-    return () => {
-      if (layoutRef.current) {
-        layoutRef.current.stop();
+      // 计算颜色
+      let color: string;
+      const coreText = core;
+      
+      // 绿色系
+      if (coreText.includes('博物') || coreText.includes('美学') || coreText.includes('发现') ||
+          coreText.includes('改良') || coreText.includes('生活') || coreText.includes('调频') ||
+          coreText.includes('自然') || coreText.includes('爱好者')) {
+        color = '#10b981'; // 绿色
+      } 
+      // 橙色系
+      else if (coreText.includes('造梦') || coreText.includes('点灯') || coreText.includes('启迪') ||
+               coreText.includes('旅行') || coreText.includes('苦行') || coreText.includes('极简')) {
+        color = '#f59e0b'; // 橙色
+      } 
+      // 紫色系
+      else if (coreText.includes('灵魂') || coreText.includes('连接') || coreText.includes('共振') ||
+               coreText.includes('共识') || coreText.includes('领航') || coreText.includes('特种') ||
+               coreText.includes('双子') || coreText.includes('战略')) {
+        color = '#8b5cf6'; // 紫色
+      } 
+      // 蓝色系
+      else if (coreText.includes('逻辑') || coreText.includes('结构') || coreText.includes('解码') || 
+               coreText.includes('架构') || coreText.includes('秩序') || coreText.includes('校准') ||
+               coreText.includes('鉴真') || coreText.includes('收藏') || coreText.includes('极客') ||
+               coreText.includes('解构') || coreText.includes('识人') || coreText.includes('模拟') ||
+               coreText.includes('守藏') || coreText.includes('匠心')) {
+        color = '#1a56db'; // 蓝色
+      } 
+      // 默认蓝色
+      else {
+        color = '#1a56db';
       }
-    };
-  }, [portraits, containerSize, getMeasureCanvas]);
+
+      // 根据 id 计算不同的最大行数，形成错落有致的效果（2-4行不等）
+      // 使用 id 的模运算来分配不同的行数
+      const maxStatusLines = (portrait.id % 3) + 2; // 2, 3, 4 行循环
+
+      const item: CardItem = {
+        id: portrait.id,
+        prefix,
+        core,
+        color,
+        portrait,
+        isQuadrant1,
+        status: portrait.status || '', // 添加 status 字段
+        likeElement: portrait.likeElement ? {
+          name: portrait.likeElement.name,
+          dimension: portrait.likeElement.dimension,
+        } : undefined,
+        talentElement: portrait.talentElement ? {
+          name: portrait.talentElement.name,
+          dimension: portrait.talentElement.dimension,
+        } : undefined,
+        maxStatusLines, // 每个卡片不同的最大行数
+      };
+
+      if (isQuadrant1) {
+        quadrant1Items.push(item);
+      } else {
+        otherItems.push(item);
+      }
+    });
+
+    // 第一象限按 id 排序，其他象限也按 id 排序
+    quadrant1Items.sort((a, b) => a.id - b.id);
+    otherItems.sort((a, b) => a.id - b.id);
+
+    // 第一象限在前，其他在后
+    return [...quadrant1Items, ...otherItems];
+  }, [portraits]);
 
   // 处理点击
   const handleItemClick = useCallback((portrait: Portrait) => {
@@ -429,57 +298,25 @@ function WordCloudCSS({
     }
   }, [onItemClick]);
 
-  if (containerSize.width === 0) {
-    return null;
-  }
-
   return (
     <View className="word-cloud-css">
-      {/* 隐藏的测量 Canvas，用于 d3-cloud 测量文本 */}
-      <Canvas
-        id="d3-cloud-measure-canvas"
-        type="2d"
-        canvasId="d3-cloud-measure-canvas"
-        style={{
-          position: 'absolute',
-          top: '-9999px',
-          left: '-9999px',
-          width: '2000px',
-          height: '200px',
-          visibility: 'hidden',
-        }}
-      />
-      
       {/* 顶部提示 */}
       <View className="word-cloud-css__tip">
-        <Text className="word-cloud-css__tip-text">👇 点击任意词语查看详细报告</Text>
+        <Text className="word-cloud-css__tip-text">👇 点击任意卡片查看详细报告</Text>
       </View>
       
-      {/* 词云容器 */}
-      <View 
-        className="word-cloud-css__container"
-        style={{
-          width: `${containerSize.width}px`,
-          height: `${containerSize.height}px`,
-        }}
-      >
-        {wordCloudItems.map((item) => {
+      {/* 卡片瀑布流容器 */}
+      <View className="word-cloud-css__container">
+        {cardItems.map((item) => {
           const isHovered = hoveredId === item.id;
-          const fontWeight = isHovered ? '700' : (item.isQuadrant1 ? '600' : '500');
-          const textColor = isHovered ? PRIMARY_COLORS.main : (item.isQuadrant1 ? PRIMARY_COLORS.mainDark : item.color);
-          const opacity = hoveredId !== null && !isHovered ? 0.2 : 1;
 
           return (
             <View
               key={item.id}
-              className="word-cloud-css__item"
+              className={`word-cloud-css__card ${item.isQuadrant1 ? 'word-cloud-css__card--quadrant1' : ''}`}
               style={{
-                position: 'absolute',
-                left: `${item.x + containerSize.width / 2}px`, // d3-cloud 的坐标是相对于中心的，需要加上中心点
-                top: `${item.y + (containerSize.height - 100) / 2 + 50}px`, // 考虑顶部边距，向下偏移50px
-                transform: `translate(-50%, -50%) rotate(${item.rotate}deg)`,
-                opacity,
-                zIndex: isHovered ? 10 : 1,
+                borderLeftColor: item.color,
+                borderLeftWidth: item.isQuadrant1 ? '5px' : '4px', // 第一象限边框更粗
               }}
               onTouchStart={() => setHoveredId(item.id)}
               onTouchEnd={() => {
@@ -489,25 +326,79 @@ function WordCloudCSS({
               onTouchCancel={() => setHoveredId(null)}
             >
               {item.prefix && (
-                <Text
-                  className="word-cloud-css__prefix"
-                  style={{
-                    color: isHovered ? NEUTRAL_COLORS.textSecondary : NEUTRAL_COLORS.textTertiary,
-                  }}
-                >
+                <Text className="word-cloud-css__card-prefix">
                   {item.prefix}
                 </Text>
               )}
-              <Text
-                className="word-cloud-css__core"
+              <Text 
+                className="word-cloud-css__card-core"
                 style={{
-                  fontSize: `${item.fontSize}px`,
-                  color: textColor,
-                  fontWeight,
+                  color: item.color,
+                  fontWeight: item.isQuadrant1 ? '600' : '500',
+                  fontSize: item.isQuadrant1 ? '24px' : '20px', // 第一象限字体更大
                 }}
               >
                 {item.core}
               </Text>
+              
+              {/* 显示喜欢和天赋元素（所有象限都显示，但根据象限添加说明） */}
+              {(item.likeElement || item.talentElement) && (
+                <View className="word-cloud-css__card-elements">
+                  {(() => {
+                    const quadrant = item.portrait.quadrant?.quadrants;
+                    let likeLabel = '';
+                    let talentLabel = '';
+                    
+                    // 根据象限组织和润色文字（去掉"喜欢"和"天赋"，只保留象限说明）
+                    if (quadrant === 1) {
+                      // 第一象限：喜欢和天赋兼具
+                      likeLabel = '（兼具）';
+                      talentLabel = '（兼具）';
+                    } else if (quadrant === 2) {
+                      // 第二象限：有天赋，喜欢不明显
+                      likeLabel = '（不明显）';
+                      talentLabel = '（明显）';
+                    } else if (quadrant === 3) {
+                      // 第三象限：有喜欢，天赋不明显
+                      likeLabel = '（明显）';
+                      talentLabel = '（不明显）';
+                    } else if (quadrant === 4) {
+                      // 第四象限：喜欢和天赋都不明显
+                      likeLabel = '（不明显）';
+                      talentLabel = '（不明显）';
+                    }
+                    
+                    return (
+                      <>
+                        {item.likeElement && (
+                          <View className="word-cloud-css__card-element">
+                            <Text className="word-cloud-css__card-element-label">{likeLabel}</Text>
+                            <Text className="word-cloud-css__card-element-value">
+                              {item.likeElement.dimension ? `${item.likeElement.dimension}-` : ''}{item.likeElement.name}
+                            </Text>
+                          </View>
+                        )}
+                        {item.talentElement && (
+                          <View className="word-cloud-css__card-element">
+                            <Text className="word-cloud-css__card-element-label">{talentLabel}</Text>
+                            <Text className="word-cloud-css__card-element-value">
+                              {item.talentElement.dimension ? `${item.talentElement.dimension}-` : ''}{item.talentElement.name}
+                            </Text>
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
+                </View>
+              )}
+              
+              {item.status && (
+                <Text 
+                  className={`word-cloud-css__card-status word-cloud-css__card-status--lines-${item.maxStatusLines}`}
+                >
+                  {item.status}
+                </Text>
+              )}
             </View>
           );
         })}
