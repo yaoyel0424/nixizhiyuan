@@ -827,10 +827,9 @@ export default function IntendedMajorsSchoolsPage() {
     // 因为志愿的省份是招生省份（如"江苏"），而学校的省份是学校所在省份（如"广东"）
     const targetProvince = selectedPlanData?.province || selectedPlanData?.majorScores?.[0]?.province || null
     
-    if (!targetMajorGroupName && !targetMajorGroupId) {
-      return { isIn: false }
-    }
-    
+    // 院校模式下 targetMajorGroupId 和 targetMajorGroupName 可能都为空，仍可仅凭学校+备注+招生专业等匹配，不在此处提前返回
+    // if (!targetMajorGroupName && !targetMajorGroupId) return { isIn: false } 已移除
+
     // 获取学校代码（优先从apiData中获取）
     let schoolCode: string | undefined
     if (apiData.length > 0) {
@@ -877,6 +876,12 @@ export default function IntendedMajorsSchoolsPage() {
                   choiceMajorGroupName === targetMajorGroupName ||
                   choiceMajorGroupName.trim() === targetMajorGroupName.trim()
                 )
+              } else if (!targetMajorGroupId && !choiceMajorGroupId) {
+                // 院校模式：双方都无专业组 ID，同一学校下视为同一组，仅用备注+招生专业等字段区分
+                isGroupMatch = true
+              } else if (!choiceMajorGroupId && !majorGroup.majorGroup) {
+                // 已选志愿为院校模式（无专业组），列表/弹框 plan 可能有 majorGroupId，仍按学校+备注+招生专业等匹配
+                isGroupMatch = true
               }
               
               if (!isGroupMatch) {
@@ -1324,6 +1329,15 @@ export default function IntendedMajorsSchoolsPage() {
                                           Number(planMajorGroupId) === Number(majorGroupMgId) ||
                                           String(planMajorGroupId) === String(majorGroupMgId)
                                         )
+                                      }
+                                      
+                                      // 院校模式：双方都无专业组 ID，同一学校下视为同一组，仅用备注+招生专业等区分
+                                      if (!isGroupMatch && !planMajorGroupId && !choiceMajorGroupId && (majorGroupMgId === null || majorGroupMgId === undefined)) {
+                                        isGroupMatch = true
+                                      }
+                                      // 列表 plan 有 majorGroupId 但已选志愿是院校模式（choice 无 majorGroupId）：仍按学校+备注+招生专业等匹配
+                                      if (!isGroupMatch && !choiceMajorGroupId && (majorGroupMgId === null || majorGroupMgId === undefined)) {
+                                        isGroupMatch = true
                                       }
                                       
                                       // 专业组ID是区分不同志愿的关键字段，必须严格匹配

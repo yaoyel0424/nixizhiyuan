@@ -1623,10 +1623,9 @@ export default function IntendedMajorsPage() {
     const targetRemark = plan.remark || null
     const targetEnrollmentMajor = plan.enrollmentMajor || null
     
-    if (!targetMajorGroupName && !targetMajorGroupId) {
-      return { isIn: false }
-    }
-    
+    // 院校模式下 targetMajorGroupId 和 targetMajorGroupName 可能都为空，仍可仅凭学校+备注+招生专业匹配，不在此处提前返回
+    // if (!targetMajorGroupName && !targetMajorGroupId) return { isIn: false } 已移除
+
     // 获取学校代码（从 groupedChoices 中获取）
     let schoolCode: string | undefined
     if (groupedChoices && groupedChoices.volunteers.length > 0) {
@@ -1669,6 +1668,9 @@ export default function IntendedMajorsPage() {
                   choiceMajorGroupName === targetMajorGroupName ||
                   choiceMajorGroupName.trim() === targetMajorGroupName.trim()
                 )
+              } else if (!targetMajorGroupId && !choiceMajorGroupId) {
+                // 院校模式：双方都无专业组 ID，同一学校下视为同一组，仅用备注+招生专业区分
+                isGroupMatch = true
               }
               
               if (!isGroupMatch) {
@@ -2362,8 +2364,8 @@ export default function IntendedMajorsPage() {
                                   </View>
                                 )}
                                 
-                                {/* 然后在下面显示 choices（可折叠） */}
-                                {isChoicesExpanded && (
+                                {/* 然后显示 choices：有专业组时需展开才显示，院校模式（majorGroup 为空）时直接显示 */}
+                                {(isChoicesExpanded || (!majorGroup.majorGroup && choicesCount > 0)) && (
                                   <View className="intended-majors-page__wishlist-item-plans">
                                     {sortedChoices.map((choice, choiceIdx) => {
                                       const loveEnergyScores = getChoiceLoveEnergyScores(choice)
