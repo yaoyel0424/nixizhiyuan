@@ -5,8 +5,8 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Choice } from '@/entities/choices.entity';
 import { User } from '@/entities/user.entity';
@@ -25,6 +25,18 @@ import { plainToInstance } from 'class-transformer';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
+ * 生成 advisory lock 的 key（同一用户同一年串行，避免并发创建志愿冲突）
+ */
+function lockKeyForUserAndYear(userId: number, year: string): number {
+  let h = 0;
+  const str = `${userId}:${year}`;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+/**
  * 志愿选择服务
  * 处理用户志愿选择相关的业务逻辑
  */
@@ -33,6 +45,8 @@ export class ChoicesService {
   private readonly logger = new Logger(ChoicesService.name);
 
   constructor(
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
     @InjectRepository(Choice)
     private readonly choiceRepository: Repository<Choice>,
     @InjectRepository(User)
@@ -58,113 +72,34 @@ export class ChoicesService {
   async create(
     userId: number,
     createChoiceDto: CreateChoiceDto,
-  ): Promise<ChoiceResponseDto> { 
-    // 1. 获取用户信息
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      this.logger.warn(`用户不存在: ${userId}`);
-      throw new NotFoundException('用户不存在');
-    }
-
-    // 2. 从配置中获取年份
+  ): Promise<ChoiceResponseDto> {
     const year = this.configService.get<string>('CURRENT_YEAR') || '2025';
+    const lockKey = lockKeyForUserAndYear(userId, year);
 
-    // 3. 从用户信息中获取字段
-    const province = user.province || null;
-    const enrollmentType = "普通类";
-    const score = user.score || null;
-    const preferredSubjects = user.preferredSubjects || null;
-    const secondarySubjects = user.secondarySubjects
-      ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
-      : null;
- 
-    // 4. 检查是否已存在相同的志愿选择
-    // 检查条件：userId, province, preferredSubjects, year, batch, subjectSelectionMode, mgId, enrollmentMajor, remark, secondarySubjects
-    // 按照索引顺序：userId, province, preferredSubjects, year
-    const existingChoiceQueryBuilder = this.choiceRepository
-      .createQueryBuilder('choice')
-      .where('choice.userId = :userId', { userId })
-      .andWhere('choice.province = :province', { province })
-      .andWhere('choice.preferredSubjects = :preferredSubjects', { preferredSubjects: preferredSubjects ?? null })
-      .andWhere('choice.year = :year', { year })
-      // 索引字段之后的其他条件
-      .andWhere('choice.batch = :batch', { batch: createChoiceDto.batch ?? null })
-      .andWhere('choice.subjectSelectionMode = :subjectSelectionMode', { 
-        subjectSelectionMode: createChoiceDto.subjectSelectionMode ?? null 
-      })
-      .andWhere('choice.mgId = :mgId', { mgId: createChoiceDto.mgId ?? null })
-      .andWhere('choice.enrollmentMajor = :enrollmentMajor', { 
-        enrollmentMajor: createChoiceDto.enrollmentMajor ?? null 
-      })
-      .andWhere('choice.remark = :remark', { remark: createChoiceDto.remark ?? '' });
+    return await this.dataSource.transaction(async (manager) => {
+      // 同一用户同年并发创建时串行化（PostgreSQL advisory lock，事务结束自动释放）
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
 
-    if (secondarySubjects && secondarySubjects.length > 0) {
-      existingChoiceQueryBuilder.andWhere('choice.secondarySubjects = :secondarySubjects', {
-        secondarySubjects,
-      });
-    } else {
-      existingChoiceQueryBuilder.andWhere(
-        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
-        { emptyArray: [] },
-      );
-    }
+      // 1. 获取用户信息
+      const user = await manager.findOne(User, { where: { id: userId } });
 
-    const existingChoice = await existingChoiceQueryBuilder.getOne();
+      if (!user) {
+        this.logger.warn(`用户不存在: ${userId}`);
+        throw new NotFoundException('用户不存在');
+      }
 
-    if (existingChoice) {
-      this.logger.warn(
-        `用户 ${userId} 尝试添加重复的志愿选择，已存在的记录ID: ${existingChoice.id}`,
-      );
-      throw new ConflictException('您已经添加了该志愿');
-    }
+      // 2. 从用户信息中获取字段
+      const province = user.province || null;
+      const enrollmentType = '普通类';
+      const score = user.score || null;
+      const preferredSubjects = user.preferredSubjects || null;
+      const secondarySubjects = user.secondarySubjects
+        ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
+        : null;
 
-    // 5. 确定 mg_index
-    // 规则：同一用户、同一省份、同一首选科目、同一次选科目、同一年份下、同一专业组，其 mg_index 应该是一致的
-    // 查询是否存在相同的 user_id, province, preferred_subjects, secondary_subjects, year, mg_id 组合
-    // 注意：secondarySubjects 是数组，需要使用数组比较
-    // 按照索引顺序：userId, province, preferredSubjects, year
-    // mgId 为 0 时不加入 mgId 条件（0 表示无专业组，不按专业组区分）
-    const sameGroupChoiceBuilder = this.choiceRepository
-      .createQueryBuilder('choice')
-      .where('choice.userId = :userId', { userId })
-      .andWhere('choice.province = :province', { province })
-      .andWhere('choice.preferredSubjects = :preferredSubjects', {
-        preferredSubjects: preferredSubjects ?? null,
-      })
-      .andWhere('choice.year = :year', { year });
-    if (createChoiceDto.mgId !== 0) {
-      sameGroupChoiceBuilder.andWhere('choice.mgId = :mgId', {
-        mgId: createChoiceDto.mgId ?? null,
-      });
-    }
-    const sameGroupChoice = await sameGroupChoiceBuilder
-      .andWhere(
-        secondarySubjects && secondarySubjects.length > 0
-          ? 'choice.secondarySubjects = :secondarySubjects'
-          : '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
-        secondarySubjects && secondarySubjects.length > 0
-          ? { secondarySubjects }
-          : { emptyArray: [] },
-      )
-      .orderBy('choice.mgIndex', 'ASC')
-      .getOne();
-
-    let mgIndex: number;
-    if (sameGroupChoice && sameGroupChoice.mgIndex !== null) {
-      // 如果存在相同组合，使用已存在的 mg_index
-      mgIndex = sameGroupChoice.mgIndex;
-      this.logger.log(
-        `用户 ${userId} 在相同专业组下创建志愿，复用 mg_index: ${mgIndex}`,
-      );
-    } else {
-      // 如果不存在，计算该组合（userId, province, preferredSubjects, secondarySubjects, year）下的最大 mg_index
-      // 按照索引顺序：userId, province, preferredSubjects, year
-      const queryBuilder = this.choiceRepository
-        .createQueryBuilder('choice')
-        .select('MAX(choice.mgIndex)', 'max')
+      // 3. 一次查询同组志愿：用于判重 + 确定 mg_index
+      const sameGroupQueryBuilder = manager
+        .createQueryBuilder(Choice, 'choice')
         .where('choice.userId = :userId', { userId })
         .andWhere('choice.province = :province', { province })
         .andWhere('choice.preferredSubjects = :preferredSubjects', {
@@ -172,192 +107,144 @@ export class ChoicesService {
         })
         .andWhere('choice.year = :year', { year });
 
+      // mgId 不为 0 时按 mgId 限定同组；mgId 为 0（院校模式）时不在此处加 schoolCode，去重时再按 schoolCode 判断
+      if (createChoiceDto.mgId !== 0) {
+        sameGroupQueryBuilder.andWhere('choice.mgId = :mgId', {
+          mgId: createChoiceDto.mgId ?? null,
+        });
+      }
+
       if (secondarySubjects && secondarySubjects.length > 0) {
-        queryBuilder.andWhere('choice.secondarySubjects = :secondarySubjects', {
+        sameGroupQueryBuilder.andWhere('choice.secondarySubjects = :secondarySubjects', {
           secondarySubjects,
         });
       } else {
-        queryBuilder.andWhere(
+        sameGroupQueryBuilder.andWhere(
           '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
           { emptyArray: [] },
         );
       }
 
-      const maxMgIndexResult = await queryBuilder.getRawOne();
+      const sameGroupChoices = await sameGroupQueryBuilder.getMany();
 
-      const maxMgIndex = maxMgIndexResult?.max
-        ? parseInt(maxMgIndexResult.max, 10)
-        : 0;
-      mgIndex = maxMgIndex + 1;
-      this.logger.log(
-        `用户 ${userId} 创建新的专业组志愿，新 mg_index: ${mgIndex}`,
-      );
-    }
-
-    // 6. 确定 major_index
-    // 基于已确定的 mg_index，查询该 mg_index 下的最大 major_index
-    // 需要在相同的分组条件下（userId, province, preferredSubjects, secondarySubjects, year）
-    // 按照索引顺序：userId, province, preferredSubjects, year
-    const majorIndexQueryBuilder = this.choiceRepository
-      .createQueryBuilder('choice')
-      .select('MAX(choice.majorIndex)', 'max')
-      .where('choice.userId = :userId', { userId })
-      .andWhere('choice.province = :province', { province })
-      .andWhere('choice.preferredSubjects = :preferredSubjects', {
-        preferredSubjects: preferredSubjects ?? null,
-      })
-      .andWhere('choice.year = :year', { year })
-      // 索引字段之后的其他条件
-      .andWhere('choice.mgIndex = :mgIndex', { mgIndex });
-
-    if (secondarySubjects && secondarySubjects.length > 0) {
-      majorIndexQueryBuilder.andWhere(
-        'choice.secondarySubjects = :secondarySubjects',
-        { secondarySubjects },
-      );
-    } else {
-      majorIndexQueryBuilder.andWhere(
-        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
-        { emptyArray: [] },
-      );
-    }
-
-    const maxMajorIndexResult = await majorIndexQueryBuilder.getRawOne();
-
-    const maxMajorIndex = maxMajorIndexResult?.max
-      ? parseInt(maxMajorIndexResult.max, 10)
-      : 0;
-    const majorIndex = maxMajorIndex + 1;
-
-    // 6.1 检查该 mg_index 下是否已经有 6 个专业
-    // 需要在相同的分组条件下（userId, province, preferredSubjects, secondarySubjects, year）
-    // 按照索引顺序：userId, province, preferredSubjects, year
-    const countQueryBuilder = this.choiceRepository
-      .createQueryBuilder('choice')
-      .where('choice.userId = :userId', { userId })
-      .andWhere('choice.province = :province', { province })
-      .andWhere('choice.preferredSubjects = :preferredSubjects', {
-        preferredSubjects: preferredSubjects ?? null,
-      })
-      .andWhere('choice.year = :year', { year })
-      // 索引字段之后的其他条件
-      .andWhere('choice.mgIndex = :mgIndex', { mgIndex });
-
-    if (secondarySubjects && secondarySubjects.length > 0) {
-      countQueryBuilder.andWhere(
-        'choice.secondarySubjects = :secondarySubjects',
-        { secondarySubjects },
-      );
-    } else {
-      countQueryBuilder.andWhere(
-        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
-        { emptyArray: [] },
-      );
-    }
-
-    const existingChoicesCount = await countQueryBuilder.getCount();
-
-    if (existingChoicesCount >= 6) {
-      this.logger.warn(
-        `用户 ${userId} 尝试在 mg_index ${mgIndex} 下创建第 ${existingChoicesCount + 1} 个专业，超过最大限制 6 个`,
-      );
-      throw new BadRequestException('每个专业组下最多只能添加 6 个专业');
-    }
-
-    this.logger.log(
-      `用户 ${userId} 创建志愿，mg_index: ${mgIndex}, major_index: ${majorIndex}`,
-    ); 
- 
-    // 7. 创建志愿选择记录
-    const choice = this.choiceRepository.create({
-      userId,
-      mgId:  createChoiceDto.mgId ?? null,
-      mgIndex,
-      schoolCode: createChoiceDto.schoolCode ?? null,
-      year,
-      enrollmentMajor: createChoiceDto.enrollmentMajor ?? null,
-      province,
-      batch: createChoiceDto.batch ?? null,
-      enrollmentType,
-      score,
-      preferredSubjects,
-      secondarySubjects,
-      rank: createChoiceDto.rank ?? null,
-      majorGroupInfo: createChoiceDto.majorGroupInfo ?? null,
-      subjectSelectionMode: createChoiceDto.subjectSelectionMode ?? null,
-      studyPeriod: createChoiceDto.studyPeriod ?? null,
-      enrollmentQuota: createChoiceDto.enrollmentQuota ?? null,
-      remark: createChoiceDto.remark ?? '',
-      tuitionFee: createChoiceDto.tuitionFee ?? null,
-      curUnit: createChoiceDto.curUnit ?? null,
-      majorIndex,
-      majorScores: createChoiceDto.majorScores ?? null,
-    });
-
-    // 8. 保存到数据库
-    const savedChoice = await this.choiceRepository.save(choice);
-
-    this.logger.log(`用户 ${userId} 创建志愿选择成功，ID: ${savedChoice.id}`);
-
-    // 9. 查询关联的专业组信息（如果存在）
-    let majorGroup = null;
-    if (savedChoice.mgId) {
-      majorGroup = await this.majorGroupRepository.findOne({
-        where: { mgId: savedChoice.mgId },
+      // 4. 判重：batch、subjectSelectionMode、enrollmentMajor、remark 相同；专业组模式同组查询已限定 mgId，院校模式再按 schoolCode 判断
+      const existingChoice = sameGroupChoices.find((c) => {
+        const sameFields =
+          (c.batch ?? null) === (createChoiceDto.batch ?? null) &&
+          (c.subjectSelectionMode ?? null) === (createChoiceDto.subjectSelectionMode ?? null) &&
+          (c.enrollmentMajor ?? null) === (createChoiceDto.enrollmentMajor ?? null) &&
+          (c.remark ?? '') === (createChoiceDto.remark ?? '');
+        if (createChoiceDto.mgId !== 0) return sameFields;
+        return sameFields && (c.schoolCode ?? null) === (createChoiceDto.schoolCode ?? null);
       });
-    }
 
-    // 10. 查询关联的学校信息（如果存在）
-    let school = null;
-    let schoolDetail = null;
-    if (savedChoice.schoolCode) {
-      school = await this.schoolRepository.findOne({
-        where: { code: savedChoice.schoolCode },
-      });
-      if (school) {
-        schoolDetail = await this.schoolDetailRepository.findOne({
-          where: { code: savedChoice.schoolCode },
-        });
+      if (existingChoice) {
+        this.logger.warn(
+          `用户 ${userId} 尝试添加重复的志愿选择，已存在的记录ID: ${existingChoice.id}`,
+        );
+        throw new ConflictException('您已经添加了该志愿');
       }
-    }
 
-    // 11. 构建响应对象，将 mgId 映射为 majorGroupId，并添加 majorGroup 和 school
-    const responseData = {
-      ...savedChoice,
-      majorGroupId: savedChoice.mgId,
-      majorGroup: majorGroup
-        ? {
-            schoolCode: majorGroup.schoolCode,
-            province: majorGroup.province,
-            year: majorGroup.year,
-            subjectSelectionMode: majorGroup.subjectSelectionMode,
-            batch: majorGroup.batch,
-            mgId: majorGroup.mgId ,
-            mgName: majorGroup.mgName,
-            mgInfo: majorGroup.mgInfo,
-          }
-        : null,
-      majorScores: savedChoice.majorScores || [],
-      school: school
-        ? {
-            code: school.code,
-            name: school.name,
-            nature: school.nature,
-            level: school.level,
-            belong: school.belong,
-            categories: school.categories,
-            features: school.features,
-            provinceName: school.provinceName,
-            cityName: school.cityName,
-            enrollmentRate: schoolDetail?.enrollmentRate ?? null,
-            employmentRate: schoolDetail?.employmentRate ?? null,
-          }
-        : null,
-    };
+      // 5. 确定 mg_index
+      const sameGroupChoice =
+        sameGroupChoices.length > 0
+          ? sameGroupChoices.reduce(
+              (min, c) =>
+                (c.mgIndex ?? 999999) < (min.mgIndex ?? 999999) ? c : min,
+              sameGroupChoices[0],
+            )
+          : null;
 
-    // 12. 转换为响应 DTO
-    return plainToInstance(ChoiceResponseDto, responseData, {
-      excludeExtraneousValues: true,
+      let mgIndex: number;
+      if (createChoiceDto.mgId === 0) {
+        // 院校模式：不复用 mg_index，直接取最大 + 1
+        const maxMgIndex = sameGroupChoices.length
+          ? Math.max(0, ...sameGroupChoices.map((c) => c.mgIndex ?? 0))
+          : 0;
+        mgIndex = maxMgIndex + 1;
+        this.logger.log(
+          `用户 ${userId} 院校模式创建志愿，mg_index: ${mgIndex}`,
+        );
+      } else if (sameGroupChoice && sameGroupChoice.mgIndex != null) {
+        mgIndex = sameGroupChoice.mgIndex;
+        this.logger.log(
+          `用户 ${userId} 在相同专业组下创建志愿，复用 mg_index: ${mgIndex}`,
+        );
+      } else {
+        const maxMgIndex = sameGroupChoices.length
+          ? Math.max(0, ...sameGroupChoices.map((c) => c.mgIndex ?? 0))
+          : 0;
+        mgIndex = maxMgIndex + 1;
+        this.logger.log(
+          `用户 ${userId} 创建新的专业组志愿，新 mg_index: ${mgIndex}`,
+        );
+      }
+
+      // 6. 确定 major_index
+      const choicesWithSameMgIndex = sameGroupChoices.filter(
+        (c) => c.mgIndex === mgIndex,
+      );
+      const maxMajorIndex =
+        choicesWithSameMgIndex.length > 0
+          ? Math.max(0, ...choicesWithSameMgIndex.map((c) => c.majorIndex ?? 0))
+          : 0;
+      const majorIndex = maxMajorIndex + 1;
+
+      // 6.1 检查该 mg_index 下是否已有 6 个专业
+      const existingChoicesCount = choicesWithSameMgIndex.length;
+
+      if (existingChoicesCount >= 6) {
+        this.logger.warn(
+          `用户 ${userId} 尝试在 mg_index ${mgIndex} 下创建第 ${existingChoicesCount + 1} 个专业，超过最大限制 6 个`,
+        );
+        throw new BadRequestException('每个专业组下最多只能添加 6 个专业');
+      }
+
+      this.logger.log(
+        `用户 ${userId} 创建志愿，mg_index: ${mgIndex}, major_index: ${majorIndex}`,
+      );
+
+      // 7. 创建并保存志愿选择记录
+      const choice = manager.create(Choice, {
+        userId,
+        mgId: createChoiceDto.mgId ?? null,
+        mgIndex,
+        schoolCode: createChoiceDto.schoolCode ?? null,
+        year,
+        enrollmentMajor: createChoiceDto.enrollmentMajor ?? null,
+        province,
+        batch: createChoiceDto.batch ?? null,
+        enrollmentType,
+        score,
+        preferredSubjects,
+        secondarySubjects,
+        rank: createChoiceDto.rank ?? null,
+        majorGroupInfo: createChoiceDto.majorGroupInfo ?? null,
+        subjectSelectionMode: createChoiceDto.subjectSelectionMode ?? null,
+        studyPeriod: createChoiceDto.studyPeriod ?? null,
+        enrollmentQuota: createChoiceDto.enrollmentQuota ?? null,
+        remark: createChoiceDto.remark ?? '',
+        tuitionFee: createChoiceDto.tuitionFee ?? null,
+        curUnit: createChoiceDto.curUnit ?? null,
+        majorIndex,
+        majorScores: createChoiceDto.majorScores ?? null,
+      });
+
+      const savedChoice = await manager.save(Choice, choice);
+
+      this.logger.log(`用户 ${userId} 创建志愿选择成功，ID: ${savedChoice.id}`);
+
+      const responseData = {
+        ...savedChoice,
+        majorGroupId: savedChoice.mgId,
+        majorGroup: null,
+        majorScores: savedChoice.majorScores || [],
+        school: null,
+      };
+
+      return plainToInstance(ChoiceResponseDto, responseData, {
+        excludeExtraneousValues: true,
+      });
     });
   }
 

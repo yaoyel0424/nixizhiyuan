@@ -79,6 +79,8 @@ export default function MajorsPage() {
   const [onlyMatchSubject, setOnlyMatchSubject] = useState(false)
   // api/v1/enroll-plan/level3-major-ids 返回的 level3MajorIds，用于筛选：只显示 level3MajorId 在其中的专业
   const [matchSubjectLevel3Ids, setMatchSubjectLevel3Ids] = useState<Set<number>>(new Set())
+  // 是否已请求过 level3-major-ids 并返回（用于区分「加载中」与「返回 0 条」）
+  const [level3IdsLoaded, setLevel3IdsLoaded] = useState(false)
   // 高考信息弹窗（与意向专业页一致）
   const [showExamInfoDialog, setShowExamInfoDialog] = useState(false)
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
@@ -96,28 +98,27 @@ export default function MajorsPage() {
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
-  // 勾选「符合选科的专业」时调用 api/v1/enroll-plan/level3-major-ids，用返回的 level3MajorIds 筛选；出错或返回空数组则不修改页面（取消勾选并显示全部）
+  // 勾选「符合选科的专业」时调用 api/v1/enroll-plan/level3-major-ids，用返回的 level3MajorIds 筛选；返回 0 条时保持勾选并按空结果展示
   useEffect(() => {
     if (!onlyMatchSubject) {
       setMatchSubjectLevel3Ids(new Set())
+      setLevel3IdsLoaded(false)
       return
     }
+    setLevel3IdsLoaded(false)
     let cancelled = false
     getLevel3MajorIds()
       .then((res) => {
         if (cancelled) return
-        if (res.level3MajorIds && res.level3MajorIds.length > 0) {
-          setMatchSubjectLevel3Ids(new Set(res.level3MajorIds))
-        } else {
-          // 返回空数组：不修改页面，取消勾选并显示全部专业，避免一直显示「正在加载符合选科的专业...」
-          setOnlyMatchSubject(false)
-          setMatchSubjectLevel3Ids(new Set())
-        }
+        const ids = res.level3MajorIds && Array.isArray(res.level3MajorIds) ? res.level3MajorIds : []
+        setMatchSubjectLevel3Ids(new Set(ids))
+        setLevel3IdsLoaded(true)
       })
       .catch(() => {
         // 接口出错：不修改页面，取消勾选并显示全部
         setOnlyMatchSubject(false)
         setMatchSubjectLevel3Ids(new Set())
+        setLevel3IdsLoaded(false)
       })
     return () => { cancelled = true }
   }, [onlyMatchSubject])
@@ -129,11 +130,15 @@ export default function MajorsPage() {
     '专科': 'zhuan'
   }
 
-  // 符合选科时的有效列表：用 allMajors 中的 majorId 与接口返回值匹配，只显示 majorId 在接口返回中的专业
+  // 符合选科时的有效列表：用 allMajors 中的 majorId 与接口返回值匹配，只显示 majorId 在接口返回中的专业；接口已返回 0 条时返回空数组
   const effectiveList = useMemo(() => {
-    if (!onlyMatchSubject || matchSubjectLevel3Ids.size === 0) return allMajors
-    return allMajors.filter((m) => (m as any).majorId  != null && matchSubjectLevel3Ids.has((m as any).majorId ))
-  }, [allMajors, onlyMatchSubject, matchSubjectLevel3Ids])
+    if (!onlyMatchSubject) return allMajors
+    if (matchSubjectLevel3Ids.size === 0) {
+      if (level3IdsLoaded) return [] // 接口已返回 0 条，按空结果展示
+      return allMajors // 加载中（此时会显示「正在加载」，不渲染列表）
+    }
+    return allMajors.filter((m) => (m as any).majorId != null && matchSubjectLevel3Ids.has((m as any).majorId))
+  }, [allMajors, onlyMatchSubject, matchSubjectLevel3Ids, level3IdsLoaded])
 
   // 当前页显示的专业（由 effectiveList 与 currentPage 推导）
   const displayedMajors = useMemo(
@@ -917,11 +922,11 @@ export default function MajorsPage() {
               <Text className="majors-page__empty-text">暂无专业数据</Text>
               <Text className="majors-page__empty-desc">请先完成专业测评问卷</Text>
             </View>
-          ) : onlyMatchSubject && matchSubjectLevel3Ids.size === 0 ? (
+          ) : onlyMatchSubject && !level3IdsLoaded ? (
             <View className="majors-page__empty">
               <Text className="majors-page__empty-text">正在加载符合选科的专业...</Text>
             </View>
-          ) : effectiveList.length === 0 ? (
+          ) : onlyMatchSubject && effectiveList.length === 0 ? (
             <View className="majors-page__empty">
               <Text className="majors-page__empty-text">暂无符合您选科条件的专业</Text>
               <Text className="majors-page__empty-desc">可取消勾选「符合选科的专业」查看全部</Text>
