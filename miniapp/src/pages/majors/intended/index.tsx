@@ -1865,7 +1865,7 @@ export default function IntendedMajorsPage() {
                   className="intended-majors-page__action-button"
                   size="sm"
                 >
-                  📄 高考信息
+                  高考信息
                 </Button>
               )}
               {activeTab === '意向志愿' ? (
@@ -1887,7 +1887,7 @@ export default function IntendedMajorsPage() {
                   className="intended-majors-page__action-button"
                   size="sm"
                 >
-                  📍 意向省份
+                  意向省份
                 </Button>
               )}
             </View>
@@ -2019,12 +2019,21 @@ export default function IntendedMajorsPage() {
             <View className="intended-majors-page__empty">
               <Text className="intended-majors-page__empty-icon">🔍</Text>
               <Text className="intended-majors-page__empty-text">暂无志愿数据</Text>
-              <Text className="intended-majors-page__empty-desc">
-                {majorFavoritesCount === 0 ? '请先探索心动专业' : '请先进行院校探索，添加心仪的志愿'}
-              </Text>
+              {majorFavoritesCount === 0 ? (
+                <View
+                  className="intended-majors-page__empty-desc intended-majors-page__empty-desc--link"
+                  onClick={() => Taro.navigateTo({ url: '/pages/majors/index' })}
+                >
+                  <Text>点击探索心动专业</Text>
+                </View>
+              ) : (
+                <Text className="intended-majors-page__empty-desc">
+                  请先进行院校探索，添加心仪的志愿
+                </Text>
+              )}
               <Button
+                disabled={majorFavoritesCount === 0}
                 onClick={() => {
-                  // 使用 navigateTo 保留页面栈，便于从“院校探索”返回到“志愿方案”
                   Taro.navigateTo({
                     url: '/pages/majors/intended/index?tab=专业赛道'
                   })

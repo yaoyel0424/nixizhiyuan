@@ -5,6 +5,7 @@ export default {
     'pages/assessment/index',
     'pages/assessment/all-majors/index',
     'pages/assessment/personal-profile/index',
+    'pages/assessment/portrait-detail/index',
     'pages/assessment/favorite-majors/index',
     'pages/assessment/single-major/index',
     'pages/majors/index',

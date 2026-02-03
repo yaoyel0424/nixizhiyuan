@@ -1,7 +1,7 @@
 // 专业探索页面
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { View, Text, ScrollView, Canvas } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { BottomNav } from '@/components/BottomNav'
@@ -184,28 +184,39 @@ export default function MajorsPage() {
     }
   }, [])
 
-  // 加载心动专业列表
+  // 加载心动专业列表（可复用：首次挂载与页面再次显示时调用）
+  const loadFavoriteMajors = useCallback(async () => {
+    try {
+      const favorites = await getFavoriteMajors()
+      const majorCodes = favorites.map(fav => fav.majorCode)
+      setFavoriteMajors(new Set(majorCodes))
+    } catch (error: any) {
+      console.error('加载心动专业失败:', error)
+      // API 调用失败，显示错误提示
+      const errorMsg = error?.message || '加载收藏列表失败'
+      Taro.showToast({
+        title: errorMsg,
+        icon: 'none',
+        duration: 2000
+      })
+      // 不设置任何数据，保持空状态
+      setFavoriteMajors(new Set())
+    }
+  }, [])
+
   useEffect(() => {
-    const loadFavoriteMajors = async () => {
-      try {
-        const favorites = await getFavoriteMajors()
-        const majorCodes = favorites.map(fav => fav.majorCode)
-        setFavoriteMajors(new Set(majorCodes))
-      } catch (error: any) {
-        console.error('加载心动专业失败:', error)
-        // API调用失败，显示错误提示
-        const errorMsg = error?.message || '加载收藏列表失败'
-        Taro.showToast({
-          title: errorMsg,
-          icon: 'none',
-          duration: 2000
-        })
-        // 不设置任何数据，保持空状态
-        setFavoriteMajors(new Set())
-      }
+    loadFavoriteMajors()
+  }, [loadFavoriteMajors])
+
+  // 页面再次显示时（如从心动专业页返回、删除后返回）重新拉取心动专业列表，保证数量与列表一致
+  const isFirstShowRef = useRef(true)
+  useDidShow(() => {
+    if (isFirstShowRef.current) {
+      isFirstShowRef.current = false
+      return
     }
     loadFavoriteMajors()
-  }, [])
+  })
 
   // 检查是否需要显示引导
   useEffect(() => {
@@ -800,11 +811,9 @@ export default function MajorsPage() {
       const codeMatch = major.majorCode?.toLowerCase().includes(query) || false
       return nameMatch || codeMatch
     })
-  }, [displayedMajors, effectiveList, searchQuery])
-
+  }, [displayedMajors, effectiveList, searchQuery]) 
   return (
-    <View className="majors-page">
-      
+    <View className="majors-page"> 
       {/* 头部 */}
       <View className="majors-page__header">
         <View className="majors-page__header-content">
@@ -815,9 +824,10 @@ export default function MajorsPage() {
             </View>
             <View
               className="majors-page__gaokao-btn"
-              onClick={() => {
+              onClick={async () => {
+                const info = await getExamInfo()
+                setExamInfo(info ?? null)
                 setShowExamInfoDialog(true)
-                getExamInfo().then((info) => setExamInfo(info ?? null))
               }}
             >
               <Text className="majors-page__gaokao-btn-text">高考信息</Text>
@@ -848,14 +858,16 @@ export default function MajorsPage() {
                   const hasPreferredSubjects = relatedData?.preferredSubjects != null && String(relatedData.preferredSubjects).trim() !== ''
                   if (!hasPreferredSubjects) {
                     openedExamInfoForSubjectCheckRef.current = true
+                    const info = await getExamInfo()
+                    setExamInfo(info ?? null)
                     setShowExamInfoDialog(true)
-                    getExamInfo().then((info) => setExamInfo(info ?? null))
                     return
                   }
                 } catch (_) {
                   openedExamInfoForSubjectCheckRef.current = true
+                  const info = await getExamInfo()
+                  setExamInfo(info ?? null)
                   setShowExamInfoDialog(true)
-                  getExamInfo().then((info) => setExamInfo(info ?? null))
                   return
                 }
                 setOnlyMatchSubject(true)

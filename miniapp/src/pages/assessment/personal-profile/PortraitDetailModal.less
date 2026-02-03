@@ -1,0 +1,112 @@
+@import '@/styles/variables.less';
+
+.portrait-detail-modal {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.portrait-detail-modal__title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.35;
+}
+
+.portrait-detail-modal__quadrant {
+  display: block;
+  font-size: 26rpx;
+  color: #64748b;
+  margin-top: 12rpx;
+}
+
+.portrait-detail-modal__scroll {
+  flex: 1;
+  max-height: 65vh;
+  padding: 0 24rpx 24rpx;
+}
+
+.portrait-detail-modal__section {
+  margin-top: 28rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f1f5f9;
+
+  &:first-of-type {
+    margin-top: 16rpx;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+.portrait-detail-modal__section-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 16rpx;
+}
+
+.portrait-detail-modal__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.portrait-detail-modal__block {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.portrait-detail-modal__block-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* 画像描述：楷体、柔和配色 */
+.portrait-detail-modal__block-value {
+  font-family: KaiTi, "楷体", "STKaiti", "华文楷体", serif;
+  font-size: 28rpx;
+  font-weight: 400;
+  color: #475569;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.portrait-detail-modal__card {
+  padding: 20rpx;
+  background: #f8fafc;
+  border-radius: 16rpx;
+  border: 1rpx solid #e2e8f0;
+}
+
+.portrait-detail-modal__card-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 8rpx;
+}
+
+.portrait-detail-modal__card-meta {
+  font-size: 24rpx;
+  color: #64748b;
+  margin-bottom: 12rpx;
+}
+
+.portrait-detail-modal__card .portrait-detail-modal__block {
+  margin-top: 8rpx;
+}
+
+.portrait-detail-modal__card .portrait-detail-modal__block-value {
+  font-size: 26rpx;
+  font-family: KaiTi, "楷体", "STKaiti", "华文楷体", serif;
+  color: #475569;
+  line-height: 1.7;
+}

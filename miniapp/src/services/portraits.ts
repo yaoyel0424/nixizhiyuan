@@ -42,7 +42,7 @@ export interface Niche {
 }
 
 /**
- * 第四象限困境接口（核心挑战）
+ * 象限挑战/困境通用接口（第一象限挑战、第二象限生活挑战、第三象限弱点、第四象限困境等）
  */
 export interface Quadrant4Dilemma {
   id: number
@@ -52,6 +52,22 @@ export interface Quadrant4Dilemma {
   cultivationStrategy: string
   strategy: string
   capabilityBuilding?: string
+}
+
+/** 第二象限可行性研究 */
+export interface Quadrant2FeasibilityStudy {
+  id: number
+  title: string
+  talentValue?: string
+  exploratoryReference?: string
+  sceneSetting?: string
+}
+
+/** 第三象限补偿策略 */
+export interface Quadrant3Compensation {
+  id: number
+  name: string
+  description?: string
 }
 
 /**
@@ -79,7 +95,12 @@ export interface Portrait {
   likeElement: ElementInfo
   talentElement: ElementInfo
   quadrant: QuadrantInfo
+  quadrant1Challenges?: Quadrant4Dilemma[]
   quadrant1Niches?: Niche[]
+  quadrant2LifeChallenges?: Quadrant4Dilemma[]
+  quadrant2FeasibilityStudies?: Quadrant2FeasibilityStudy[]
+  quadrant3Weaknesses?: Quadrant4Dilemma[]
+  quadrant3Compensations?: Quadrant3Compensation[]
   quadrant4Dilemmas?: Quadrant4Dilemma[]
   quadrant4GrowthPaths?: Quadrant4GrowthPath[]
   // 兼容旧字段

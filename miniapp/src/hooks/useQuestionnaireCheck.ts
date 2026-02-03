@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useDidShow } from '@tarojs/taro'
 import { getUserRelatedDataCount } from '@/services/user'
 import { getStorage } from '@/utils/storage'
 import Taro from '@tarojs/taro'
@@ -30,40 +31,47 @@ export function useQuestionnaireCheck() {
   // 心动专业（专业收藏）数量：用于页面空态提示
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0)
 
-  useEffect(() => {
-    const checkQuestionnaire = async () => {
+  const fetchRelatedData = useCallback(async () => {
+    try {
+      setIsLoading(true)
       try {
-        setIsLoading(true)
-        
-        // 优先从 API 获取数据
-        try {
-          const data = await getUserRelatedDataCount()
-          const count = data.scaleAnswersCount || 0
-          setAnswerCount(count)
-          setIsCompleted(count >= UNLOCK_THRESHOLD)
-          setMajorFavoritesCount(data.majorFavoritesCount || 0)
-        } catch (error) {
-          console.error('获取问卷完成状态失败，使用本地数据:', error)
-          // API 失败时，降级使用本地存储数据
-          const storedAnswers = loadAnswersFromStorage()
-          const count = Object.keys(storedAnswers).length
-          setAnswerCount(count)
-          setIsCompleted(count >= UNLOCK_THRESHOLD)
-          setMajorFavoritesCount(0)
-        }
+        const data = await getUserRelatedDataCount()
+        const count = data.scaleAnswersCount || 0
+        setAnswerCount(count)
+        setIsCompleted(count >= UNLOCK_THRESHOLD)
+        setMajorFavoritesCount(data.majorFavoritesCount || 0)
       } catch (error) {
-        console.error('检查问卷完成状态失败:', error)
-        // 出错时默认未完成
-        setIsCompleted(false)
-        setAnswerCount(0)
+        console.error('获取问卷完成状态失败，使用本地数据:', error)
+        const storedAnswers = loadAnswersFromStorage()
+        const count = Object.keys(storedAnswers).length
+        setAnswerCount(count)
+        setIsCompleted(count >= UNLOCK_THRESHOLD)
         setMajorFavoritesCount(0)
-      } finally {
-        setIsLoading(false)
       }
+    } catch (error) {
+      console.error('检查问卷完成状态失败:', error)
+      setIsCompleted(false)
+      setAnswerCount(0)
+      setMajorFavoritesCount(0)
+    } finally {
+      setIsLoading(false)
     }
-
-    checkQuestionnaire()
   }, [])
+
+  const isFirstShowRef = useRef(true)
+
+  useEffect(() => {
+    fetchRelatedData()
+  }, [fetchRelatedData])
+
+  // 页面再次显示时（如从专业探索页返回）重新拉取心动专业数量等，保证数据最新；跳过首次避免与 useEffect 重复请求
+  useDidShow(() => {
+    if (isFirstShowRef.current) {
+      isFirstShowRef.current = false
+      return
+    }
+    fetchRelatedData()
+  })
 
   return { isCompleted, isLoading, answerCount, majorFavoritesCount }
 }

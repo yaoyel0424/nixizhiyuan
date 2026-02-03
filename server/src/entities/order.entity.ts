@@ -56,6 +56,49 @@ export class Order {
   @Column({ length: 16, default: 'CNY', comment: '用户支付币种' })
   payer_currency: string;
 
+  /** 归属代理商ID（用于分账，无代理则为空） */
+  @Column({ name: 'agent_id', type: 'int', nullable: true, comment: '归属代理商ID' })
+  agent_id: number | null;
+
+  /** 应付代理金额（单位：分） */
+  @Column({
+    name: 'agent_amount',
+    type: 'integer',
+    nullable: true,
+    default: 0,
+    comment: '应付代理金额（单位：分）',
+  })
+  agent_amount: number | null;
+
+  /** 平台留成金额（单位：分） */
+  @Column({
+    name: 'platform_amount',
+    type: 'integer',
+    nullable: true,
+    comment: '平台留成金额（单位：分）',
+  })
+  platform_amount: number | null;
+
+  /** 分账状态：pending 待分账 / success 已分账 / failed 失败 */
+  @Column({
+    name: 'split_status',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    default: 'pending',
+    comment: '分账状态：pending 待分账 / success 已分账 / failed 失败',
+  })
+  split_status: string | null;
+
+  /** 分账完成时间 */
+  @Column({
+    name: 'split_at',
+    type: 'timestamp with time zone',
+    nullable: true,
+    comment: '分账完成时间',
+  })
+  split_at: Date | null;
+
   @CreateDateColumn({ comment: '创建时间' })
   created_at: Date;
 

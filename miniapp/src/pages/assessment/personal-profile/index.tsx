@@ -68,6 +68,16 @@ const DIMENSION_LIGHT_COLORS: Record<string, string> = {
 const DEFAULT_COLOR = PRIMARY_COLORS.main;
 const DEFAULT_LIGHT_COLOR = '#DBEAFE';
 
+// 象限柔和颜色（相同 quadrant 使用相同颜色，用于词云卡片）
+const QUADRANT_COLORS: Record<number, string> = {
+  1: '#10b981', // 第一象限：绿色
+  2: '#fbbf24', // 第二象限：柔和琥珀
+  3: '#a78bfa', // 第三象限：柔和紫
+  4: '#60a5fa', // 第四象限：柔和蓝
+};
+// 展示顺序：1 -> 4 -> 2 -> 3
+const QUADRANT_ORDER = [1, 4, 2, 3];
+
 // ==================== 图标系统 ====================
 // 特质图标映射（使用简约线性图标）
 const TRAIT_ICONS: Record<string, string> = {
@@ -187,10 +197,11 @@ interface CardItem {
   color: string;
   portrait: Portrait;
   isQuadrant1: boolean;
-  status: string; // status 字段
-  likeElement?: { name: string; dimension?: string }; // 喜欢元素
-  talentElement?: { name: string; dimension?: string }; // 天赋元素
-  maxStatusLines: number; // 最大显示行数（用于错落有致的效果）
+  quadrant: number; // 象限 1/2/3/4，用于排序与颜色
+  status: string;
+  likeElement?: { name: string; dimension?: string };
+  talentElement?: { name: string; dimension?: string };
+  maxStatusLines: number;
 }
 
 /**
@@ -205,66 +216,27 @@ function WordCloudCSS({
 }) {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
-  // 准备卡片数据
+  // 准备卡片数据：按 quadrant 区分颜色（柔和色），按 1、4、2、3 顺序展示
   const cardItems = useMemo(() => {
     if (portraits.length === 0) {
       return [];
     }
 
-    // 分离第一象限和其他象限的词语
-    const quadrant1Items: CardItem[] = [];
-    const otherItems: CardItem[] = [];
-
-    portraits.forEach((portrait) => {
+    const items: CardItem[] = portraits.map((portrait) => {
       const { prefix, core } = parseTraitName(portrait.name);
-      const isQuadrant1 = portrait.quadrant?.quadrants === 1;
-      
-      // 计算颜色
-      let color: string;
-      const coreText = core;
-      
-      // 绿色系
-      if (coreText.includes('博物') || coreText.includes('美学') || coreText.includes('发现') ||
-          coreText.includes('改良') || coreText.includes('生活') || coreText.includes('调频') ||
-          coreText.includes('自然') || coreText.includes('爱好者')) {
-        color = '#10b981'; // 绿色
-      } 
-      // 橙色系
-      else if (coreText.includes('造梦') || coreText.includes('点灯') || coreText.includes('启迪') ||
-               coreText.includes('旅行') || coreText.includes('苦行') || coreText.includes('极简')) {
-        color = '#f59e0b'; // 橙色
-      } 
-      // 紫色系
-      else if (coreText.includes('灵魂') || coreText.includes('连接') || coreText.includes('共振') ||
-               coreText.includes('共识') || coreText.includes('领航') || coreText.includes('特种') ||
-               coreText.includes('双子') || coreText.includes('战略')) {
-        color = '#8b5cf6'; // 紫色
-      } 
-      // 蓝色系
-      else if (coreText.includes('逻辑') || coreText.includes('结构') || coreText.includes('解码') || 
-               coreText.includes('架构') || coreText.includes('秩序') || coreText.includes('校准') ||
-               coreText.includes('鉴真') || coreText.includes('收藏') || coreText.includes('极客') ||
-               coreText.includes('解构') || coreText.includes('识人') || coreText.includes('模拟') ||
-               coreText.includes('守藏') || coreText.includes('匠心')) {
-        color = '#1a56db'; // 蓝色
-      } 
-      // 默认蓝色
-      else {
-        color = '#1a56db';
-      }
+      const quadrant = portrait.quadrant?.quadrants ?? 1;
+      const isQuadrant1 = quadrant === 1;
+      const color = QUADRANT_COLORS[quadrant] ?? QUADRANT_COLORS[1];
+      const maxStatusLines = (portrait.id % 3) + 2;
 
-      // 根据 id 计算不同的最大行数，形成错落有致的效果（2-4行不等）
-      // 使用 id 的模运算来分配不同的行数
-      const maxStatusLines = (portrait.id % 3) + 2; // 2, 3, 4 行循环
-
-      const item: CardItem = {
+      return {
         id: portrait.id,
         prefix,
         core,
         color,
         portrait,
         isQuadrant1,
-        status: portrait.status || '', // 添加 status 字段
+        status: portrait.status || '',
         likeElement: portrait.likeElement ? {
           name: portrait.likeElement.name,
           dimension: portrait.likeElement.dimension,
@@ -273,22 +245,24 @@ function WordCloudCSS({
           name: portrait.talentElement.name,
           dimension: portrait.talentElement.dimension,
         } : undefined,
-        maxStatusLines, // 每个卡片不同的最大行数
+        maxStatusLines,
+        quadrant,
       };
-
-      if (isQuadrant1) {
-        quadrant1Items.push(item);
-      } else {
-        otherItems.push(item);
-      }
     });
 
-    // 第一象限按 id 排序，其他象限也按 id 排序
-    quadrant1Items.sort((a, b) => a.id - b.id);
-    otherItems.sort((a, b) => a.id - b.id);
+    // 按象限顺序 1 -> 4 -> 2 -> 3 排序，同象限内按 id 排序
+    const orderIndex = (q: number) => {
+      const i = QUADRANT_ORDER.indexOf(q);
+      return i === -1 ? QUADRANT_ORDER.length : i;
+    };
+    items.sort((a, b) => {
+      const orderA = orderIndex(a.quadrant);
+      const orderB = orderIndex(b.quadrant);
+      if (orderA !== orderB) return orderA - orderB;
+      return a.id - b.id;
+    });
 
-    // 第一象限在前，其他在后
-    return [...quadrant1Items, ...otherItems];
+    return items;
   }, [portraits]);
 
   // 处理点击
@@ -300,10 +274,7 @@ function WordCloudCSS({
 
   return (
     <View className="word-cloud-css">
-      {/* 顶部提示 */}
-      <View className="word-cloud-css__tip">
-        <Text className="word-cloud-css__tip-text">👇 点击任意卡片查看详细报告</Text>
-      </View>
+      {/* 顶部提示 */} 
       
       {/* 卡片瀑布流容器 */}
       <View className="word-cloud-css__container">
@@ -316,14 +287,15 @@ function WordCloudCSS({
               className={`word-cloud-css__card ${item.isQuadrant1 ? 'word-cloud-css__card--quadrant1' : ''}`}
               style={{
                 borderLeftColor: item.color,
-                borderLeftWidth: item.isQuadrant1 ? '5px' : '4px', // 第一象限边框更粗
+                borderLeftWidth: '4px',
               }}
               onTouchStart={() => setHoveredId(item.id)}
-              onTouchEnd={() => {
+              onTouchEnd={() => setHoveredId(null)}
+              onTouchCancel={() => setHoveredId(null)}
+              onClick={() => {
                 handleItemClick(item.portrait);
                 setHoveredId(null);
               }}
-              onTouchCancel={() => setHoveredId(null)}
             >
               {item.prefix && (
                 <Text className="word-cloud-css__card-prefix">
@@ -335,62 +307,11 @@ function WordCloudCSS({
                 style={{
                   color: item.color,
                   fontWeight: item.isQuadrant1 ? '600' : '500',
-                  fontSize: item.isQuadrant1 ? '24px' : '20px', // 第一象限字体更大
+                  fontSize: item.isQuadrant1 ? '22px' : '20px',
                 }}
               >
                 {item.core}
               </Text>
-              
-              {/* 显示喜欢和天赋元素（所有象限都显示，但根据象限添加说明） */}
-              {(item.likeElement || item.talentElement) && (
-                <View className="word-cloud-css__card-elements">
-                  {(() => {
-                    const quadrant = item.portrait.quadrant?.quadrants;
-                    let likeLabel = '';
-                    let talentLabel = '';
-                    
-                    // 根据象限组织和润色文字（去掉"喜欢"和"天赋"，只保留象限说明）
-                    if (quadrant === 1) {
-                      // 第一象限：喜欢和天赋兼具
-                      likeLabel = '（兼具）';
-                      talentLabel = '（兼具）';
-                    } else if (quadrant === 2) {
-                      // 第二象限：有天赋，喜欢不明显
-                      likeLabel = '（不明显）';
-                      talentLabel = '（明显）';
-                    } else if (quadrant === 3) {
-                      // 第三象限：有喜欢，天赋不明显
-                      likeLabel = '（明显）';
-                      talentLabel = '（不明显）';
-                    } else if (quadrant === 4) {
-                      // 第四象限：喜欢和天赋都不明显
-                      likeLabel = '（不明显）';
-                      talentLabel = '（不明显）';
-                    }
-                    
-                    return (
-                      <>
-                        {item.likeElement && (
-                          <View className="word-cloud-css__card-element">
-                            <Text className="word-cloud-css__card-element-label">{likeLabel}</Text>
-                            <Text className="word-cloud-css__card-element-value">
-                              {item.likeElement.dimension ? `${item.likeElement.dimension}-` : ''}{item.likeElement.name}
-                            </Text>
-                          </View>
-                        )}
-                        {item.talentElement && (
-                          <View className="word-cloud-css__card-element">
-                            <Text className="word-cloud-css__card-element-label">{talentLabel}</Text>
-                            <Text className="word-cloud-css__card-element-value">
-                              {item.talentElement.dimension ? `${item.talentElement.dimension}-` : ''}{item.talentElement.name}
-                            </Text>
-                          </View>
-                        )}
-                      </>
-                    );
-                  })()}
-                </View>
-              )}
               
               {item.status && (
                 <Text 
@@ -434,9 +355,9 @@ function WordCloudCanvas({
 
       setDpr(deviceDpr);
 
-        // 使用 Taro.createSelectorQuery 查询词云容器的实际高度
+        // 使用 Taro.createSelectorQuery 查询词云区域的实际高度（词云根节点 .word-cloud-css）
         const query = Taro.createSelectorQuery();
-        query.select('.personal-profile-page__word-cloud-container').boundingClientRect();
+        query.select('.word-cloud-css').boundingClientRect();
         
         query.exec((res) => {
           if (res && res[0] && res[0].height > 0) {
@@ -1612,8 +1533,6 @@ export default function PersonalProfilePage() {
   
   const [portraits, setPortraits] = useState<Portrait[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showFullReport, setShowFullReport] = useState(false); // 是否显示完整报告
-  const [selectedPortraitFromCloud, setSelectedPortraitFromCloud] = useState<Portrait | null>(null); // 从词云选中的画像
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1645,13 +1564,10 @@ export default function PersonalProfilePage() {
     loadPortraitData();
   }, []);
 
-  // 获取当前选中的portrait（直接使用从词云选中的画像）
-  const selectedPortrait = selectedPortraitFromCloud;
-
-  // 处理词云项点击
+  // 处理词云项点击：跳转到独立详情页（返回由导航栏处理，符合手机端习惯）
   const handleWordCloudItemClick = useCallback((portrait: Portrait) => {
-    setSelectedPortraitFromCloud(portrait);
-    setShowFullReport(true);
+    Taro.setStorageSync('portraitDetail', portrait);
+    Taro.navigateTo({ url: '/pages/assessment/portrait-detail/index' });
   }, []);
 
   if (loading) {
@@ -1678,41 +1594,7 @@ export default function PersonalProfilePage() {
 
   return (
     <View className="personal-profile-page">
-      {!showFullReport ? (
-        // 首屏：词云展示
-        <View className="personal-profile-page__word-cloud-container">
-          <WordCloudCSS portraits={portraits} onItemClick={handleWordCloudItemClick} />
-        </View>
-      ) : (
-        // 完整报告：详情卡片
-      <View className="personal-profile-page__content">
-          {/* 返回按钮 */}
-          <View className="personal-profile-page__back-button" onClick={() => setShowFullReport(false)}>
-            <Text className="personal-profile-page__back-button-text">← 返回词云</Text>
-          </View>
-
-        {/* 详情卡片 */}
-          {selectedPortrait && (
-          <View className="personal-profile-page__detail-container">
-            <PortraitDetailCard
-              portrait={selectedPortrait}
-                dimension={selectedPortrait.likeElement?.dimension || selectedPortrait.talentElement?.dimension || ''}
-                color={selectedPortrait.likeElement?.dimension 
-                  ? (DIMENSION_COLORS[selectedPortrait.likeElement.dimension] || DEFAULT_COLOR)
-                  : (selectedPortrait.talentElement?.dimension 
-                    ? (DIMENSION_COLORS[selectedPortrait.talentElement.dimension] || DEFAULT_COLOR)
-                    : DEFAULT_COLOR)}
-                lightColor={selectedPortrait.likeElement?.dimension 
-                  ? (DIMENSION_LIGHT_COLORS[selectedPortrait.likeElement.dimension] || DEFAULT_LIGHT_COLOR)
-                  : (selectedPortrait.talentElement?.dimension 
-                    ? (DIMENSION_LIGHT_COLORS[selectedPortrait.talentElement.dimension] || DEFAULT_LIGHT_COLOR)
-                    : DEFAULT_LIGHT_COLOR)}
-            />
-          </View>
-        )}
-      </View>
-      )}
-
+      <WordCloudCSS portraits={portraits} onItemClick={handleWordCloudItemClick} />
       <BottomNav />
 
       {/* 问卷完成提示弹窗 */}

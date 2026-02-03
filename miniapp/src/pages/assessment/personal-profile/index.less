@@ -395,15 +395,6 @@
   color: #666;
 }
 
-// 词云容器
-.personal-profile-page__word-cloud-container {
-  width: 100%;
-  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 50%, #f9fafb 100%);
-  padding-top: 80px; // 为固定提示留出空间
-  padding-bottom: calc(80px + env(safe-area-inset-bottom)); // 为底部导航栏留出空间（导航栏高度约 64px + 安全区域）
-  box-sizing: border-box;
-}
-
 .personal-profile-page__word-cloud-canvas {
   width: 100%;
   height: 100%;
@@ -445,27 +436,14 @@
   line-height: 1.4;
 }
 
-// 瀑布流容器 - 使用 CSS Columns
+// 词云容器 - 每行一条 portrait（单列）
 .word-cloud-css__container {
   width: 100%;
   padding: 0 16px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom)); // 为底部导航栏留出空间（导航栏高度约 60px + 安全区域）
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
   box-sizing: border-box;
-  column-count: 2; // 两列
-  column-gap: 16px; // 列间距
-  
-  // 响应式调整
-  @media (max-width: 375px) {
-    // 小屏幕手机使用单列
-    column-count: 1;
-    column-gap: 12px;
-  }
-  
-  @media (min-width: 769px) {
-    // 平板和桌面可以使用三列
-    column-count: 3;
-    column-gap: 20px;
-  }
+  column-count: 1;
+  column-gap: 0;
 }
 
 .word-cloud-css__card {
@@ -506,8 +484,8 @@
 
 // 卡片内容样式
 .word-cloud-css__card-prefix {
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 18px;
+  font-weight: 600;
   color: #999999;
   line-height: 1.4;
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -520,42 +498,8 @@
   font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-.word-cloud-css__card-elements {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.word-cloud-css__card-element {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  font-size: 14px; // 改为 px 单位，更清晰
-  line-height: 1.5;
-}
-
-.word-cloud-css__card-element-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #666666;
-  flex-shrink: 0;
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-}
-
-.word-cloud-css__card-element-value {
-  font-size: 14px;
-  font-weight: 400;
-  color: #333333;
-  flex: 1;
-  word-break: break-word;
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-}
-
 .word-cloud-css__card-status {
-  font-size: 14px; // 改为 px 单位
+  font-size: 16px;
   font-weight: 400;
   color: #666666;
   line-height: 1.6;
@@ -578,22 +522,4 @@
   &--lines-4 {
     -webkit-line-clamp: 4;
   }
-}
-
-// 返回按钮
-.personal-profile-page__back-button {
-  padding: 16rpx 24rpx;
-  margin-bottom: 16rpx;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-  
-  &:active {
-    opacity: 0.7;
-  }
-}
-
-.personal-profile-page__back-button-text {
-  font-size: 28rpx;
-  color: #1a56db;
-  font-weight: 500;
 }
