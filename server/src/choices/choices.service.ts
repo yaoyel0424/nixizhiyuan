@@ -97,7 +97,7 @@ export class ChoicesService {
         ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
         : null;
 
-      // 3. 一次查询同组志愿：用于判重 + 确定 mg_index
+      // 3. 一次查询同组志愿：用于判重 + 确定 mg_index（不按 mgId 过滤，以便不同 mgId 时 mg_index 全局递增）
       const sameGroupQueryBuilder = manager
         .createQueryBuilder(Choice, 'choice')
         .where('choice.userId = :userId', { userId })
@@ -106,13 +106,6 @@ export class ChoicesService {
           preferredSubjects: preferredSubjects ?? null,
         })
         .andWhere('choice.year = :year', { year });
-
-      // mgId 不为 0 时按 mgId 限定同组；mgId 为 0（院校模式）时不在此处加 schoolCode，去重时再按 schoolCode 判断
-      if (createChoiceDto.mgId !== 0) {
-        sameGroupQueryBuilder.andWhere('choice.mgId = :mgId', {
-          mgId: createChoiceDto.mgId ?? null,
-        });
-      }
 
       if (secondarySubjects && secondarySubjects.length > 0) {
         sameGroupQueryBuilder.andWhere('choice.secondarySubjects = :secondarySubjects', {
@@ -127,14 +120,16 @@ export class ChoicesService {
 
       const sameGroupChoices = await sameGroupQueryBuilder.getMany();
 
-      // 4. 判重：batch、subjectSelectionMode、enrollmentMajor、remark 相同；专业组模式同组查询已限定 mgId，院校模式再按 schoolCode 判断
+      // 4. 判重：batch、subjectSelectionMode、enrollmentMajor、remark 相同；专业组按 mgId 区分，院校模式按 schoolCode 区分
       const existingChoice = sameGroupChoices.find((c) => {
         const sameFields =
           (c.batch ?? null) === (createChoiceDto.batch ?? null) &&
           (c.subjectSelectionMode ?? null) === (createChoiceDto.subjectSelectionMode ?? null) &&
           (c.enrollmentMajor ?? null) === (createChoiceDto.enrollmentMajor ?? null) &&
           (c.remark ?? '') === (createChoiceDto.remark ?? '');
-        if (createChoiceDto.mgId !== 0) return sameFields;
+        if (createChoiceDto.mgId !== 0) {
+          return sameFields && (c.mgId ?? null) === (createChoiceDto.mgId ?? null);
+        }
         return sameFields && (c.schoolCode ?? null) === (createChoiceDto.schoolCode ?? null);
       });
 
@@ -145,13 +140,19 @@ export class ChoicesService {
         throw new ConflictException('您已经添加了该志愿');
       }
 
-      // 5. 确定 mg_index
+      // 5. 确定 mg_index：复用仅在同一 mgId 内；新建时取全局 max+1，使不同 mgId 的志愿 mg_index 依次递增
+      const sameMgIdChoices =
+        createChoiceDto.mgId !== 0
+          ? sameGroupChoices.filter(
+              (c) => (c.mgId ?? null) === (createChoiceDto.mgId ?? null),
+            )
+          : [];
       const sameGroupChoice =
-        sameGroupChoices.length > 0
-          ? sameGroupChoices.reduce(
+        sameMgIdChoices.length > 0
+          ? sameMgIdChoices.reduce(
               (min, c) =>
                 (c.mgIndex ?? 999999) < (min.mgIndex ?? 999999) ? c : min,
-              sameGroupChoices[0],
+              sameMgIdChoices[0],
             )
           : null;
 
