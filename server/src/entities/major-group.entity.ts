@@ -14,7 +14,8 @@ import { EnrollmentPlan } from './enrollment-plan.entity';
  */
 @Entity('major_groups')
 @Index(['schoolCode', 'province', 'year','subjectSelectionMode','batch']) // 复合索引，提高查询性能
-@Index(['mgId','mgName']) // 专业组ID索引
+@Index(['mgId']) // 单列索引：choices 按 mg_id 左连接时走索引，避免全表 Hash
+@Index(['mgId','mgName']) // 专业组ID+名称
 export class MajorGroup {
   /**
    * 专业组唯一标识符 (自增长ID)

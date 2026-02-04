@@ -49,6 +49,8 @@ export default function MajorsPage() {
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const [activeTab, setActiveTab] = useState<string>("本科")
+  // 分数排序：默认倒序（高分在前），点击切换为顺序（低分在前）
+  const [scoreSortOrder, setScoreSortOrder] = useState<'desc' | 'asc'>('desc')
   // 存储所有数据（缓存）
   const [allMajors, setAllMajors] = useState<MajorScoreResponse[]>([])
   const [loading, setLoading] = useState(true)
@@ -130,15 +132,27 @@ export default function MajorsPage() {
     '专科': 'zhuan'
   }
 
-  // 符合选科时的有效列表：用 allMajors 中的 majorId 与接口返回值匹配，只显示 majorId 在接口返回中的专业；接口已返回 0 条时返回空数组
+  // 符合选科时的有效列表：用 allMajors 中的 majorId 与接口返回值匹配；再按 scoreSortOrder 排序（默认倒序）
   const effectiveList = useMemo(() => {
-    if (!onlyMatchSubject) return allMajors
-    if (matchSubjectLevel3Ids.size === 0) {
-      if (level3IdsLoaded) return [] // 接口已返回 0 条，按空结果展示
-      return allMajors // 加载中（此时会显示「正在加载」，不渲染列表）
+    let list: MajorScoreResponse[]
+    if (!onlyMatchSubject) {
+      list = allMajors
+    } else if (matchSubjectLevel3Ids.size === 0) {
+      if (level3IdsLoaded) return []
+      list = allMajors
+    } else {
+      list = allMajors.filter((m) => (m as any).majorId != null && matchSubjectLevel3Ids.has((m as any).majorId))
     }
-    return allMajors.filter((m) => (m as any).majorId != null && matchSubjectLevel3Ids.has((m as any).majorId))
-  }, [allMajors, onlyMatchSubject, matchSubjectLevel3Ids, level3IdsLoaded])
+    if (scoreSortOrder === 'asc') {
+      return [...list].sort((a, b) => {
+        const scoreA = typeof a.score === 'string' ? parseFloat(a.score) : (a.score as number) ?? 0
+        const scoreB = typeof b.score === 'string' ? parseFloat(b.score) : (b.score as number) ?? 0
+        return scoreA - scoreB
+      })
+    }
+    // desc：allMajors 已是降序，直接返回
+    return list
+  }, [allMajors, onlyMatchSubject, matchSubjectLevel3Ids, level3IdsLoaded, scoreSortOrder])
 
   // 当前页显示的专业（由 effectiveList 与 currentPage 推导）
   const displayedMajors = useMemo(
@@ -269,6 +283,7 @@ export default function MajorsPage() {
   // 处理标签切换
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
+    setScoreSortOrder('desc') // 切换标签后统一为倒序（高分在前）展示
   }
 
   // 加载更多数据（前端分页）
@@ -886,7 +901,7 @@ export default function MajorsPage() {
             </View>
           </View>
 
-          {/* 标签页 */}
+          {/* 标签页 + 分数排序按钮 */}
           <View className="majors-page__tabs">
             {["本科", "本科(职业)", "专科"].map((tab) => (
               <View
@@ -897,6 +912,12 @@ export default function MajorsPage() {
                 <Text className="majors-page__tab-text">{tab}</Text>
               </View>
             ))}
+            <Text
+              className={`majors-page__sort-btn ${scoreSortOrder === 'asc' ? 'majors-page__sort-btn--asc' : ''}`}
+              onClick={() => setScoreSortOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+            >
+              {scoreSortOrder === 'desc' ? '▲' : '▼'}
+            </Text>
           </View>
         </View>
         {/* 波浪效果 */}

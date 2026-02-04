@@ -20,6 +20,7 @@ import { SchoolDetail } from './school-detail.entity';
 @Index(['majorGroupId']) // 专业组ID索引
 @Index(['year', 'province', 'batch', 'primarySubject', 'enrollmentType']) // 针对 findEnrollmentPlansByMajorId 查询的优化索引，enrollmentType 放在最后
 @Index(['province', 'year']) // 针对按省份和年份过滤的查询优化
+@Index(['year', 'province', 'batch', 'enrollmentType', 'schoolCode', 'subjectSelectionMode', 'majorGroupId', 'enrollmentMajor']) // 针对 choices.findByUser 的 JOIN：一次索引查找定位单行，避免 Rows Removed by Filter
 // 覆盖索引 idx_enrollment_plans_cover（含 INCLUDE，支持 Index-Only Scan）：需在库中手动执行，见 enrollment-plan-queries.sql
 // CREATE INDEX CONCURRENTLY idx_enrollment_plans_cover ON enrollment_plans (year, province, batch, primary_subject, enrollment_type) INCLUDE (secondary_subjects, secondary_subject_type, level3_major_id);
 export class EnrollmentPlan {

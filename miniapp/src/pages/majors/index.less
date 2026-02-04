@@ -156,6 +156,7 @@
 .majors-page__tabs {
   display: flex;
   gap: 8rpx;
+  margin-right: -32rpx; /* 贴屏幕右边，抵消 header 右内边距 */
 }
 
 .majors-page__tab {
@@ -180,6 +181,18 @@
   font-size: inherit;
   font-weight: inherit;
   color: inherit;
+}
+
+// 分数排序：仅三角形图标（标签右侧，无背景，点击在倒序/顺序间切换）
+.majors-page__sort-btn {
+  flex-shrink: 0;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .majors-page__wave {

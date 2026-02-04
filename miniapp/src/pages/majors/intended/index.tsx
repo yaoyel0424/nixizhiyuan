@@ -1,7 +1,7 @@
 // 志愿方案页面
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { View, Text, ScrollView, Checkbox, Canvas } from '@tarojs/components'
-import Taro, { useRouter, useDidShow, useShareAppMessage } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow, useShareAppMessage, useReachBottom } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -146,6 +146,10 @@ export default function IntendedMajorsPage() {
   const [highlightedVolunteerId, setHighlightedVolunteerId] = useState<number | null>(null) // 高亮的志愿ID（mgIndex）
   const [highlightedChoiceId, setHighlightedChoiceId] = useState<number | null>(null) // 高亮的专业ID（choice.id）
 
+  // 志愿列表分段加载：每次展示 10 条，滑动触底自动加载
+  const VOLUNTEER_PAGE_SIZE = 10
+  const [visibleVolunteerCount, setVisibleVolunteerCount] = useState(VOLUNTEER_PAGE_SIZE)
+
   // 导出相关状态
   const [exportProgress, setExportProgress] = useState(0)
   const [exportStatus, setExportStatus] = useState('')
@@ -156,6 +160,8 @@ export default function IntendedMajorsPage() {
   const [exportPaused, setExportPaused] = useState(false)
   const exportCancelRef = useRef(false)
 
+  // 志愿列表是否已加载完成（用于避免在请求未完成时显示「暂无志愿数据」）
+  const [choicesLoaded, setChoicesLoaded] = useState(false)
   // 志愿列表刷新：合并短时间内的多次写操作，避免频繁请求与重渲染
   const fetchingChoicesRef = useRef(false)
   const refreshChoicesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -465,6 +471,7 @@ export default function IntendedMajorsPage() {
    */
   const applyGroupedChoicesToState = (groupedData: GroupedChoiceResponse | null) => {
     setGroupedChoices(groupedData)
+    setVisibleVolunteerCount(VOLUNTEER_PAGE_SIZE) // 数据刷新时重置为首次加载条数
     const items = groupedData ? convertGroupedChoicesToItems(groupedData) : []
     setWishlistItems(items)
 
@@ -667,6 +674,7 @@ export default function IntendedMajorsPage() {
       }
     } finally {
       fetchingChoicesRef.current = false
+      setChoicesLoaded(true) // 标记志愿列表已加载完成，再决定显示空状态或列表
     }
   }
 
@@ -1608,6 +1616,15 @@ export default function IntendedMajorsPage() {
     })
   }
 
+  // 意向志愿列表：滑动触底自动加载下一批（每批 10 条）
+  useReachBottom(() => {
+    if (activeTab !== '意向志愿') return
+    if (!groupedChoices?.volunteers?.length) return
+    const total = groupedChoices.volunteers.length
+    if (visibleVolunteerCount >= total) return
+    setVisibleVolunteerCount((prev) => Math.min(prev + VOLUNTEER_PAGE_SIZE, total))
+  })
+
   // 判断plan是否已加入志愿（根据专业组名称和备注匹配）
   const isPlanInWishlist = (plan: MajorGroupInfo): { isIn: boolean; choiceId?: number } => {
     if (!selectedSchoolData || !selectedGroupInfo) {
@@ -2016,8 +2033,13 @@ export default function IntendedMajorsPage() {
       {/* 内容区域 */}
       <View className="intended-majors-page__content">
         {activeTab === '意向志愿' ? (
-          // 意向志愿tab
-          wishlistItems.length === 0 ? (
+          // 意向志愿tab：等志愿列表加载完成后再判断显示空状态或列表
+          !choicesLoaded ? (
+            <View className="intended-majors-page__empty">
+              <Text className="intended-majors-page__empty-icon">⏳</Text>
+              <Text className="intended-majors-page__empty-text">加载志愿列表中...</Text>
+            </View>
+          ) : wishlistItems.length === 0 ? (
             <View className="intended-majors-page__empty">
               <Text className="intended-majors-page__empty-icon">🔍</Text>
               <Text className="intended-majors-page__empty-text">暂无志愿数据</Text>
@@ -2048,10 +2070,15 @@ export default function IntendedMajorsPage() {
           ) : (
             <View className="intended-majors-page__wishlist">
               {groupedChoices && groupedChoices.volunteers.length > 0 ? (
-                // 直接使用 groupedChoices 的数据结构，按照 volunteers -> majorGroups -> choices 的顺序显示
-                groupedChoices.volunteers
-                  .sort((a, b) => (a.mgIndex ?? 999999) - (b.mgIndex ?? 999999))
-                  .map((volunteer, volunteerIdx) => {
+                // 直接使用 groupedChoices 的数据结构，按 mgIndex 排序，分段加载（每次 10 条，滑动触底自动加载）
+                (() => {
+                  const sortedVolunteers = [...groupedChoices.volunteers].sort(
+                    (a, b) => (a.mgIndex ?? 999999) - (b.mgIndex ?? 999999)
+                  )
+                  const volunteersToShow = sortedVolunteers.slice(0, visibleVolunteerCount)
+                  return (
+                    <>
+                  {volunteersToShow.map((volunteer, volunteerIdx) => {
                     const volunteerNumber = volunteerIdx + 1
                     const school = volunteer.school
                     const schoolFeatures = school?.features || ''
@@ -2559,7 +2586,10 @@ export default function IntendedMajorsPage() {
                         </View>
                       </Card>
                     )
-                  })
+                  })}
+                    </>
+                  )
+                })()
               ) : (
                 <View className="intended-majors-page__empty">
                   <Text className="intended-majors-page__empty-icon">📚</Text>
@@ -2569,22 +2599,24 @@ export default function IntendedMajorsPage() {
                   </Text>
                 </View>
               )}
-              <Card 
-                className="intended-majors-page__add-more"
-                onClick={() => {
-                  // 使用 navigateTo 保留页面栈，便于从“院校探索”返回到“志愿方案”
-                  Taro.navigateTo({
-                    url: '/pages/majors/intended/index?tab=专业赛道'
-                  })
-                }}
-              >
-                <View className="intended-majors-page__add-more-content">
-                  <Text className="intended-majors-page__add-more-icon">➕</Text>
-                  <Text className="intended-majors-page__add-more-text">
-                    已探索{groupedChoices?.statistics?.selected ?? 0}/{groupedChoices?.statistics?.total ?? 0}
-                  </Text>
-                </View>
-              </Card>
+              {!loading && groupedChoices?.volunteers && groupedChoices.volunteers.length <= visibleVolunteerCount && (
+                <Card 
+                  className="intended-majors-page__add-more"
+                  onClick={() => {
+                    // 使用 navigateTo 保留页面栈，便于从“院校探索”返回到“志愿方案”
+                    Taro.navigateTo({
+                      url: '/pages/majors/intended/index?tab=专业赛道'
+                    })
+                  }}
+                >
+                  <View className="intended-majors-page__add-more-content">
+                    <Text className="intended-majors-page__add-more-icon">➕</Text>
+                    <Text className="intended-majors-page__add-more-text">
+                      已探索{groupedChoices?.statistics?.selected ?? 0}/{groupedChoices?.statistics?.total ?? 0}
+                    </Text>
+                  </View>
+                </Card>
+              )}
             </View>
           )
         ) : (
