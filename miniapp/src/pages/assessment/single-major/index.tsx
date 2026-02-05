@@ -16,11 +16,22 @@ const STORAGE_KEY = 'questionnaire_answers'
 
 // 元素分析类型配置（含注释，同一行显示）
 const ELEMENT_ANALYSIS_TYPES = {
-  lexue: { label: '乐学', desc: '始终保有学习的动力', color: '#4CAF50' },
+  lexue: { label: '乐学', desc: '始终保有学习动力', color: '#4CAF50' },
   shanxue: { label: '善学', desc: '学习更轻松高效', color: '#2196F3' },
   yanxue: { label: '厌学', desc: '学习动力逐步衰减', color: '#FF9800' },
   tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },
 } as const
+
+// 状态条颜色：乐学/善学 4-6 绿、-4～-6 黄；厌学/阻学 相反
+const SCORE_BAR_GREEN = '#4CAF50'
+const SCORE_BAR_YELLOW = '#FFC107'
+
+/** 根据类型返回「学习动力」或「学习效率」及是否为正向维度（乐学/善学为正，厌学/阻学为反） */
+function getScoreBarConfig(type: string | null): { label: string; isPositive: boolean } {
+  if (type === 'lexue' || type === 'yanxue') return { label: '学习动力', isPositive: type === 'lexue' }
+  if (type === 'shanxue' || type === 'tiaozhan') return { label: '学习效率', isPositive: type === 'shanxue' }
+  return { label: '学习动力', isPositive: true }
+}
 
 // 字段标签映射
 const FIELD_LABELS: Record<string, string> = {
@@ -733,24 +744,6 @@ function MajorAnalysisActionCard({ analyses, onViewDetail, onRedoQuestionnaire, 
   >({})
 
   /**
-   * 根据分值返回测评结果文本
-   */
-  const getScoreResult = (score: number | null): string => {
-    if (score === null) {
-      return '待测评'
-    }
-    const numScore = Number(score)
-    if (numScore >= 4 && numScore <= 6) {
-      return '明显'
-    } else if (numScore >= -3 && numScore <= 3) {
-      return '待发现'
-    } else if (numScore < -3) {
-      return '不明显'
-    }
-    return '待测评'
-  }
-
-  /**
    * 兼容两种数据结构，提取当前类型下的元素列表
    */
   const getElementsByType = (type: string | null, allAnalyses: any[] | null): any[] => {
@@ -967,8 +960,16 @@ function MajorAnalysisActionCard({ analyses, onViewDetail, onRedoQuestionnaire, 
             ) : (
               <View className="single-major-page__element-dialog-list">
                 {inlineElements.map((element: any, index: number) => {
-                  const scoreResult = getScoreResult(element.score)
                   const elementId: number | null = typeof element.elementId === 'number' ? element.elementId : null
+                  const { label: scoreBarLabel, isPositive: scoreBarPositive } = getScoreBarConfig(expandedElementType)
+                  const numScore = element.score != null ? Math.max(-6, Math.min(6, Number(element.score))) : null
+                  const rawPercent = numScore != null ? ((numScore + 6) / 12) * 100 : null
+                  const markerPercent = rawPercent != null
+                    ? (scoreBarPositive ? rawPercent : 100 - rawPercent)
+                    : null
+                  const barGradient = scoreBarPositive
+                    ? `linear-gradient(to right, ${SCORE_BAR_YELLOW} 0%, ${SCORE_BAR_YELLOW} 16.67%, ${SCORE_BAR_GREEN} 83.33%, ${SCORE_BAR_GREEN} 100%)`
+                    : `linear-gradient(to right, ${SCORE_BAR_GREEN} 0%, ${SCORE_BAR_GREEN} 16.67%, ${SCORE_BAR_YELLOW} 83.33%, ${SCORE_BAR_YELLOW} 100%)`
                   const isQuestionnaireExpanded =
                     elementId !== null && expandedQuestionnaireElementIds.has(elementId)
                   const isQuestionnaireLoading =
@@ -1004,23 +1005,51 @@ function MajorAnalysisActionCard({ analyses, onViewDetail, onRedoQuestionnaire, 
                           {element.matchReason}
                         </Text>
                       )}
-                      <View className="single-major-page__element-dialog-item-score">
-                        <Text className="single-major-page__element-dialog-item-score-label">
-                          测评结果：
-                        </Text>
-                        <Text className="single-major-page__element-dialog-item-score-value">
-                          {scoreResult}
-                        </Text>
+                      <View className="single-major-page__element-dialog-item-score single-major-page__score-result-row">
+                        <View className="single-major-page__score-result-label-wrap">
+                          <Text className="single-major-page__element-dialog-item-score-label">测评结果：</Text>
+                        </View>
+                        <View className="single-major-page__score-bar-wrap">
+                          <View className="single-major-page__score-bar-inner">
+                            <View className="single-major-page__score-bar-row">
+                              <Text className="single-major-page__score-bar-end">
+                                减弱
+                              </Text>
+                              <View className="single-major-page__score-bar-track-wrap">
+                                {markerPercent != null && (
+                                  <View className="single-major-page__score-bar-marker-col" style={{ left: `${markerPercent}%` }}>
+                                    <Text className="single-major-page__score-bar-label">{scoreBarLabel}</Text>
+                                    <Text className="single-major-page__score-bar-arrow">▼</Text>
+                                  </View>
+                                )}
+                                <View className="single-major-page__score-bar-track">
+                                  <View
+                                    className="single-major-page__score-bar-fill"
+                                    style={{ background: numScore == null ? '#d1d5db' : barGradient }}
+                                  />
+                                </View>
+                              </View>
+                              <Text className="single-major-page__score-bar-end">
+                                增强
+                              </Text>
+                            </View>
+                          </View>
+                          {numScore == null && (
+                            <Text className="single-major-page__score-bar-placeholder">待测评</Text>
+                          )}
+                        </View>
                         {elementId !== null && (
-                          <Text
-                            className="single-major-page__element-dialog-item-score-action"
-                            onClick={() => toggleElementQuestionnaire(elementId)}
-                          >
-                            查看问卷
-                            <Text className="single-major-page__element-dialog-item-score-action-icon">
-                              {isQuestionnaireExpanded ? '▲' : '▼'}
+                          <View className="single-major-page__score-result-action-wrap">
+                            <Text
+                              className="single-major-page__element-dialog-item-score-action"
+                              onClick={() => toggleElementQuestionnaire(elementId)}
+                            >
+                              查看问卷
+                              <Text className="single-major-page__element-dialog-item-score-action-icon">
+                                {isQuestionnaireExpanded ? '▲' : '▼'}
+                              </Text>
                             </Text>
-                          </Text>
+                          </View>
                         )}
                       </View>
 

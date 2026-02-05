@@ -20,11 +20,22 @@ const STORAGE_KEY = 'questionnaire_answers'
 
 // 元素分析类型配置（与专业详情页一致，含 desc）
 const ELEMENT_ANALYSIS_TYPES = {
-  lexue: { label: '乐学', desc: '始终保有学习的动力', color: '#4CAF50' },
+  lexue: { label: '乐学', desc: '始终保有学习动力', color: '#4CAF50' },
   shanxue: { label: '善学', desc: '学习更轻松高效', color: '#2196F3' },
   yanxue: { label: '厌学', desc: '学习动力逐步衰减', color: '#FF9800' },
   tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },
 } as const
+
+// 状态条颜色：乐学/善学 4-6 绿、-4～-6 黄；厌学/阻学 相反
+const SCORE_BAR_GREEN = '#4CAF50'
+const SCORE_BAR_YELLOW = '#FFC107'
+
+/** 根据类型返回「学习动力」或「学习效率」及是否为正向维度（乐学/善学为正，厌学/阻学为反） */
+function getScoreBarConfig(type: string | null): { label: string; isPositive: boolean } {
+  if (type === 'lexue' || type === 'yanxue') return { label: '学习动力', isPositive: type === 'lexue' }
+  if (type === 'shanxue' || type === 'tiaozhan') return { label: '学习效率', isPositive: type === 'shanxue' }
+  return { label: '学习动力', isPositive: true }
+}
 
 // 字段标签映射（与专业详情页一致）
 const FIELD_LABELS: Record<string, string> = {
@@ -734,16 +745,6 @@ function MajorAnalysisActionCard({
     Record<number, { scales: Scale[]; answers: Array<ScaleAnswer | { scaleId: number; score: number; [key: string]: any }> }>
   >({})
 
-  // 根据分值返回测评结果文本
-  const getScoreResult = (score: number | null): string => {
-    if (score === null) return '待测评'
-    const numScore = Number(score)
-    if (numScore >= 4 && numScore <= 6) return '明显'
-    if (numScore >= -3 && numScore <= 3) return '待发现'
-    if (numScore < -3) return '不明显'
-    return '待测评'
-  }
-
   // 兼容两种数据结构，提取当前类型下的元素列表
   const getElementsByType = (type: string | null, allAnalyses: any[] | null): any[] => {
     if (!type || !allAnalyses) return []
@@ -953,8 +954,17 @@ function MajorAnalysisActionCard({
             ) : (
               <View className="single-major-page__element-dialog-list">
                 {inlineElements.map((element: any, index: number) => {
-                  const scoreResult = getScoreResult(element.score)
                   const elementId: number | null = typeof element.elementId === 'number' ? element.elementId : null
+                  const { label: scoreBarLabel, isPositive: scoreBarPositive } = getScoreBarConfig(expandedElementType)
+                  const numScore = element.score != null ? Math.max(-6, Math.min(6, Number(element.score))) : null
+                  // 乐学/善学：正分好，-6→0% 低，6→100% 高；厌学/阻学：负分增强，正分削弱，逻辑相反
+                  const rawPercent = numScore != null ? ((numScore + 6) / 12) * 100 : null
+                  const markerPercent = rawPercent != null
+                    ? (scoreBarPositive ? rawPercent : 100 - rawPercent)
+                    : null
+                  const barGradient = scoreBarPositive
+                    ? `linear-gradient(to right, ${SCORE_BAR_YELLOW} 0%, ${SCORE_BAR_YELLOW} 16.67%, ${SCORE_BAR_GREEN} 83.33%, ${SCORE_BAR_GREEN} 100%)`
+                    : `linear-gradient(to right, ${SCORE_BAR_GREEN} 0%, ${SCORE_BAR_GREEN} 16.67%, ${SCORE_BAR_YELLOW} 83.33%, ${SCORE_BAR_YELLOW} 100%)`
                   const isQuestionnaireExpanded = elementId !== null && expandedQuestionnaireElementIds.has(elementId)
                   const isQuestionnaireLoading = elementId !== null && questionnaireLoadingElementIds.has(elementId)
                   const questionnaireError = elementId !== null ? questionnaireErrorByElementId[elementId] : undefined
@@ -990,19 +1000,51 @@ function MajorAnalysisActionCard({
                           {element.matchReason}
                         </Text>
                       )}
-                      <View className="single-major-page__element-dialog-item-score">
-                        <Text className="single-major-page__element-dialog-item-score-label">测评结果：</Text>
-                        <Text className="single-major-page__element-dialog-item-score-value">{scoreResult}</Text>
+                      <View className="single-major-page__element-dialog-item-score career-exploration-page__score-result-row">
+                        <View className="career-exploration-page__score-result-label-wrap">
+                          <Text className="single-major-page__element-dialog-item-score-label">测评结果：</Text>
+                        </View>
+                        <View className="career-exploration-page__score-bar-wrap">
+                          <View className="career-exploration-page__score-bar-inner">
+                            <View className="career-exploration-page__score-bar-row">
+                              <Text className="career-exploration-page__score-bar-end">
+                                减弱
+                              </Text>
+                              <View className="career-exploration-page__score-bar-track-wrap">
+                                {markerPercent != null && (
+                                  <View className="career-exploration-page__score-bar-marker-col" style={{ left: `${markerPercent}%` }}>
+                                    <Text className="career-exploration-page__score-bar-label">{scoreBarLabel}</Text>
+                                    <Text className="career-exploration-page__score-bar-arrow">▼</Text>
+                                  </View>
+                                )}
+                                <View className="career-exploration-page__score-bar-track">
+                                  <View
+                                    className="career-exploration-page__score-bar-fill"
+                                    style={{ background: numScore == null ? '#d1d5db' : barGradient }}
+                                  />
+                                </View>
+                              </View>
+                              <Text className="career-exploration-page__score-bar-end">
+                               增强 
+                              </Text>
+                            </View>
+                          </View>
+                          {numScore == null && (
+                            <Text className="career-exploration-page__score-bar-placeholder">待测评</Text>
+                          )}
+                        </View>
                         {elementId !== null && (
-                          <Text
-                            className="single-major-page__element-dialog-item-score-action"
-                            onClick={() => toggleElementQuestionnaire(elementId)}
-                          >
-                            查看问卷
-                            <Text className="single-major-page__element-dialog-item-score-action-icon">
-                              {isQuestionnaireExpanded ? '▲' : '▼'}
+                          <View className="career-exploration-page__score-result-action-wrap">
+                            <Text
+                              className="single-major-page__element-dialog-item-score-action"
+                              onClick={() => toggleElementQuestionnaire(elementId)}
+                            >
+                              查看问卷
+                              <Text className="single-major-page__element-dialog-item-score-action-icon">
+                                {isQuestionnaireExpanded ? '▲' : '▼'}
+                              </Text>
                             </Text>
-                          </Text>
+                          </View>
                         )}
                       </View>
 

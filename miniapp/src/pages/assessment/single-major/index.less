@@ -706,6 +706,110 @@
     display: flex;
     align-items: center;
     gap: 12rpx;
+
+    // 测评结果 + 状态条 + 查看问卷 同一行、底部对齐（与 career-exploration 一致）
+    &.single-major-page__score-result-row {
+      display: flex;
+      align-items: flex-end;
+      flex-wrap: nowrap;
+      gap: 12rpx;
+    }
+  }
+
+  &__score-result-label-wrap,
+  &__score-result-action-wrap {
+    flex-shrink: 0;
+    line-height: 1.2;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  &__score-result-action-wrap {
+    margin-left: auto;
+  }
+
+  &__score-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6rpx;
+    flex-shrink: 0;
+    width: 40%;
+    min-width: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  &__score-bar-inner {
+    position: relative;
+    width: 100%;
+  }
+
+  &__score-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6rpx;
+  }
+
+  &__score-bar-end {
+    font-size: 20rpx;
+    color: #6b7280;
+    flex-shrink: 0;
+  }
+
+  &__score-bar-track-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__score-bar-track {
+    position: relative;
+    width: 100%;
+    height: 6rpx;
+    border-radius: 3rpx;
+    overflow: visible;
+    background: #e5e7eb;
+  }
+
+  &__score-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 3rpx;
+  }
+
+  &__score-bar-marker-col {
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: 4rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1;
+    transform: translateX(-50%);
+  }
+
+  &__score-bar-label {
+    font-size: 18rpx;
+    color: #666;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+
+  &__score-bar-arrow {
+    font-size: 16rpx;
+    color: #1f2937;
+    line-height: 0;
+    margin-top: 10rpx;
+  }
+
+  &__score-bar-placeholder {
+    font-size: 24rpx;
+    color: #9ca3af;
   }
 
   // 厌学/阻学：转化潜力展示
