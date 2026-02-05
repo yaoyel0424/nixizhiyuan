@@ -7,34 +7,37 @@ import {
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request } from 'express';
-import { Logger } from '@nestjs/common';
+import { LoggerService } from '@/logger/logger.service';
 
 /**
  * 日志拦截器
- * 记录请求日志，包括请求路径、方法、参数、响应时间
+ * 使用 LoggerService 记录请求日志（会写入 logs/app.log），包含路径、方法、userId、响应时间
  */
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('HTTP');
+  constructor(private readonly logger: LoggerService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest<Request>();
-    const { method, url, ip, body, query, params } = request;
+    const { method, url, ip } = request;
+    const userId = (request as any).user?.id;
     const startTime = Date.now();
 
     return next.handle().pipe(
       tap({
         next: () => {
           const responseTime = Date.now() - startTime;
+          const userPart = userId != null ? ` userId=${userId}` : '';
           this.logger.log(
-            `${method} ${url} ${ip} - ${responseTime}ms`,
+            `${method} ${url} ${ip}${userPart} - ${responseTime}ms`,
             'LoggingInterceptor',
           );
         },
         error: (error) => {
           const responseTime = Date.now() - startTime;
+          const userPart = userId != null ? ` userId=${userId}` : '';
           this.logger.error(
-            `${method} ${url} ${ip} - ${responseTime}ms - Error: ${error.message}`,
+            `${method} ${url} ${ip}${userPart} - ${responseTime}ms - Error: ${error.message}`,
             error.stack,
             'LoggingInterceptor',
           );

@@ -146,7 +146,7 @@
   display: flex;
   align-items: flex-start;
   gap: 20rpx;
-  margin-bottom: 24rpx;
+  margin-bottom: 12rpx;
 }
 
 .index-page__card-icon {
@@ -215,12 +215,70 @@
   font-weight: 500;
   line-height: 1.5;
   margin-top: 0;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .index-page__card-desc-highlight {
   font-weight: bold;
   color: #FF7F50;
+}
+
+// 流程步骤（一行显示、靠左，上下间距收紧）
+.index-page__card-steps {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  margin-top: 0;
+  margin-bottom: 4rpx;
+  font-size: 20rpx;
+  line-height: 1;
+  color: #1A4099;
+}
+
+// 扩大点击区域：padding 增加可点范围，负 margin 保持视觉尺寸不变
+.index-page__card-step {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6rpx;
+  font-size: 20rpx;
+  line-height: 1;
+  color: inherit;
+  padding: 24rpx;
+  margin: -24rpx;
+  box-sizing: content-box;
+
+  &--completed {
+    color: #E85D04;
+  }
+}
+
+// 步骤数字圆圈（浅色背景，略小以减小行高）
+.index-page__card-step-num {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: rgba(26, 64, 153, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16rpx;
+  color: #1A4099;
+  flex-shrink: 0;
+  line-height: 1;
+
+  &--completed {
+    background: rgba(232, 93, 4, 0.2);
+    color: #E85D04;
+  }
+}
+
+.index-page__card-step-sep {
+  margin: 0 8rpx;
+  font-size: 20rpx;
+  color: rgba(26, 64, 153, 0.6);
 }
 
 .index-page__card-button {

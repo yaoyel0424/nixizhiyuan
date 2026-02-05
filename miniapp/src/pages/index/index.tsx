@@ -1,7 +1,7 @@
 // 首页
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image } from '@tarojs/components';
-import Taro, { useShareAppMessage } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useDidShow } from '@tarojs/taro';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { BottomNav } from '@/components/BottomNav';
@@ -79,6 +79,8 @@ export default function IndexPage() {
   const [intendedMajorsCount, setIntendedMajorsCount] = useState(0);
   const [selectedProvincesCount, setSelectedProvincesCount] = useState(0);
   const [hasVisitedMajors, setHasVisitedMajors] = useState(false);
+  // 是否已首次展示过（用于 useDidShow 中避免与首次加载重复请求）
+  const isFirstShow = useRef(true);
 
   /**
    * 小程序分享配置
@@ -102,76 +104,49 @@ export default function IndexPage() {
     Promise.resolve(Taro.getWindowInfo()).then(setSystemInfo);
   }, []);
 
-  // 当对话框打开时，从 API 获取用户相关数据统计
+  // 当对话框打开时，仅同步本地问卷答案；进度数据使用页面已有 state（来自首次加载或 useDidShow 返回时）
   useEffect(() => {
     if (isGuideDialogOpen && isClient) {
-      // 先读取本地答案数据（用于显示进度）
       const storedAnswers = loadAnswersFromStorage();
       setAnswers(storedAnswers);
-
-      // 从 API 获取用户相关数据统计
-      getUserRelatedDataCount()
-        .then(data => {
-          // 使用 API 返回的数据
-          setScaleAnswersCount(data.scaleAnswersCount || 0);
-          setMajorFavoritesCount(data.majorFavoritesCount || 0);
-          setProvinceFavoritesCount(data.provinceFavoritesCount || 0);
-          setChoicesCount(data.choicesCount || 0);
-          setApiDataLoaded(true);
-        })
-        .catch(error => {
-          console.error('获取用户统计数据失败:', error);
-          setApiDataLoaded(false);
-          // API 调用失败时，降级使用本地存储数据
-          // 读取心动专业数量
-          getStorage<string[]>('intendedMajors')
-            .then(storedMajors => {
-              if (storedMajors) {
-                setIntendedMajorsCount(Array.isArray(storedMajors) ? storedMajors.length : 0);
-              } else {
-                setIntendedMajorsCount(0);
-              }
-            })
-            .catch(() => {
-              setIntendedMajorsCount(0);
-            });
-
-          // 读取意向省份数量
-          getStorage<string[]>('selectedProvinces')
-            .then(storedProvinces => {
-              if (storedProvinces) {
-                setSelectedProvincesCount(
-                  Array.isArray(storedProvinces) ? storedProvinces.length : 0
-                );
-              } else {
-                setSelectedProvincesCount(0);
-              }
-            })
-            .catch(() => {
-              setSelectedProvincesCount(0);
-            });
-
-          // 检查是否访问过专业页面（通过检查是否有专业相关数据）
-          getStorage<any[]>('wishlist-items')
-            .then(wishlistItems => {
-              setHasVisitedMajors(Array.isArray(wishlistItems) && wishlistItems.length > 0);
-            })
-            .catch(() => {
-              // 如果 wishlist-items 不存在，检查是否有其他专业相关数据
-              getStorage<string[]>('intendedMajors')
-                .then(intendedMajors => {
-                  setHasVisitedMajors(Array.isArray(intendedMajors) && intendedMajors.length > 0);
-                })
-                .catch(() => {
-                  setHasVisitedMajors(false);
-                });
-            });
-
-          // 降级时使用本地答案数量
-          setScaleAnswersCount(Object.keys(storedAnswers).length);
-        });
     }
   }, [isGuideDialogOpen, isClient]);
+
+  // 页面加载时拉取用户进度数据，用于卡片步骤展示（与弹框逻辑一致）
+  const fetchUserProgress = () => {
+    const storedAnswers = loadAnswersFromStorage();
+    setAnswers(storedAnswers);
+    getUserRelatedDataCount()
+      .then(data => {
+        setScaleAnswersCount(data.scaleAnswersCount || 0);
+        setMajorFavoritesCount(data.majorFavoritesCount || 0);
+        setProvinceFavoritesCount(data.provinceFavoritesCount || 0);
+        setChoicesCount(data.choicesCount || 0);
+        setApiDataLoaded(true);
+      })
+      .catch(() => {
+        setApiDataLoaded(false);
+        setScaleAnswersCount(Object.keys(storedAnswers).length);
+        getStorage<string[]>('intendedMajors').then(v => setIntendedMajorsCount(Array.isArray(v) ? v.length : 0)).catch(() => {});
+        getStorage<string[]>('selectedProvinces').then(v => setSelectedProvincesCount(Array.isArray(v) ? v.length : 0)).catch(() => {});
+        getStorage<any[]>('wishlist-items').then(v => setHasVisitedMajors(Array.isArray(v) && v.length > 0)).catch(() => getStorage<string[]>('intendedMajors').then(m => setHasVisitedMajors(Array.isArray(m) && m.length > 0)).catch(() => {}));
+      });
+  };
+
+  useEffect(() => {
+    if (!isClient) return;
+    fetchUserProgress();
+  }, [isClient]);
+
+  // 从选专业/选省份等页返回时重新拉取进度，使步骤状态及时刷新
+  useDidShow(() => {
+    if (!isClient) return;
+    if (isFirstShow.current) {
+      isFirstShow.current = false;
+      return; // 首次展示由 useEffect 已拉取，避免重复请求
+    }
+    fetchUserProgress();
+  });
 
   const totalQuestions = 168; // 总题目数固定为 168
   const answeredCount = Object.keys(answers).length;
@@ -378,6 +353,39 @@ export default function IndexPage() {
                   <Text className="index-page__card-tag">📈 全面数据</Text>
                 </View>
                 <Text className="index-page__card-time">🕒 需时约40分钟</Text>
+              </View>
+            </View>
+            <View className="index-page__card-steps" onClick={(e) => e.stopPropagation()}>
+              <View
+                className={`index-page__card-step ${getStepStatus(1) === 'completed' ? 'index-page__card-step--completed' : ''}`}
+                onClick={() => handleStepClick(1, handleSelfInsight)}
+              >
+                <View className={`index-page__card-step-num ${getStepStatus(1) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>1</Text></View>
+                <Text>填问卷</Text>
+              </View>
+              <Text className="index-page__card-step-sep">—</Text>
+              <View
+                className={`index-page__card-step ${getStepStatus(2) === 'completed' ? 'index-page__card-step--completed' : ''}`}
+                onClick={() => handleStepClick(2, handleMajorExploration)}
+              >
+                <View className={`index-page__card-step-num ${getStepStatus(2) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>2</Text></View>
+                <Text>选专业</Text>
+              </View>
+              <Text className="index-page__card-step-sep">—</Text>
+              <View
+                className={`index-page__card-step ${getStepStatus(3) === 'completed' ? 'index-page__card-step--completed' : ''}`}
+                onClick={() => handleStepClick(3, handleCityExploration)}
+              >
+                <View className={`index-page__card-step-num ${getStepStatus(3) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>3</Text></View>
+                <Text>选省份</Text>
+              </View>
+              <Text className="index-page__card-step-sep">—</Text>
+              <View
+                className={`index-page__card-step ${getStepStatus(4) === 'completed' ? 'index-page__card-step--completed' : ''}`}
+                onClick={() => handleStepClick(4, handleSchoolExploration)}
+              >
+                <View className={`index-page__card-step-num ${getStepStatus(4) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>4</Text></View>
+                <Text>定志愿</Text>
               </View>
             </View>
             <Text className="index-page__card-desc">
