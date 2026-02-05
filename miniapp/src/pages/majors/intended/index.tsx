@@ -468,10 +468,15 @@ export default function IntendedMajorsPage() {
   /**
    * 将 groupedChoices 同步到页面 state（groupedChoices / wishlistItems / wishlistCounts）
    * - 作为该页面“志愿列表”的单一更新入口，避免到处重复 setState
+   * - 刷新后保留当前已展示条数：若用户已加载超过 10 条（如上移/下移/删除前在看第 11+ 条），
+   *   不重置为仅前 10 条，避免操作后列表“缩回”导致找不到当前上下文
    */
   const applyGroupedChoicesToState = (groupedData: GroupedChoiceResponse | null) => {
     setGroupedChoices(groupedData)
-    setVisibleVolunteerCount(VOLUNTEER_PAGE_SIZE) // 数据刷新时重置为首次加载条数
+    const newTotal = groupedData?.volunteers?.length ?? 0
+    setVisibleVolunteerCount((prev) =>
+      Math.max(VOLUNTEER_PAGE_SIZE, Math.min(prev, newTotal || VOLUNTEER_PAGE_SIZE))
+    )
     const items = groupedData ? convertGroupedChoicesToItems(groupedData) : []
     setWishlistItems(items)
 
@@ -1616,6 +1621,57 @@ export default function IntendedMajorsPage() {
     })
   }
 
+  /** 志愿卡片整体上移/下移前：捕获当前滚动与卡片位置，用于移动后恢复视口 */
+  const captureScrollForVolunteerMove = (cardIndex: number, direction: 'up' | 'down') => {
+    return new Promise<{ oldRectTop: number; newIndex: number }>((resolve, reject) => {
+      const query = Taro.createSelectorQuery()
+      query.selectViewport().scrollOffset()
+      query.selectAll('.intended-majors-page__wishlist-item').boundingClientRect()
+      query.exec((res) => {
+        if (res?.[0] && res?.[1]) {
+          const rects = res[1] as { top: number }[]
+          if (rects.length <= cardIndex) {
+            reject(new Error('rects'))
+            return
+          }
+          const oldRectTop = rects[cardIndex].top
+          const newIndex = direction === 'up' ? cardIndex - 1 : cardIndex + 1
+          resolve({ oldRectTop, newIndex })
+        } else {
+          reject(new Error('query'))
+        }
+      })
+    })
+  }
+
+  /** 志愿卡片整体移动后：根据捕获的位置恢复滚动，使被移动的卡片仍在原视口位置 */
+  const restoreScrollAfterVolunteerMove = (saved: { oldRectTop: number; newIndex: number }) => {
+    setTimeout(() => {
+      const query = Taro.createSelectorQuery()
+      query.selectViewport().scrollOffset()
+      query.selectAll('.intended-majors-page__wishlist-item').boundingClientRect()
+      query.exec((res) => {
+        if (!res?.[0] || !res?.[1]) return
+        const scrollTop1 = (res[0] as { scrollTop: number }).scrollTop
+        const rects1 = res[1] as { top: number }[]
+        if (rects1.length <= saved.newIndex) return
+        const targetScroll = scrollTop1 + rects1[saved.newIndex].top - saved.oldRectTop
+        Taro.pageScrollTo({ scrollTop: Math.max(0, targetScroll), duration: 0 })
+      })
+    }, 150)
+  }
+
+  /** 专业组内上移/下移前：捕获当前 scrollTop，移动后恢复 */
+  const captureScrollTop = () => {
+    return new Promise<number>((resolve) => {
+      const query = Taro.createSelectorQuery()
+      query.selectViewport().scrollOffset()
+      query.exec((res) => {
+        resolve((res?.[0] as { scrollTop: number })?.scrollTop ?? 0)
+      })
+    })
+  }
+
   // 意向志愿列表：滑动触底自动加载下一批（每批 10 条）
   useReachBottom(() => {
     if (activeTab !== '意向志愿') return
@@ -1830,7 +1886,7 @@ export default function IntendedMajorsPage() {
 
   const pageTitle = activeTab === '意向志愿' ? '志愿填报' : '院校探索'
   const pageDescription = activeTab === '意向志愿' 
-    ? '基于特质匹配的智能志愿推荐' 
+    ? '基于特质匹配的志愿推荐' 
     : '探索各专业对应的院校'
   const isProfessionalTrack = activeTab !== '意向志愿'
 
@@ -2151,12 +2207,18 @@ export default function IntendedMajorsPage() {
                                       // 记录移动前的mgIndex，移动后新的mgIndex会是 mgIndex - 1
                                       const originalMgIndex = volunteer.mgIndex
                                       const newMgIndex = originalMgIndex - 1
+                                      // 移动前捕获滚动与卡片位置，移动后恢复使卡片仍在原视口位置
+                                      let scrollSaved: { oldRectTop: number; newIndex: number } | null = null
+                                      try {
+                                        scrollSaved = await captureScrollForVolunteerMove(currentVolunteerIndex, 'up')
+                                      } catch (_) {}
                                       
                                       await adjustMgIndex({ 
                                         mgIndex: originalMgIndex, 
                                         direction: 'up' as Direction 
                                       })
                                       await loadChoicesFromAPI()
+                                      if (scrollSaved) restoreScrollAfterVolunteerMove(scrollSaved)
                                       
                                       // 移动完成后，高亮移动后的新位置（发出移动指令的组件）
                                       setHighlightedVolunteerId(newMgIndex)
@@ -2192,12 +2254,18 @@ export default function IntendedMajorsPage() {
                                       // 记录移动前的mgIndex，移动后新的mgIndex会是 mgIndex + 1
                                       const originalMgIndex = volunteer.mgIndex
                                       const newMgIndex = originalMgIndex + 1
+                                      // 移动前捕获滚动与卡片位置，移动后恢复使卡片仍在原视口位置
+                                      let scrollSaved: { oldRectTop: number; newIndex: number } | null = null
+                                      try {
+                                        scrollSaved = await captureScrollForVolunteerMove(currentVolunteerIndex, 'down')
+                                      } catch (_) {}
                                       
                                       await adjustMgIndex({ 
                                         mgIndex: originalMgIndex, 
                                         direction: 'down' as Direction 
                                       })
                                       await loadChoicesFromAPI()
+                                      if (scrollSaved) restoreScrollAfterVolunteerMove(scrollSaved)
                                       
                                       // 移动完成后，高亮移动后的新位置（发出移动指令的组件）
                                       setHighlightedVolunteerId(newMgIndex)
@@ -2451,9 +2519,13 @@ export default function IntendedMajorsPage() {
                                                       e.stopPropagation()
                                                       if (choice.id) {
                                                         const choiceIdToHighlight = choice.id
+                                                        const scrollTop0 = await captureScrollTop()
                                                         
                                                         await adjustMajorIndex(choice.id, { direction: 'up' as Direction })
                                                         await loadChoicesFromAPI()
+                                                        setTimeout(() => {
+                                                          Taro.pageScrollTo({ scrollTop: scrollTop0, duration: 0 })
+                                                        }, 100)
                                                         
                                                         // 移动完成后设置高亮动画
                                                         setHighlightedChoiceId(choiceIdToHighlight)
@@ -2482,9 +2554,13 @@ export default function IntendedMajorsPage() {
                                                       e.stopPropagation()
                                                       if (choice.id) {
                                                         const choiceIdToHighlight = choice.id
+                                                        const scrollTop0 = await captureScrollTop()
                                                         
                                                         await adjustMajorIndex(choice.id, { direction: 'down' as Direction })
                                                         await loadChoicesFromAPI()
+                                                        setTimeout(() => {
+                                                          Taro.pageScrollTo({ scrollTop: scrollTop0, duration: 0 })
+                                                        }, 100)
                                                         
                                                         // 移动完成后设置高亮动画
                                                         setHighlightedChoiceId(choiceIdToHighlight)
