@@ -74,6 +74,10 @@ export class ElementInfoDto {
   })
   @Expose()
   type: 'like' | 'talent';
+
+  @ApiProperty({ description: '拥有时的自然状态', example: '...' })
+  @Expose()
+  ownedNaturalState: string; 
 }
 
 /**
@@ -424,13 +428,14 @@ export class PortraitDetailDto {
  * 用户画像响应 DTO
  */
 export class UserPortraitResponseDto {
-  @ApiProperty({
+/**  @ApiProperty({
     description: '所有元素得分信息',
     type: [ElementScoreInfoDto],
   })
   @Expose()
   @Type(() => ElementScoreInfoDto)
   elementScores: ElementScoreInfoDto[];
+*/
 
   @ApiProperty({
     description: '选中的喜欢元素',

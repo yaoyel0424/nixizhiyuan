@@ -651,6 +651,7 @@ export class PortraitsService {
               id: portrait.likeElement.id,
               name: portrait.likeElement.name,
               type: portrait.likeElement.type,
+              ownedNaturalState: portrait.likeElement.ownedNaturalState 
             }
           : null,
         talentElement: portrait.talentElement
@@ -658,6 +659,7 @@ export class PortraitsService {
               id: portrait.talentElement.id,
               name: portrait.talentElement.name,
               type: portrait.talentElement.type,
+              ownedNaturalState: portrait.talentElement.ownedNaturalState 
             }
           : null,
         quadrant: portrait.quadrant
