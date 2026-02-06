@@ -32,7 +32,7 @@ export class PortraitsController {
     description: '查询成功',
     type: UserPortraitResponseDto,
   })
-  @Cache()
+  @Cache(600)
   async getUserPortrait(
     @CurrentUser() user: any,
   ): Promise<UserPortraitResponseDto> {

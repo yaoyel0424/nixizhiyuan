@@ -501,7 +501,7 @@
   position: absolute;
   left: 50%;
   top: 0;
-  width: 90%;
+  width: 87%;
   height: 100%;
   box-sizing: border-box;
   display: flex;
@@ -512,7 +512,8 @@
   padding: 28rpx 32rpx 24rpx;
   border-left: 6rpx solid;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  /* 切入/切出：滑动过渡，无翻书效果 */
+  transition: transform 0.35s ease-in-out, opacity 0.35s ease-in-out;
   will-change: transform;
   transform: translateX(-50%);
 

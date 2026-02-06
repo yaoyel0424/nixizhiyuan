@@ -187,6 +187,14 @@ function WordCloudCSS({
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
+  // 翻书动画：是否正在翻转、目标索引、当前翻转角度
+  const [flipState, setFlipState] = useState<{ isFlipping: boolean; toIndex: number; angle: number }>({
+    isFlipping: false,
+    toIndex: 0,
+    angle: 0,
+  });
+  const flipDuration = 400;
+  const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 准备卡片数据：按 quadrant 区分颜色（柔和色），按 1、4、2、3 顺序展示
   const cardItems = useMemo(() => {
@@ -330,8 +338,8 @@ function WordCloudCSS({
           const opacity = isCurrent ? 1 : Math.max(0.88, 1 - 0.08 * Math.abs(offset));
           const inRange = i >= visibleRange.from && i <= visibleRange.to;
           if (!inRange) return null;
-          // 大位移：前一张移出左侧只露约 5%，后一张移出右侧只露约 5%，当前卡占中间 90%，避免三张叠在一起
-          const translateXPercent = offset * 100;
+          // 当前卡约 82% 宽，下一张/上一张各露出约 18%，提示用户可左右滑动
+          const translateXPercent = offset * 99;
 
           return (
             <View
