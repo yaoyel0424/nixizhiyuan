@@ -1,14 +1,39 @@
 // 个人中心页面样式
 .profile-page {
   min-height: 100%;
-  background: #f0f7ff;
+  background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 50%, #f9fafb 100%);
   display: flex;
   flex-direction: column;
 }
 
 .profile-page__header {
-  background: linear-gradient(to bottom, #1A4099, #2563eb, rgba(37, 99, 235, 0.8));
-  padding: 48rpx 32rpx 64rpx;
+  background: linear-gradient(135deg, #1A4099 0%, #2563eb 50%, #3b82f6 100%);
+  padding: 48rpx 32rpx 80rpx;
+  position: relative;
+  overflow: hidden;
+  
+  // 添加装饰性背景元素
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400rpx;
+    height: 400rpx;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -10%;
+    width: 300rpx;
+    height: 300rpx;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+    border-radius: 50%;
+  }
 }
 
 .profile-page__header-content {
@@ -16,16 +41,26 @@
   flex-direction: column;
   align-items: center;
   gap: 32rpx;
+  position: relative;
+  z-index: 1;
 }
 
 .profile-page__avatar {
   width: 160rpx;
   height: 160rpx;
   border-radius: 50%;
-  border: 8rpx solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 20rpx 30rpx -6rpx rgba(0, 0, 0, 0.1);
+  border: 6rpx solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 8rpx 24rpx rgba(0, 0, 0, 0.15),
+    0 0 0 4rpx rgba(255, 255, 255, 0.1),
+    inset 0 2rpx 8rpx rgba(255, 255, 255, 0.3);
   overflow: hidden;
   position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .profile-page__avatar-img {
@@ -39,16 +74,18 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  backdrop-filter: blur(4rpx);
 }
 
 .profile-page__avatar-text {
   font-size: 64rpx;
-  font-weight: bold;
+  font-weight: 600;
   color: #fff;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
 }
 
 .profile-page__info {
@@ -74,13 +111,17 @@
 .profile-page__name-edit {
   font-size: 26rpx;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
-  padding: 8rpx 12rpx;
-  border-radius: 10rpx;
-  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.95);
+  padding: 8rpx 16rpx;
+  border-radius: 12rpx;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8rpx);
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
 
   &:active {
-    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0.95);
   }
 }
 
@@ -109,83 +150,49 @@
 
 .profile-page__status-text {
   font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.profile-page__progress-ring {
-  position: relative;
-  width: 192rpx;
-  height: 192rpx;
-  margin-top: 16rpx;
-}
-
-.profile-page__progress-svg {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.profile-page__progress-bg {
-  position: absolute;
-  top: 16rpx;
-  left: 16rpx;
-  right: 16rpx;
-  bottom: 16rpx;
-  border: 16rpx solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-}
-
-.profile-page__progress-fill {
-  position: absolute;
-  top: 16rpx;
-  left: 16rpx;
-  right: 16rpx;
-  bottom: 16rpx;
-  border: 16rpx solid #fff;
-  border-radius: 50%;
-  border-right-color: transparent;
-  border-bottom-color: transparent;
-  transition: transform 0.5s;
-}
-
-.profile-page__progress-text {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.profile-page__progress-value {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #fff;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+  font-weight: 500;
 }
 
 .profile-page__content {
-  padding: 48rpx 32rpx;
+  padding: 32rpx 24rpx 48rpx;
   display: flex;
   flex-direction: column;
-  gap: 48rpx;
+  gap: 32rpx;
+  margin-top: -32rpx; // 与头部重叠，创造层次感
+  position: relative;
+  z-index: 2;
 }
 
 .profile-page__card {
   overflow: hidden;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 
+    0 4rpx 16rpx rgba(26, 64, 153, 0.08),
+    0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  
+  &:active {
+    transform: translateY(2rpx);
+    box-shadow: 
+      0 2rpx 8rpx rgba(26, 64, 153, 0.12),
+      0 1rpx 4rpx rgba(0, 0, 0, 0.06);
+  }
 }
 
 .profile-page__card-header {
   padding: 32rpx;
-  background: linear-gradient(to right, rgba(26, 64, 153, 0.05), transparent);
-  border-bottom: 2rpx solid var(--border-color, #e5e7eb);
+  background: linear-gradient(135deg, rgba(26, 64, 153, 0.06) 0%, rgba(37, 99, 235, 0.03) 100%);
+  border-bottom: 1rpx solid rgba(229, 231, 235, 0.8);
 }
 
 .profile-page__card-title {
   font-size: 36rpx;
-  font-weight: bold;
+  font-weight: 700;
   color: #1A4099;
+  letter-spacing: 0.5rpx;
 }
 
 .profile-page__card-body {
@@ -198,62 +205,88 @@
   padding: 32rpx;
   display: flex;
   align-items: center;
-  gap: 32rpx;
-  transition: background 0.2s;
-  border-bottom: 2rpx solid var(--border-color, #e5e7eb);
+  gap: 24rpx;
+  transition: all 0.2s ease;
+  border-bottom: 1rpx solid rgba(229, 231, 235, 0.6);
+  position: relative;
   
   &:last-child {
     border-bottom: none;
   }
   
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1rpx;
+    background: linear-gradient(to right, transparent, rgba(229, 231, 235, 0.8), transparent);
+  }
+  
+  &:last-child::after {
+    display: none;
+  }
+  
   &:active {
-    background: #F5F5F5;
+    background: linear-gradient(135deg, rgba(26, 64, 153, 0.04) 0%, rgba(37, 99, 235, 0.02) 100%);
+    transform: translateX(4rpx);
   }
   
   &--disabled {
     opacity: 0.5;
+    pointer-events: none;
   }
 }
 
 .profile-page__card-icon {
   width: 96rpx;
   height: 96rpx;
-  border-radius: 24rpx;
+  border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 
+    0 4rpx 12rpx rgba(0, 0, 0, 0.1),
+    inset 0 1rpx 2rpx rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
   
   &--restart {
-    background: linear-gradient(to bottom right, #FF7F50, #FF6A3D);
+    background: linear-gradient(135deg, #FF7F50 0%, #FF6A3D 50%, #FF5722 100%);
   }
   
   &--report {
-    background: linear-gradient(to bottom right, #1A4099, #2563eb);
+    background: linear-gradient(135deg, #1A4099 0%, #2563eb 50%, #3b82f6 100%);
   }
   
   &--continue {
-    background: linear-gradient(to bottom right, #1A4099, #2563eb);
+    background: linear-gradient(135deg, #1A4099 0%, #2563eb 50%, #3b82f6 100%);
   }
   
   &--cache {
-    background: linear-gradient(to bottom right, #9ca3af, #6b7280);
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 50%, #4b5563 100%);
   }
   
   &--feedback {
-    background: linear-gradient(to bottom right, #1A4099, #2563eb);
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%);
   }
   
   &--about {
-    background: linear-gradient(to bottom right, #1A4099, #2563eb);
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
   }
   
   &--share {
-    background: linear-gradient(to bottom right, #FF7F50, #FF6A3D);
+    background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
   }
   
   &--disabled {
-    background: #d1d5db;
+    background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+    box-shadow: none;
+  }
+  
+  .profile-page__card-item:active & {
+    transform: scale(0.95);
   }
 }
 
@@ -270,71 +303,97 @@
 .profile-page__card-item-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1A4099;
+  color: #1f2937;
   margin-bottom: 8rpx;
   display: block;
-  
-  &--disabled {
-    color: #6b7280;
-  }
-}
-
-.profile-page__card-item-desc {
-  font-size: 28rpx;
-  color: #666;
-  display: block;
+  line-height: 1.4;
   
   &--disabled {
     color: #9ca3af;
   }
 }
 
-.profile-page__card-arrow {
-  font-size: 40rpx;
-  color: #9ca3af;
-  flex-shrink: 0;
+.profile-page__card-item-desc {
+  font-size: 26rpx;
+  color: #6b7280;
+  display: block;
+  line-height: 1.5;
   
   &--disabled {
     color: #d1d5db;
   }
 }
 
+.profile-page__card-arrow {
+  font-size: 36rpx;
+  color: #9ca3af;
+  flex-shrink: 0;
+  font-weight: 300;
+  transition: all 0.2s ease;
+  
+  &--disabled {
+    color: #d1d5db;
+  }
+  
+  .profile-page__card-item:active & {
+    transform: translateX(4rpx);
+    color: #1A4099;
+  }
+}
+
 .profile-page__logout,
 .profile-page__login {
   width: 100%;
-  padding: 32rpx;
+  padding: 36rpx 32rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16rpx;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  border-radius: 24rpx;
+  position: relative;
+  overflow: hidden;
 }
 
 .profile-page__logout {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(220, 38, 38, 0.03) 100%);
+  
   &:active {
-    background: rgba(239, 68, 68, 0.1);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.08) 100%);
+    transform: scale(0.98);
   }
 }
 
 .profile-page__login {
+  background: linear-gradient(135deg, rgba(26, 64, 153, 0.05) 0%, rgba(37, 99, 235, 0.03) 100%);
+  
   &:active {
-    background: #F5F5F5;
+    background: linear-gradient(135deg, rgba(26, 64, 153, 0.1) 0%, rgba(37, 99, 235, 0.06) 100%);
+    transform: scale(0.98);
   }
 }
 
 .profile-page__logout-icon,
 .profile-page__login-icon {
   font-size: 40rpx;
+  transition: transform 0.2s ease;
+  
+  .profile-page__logout:active &,
+  .profile-page__login:active & {
+    transform: scale(1.1);
+  }
 }
 
 .profile-page__logout-text {
   font-size: 32rpx;
   font-weight: 600;
-  color: #dc2626;
+  color: #ef4444;
+  letter-spacing: 0.5rpx;
 }
 
 .profile-page__login-text {
   font-size: 32rpx;
   font-weight: 600;
   color: #1A4099;
+  letter-spacing: 0.5rpx;
 }
