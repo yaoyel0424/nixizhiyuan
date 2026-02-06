@@ -866,15 +866,22 @@ export class ChoicesService {
         );
       }
 
+      // 使用临时占位 mg_index 分步交换，避免违反 (user_id, mg_index, major_index) 唯一约束的中间状态
+      const tempMgIndex = 0; // 业务上 mg_index 从 1 开始，0 用作交换时的临时值
       for (const choice of currentChoices) {
-        choice.mgIndex = targetMgIndex;
+        choice.mgIndex = tempMgIndex;
       }
+      await manager.save(Choice, currentChoices);
 
       for (const choice of targetChoices) {
         choice.mgIndex = mgIndex;
       }
+      await manager.save(Choice, targetChoices);
 
-      await manager.save(Choice, [...currentChoices, ...targetChoices]);
+      for (const choice of currentChoices) {
+        choice.mgIndex = targetMgIndex;
+      }
+      await manager.save(Choice, currentChoices);
 
       this.logger.log(
         `用户 ${userId} 调整 mg_index，从 ${mgIndex} ${direction === 'up' ? '上移' : '下移'} 到 ${targetMgIndex}，更新了 ${currentChoices.length + targetChoices.length} 条记录`,
@@ -940,11 +947,19 @@ export class ChoicesService {
         );
       }
 
-      const tempMajorIndex = currentChoice.majorIndex;
-      currentChoice.majorIndex = targetChoice.majorIndex;
-      targetChoice.majorIndex = tempMajorIndex;
+      // 使用临时占位 major_index 分步交换，避免违反 (user_id, mg_index, major_index) 唯一约束的中间状态
+      const tempMajorIndexPlaceholder = 0; // 业务上 major_index 从 1 开始，0 用作交换时的临时值
+      const oldCurrent = currentChoice.majorIndex ?? 0;
+      const oldTarget = targetChoice.majorIndex ?? 0;
 
-      await manager.save(Choice, [currentChoice, targetChoice]);
+      currentChoice.majorIndex = tempMajorIndexPlaceholder;
+      await manager.save(Choice, currentChoice);
+
+      targetChoice.majorIndex = oldCurrent;
+      await manager.save(Choice, targetChoice);
+
+      currentChoice.majorIndex = oldTarget;
+      await manager.save(Choice, currentChoice);
 
       this.logger.log(
         `用户 ${userId} 调整志愿选择 major_index，ID: ${choiceId}，方向: ${direction}`,
