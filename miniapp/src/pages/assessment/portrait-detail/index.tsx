@@ -274,9 +274,7 @@ export default function PortraitDetailPage() {
             <Section
               title="你的独特价值生态位"
               description={
-                portrait.partTwoDescription ? (
-                  <Text className="portrait-detail-page__section-desc-text portrait-detail-page__section-desc-text--small">{portrait.partTwoDescription}</Text>
-                ) : undefined
+                portrait.partTwoDescription  
               }
             >
               <Tabs className="portrait-detail-page__tabs" value={nicheTab} onValueChange={setNicheTab}>

@@ -78,26 +78,6 @@ const QUADRANT_COLORS: Record<number, string> = {
 // 展示顺序：1 -> 4 -> 2 -> 3
 const QUADRANT_ORDER = [1, 4, 2, 3];
 
-// ==================== 图标系统 ====================
-// 特质图标映射（使用简约线性图标）
-const TRAIT_ICONS: Record<string, string> = {
-  '自然爱好者': '🌿',
-  '美学爱好者': '🎨',
-  '逻辑极客': '⚡',
-  '结构解码者': '🔍',
-  '极简主义刺客': '✂️',
-  '语言极简主义者': '📝',
-  '异步沟通者': '💬',
-  '声音旁观者': '👂',
-  '苦行僧': '🧘',
-  '叙事绝缘体': '📚',
-};
-
-// 获取特质图标（如果没有匹配，返回默认图标）
-const getTraitIcon = (core: string): string => {
-  return TRAIT_ICONS[core] || '●';
-};
-
 /**
  * 解析核心特质文本为列表
  */
@@ -109,19 +89,6 @@ function parseTraits(description: string): string[] {
     .map(t => t.trim())
     .filter(t => t.length > 0);
   return traits;
-}
-
-/**
- * 解析适配角色文本为列表
- */
-function parseRoles(rolesText: string): string[] {
-  if (!rolesText) return [];
-  // 按逗号、分号或换行符分割
-  const roles = rolesText
-    .split(/[，,；;\n]/)
-    .map(r => r.trim())
-    .filter(r => r.length > 0);
-  return roles;
 }
 
 /**
@@ -204,8 +171,11 @@ interface CardItem {
   maxStatusLines: number;
 }
 
+/** 左右滑动切换的阈值（px） */
+const SWIPE_THRESHOLD = 50;
+
 /**
- * 卡片瀑布流组件
+ * 层叠卡片组件：特质以层叠 + 左右滑动展示，当前卡片全显，前后各露边
  */
 function WordCloudCSS({
   portraits,
@@ -214,7 +184,9 @@ function WordCloudCSS({
   portraits: Portrait[];
   onItemClick?: (portrait: Portrait) => void;
 }) {
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
 
   // 准备卡片数据：按 quadrant 区分颜色（柔和色），按 1、4、2、3 顺序展示
   const cardItems = useMemo(() => {
@@ -265,61 +237,236 @@ function WordCloudCSS({
     return items;
   }, [portraits]);
 
-  // 处理点击
+  // 当前索引不超过列表长度（数据变化时修正）
+  const safeIndex = Math.min(currentIndex, Math.max(0, cardItems.length - 1));
+
+  useEffect(() => {
+    if (cardItems.length > 0 && currentIndex >= cardItems.length) {
+      setCurrentIndex(cardItems.length - 1);
+    }
+  }, [cardItems.length, currentIndex]);
+
+  const setSafeIndex = useCallback((next: number) => {
+    setCurrentIndex((prev) => {
+      const max = Math.max(0, cardItems.length - 1);
+      return Math.max(0, Math.min(max, next));
+    });
+  }, [cardItems.length]);
+
+  // 处理点击：仅当前卡片可点击进入详情
   const handleItemClick = useCallback((portrait: Portrait) => {
     if (onItemClick) {
       onItemClick(portrait);
     }
   }, [onItemClick]);
 
+  // 滑动手势：左滑下一张，右滑上一张；仅当水平位移占优时才切换，避免垂直滚动误触
+  const onTouchStart = useCallback((e: any) => {
+    const t = e.touches?.[0];
+    if (t) {
+      touchStartX.current = t.clientX;
+      touchStartY.current = t.clientY;
+    }
+  }, []);
+  const onTouchEnd = useCallback((e: any) => {
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+    const deltaX = t.clientX - touchStartX.current;
+    const deltaY = t.clientY - touchStartY.current;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+    // 仅当水平滑动占优且超过阈值时才切换画像，垂直滚动不触发
+    if (absX > SWIPE_THRESHOLD && absX > absY) {
+      if (deltaX < 0) {
+        setSafeIndex(safeIndex + 1);
+      } else {
+        setSafeIndex(safeIndex - 1);
+      }
+    }
+  }, [safeIndex, setSafeIndex]);
+
+  // 只渲染当前及前后各两张，减少节点
+  const visibleRange = {
+    from: Math.max(0, safeIndex - 2),
+    to: Math.min(cardItems.length - 1, safeIndex + 2),
+  };
+
+  if (cardItems.length === 0) {
+    return <View className="word-cloud-css word-cloud-css--stack" />;
+  }
+
   return (
-    <View className="word-cloud-css">
-      {/* 顶部提示 */} 
-      
-      {/* 卡片瀑布流容器 */}
-      <View className="word-cloud-css__container">
-        {cardItems.map((item) => {
-          const isHovered = hoveredId === item.id;
+    <View className="word-cloud-css word-cloud-css--stack">
+      {/* 仅保留上一个 / 当前 x/x / 下一个，画像名称在卡片内完整显示 */}
+      <View className="word-cloud-css__stack-footer">
+        <View className="word-cloud-css__stack-nav-row">
+          <View
+            className={`word-cloud-css__stack-nav-item ${cardItems[safeIndex - 1] ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
+            onClick={cardItems[safeIndex - 1] ? () => setSafeIndex(safeIndex - 1) : undefined}
+          >
+            <Text className="word-cloud-css__stack-nav-label">上一个</Text>
+          </View>
+          <View className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--current">
+            <Text className="word-cloud-css__stack-nav-label">当前 {safeIndex + 1} / {cardItems.length}</Text>
+          </View>
+          <View
+            className={`word-cloud-css__stack-nav-item ${cardItems[safeIndex + 1] ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
+            onClick={cardItems[safeIndex + 1] ? () => setSafeIndex(safeIndex + 1) : undefined}
+          >
+            <Text className="word-cloud-css__stack-nav-label">下一个</Text>
+          </View>
+        </View>
+      </View>
+      <View
+        className="word-cloud-css__stack-container"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        {cardItems.map((item, i) => {
+          const offset = i - safeIndex;
+          const isCurrent = i === safeIndex;
+          const scale = isCurrent ? 1 : Math.max(0.82, 1 - 0.1 * Math.abs(offset));
+          const zIndex = 100 + 10 - Math.abs(offset);
+          const opacity = isCurrent ? 1 : Math.max(0.88, 1 - 0.08 * Math.abs(offset));
+          const inRange = i >= visibleRange.from && i <= visibleRange.to;
+          if (!inRange) return null;
+          // 大位移：前一张移出左侧只露约 5%，后一张移出右侧只露约 5%，当前卡占中间 90%，避免三张叠在一起
+          const translateXPercent = offset * 100;
 
           return (
             <View
               key={item.id}
-              className={`word-cloud-css__card ${item.isQuadrant1 ? 'word-cloud-css__card--quadrant1' : ''}`}
+              className={`word-cloud-css__stack-card ${item.isQuadrant1 ? 'word-cloud-css__stack-card--quadrant1' : ''}`}
               style={{
                 borderLeftColor: item.color,
-                borderLeftWidth: '4px',
+                borderLeftWidth: 4,
+                borderRightColor: item.color,
+                borderRightWidth: 4,
+                zIndex,
+                opacity,
+                transform: `translateX(-50%) translateX(${translateXPercent}%) scale(${scale})`,
               }}
-              onTouchStart={() => setHoveredId(item.id)}
-              onTouchEnd={() => setHoveredId(null)}
-              onTouchCancel={() => setHoveredId(null)}
               onClick={() => {
-                handleItemClick(item.portrait);
-                setHoveredId(null);
+                if (isCurrent) {
+                  handleItemClick(item.portrait);
+                } else {
+                  setSafeIndex(i);
+                }
               }}
             >
-              {item.prefix && (
-                <Text className="word-cloud-css__card-prefix">
-                  {item.prefix}
+              <View className="word-cloud-css__stack-card-body">
+                {/* 当前画像名称，在卡片内完整显示（可换行不截断） */}
+                <Text className="word-cloud-css__card-portrait-name" style={{ color: item.color }}>
+                  {item.portrait.name?.trim() || `${(item.prefix || '')}${item.core}`.trim() || '—'}
                 </Text>
-              )}
-              <Text 
-                className="word-cloud-css__card-core"
-                style={{
-                  color: item.color,
-                  fontWeight: item.isQuadrant1 ? '600' : '500',
-                  fontSize: item.isQuadrant1 ? '22px' : '20px',
-                }}
-              >
-                {item.core}
-              </Text>
-              
-              {item.status && (
-                <Text 
-                  className={`word-cloud-css__card-status word-cloud-css__card-status--lines-${item.maxStatusLines}`}
-                >
-                  {item.status}
-                </Text>
-              )}
+                {/* 一句话状态（可选，小字），与下方内容一起滚动 */}
+                {item.portrait.status && (
+                  <Text className="word-cloud-css__card-status" numberOfLines={2}>
+                    {item.portrait.status}
+                  </Text>
+                )}
+                {/* 重点二：元素名称 — 喜欢元素、天赋元素，标签+名称突出 */}
+                <View className="word-cloud-css__card-elements">
+                  {item.portrait.likeElement && (
+                    <View className="word-cloud-css__card-element-group">
+                      <Text className="word-cloud-css__card-element-label">喜欢元素</Text>
+                      <Text className="word-cloud-css__card-tag word-cloud-css__card-tag--green">
+                        {item.portrait.likeElement.name}
+                      </Text>
+                      {(item.portrait.likeElement as { ownedNaturalState?: string })?.ownedNaturalState && (
+                        <View className="word-cloud-css__card-element-state-wrap">
+                          {String((item.portrait.likeElement as { ownedNaturalState?: string }).ownedNaturalState)
+                            .replace(/\n{2,}/g, '\n')
+                            .split('\n')
+                            .filter(p => p.trim())
+                            .map((para, i) => (
+                              <Text key={i} className="word-cloud-css__card-element-state">
+                                {para.trim()}
+                              </Text>
+                            ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                  {item.portrait.talentElement && (
+                    <View className="word-cloud-css__card-element-group">
+                      <Text className="word-cloud-css__card-element-label">天赋元素</Text>
+                      <Text className="word-cloud-css__card-tag word-cloud-css__card-tag--green">
+                        {item.portrait.talentElement.name}
+                      </Text>
+                      {(item.portrait.talentElement as { ownedNaturalState?: string })?.ownedNaturalState && (
+                        <View className="word-cloud-css__card-element-state-wrap">
+                          {String((item.portrait.talentElement as { ownedNaturalState?: string }).ownedNaturalState)
+                            .replace(/\n{2,}/g, '\n')
+                            .split('\n')
+                            .filter(p => p.trim())
+                            .map((para, i) => (
+                              <Text key={i} className="word-cloud-css__card-element-state">
+                                {para.trim()}
+                              </Text>
+                            ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+                {/* 次要：核心矛盾 — 标题 + 矛盾内容（与三大挑战同款绿色边框标签） */}
+                {(item.portrait.partOneMainTitle || item.portrait.partOneSubTitle || item.portrait.partOneDescription || item.portrait.status) && (() => {
+                  const conflictTraits = parseTraits(item.portrait.partOneDescription || item.portrait.status || '');
+                  const hasConflictContent = !!item.portrait.partOneSubTitle || conflictTraits.length > 0;
+                  return (
+                    <View className="word-cloud-css__card-section word-cloud-css__card-section--secondary">
+                      {item.portrait.partOneMainTitle && (
+                        <Text className="word-cloud-css__card-subtitle">{item.portrait.partOneMainTitle}</Text>
+                      )}
+                      {hasConflictContent && (
+                        <>
+                          {item.portrait.partOneSubTitle && (
+                            <View className="word-cloud-css__card-tags">
+                              <Text className="word-cloud-css__card-tag word-cloud-css__card-tag--green">
+                                {item.portrait.partOneSubTitle}
+                              </Text>
+                            </View>
+                          )}
+                          {conflictTraits.length > 0 && (
+                            <View className="word-cloud-css__card-traits">
+                              {conflictTraits.map((trait, index) => (
+                                <View key={index} className="word-cloud-css__card-trait-row">
+                                   <Text className="word-cloud-css__card-trait-text">{trait}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  );
+                })()}
+                {/* 三大挑战 — 放在核心矛盾（主副标题+特质）下面，标题后跟查看详情链接 */}
+                {item.portrait.quadrant1Challenges && item.portrait.quadrant1Challenges.length > 0 && (
+                  <View className="word-cloud-css__card-section">
+                    <View className="word-cloud-css__card-section-title-row">
+                      <Text className="word-cloud-css__card-section-title">三大挑战</Text>
+                      <Text
+                        className="word-cloud-css__card-detail-link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleItemClick(item.portrait);
+                        }}
+                      >
+                        查看详情
+                      </Text>
+                    </View>
+                    <View className="word-cloud-css__card-tags">
+                      {item.portrait.quadrant1Challenges.map((c) => (
+                        <Text key={c.id} className="word-cloud-css__card-tag" style={{ borderColor: item.color }}>
+                          {c.name}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
             </View>
           );
         })}
@@ -768,7 +915,7 @@ function WordCloudCanvas({
       // 使用精确测量准备所有项目
       const itemsPromises = sortedPortraits.map(async (portrait, index) => {
         const { prefix, core } = parseTraitName(portrait.name);
-        const icon = getTraitIcon(core); // 获取图标
+        const icon = '●';
         
         // 计算权重：前几个特质权重更高
         // 使用指数衰减，让前几个更突出
@@ -1272,257 +1419,6 @@ function WordCloudCanvas({
         onTouchCancel={() => setHoveredId(null)}
       />
     </>
-  );
-}
-
-
-
-/**
- * Portrait 详情卡片组件
- */
-function PortraitDetailCard({
-  portrait,
-  dimension,
-  color,
-  lightColor,
-}: {
-  portrait: Portrait;
-  dimension: string;
-  color: string;
-  lightColor: string;
-}) {
-  // 解析核心特质
-  const traits = useMemo(() => {
-    return parseTraits(portrait.partOneDescription || portrait.status || '');
-  }, [portrait.partOneDescription, portrait.status]);
-
-  // 解析适配角色（从多个来源合并）
-  const roles = useMemo(() => {
-    const allRoles: string[] = [];
-    
-    // 从 quadrant1Niches 获取
-    if (portrait.quadrant1Niches && portrait.quadrant1Niches.length > 0) {
-      portrait.quadrant1Niches.forEach(niche => {
-        const nicheRoles = parseRoles(niche.possibleRoles);
-        allRoles.push(...nicheRoles);
-      });
-    }
-    
-    // 从 quadrant4GrowthPaths 获取
-    if (portrait.quadrant4GrowthPaths && portrait.quadrant4GrowthPaths.length > 0) {
-      portrait.quadrant4GrowthPaths.forEach(path => {
-        const pathRoles = parseRoles(path.possibleRoles);
-        allRoles.push(...pathRoles);
-      });
-    }
-    
-    // 去重
-    return Array.from(new Set(allRoles));
-  }, [portrait.quadrant1Niches, portrait.quadrant4GrowthPaths]);
-
-  // 获取核心维度显示文本
-  const getDimensionText = () => {
-    // 如果有partOneSubTitle，使用"维度-子类型"格式
-    if (portrait.partOneSubTitle) {
-      return `${dimension}-${portrait.partOneSubTitle}`;
-    }
-    // 否则只显示维度
-    return dimension;
-  };
-
-  return (
-    <View className="personal-profile-page__detail-card">
-      {/* 彩色头部 */}
-      <View className="personal-profile-page__detail-header" style={{ backgroundColor: color }}>
-        <Text className="personal-profile-page__detail-title">{portrait.name}</Text>
-        <Text className="personal-profile-page__detail-id">
-          ID: {portrait.id} | {getDimensionText()}
-        </Text>
-      </View>
-
-      {/* 卡片内容 */}
-      <View className="personal-profile-page__detail-body">
-        {/* 核心特质 */}
-        {traits.length > 0 && (
-          <View className="personal-profile-page__detail-section">
-            <Text className="personal-profile-page__detail-section-title">核心特质</Text>
-            <View className="personal-profile-page__detail-traits">
-              {traits.map((trait, index) => (
-                <View key={index} className="personal-profile-page__detail-trait-item">
-                  <View className="personal-profile-page__detail-trait-dot" />
-                  <Text className="personal-profile-page__detail-trait-text">{trait}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* 核心困境 */}
-        {portrait.partOneMainTitle && (
-          <View className="personal-profile-page__detail-section">
-            <Text className="personal-profile-page__detail-section-title">{portrait.partOneMainTitle}</Text>
-            {portrait.partOneSubTitle && (
-              <Text className="personal-profile-page__detail-subtitle">{portrait.partOneSubTitle}</Text>
-            )}
-          </View>
-        )}
-
-        {/* 核心双刃剑 */}
-        {portrait.partTwoDescription && (
-          <View className="personal-profile-page__detail-section">
-            <Text className="personal-profile-page__detail-section-title">核心双刃剑</Text>
-            <Text className="personal-profile-page__detail-double-edged">
-              {portrait.partTwoDescription}
-            </Text>
-          </View>
-        )}
-
-        {/* 偏好元素和天赋元素 */}
-        {(portrait.likeElement || portrait.talentElement) && (
-          <View className="personal-profile-page__detail-section">
-            <Text className="personal-profile-page__detail-section-title">核心元素</Text>
-            {portrait.likeElement && (
-              <View className="personal-profile-page__detail-element">
-                <Text className="personal-profile-page__detail-element-label">偏好元素：</Text>
-                <Text className="personal-profile-page__detail-element-text">
-                  {portrait.likeElement.dimension || ''}-{portrait.likeElement.name}
-                </Text>
-              </View>
-            )}
-            {portrait.talentElement && (
-              <View className="personal-profile-page__detail-element">
-                <Text className="personal-profile-page__detail-element-label">天赋元素：</Text>
-                <Text className="personal-profile-page__detail-element-text">
-                  {portrait.talentElement.dimension || ''}-{portrait.talentElement.name}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* 核心挑战与修炼（quadrant4Dilemmas） */}
-        {portrait.quadrant4Dilemmas && portrait.quadrant4Dilemmas.length > 0 && (
-          <View className="personal-profile-page__detail-section">
-            <Text className="personal-profile-page__detail-section-title">核心挑战与修炼</Text>
-            {portrait.quadrant4Dilemmas.map((dilemma, index) => (
-              <View key={dilemma.id || index} className="personal-profile-page__detail-challenge">
-                <View className="personal-profile-page__detail-challenge-header">
-                  <Text className="personal-profile-page__detail-challenge-type">{dilemma.type}</Text>
-                  <Text className="personal-profile-page__detail-challenge-name">{dilemma.name}</Text>
-                </View>
-                {dilemma.description && (
-                  <Text className="personal-profile-page__detail-challenge-description">
-                    {dilemma.description}
-                  </Text>
-                )}
-                {dilemma.cultivationStrategy && (
-                  <View className="personal-profile-page__detail-challenge-strategy">
-                    <Text className="personal-profile-page__detail-challenge-strategy-title">
-                      即时心法：{dilemma.cultivationStrategy}
-                    </Text>
-                    {dilemma.strategy && (
-                      <Text className="personal-profile-page__detail-challenge-strategy-text">
-                        {dilemma.strategy}
-                      </Text>
-                    )}
-                  </View>
-                )}
-                {dilemma.capabilityBuilding && (
-                  <View className="personal-profile-page__detail-challenge-building">
-                    <Text className="personal-profile-page__detail-challenge-building-title">长期修炼：</Text>
-                    <Text className="personal-profile-page__detail-challenge-building-text">
-                      {dilemma.capabilityBuilding}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* 核心生态位（quadrant4GrowthPaths 或 quadrant1Niches） */}
-        {((portrait.quadrant4GrowthPaths && portrait.quadrant4GrowthPaths.length > 0) ||
-          (portrait.quadrant1Niches && portrait.quadrant1Niches.length > 0)) && (
-          <View className="personal-profile-page__detail-section">
-            <Text className="personal-profile-page__detail-section-title">核心生态位</Text>
-            
-            {/* 显示 quadrant4GrowthPaths */}
-            {portrait.quadrant4GrowthPaths && portrait.quadrant4GrowthPaths.map((path, index) => (
-              <View key={path.id || index} className="personal-profile-page__detail-niche">
-                <Text className="personal-profile-page__detail-niche-title">@{path.title}</Text>
-                {path.description && (
-                  <Text className="personal-profile-page__detail-niche-description">
-                    {path.description}
-                  </Text>
-                )}
-                {path.possibleRoles && (
-                  <View className="personal-profile-page__detail-niche-roles">
-                    <Text className="personal-profile-page__detail-niche-roles-label">适配角色：</Text>
-                    <Text className="personal-profile-page__detail-niche-roles-text">
-                      {path.possibleRoles}
-                    </Text>
-                  </View>
-                )}
-                {path.explorationSuggestions && (
-                  <View className="personal-profile-page__detail-niche-suggestions">
-                    <Text className="personal-profile-page__detail-niche-suggestions-label">探索建议：</Text>
-                    <Text className="personal-profile-page__detail-niche-suggestions-text">
-                      {path.explorationSuggestions}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
-
-            {/* 显示 quadrant1Niches */}
-            {portrait.quadrant1Niches && portrait.quadrant1Niches.map((niche, index) => (
-              <View key={niche.id || index} className="personal-profile-page__detail-niche">
-                <Text className="personal-profile-page__detail-niche-title">@{niche.title}</Text>
-                {niche.description && (
-                  <Text className="personal-profile-page__detail-niche-description">
-                    {niche.description}
-                  </Text>
-                )}
-                {niche.possibleRoles && (
-                  <View className="personal-profile-page__detail-niche-roles">
-                    <Text className="personal-profile-page__detail-niche-roles-label">适配角色：</Text>
-                    <Text className="personal-profile-page__detail-niche-roles-text">
-                      {niche.possibleRoles}
-                    </Text>
-                  </View>
-                )}
-                {niche.explorationSuggestions && (
-                  <View className="personal-profile-page__detail-niche-suggestions">
-                    <Text className="personal-profile-page__detail-niche-suggestions-label">探索建议：</Text>
-                    <Text className="personal-profile-page__detail-niche-suggestions-text">
-                      {niche.explorationSuggestions}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* 适配角色（汇总显示） */}
-        {roles.length > 0 && (
-          <View className="personal-profile-page__detail-section">
-            <Text className="personal-profile-page__detail-section-title">适配角色</Text>
-            <View className="personal-profile-page__detail-roles">
-              {roles.map((role, index) => (
-                <View
-                  key={index}
-                  className="personal-profile-page__detail-role-pill"
-                  style={{ backgroundColor: lightColor, color: color }}
-                >
-                  <Text className="personal-profile-page__detail-role-text">{role}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-      </View>
-    </View>
   );
 }
 
