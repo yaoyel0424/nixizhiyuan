@@ -8,6 +8,7 @@
   overflow-y: auto; // 允许页面滚动
   -webkit-overflow-scrolling: touch; // iOS 优化
   box-sizing: border-box;
+  padding-bottom: calc(128rpx + env(safe-area-inset-bottom)); // 为底部导航栏留出空间
 }
 
 .personal-profile-page__loading,
@@ -461,7 +462,7 @@
 .word-cloud-css__container {
   width: 100%;
   padding: 0 16px;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  padding-bottom: 24px; // 卡片与底部导航栏之间的间距
   box-sizing: border-box;
   column-count: 1;
   column-gap: 0;

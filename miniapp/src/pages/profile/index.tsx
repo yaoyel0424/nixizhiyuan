@@ -39,14 +39,6 @@ export default function ProfilePage() {
   const hasProvinceFavorites = provinceFavoritesCount > 0
   const hasChoices = choicesCount > 0
   
-  // 计算完成的维度数量（共4个维度）
-  const completedDimensions = [
-    hasScaleAnswers,
-    hasMajorFavorites,
-    hasProvinceFavorites,
-    hasChoices,
-  ].filter(Boolean).length
-  
   // 判断是否所有维度都完成（所有字段都大于0）
   const allDimensionsCompleted = 
     hasScaleAnswers && 
@@ -68,9 +60,6 @@ export default function ProfilePage() {
       : allDimensionsCompleted 
       ? "completed" 
       : "in_progress"
-  
-  // 计算探索完成度百分比（基于完成的维度数量，每个维度占25%）
-  const progress = Math.min(Math.round((completedDimensions / 4) * 100), 100)
   
   // 计算当前题目编号（如果有未完成测评）
   const currentQuestion = scaleAnswersCount > 0 ? scaleAnswersCount + 1 : 1
@@ -156,7 +145,7 @@ export default function ProfilePage() {
         }
       case "in_progress":
         return {
-          text: `探索完成度：${progress}%`,
+          text: "",
           icon: null,
         }
       case "completed":
@@ -206,9 +195,10 @@ export default function ProfilePage() {
   }
 
   const handleViewReport = () => {
-    if (assessmentStatus !== "completed") {
+    // 完成168题就可以查看
+    if (scaleAnswersCount < TOTAL_QUESTIONS) {
       Taro.showToast({
-        title: '请先完成测评',
+        title: '请先完成168题测评',
         icon: 'none'
       })
       return
@@ -366,26 +356,6 @@ export default function ProfilePage() {
                 <Text className="profile-page__status-text">{statusInfo.text}</Text>
               </View>
             </View>
-
-            {/* 环形进度条（仅测评中时显示） */}
-            {assessmentStatus === "in_progress" && (
-              <View className="profile-page__progress-ring">
-                <View className="profile-page__progress-svg">
-                  {/* 使用 View 模拟 SVG 圆环 */}
-                  <View className="profile-page__progress-bg" />
-                  <View 
-                    className="profile-page__progress-fill"
-                    style={{ 
-                      transform: `rotate(${(progress / 100) * 360 - 90}deg)`,
-                      opacity: progress > 0 ? 1 : 0
-                    }}
-                  />
-                </View>
-                <View className="profile-page__progress-text">
-                  <Text className="profile-page__progress-value">{progress}%</Text>
-                </View>
-              </View>
-            )}
           </View>
         </View>
 
@@ -410,21 +380,21 @@ export default function ProfilePage() {
 
               {/* 查看我的报告 */}
               <View 
-                className={`profile-page__card-item ${assessmentStatus !== "completed" ? 'profile-page__card-item--disabled' : ''}`}
+                className={`profile-page__card-item ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-item--disabled' : ''}`}
                 onClick={handleViewReport}
               >
-                <View className={`profile-page__card-icon ${assessmentStatus === "completed" ? 'profile-page__card-icon--report' : 'profile-page__card-icon--disabled'}`}>
+                <View className={`profile-page__card-icon ${scaleAnswersCount >= TOTAL_QUESTIONS ? 'profile-page__card-icon--report' : 'profile-page__card-icon--disabled'}`}>
                   <Text className="profile-page__card-icon-text">📊</Text>
                 </View>
                 <View className="profile-page__card-item-content">
-                  <Text className={`profile-page__card-item-title ${assessmentStatus !== "completed" ? 'profile-page__card-item-title--disabled' : ''}`}>
-                    查看我的天赋洞察报告
+                  <Text className={`profile-page__card-item-title ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-item-title--disabled' : ''}`}>
+                    查看我的特质报告
                   </Text>
-                  <Text className={`profile-page__card-item-desc ${assessmentStatus !== "completed" ? 'profile-page__card-item-desc--disabled' : ''}`}>
-                    {assessmentStatus === "completed" ? "回顾你的核心特质、专业与院校地图" : "待生成"}
+                  <Text className={`profile-page__card-item-desc ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-item-desc--disabled' : ''}`}>
+                    {scaleAnswersCount >= TOTAL_QUESTIONS ? "全面了解自己与众不同的特质、面临的挑战和应对策略" : "完成168题后可查看"}
                   </Text>
                 </View>
-                <Text className={`profile-page__card-arrow ${assessmentStatus !== "completed" ? 'profile-page__card-arrow--disabled' : ''}`}>›</Text>
+                <Text className={`profile-page__card-arrow ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-arrow--disabled' : ''}`}>›</Text>
               </View>
 
               {/* 继续未完成测评（仅当有未完成测评时显示） */}
