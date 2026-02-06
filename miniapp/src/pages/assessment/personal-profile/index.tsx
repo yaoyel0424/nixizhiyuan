@@ -344,7 +344,7 @@ function WordCloudCSS({
           return (
             <View
               key={item.id}
-              className={`word-cloud-css__stack-card ${item.isQuadrant1 ? 'word-cloud-css__stack-card--quadrant1' : ''}`}
+              className={`word-cloud-css__stack-card ${isCurrent ? 'word-cloud-css__stack-card--current' : ''} ${item.isQuadrant1 ? 'word-cloud-css__stack-card--quadrant1' : ''}`}
               style={{
                 borderLeftColor: item.color,
                 borderLeftWidth: 4,
@@ -352,7 +352,7 @@ function WordCloudCSS({
                 borderRightWidth: 4,
                 zIndex,
                 opacity,
-                transform: `translateX(-50%) translateX(${translateXPercent}%) scale(${scale})`,
+                transform: isCurrent ? undefined : `translateX(-50%) translateX(${translateXPercent}%) scale(${scale})`,
               }}
               onClick={() => {
                 if (isCurrent) {
