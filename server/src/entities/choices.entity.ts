@@ -20,8 +20,9 @@ import { School } from './school.entity';
 @Index(['mgId']) // 专业组ID索引
 @Index(['schoolCode']) // 学校代码索引
 @Index(['userId', 'province', 'preferredSubjects', 'year']) // 复合索引：用户ID、省份、首选科目、年份
+@Index('idx_choices_user_mg_major_unique', ['userId', 'mgIndex', 'majorIndex'], { unique: true }) // 同一用户、同一专业组内专业序号唯一，防止并发创建导致 majorIndex 重复
 // 注意：secondarySubjects 是数组类型，不能直接用于 B-tree 复合索引
-// 如果需要查询 secondarySubjects，建议单独创建 GIN 索引
+// 如需加此唯一约束前存在重复数据，请先调用 fixAllIndexes 修复
 export class Choice {
   /**
    * 选择记录唯一标识符 (自增长ID)

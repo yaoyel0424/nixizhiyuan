@@ -1,10 +1,10 @@
-// 底部导航样式
+// 底部导航样式：z-index 提高，避免被页面滚动内容遮挡
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: 9999;
   background: var(--card-bg, #fff);
   border-top: 1px solid var(--border-color, #e5e7eb);
 }

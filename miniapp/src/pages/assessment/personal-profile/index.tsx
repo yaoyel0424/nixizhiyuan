@@ -68,12 +68,12 @@ const DIMENSION_LIGHT_COLORS: Record<string, string> = {
 const DEFAULT_COLOR = PRIMARY_COLORS.main;
 const DEFAULT_LIGHT_COLOR = '#DBEAFE';
 
-// 象限柔和颜色（相同 quadrant 使用相同颜色，用于词云卡片）
+// 象限颜色：与 app 一致，仅使用蓝色与橘红色
 const QUADRANT_COLORS: Record<number, string> = {
-  1: '#10b981', // 第一象限：绿色
-  2: '#fbbf24', // 第二象限：柔和琥珀
-  3: '#a78bfa', // 第三象限：柔和紫
-  4: '#60a5fa', // 第四象限：柔和蓝
+  1: '#1a56db', // 第一象限：蓝
+  2: '#FF7F50', // 第二象限：橘红
+  3: '#1a56db', // 第三象限：蓝
+  4: '#FF7F50', // 第四象限：橘红
 };
 // 展示顺序：1 -> 4 -> 2 -> 3
 const QUADRANT_ORDER = [1, 4, 2, 3];

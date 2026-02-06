@@ -25,7 +25,7 @@ import { plainToInstance } from 'class-transformer';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
- * 生成 advisory lock 的 key（同一用户同一年串行，避免并发创建志愿冲突）
+ * 生成 advisory lock 的 key（同一用户同一年创建志愿串行，避免同专业组下 majorIndex 并发重复）
  */
 function lockKeyForUserAndYear(userId: number, year: string): number {
   let h = 0;
@@ -77,7 +77,7 @@ export class ChoicesService {
     const lockKey = lockKeyForUserAndYear(userId, year);
 
     return await this.dataSource.transaction(async (manager) => {
-      // 同一用户同年并发创建时串行化（PostgreSQL advisory lock，事务结束自动释放）
+      // 创建时加锁：同一用户同年并发创建串行化，避免同专业组下 majorIndex 重复（PostgreSQL 事务级 advisory lock，提交/回滚后自动释放）
       await manager.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
 
       // 1. 获取用户信息
@@ -811,95 +811,77 @@ export class ChoicesService {
     if (!preferredSubjects) {
       throw new BadRequestException('用户未设置首选科目信息');
     }
-    // 1. 查找当前 mg_index 下的所有记录（在 userId, province, preferredSubjects, secondarySubjects, year 内）
-    const currentChoicesQueryBuilder = this.choiceRepository
-      .createQueryBuilder('choice')
-      .where('choice.userId = :userId', { userId })
-      .andWhere('choice.province = :province', { province })
-      .andWhere('choice.preferredSubjects = :preferredSubjects', {
-        preferredSubjects: preferredSubjects ?? null,
-      })
-      .andWhere('choice.year = :year', { year })
-      .andWhere('choice.mgIndex = :mgIndex', { mgIndex });
 
-    if (secondarySubjects && secondarySubjects.length > 0) {
-      currentChoicesQueryBuilder.andWhere(
-        'choice.secondarySubjects = :secondarySubjects',
-        { secondarySubjects },
+    const lockKey = lockKeyForUserAndYear(userId, year);
+
+    return await this.dataSource.transaction(async (manager) => {
+      // 移动 mgIndex 时加锁，与创建/移动 majorIndex 串行，避免索引并发冲突
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
+
+      const targetIndex = direction === 'up' ? -1 : 1;
+      const targetMgIndex = mgIndex + targetIndex;
+
+      if (targetMgIndex < 1) {
+        throw new BadRequestException('已经是第一个，无法上移');
+      }
+
+      const choicesQueryBuilder = manager
+        .getRepository(Choice)
+        .createQueryBuilder('choice')
+        .where('choice.userId = :userId', { userId })
+        .andWhere('choice.province = :province', { province })
+        .andWhere('choice.preferredSubjects = :preferredSubjects', {
+          preferredSubjects: preferredSubjects ?? null,
+        })
+        .andWhere('choice.year = :year', { year })
+        .andWhere('choice.mgIndex IN (:...mgIndexes)', {
+          mgIndexes: [mgIndex, targetMgIndex],
+        });
+
+      if (secondarySubjects && secondarySubjects.length > 0) {
+        choicesQueryBuilder.andWhere(
+          'choice.secondarySubjects = :secondarySubjects',
+          { secondarySubjects },
+        );
+      } else {
+        choicesQueryBuilder.andWhere(
+          '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
+          { emptyArray: [] },
+        );
+      }
+
+      const allChoices = await choicesQueryBuilder.getMany();
+      const currentChoices = allChoices.filter((c) => c.mgIndex === mgIndex);
+      const targetChoices = allChoices.filter((c) => c.mgIndex === targetMgIndex);
+
+      if (currentChoices.length === 0) {
+        throw new NotFoundException('未找到对应的志愿选择记录');
+      }
+
+      if (targetChoices.length === 0) {
+        throw new BadRequestException(
+          direction === 'up'
+            ? '已经是第一个，无法上移'
+            : '已经是最后一个，无法下移',
+        );
+      }
+
+      for (const choice of currentChoices) {
+        choice.mgIndex = targetMgIndex;
+      }
+
+      for (const choice of targetChoices) {
+        choice.mgIndex = mgIndex;
+      }
+
+      await manager.save(Choice, [...currentChoices, ...targetChoices]);
+
+      this.logger.log(
+        `用户 ${userId} 调整 mg_index，从 ${mgIndex} ${direction === 'up' ? '上移' : '下移'} 到 ${targetMgIndex}，更新了 ${currentChoices.length + targetChoices.length} 条记录`,
       );
-    } else {
-      currentChoicesQueryBuilder.andWhere(
-        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
-        { emptyArray: [] },
-      );
-    }
 
-    const currentChoices = await currentChoicesQueryBuilder.getMany();
-
-    if (currentChoices.length === 0) {
-      throw new NotFoundException('未找到对应的志愿选择记录');
-    }
-
-    // 2. 根据方向，计算目标 mg_index
-    const targetIndex = direction === 'up' ? -1 : 1;
-    const targetMgIndex = mgIndex + targetIndex;
-
-    if (targetMgIndex < 1) {
-      throw new BadRequestException('已经是第一个，无法上移');
-    }
-
-    // 3. 查找目标 mg_index 下的所有记录（在 userId, province, preferredSubjects, secondarySubjects, year 内）
-    // 按照索引顺序：userId, province, preferredSubjects, year
-    const targetChoicesQueryBuilder = this.choiceRepository
-      .createQueryBuilder('choice')
-      .where('choice.userId = :userId', { userId })
-      .andWhere('choice.province = :province', { province })
-      .andWhere('choice.preferredSubjects = :preferredSubjects', {
-        preferredSubjects: preferredSubjects ?? null,
-      })
-      .andWhere('choice.year = :year', { year })
-      // 索引字段之后的其他条件
-      .andWhere('choice.mgIndex = :targetMgIndex', { targetMgIndex });
-
-    if (secondarySubjects && secondarySubjects.length > 0) {
-      targetChoicesQueryBuilder.andWhere(
-        'choice.secondarySubjects = :secondarySubjects',
-        { secondarySubjects },
-      );
-    } else {
-      targetChoicesQueryBuilder.andWhere(
-        '(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)',
-        { emptyArray: [] },
-      );
-    }
-
-    const targetChoices = await targetChoicesQueryBuilder.getMany();
-
-    if (targetChoices.length === 0) {
-      throw new BadRequestException(
-        direction === 'up'
-          ? '已经是第一个，无法上移'
-          : '已经是最后一个，无法下移',
-      );
-    }
-
-    // 4. 交换 mg_index：将当前 mg_index 的所有记录和目标 mg_index 的所有记录交换
-    for (const choice of currentChoices) {
-      choice.mgIndex = targetMgIndex;
-    }
-
-    for (const choice of targetChoices) {
-      choice.mgIndex = mgIndex;
-    }
-
-    // 5. 保存所有记录
-    await this.choiceRepository.save([...currentChoices, ...targetChoices]);
-
-    this.logger.log(
-      `用户 ${userId} 调整 mg_index，从 ${mgIndex} ${direction === 'up' ? '上移' : '下移'} 到 ${targetMgIndex}，更新了 ${currentChoices.length + targetChoices.length} 条记录`,
-    );
-
-    return { updated: currentChoices.length + targetChoices.length };
+      return { updated: currentChoices.length + targetChoices.length };
+    });
   }
 
   /**
@@ -914,61 +896,60 @@ export class ChoicesService {
     choiceId: number,
     direction: 'up' | 'down',
   ): Promise<ChoiceResponseDto> {
-    // 1. 查找当前志愿选择记录，并验证是否属于当前用户
-    const currentChoice = await this.choiceRepository.findOne({
-      where: {
-        id: choiceId,
-        userId, // 确保只能调整自己的志愿
-      },
-    });
+    const year = this.configService.get<string>('CURRENT_YEAR') || '2025';
+    const lockKey = lockKeyForUserAndYear(userId, year);
 
-    if (!currentChoice) {
-      this.logger.warn(
-        `用户 ${userId} 尝试调整不存在的志愿选择或不属于自己的志愿，ID: ${choiceId}`,
+    return await this.dataSource.transaction(async (manager) => {
+      // 移动 majorIndex 时加锁，与创建/移动 mgIndex 串行，避免索引并发冲突
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
+
+      const currentChoice = await manager.findOne(Choice, {
+        where: {
+          id: choiceId,
+          userId,
+        },
+      });
+
+      if (!currentChoice) {
+        this.logger.warn(
+          `用户 ${userId} 尝试调整不存在的志愿选择或不属于自己的志愿，ID: ${choiceId}`,
+        );
+        throw new NotFoundException('志愿选择不存在或不属于当前用户');
+      }
+
+      const targetIndex = direction === 'up' ? -1 : 1;
+      const targetMajorIndex = (currentChoice.majorIndex ?? 0) + targetIndex;
+
+      if (targetMajorIndex < 1) {
+        throw new BadRequestException('已经是第一个，无法上移');
+      }
+
+      const targetChoice = await manager.findOne(Choice, {
+        where: {
+          userId,
+          mgIndex: currentChoice.mgIndex,
+          majorIndex: targetMajorIndex,
+        },
+      });
+
+      if (!targetChoice) {
+        throw new BadRequestException(
+          direction === 'up'
+            ? '已经是第一个，无法上移'
+            : '已经是最后一个，无法下移',
+        );
+      }
+
+      const tempMajorIndex = currentChoice.majorIndex;
+      currentChoice.majorIndex = targetChoice.majorIndex;
+      targetChoice.majorIndex = tempMajorIndex;
+
+      await manager.save(Choice, [currentChoice, targetChoice]);
+
+      this.logger.log(
+        `用户 ${userId} 调整志愿选择 major_index，ID: ${choiceId}，方向: ${direction}`,
       );
-      throw new NotFoundException('志愿选择不存在或不属于当前用户');
-    }
-
-    // 2. 根据方向，查找相邻的记录
-    const targetIndex = direction === 'up' ? -1 : 1;
-
-    // 调整 major_index：需要在相同的 mg_index 下查找
-    const targetMajorIndex = (currentChoice.majorIndex ?? 0) + targetIndex;
-
-    if (targetMajorIndex < 1) {
-      throw new BadRequestException('已经是第一个，无法上移');
-    }
-
-    const targetChoice = await this.choiceRepository.findOne({
-      where: {
-        userId,
-        mgIndex: currentChoice.mgIndex,
-        majorIndex: targetMajorIndex,
-      },
-    });
-
-    if (!targetChoice) {
-      throw new BadRequestException(
-        direction === 'up'
-          ? '已经是第一个，无法上移'
-          : '已经是最后一个，无法下移',
-      );
-    }
-
-    // 3. 交换 major_index
-    const tempMajorIndex = currentChoice.majorIndex;
-    currentChoice.majorIndex = targetChoice.majorIndex;
-    targetChoice.majorIndex = tempMajorIndex;
-
-    // 4. 保存两条记录
-    await this.choiceRepository.save([currentChoice, targetChoice]);
-
-    this.logger.log(
-      `用户 ${userId} 调整志愿选择 major_index，ID: ${choiceId}，方向: ${direction}`,
-    );
-
-    // 5. 返回更新后的记录（调用通用方法）
-    return await this.getChoiceResponseDto(choiceId);
+    }).then(() => this.getChoiceResponseDto(choiceId));
   }
 
   /**
