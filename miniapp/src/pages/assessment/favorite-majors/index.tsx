@@ -13,13 +13,20 @@ import {
   unfavoriteMajor, 
   getFavoriteMajorsCount
 } from '@/services/majors'
-import { getAllScores } from '@/services/scores'
-import { MajorScoreResponse } from '@/types/api'
 import intentionData from '@/assets/data/intention.json'
 import './index.less'
 
-// 合并后的专业数据接口
-interface FavoriteMajorWithScore extends MajorScoreResponse {
+// 合并后的专业数据接口（与 getFavoriteMajors 返回结构对齐，含 major 与分数）
+interface FavoriteMajorWithScore {
+  majorCode: string
+  majorName: string
+  majorBrief: string | null
+  eduLevel: string
+  score: number | string
+  lexueScore?: number | string
+  shanxueScore?: number | string
+  yanxueDeduction?: number | string
+  tiaozhanDeduction?: number | string
   favoriteId?: number
   favoriteCreatedAt?: string
 }
@@ -56,62 +63,37 @@ export default function FavoriteMajorsPage() {
     })
   }, [])
 
-  // 加载心动专业列表
+  // 加载心动专业列表（getFavoriteMajors 已包含分数与专业信息，无需再请求 scores/all）
   useEffect(() => {
     const loadFavoriteMajors = async () => {
       try {
         setLoading(true)
-        
-        // 并行获取收藏列表和收藏数量
-        const [favorites, count, allScores] = await Promise.all([
+
+        const [favorites, count] = await Promise.all([
           getFavoriteMajors(),
-          getFavoriteMajorsCount(),
-          getAllScores()
+          getFavoriteMajorsCount()
         ])
 
-        // 创建专业代码到分数的映射
-        const scoreMap = new Map<string, MajorScoreResponse>()
-        // 确保 allScores 是数组
-        if (Array.isArray(allScores)) {
-          allScores.forEach(score => {
-            if (score && score.majorCode) {
-              scoreMap.set(score.majorCode, score)
-            }
-          })
-        }
-
-        // 合并收藏列表和专业分数数据
-        // 确保 favorites 是数组
         const favoritesList = Array.isArray(favorites) ? favorites : []
         const mergedList: FavoriteMajorWithScore[] = favoritesList
-          .map(fav => {
-            if (!fav || !fav.majorCode) {
-              return null
-            }
-            const scoreData = scoreMap.get(fav.majorCode)
-            if (scoreData) {
-              return {
-                ...scoreData,
-                favoriteId: fav.id,
-                favoriteCreatedAt: fav.createdAt
-              }
-            }
-            // 如果没有分数数据，至少返回基本信息
+          .map((fav: any) => {
+            if (!fav || !fav.majorCode) return null
+            const major = fav.major
             return {
               majorCode: fav.majorCode,
-              majorName: fav.majorName || fav.majorCode,
-              majorBrief: null,
-              eduLevel: '',
-              score: '0',
-              lexueScore: '0',
-              shanxueScore: '0',
-              yanxueDeduction: '0',
-              tiaozhanDeduction: '0',
+              majorName: major?.name ?? fav.majorName ?? fav.majorCode,
+              majorBrief: major?.brief ?? null,
+              eduLevel: major?.eduLevel ?? '',
+              score: fav.score ?? 0,
+              lexueScore: fav.lexueScore ?? 0,
+              shanxueScore: fav.shanxueScore ?? 0,
+              yanxueDeduction: fav.yanxueDeduction ?? 0,
+              tiaozhanDeduction: fav.tiaozhanDeduction ?? 0,
               favoriteId: fav.id,
               favoriteCreatedAt: fav.createdAt
             }
           })
-          .filter((major): major is FavoriteMajorWithScore => major !== null && !!major.majorCode) // 过滤掉无效数据
+          .filter((major): major is FavoriteMajorWithScore => major !== null && !!major.majorCode)
 
         setFavoriteMajorsList(mergedList)
         setFavoriteCount(count)

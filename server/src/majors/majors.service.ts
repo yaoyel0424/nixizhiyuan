@@ -230,18 +230,20 @@ export class MajorsService {
       }
     }
 
-    // 为每个收藏记录添加分数信息
-    const itemsWithScores = favorites.map((favorite) => {
-      const scoreInfo = scoresMap.get(favorite.majorCode);
-      return {
-        ...favorite,
-        score: scoreInfo?.score,
-        lexueScore: scoreInfo?.lexueScore,
-        shanxueScore: scoreInfo?.shanxueScore,
-        yanxueDeduction: scoreInfo?.yanxueDeduction,
-        tiaozhanDeduction: scoreInfo?.tiaozhanDeduction,
-      };
-    });
+    // 为每个收藏记录添加分数信息，并按 score 倒序排列
+    const itemsWithScores = favorites
+      .map((favorite) => {
+        const scoreInfo = scoresMap.get(favorite.majorCode);
+        return {
+          ...favorite,
+          score: scoreInfo?.score,
+          lexueScore: scoreInfo?.lexueScore,
+          shanxueScore: scoreInfo?.shanxueScore,
+          yanxueDeduction: scoreInfo?.yanxueDeduction,
+          tiaozhanDeduction: scoreInfo?.tiaozhanDeduction,
+        };
+      })
+      .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
 
     // 计算总页数
     const totalPages = Math.ceil(total / limit);
