@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro'
 import { BaseResponse, RequestConfig } from '@/types'
+import { silentLogin } from '@/utils/auth'
 
 // API配置
 const API_CONFIG = {
@@ -79,7 +80,7 @@ const responseInterceptor = (response: any) => {
     // 如果没有明确的成功/失败标识，HTTP 2xx 就认为是成功
     return data
   } else if (statusCode === 401) {
-    // 未授权，清除token并跳转登录
+    // 401 由 request() 内先尝试静默登录并重试，只有静默登录失败或重试仍 401 时才走到这里：清 token 并跳转登录页
     Taro.removeStorageSync('token')
     Taro.navigateTo({
       url: '/pages/login/index'
@@ -127,10 +128,29 @@ export const request = async <T = any>(config: RequestConfig): Promise<BaseRespo
   }
   
   // 应用请求拦截器（添加 token 等）
-  const interceptedConfig = requestInterceptor(requestConfig)
-  
+  let interceptedConfig = requestInterceptor(requestConfig)
+  let is401Retried = false
+
   try {
-    const response = await Taro.request(interceptedConfig)
+    let response = await Taro.request(interceptedConfig)
+
+    // 401 时先尝试静默登录，成功则用新 token 重试一次原请求
+    while (response.statusCode === 401) {
+      if (is401Retried) {
+        break
+      }
+      Taro.removeStorageSync('token') // 清除失效 token，否则 silentLogin 会因本地有 token 直接返回不重新登录
+      const ok = await silentLogin()
+      if (!ok) {
+        Taro.removeStorageSync('token')
+        Taro.navigateTo({ url: '/pages/login/index' })
+        return Promise.reject(new Error('未授权'))
+      }
+      is401Retried = true
+      interceptedConfig = requestInterceptor(requestConfig)
+      response = await Taro.request(interceptedConfig)
+    }
+
     return responseInterceptor(response)
   } catch (error: any) {
     console.error('请求失败:', error)

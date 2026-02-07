@@ -1,143 +1,49 @@
 import React, { useState } from 'react';
 import { View, Text, Image, Button as TaroButton } from '@tarojs/components';
-import { useAppDispatch } from '@/store/hooks';
-import { setUserInfo, setLoginLoading } from '@/store/slices/userSlice';
-import { Loading } from '@/components';
-import { wechatLogin } from '@/services';
 import Taro from '@tarojs/taro';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
+import { Loading } from '@/components';
+import { silentLogin } from '@/utils/auth';
 import './index.less';
 
+/**
+ * 登录页：仅用于协议展示及在 401 等场景下「重试静默登录」。
+ * 实际登录逻辑统一由应用启动时的静默登录（utils/auth.ts silentLogin）完成，本页不单独实现登录。
+ */
 const Login: React.FC = () => {
-  const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
-  // 使用 ref 来防止重复点击（同步检查）
   const isLoggingInRef = React.useRef(false);
-  // 用户协议和隐私政策相关状态
-  const [agreedToTerms, setAgreedToTerms] = useState(false); // 不能默认勾选
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showUserAgreement, setShowUserAgreement] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
-  const [showAgreementPrompt, setShowAgreementPrompt] = useState(false); // 提示对话框
+  const [showAgreementPrompt, setShowAgreementPrompt] = useState(false);
 
-  /**
-   * 处理微信登录按钮点击
-   * 直接使用微信登录，不通过插件
-   */
-  const handleWechatLogin = () => {
-    // 防止重复点击
-    if (isLoggingInRef.current || loading) {
-      return;
-    }
-    
-    // 检查是否同意用户协议和隐私政策
+  /** 重试静默登录（与启动时同一套逻辑），成功则跳转首页 */
+  const handleWechatLogin = async () => {
+    if (isLoggingInRef.current || loading) return;
     if (!agreedToTerms) {
       setShowAgreementPrompt(true);
       return;
     }
-    
-    performLogin();
-  };
 
-  /**
-   * 执行登录流程
-   */
-  const performLogin = async () => {
-    // 立即设置防重复点击标志
     isLoggingInRef.current = true;
     setLoading(true);
-    dispatch(setLoginLoading(true));
-
     try {
-      // 1. 获取微信登录凭证
-      const loginRes = await Taro.login();
-      const loginCode = loginRes.code;
-
-      if (!loginCode) {
-        Taro.showToast({
-          title: '获取微信登录凭证失败',
-          icon: 'none',
-        });
-        setLoading(false);
-        dispatch(setLoginLoading(false));
-        return;
-      }
-
-      // 2. 调用后端接口进行微信登录
-      // 不传递 encryptedData 和 iv，只使用 code 登录
-      const response = await wechatLogin(loginCode, undefined, undefined);
-
-      // 3. 处理响应数据，适配不同的响应格式
-      // 后端返回格式：{ user: {...}, accessToken: "...", refreshToken: "..." }
-      const responseUserInfo = response.user || response.userInfo || response;
-      const token = response.accessToken || response.token || responseUserInfo?.accessToken;
-      const refreshToken = response.refreshToken || responseUserInfo?.refreshToken;
-
-      if (responseUserInfo) {
-        // 使用后端返回的用户信息
-        const formattedUserInfo = {
-          id: String(responseUserInfo.id || ''),
-          username:
-            responseUserInfo.nickname ||
-            responseUserInfo.nickName ||
-            '微信用户',
-          nickname:
-            responseUserInfo.nickname ||
-            responseUserInfo.nickName ||
-            '微信用户',
-          avatar:
-            responseUserInfo.avatarUrl ||
-            responseUserInfo.avatar ||
-            '',
-          phone: responseUserInfo.phone || '',
-          email: responseUserInfo.email || '',
-          token: token || '',
-        };
-
-        dispatch(setUserInfo(formattedUserInfo));
-
-        if (token) {
-          Taro.setStorageSync('token', token);
-        }
-        if (refreshToken) {
-          Taro.setStorageSync('refreshToken', refreshToken);
-        }
-
-        Taro.showToast({
-          title: '登录成功',
-          icon: 'success',
-        });
-
-        setTimeout(() => {
-          Taro.reLaunch({
-            url: '/pages/index/index',
-          });
-        }, 1500);
-      } else {
-        throw new Error('登录失败：未获取到用户信息');
-      }
-    } catch (error: any) {
-      console.error('微信登录失败:', error);
-      const errorMessage = error?.message || '登录失败，请稍后重试';
-      // 对于 404 错误，给出更明确的提示
-      if (errorMessage.includes('Not Found') || errorMessage.includes('404')) {
-        Taro.showToast({
-          title: '登录接口不存在，请检查网络或联系客服',
-          icon: 'none',
-          duration: 3000,
-        });
+      const ok = await silentLogin();
+      if (ok) {
+        Taro.showToast({ title: '登录成功', icon: 'success' });
+        setTimeout(() => Taro.reLaunch({ url: '/pages/index/index' }), 1500);
       } else {
         Taro.showToast({
-          title: errorMessage,
+          title: '登录失败，请重新打开小程序',
           icon: 'none',
-          duration: 2000,
+          duration: 2500,
         });
       }
     } finally {
-      // 重置防重复点击标志
       isLoggingInRef.current = false;
       setLoading(false);
-      dispatch(setLoginLoading(false));
     }
   };
 
