@@ -137,6 +137,42 @@ export const unfavoriteProvince = async (provinceId: number): Promise<void> => {
 }
 
 /**
+ * 批量添加收藏
+ * @param provinceIds 省份ID列表
+ * @returns { added: number } 本次新增数量
+ */
+export const batchAddFavorites = async (
+  provinceIds: number[]
+): Promise<{ added: number }> => {
+  const response: any = await post<{ added: number }>('/provinces/favorites/batch', { provinceIds })
+  if (response && typeof response === 'object' && response.data) {
+    return response.data
+  }
+  if (response && typeof response.added === 'number') {
+    return response
+  }
+  return response || { added: 0 }
+}
+
+/**
+ * 批量取消收藏
+ * @param provinceIds 省份ID列表
+ * @returns { removed: number } 本次取消数量
+ */
+export const batchRemoveFavorites = async (
+  provinceIds: number[]
+): Promise<{ removed: number }> => {
+  const response: any = await post<{ removed: number }>('/provinces/favorites/batch/remove', { provinceIds })
+  if (response && typeof response === 'object' && response.data) {
+    return response.data
+  }
+  if (response && typeof response.removed === 'number') {
+    return response
+  }
+  return response || { removed: 0 }
+}
+
+/**
  * 检查是否已收藏某个省份
  * @param provinceId 省份ID
  * @returns 是否已收藏

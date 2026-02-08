@@ -13,6 +13,8 @@ import {
   getFavoriteProvinces,
   favoriteProvince,
   unfavoriteProvince,
+  batchAddFavorites,
+  batchRemoveFavorites,
   checkFavoriteProvince,
   getFavoriteCount
 } from '@/services/provinces'
@@ -192,6 +194,59 @@ export default function ProvincesPage() {
     setShowDetail(true)
   }
 
+  /**
+   * 添加全部：使用批量接口将当前筛选结果中的省份全部加入已选
+   */
+  const handleAddAll = async () => {
+    const toAddIds = filteredProvinces.filter((p) => !favoriteProvinceIds.has(p.id)).map((p) => p.id)
+    if (toAddIds.length === 0) {
+      Taro.showToast({ title: '当前列表已全部选择', icon: 'none' })
+      return
+    }
+    try {
+      const { added } = await batchAddFavorites(toAddIds)
+      setFavoriteProvinceIds((prev) => {
+        const next = new Set(prev)
+        toAddIds.forEach((id) => next.add(id))
+        return next
+      })
+      setFavoriteCount((prev) => prev + added)
+      Taro.showToast({ title: added > 0 ? `已添加 ${added} 个省份` : '当前列表已全部选择', icon: 'success' })
+    } catch (error) {
+      console.error('添加全部失败:', error)
+      Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
+    }
+  }
+
+  /**
+   * 删除全部：使用批量接口清空已选省份
+   */
+  const handleRemoveAll = async () => {
+    if (favoriteProvinceIds.size === 0) {
+      Taro.showToast({ title: '暂无已选省份', icon: 'none' })
+      return
+    }
+    Taro.showModal({
+      title: '确认删除全部',
+      content: `确定要取消已选择的 ${favoriteProvinceIds.size} 个省份吗？`,
+      confirmText: '确定',
+      confirmColor: '#dc2626',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          const ids = Array.from(favoriteProvinceIds)
+          await batchRemoveFavorites(ids)
+          setFavoriteProvinceIds(new Set())
+          setFavoriteCount(0)
+          Taro.showToast({ title: '已清空', icon: 'success' })
+        } catch (error) {
+          console.error('删除全部失败:', error)
+          Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
+        }
+      }
+    })
+  }
+
   // 根据type筛选省份
   const filteredProvinces = useMemo(() => {
     if (selectedType === '全部') {
@@ -238,6 +293,8 @@ export default function ProvincesPage() {
                 <Text className="provinces-page__filter-tag-text">{type}</Text>
               </View>
             ))}
+            <Text className="provinces-page__filter-link" onClick={handleAddAll}>添加全部</Text>
+            <Text className="provinces-page__filter-link" onClick={handleRemoveAll}>删除全部</Text>
           </View>
 
           {/* 已选择的省份 */}
