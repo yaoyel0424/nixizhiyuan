@@ -8,16 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
-import {
-  getProvinces,
-  getFavoriteProvinces,
-  favoriteProvince,
-  unfavoriteProvince,
-  batchAddFavorites,
-  batchRemoveFavorites,
-  checkFavoriteProvince,
-  getFavoriteCount
-} from '@/services/provinces'
+import provincesApi from '@/services/provinces'
 import { ProvinceResponse } from '@/types/api'
 import './index.less'
 
@@ -58,7 +49,7 @@ export default function ProvincesPage() {
   const loadProvinces = async () => {
     try {
       setLoading(true)
-      const response = await getProvinces()
+      const response = await provincesApi.getProvinces()
       setProvinces(response.items || [])
     } catch (error) {
       console.error('加载省份数据失败:', error)
@@ -76,7 +67,7 @@ export default function ProvincesPage() {
    */
   const loadFavoriteProvinces = async () => {
     try {
-      const response = await getFavoriteProvinces()
+      const response = await provincesApi.getFavoriteProvinces()
       const favoriteIds = new Set<number>()
       response.items?.forEach((item) => {
         if (item.provinceId) {
@@ -94,7 +85,7 @@ export default function ProvincesPage() {
    */
   const loadFavoriteCount = async () => {
     try {
-      const response = await getFavoriteCount()
+      const response = await provincesApi.getFavoriteCount()
       setFavoriteCount(response.count || 0)
     } catch (error) {
       console.error('加载收藏数量失败:', error)
@@ -117,7 +108,7 @@ export default function ProvincesPage() {
       
       if (isFavorited) {
         // 取消收藏
-        await unfavoriteProvince(provinceId)
+        await provincesApi.unfavoriteProvince(provinceId)
         setFavoriteProvinceIds((prev) => {
           const newSet = new Set(prev)
           newSet.delete(provinceId)
@@ -130,7 +121,7 @@ export default function ProvincesPage() {
         })
       } else {
         // 收藏
-        await favoriteProvince({ provinceId })
+        await provincesApi.favoriteProvince({ provinceId })
         setFavoriteProvinceIds((prev) => {
           const newSet = new Set(prev)
           newSet.add(provinceId)
@@ -163,7 +154,7 @@ export default function ProvincesPage() {
       success: async (res) => {
         if (res.confirm) {
           try {
-            await unfavoriteProvince(provinceId)
+            await provincesApi.unfavoriteProvince(provinceId)
             setFavoriteProvinceIds((prev) => {
               const newSet = new Set(prev)
               newSet.delete(provinceId)
@@ -213,7 +204,7 @@ export default function ProvincesPage() {
       success: async (res) => {
         if (!res.confirm) return
         try {
-          const { added } = await batchAddFavorites(toAddIds)
+          const { added } = await provincesApi.batchAddFavorites(toAddIds)
           setFavoriteProvinceIds((prev) => {
             const next = new Set(prev)
             toAddIds.forEach((id) => next.add(id))
@@ -249,7 +240,7 @@ export default function ProvincesPage() {
       success: async (res) => {
         if (!res.confirm) return
         try {
-          await batchRemoveFavorites(toRemoveIds)
+          await provincesApi.batchRemoveFavorites(toRemoveIds)
           setFavoriteProvinceIds((prev) => {
             const next = new Set(prev)
             toRemoveIds.forEach((id) => next.delete(id))
@@ -265,13 +256,18 @@ export default function ProvincesPage() {
     })
   }
 
-  // 根据type筛选省份
+  // 根据 type 筛选省份（该 type 下的全部省份）
   const filteredProvinces = useMemo(() => {
     if (selectedType === '全部') {
       return provinces
     }
     return provinces.filter((p) => p.type === selectedType)
   }, [provinces, selectedType])
+
+  // 当前 type 下已选择的省份（仅用于「已选择」区块）
+  const displayedProvinces = useMemo(() => {
+    return filteredProvinces.filter((p) => favoriteProvinceIds.has(p.id))
+  }, [filteredProvinces, favoriteProvinceIds])
 
   // 获取已选省份的详细信息
   const selectedProvinceDetails = useMemo(() => {
@@ -315,19 +311,19 @@ export default function ProvincesPage() {
             <Text className="provinces-page__filter-link" onClick={handleRemoveAll}>删除全部</Text>
           </View>
 
-          {/* 已选择的省份 */}
-          {selectedProvinceDetails.length > 0 && (
+          {/* 已选择的省份（仅显示当前 type 下的已选） */}
+          {displayedProvinces.length > 0 && (
             <View className="provinces-page__selected">
               <View className="provinces-page__selected-header">
                 <Text className="provinces-page__selected-title">
-                  已选择 ({favoriteCount > 0 ? favoriteCount : selectedProvinceDetails.length})
+                  已选择 ({displayedProvinces.length}{selectedType !== '全部' ? ` / ${favoriteCount}` : ''})
                 </Text>
                 <Text className="provinces-page__selected-desc">
                   系统根据选择的省份匹配院校
                 </Text>
               </View>
               <View className="provinces-page__selected-list">
-                {selectedProvinceDetails.map((province) => {
+                {displayedProvinces.map((province) => {
                   return (
                     <View key={province.id} className="provinces-page__selected-item">
                       <Text className="provinces-page__selected-item-text">{province.name}</Text>
@@ -344,9 +340,14 @@ export default function ProvincesPage() {
             </View>
           )}
 
-          {/* 省份列表 */}
+          {/* 省份列表：当前 type 下的全部省份，可点击选择/取消 */}
           <View className="provinces-page__list">
-            {filteredProvinces.map((province) => {
+            {filteredProvinces.length === 0 ? (
+              <View className="provinces-page__list-empty">
+                <Text className="provinces-page__list-empty-text">暂无省份数据</Text>
+              </View>
+            ) : (
+            filteredProvinces.map((province) => {
               const isSelected = favoriteProvinceIds.has(province.id)
 
               return (
@@ -392,7 +393,8 @@ export default function ProvincesPage() {
                   </View>
                 </Card>
               )
-            })}
+            })
+            )}
           </View>
         </ScrollView>
 

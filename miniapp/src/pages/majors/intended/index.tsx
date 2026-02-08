@@ -2786,11 +2786,20 @@ export default function IntendedMajorsPage() {
                             })()}
                           </Text>
                         </View>
-                      </View>
+                        </View>
                     </View>
                   </Card>
                 )
               })}
+              <View className="intended-majors-page__add-other-major-wrap">
+                <Button
+                  className="intended-majors-page__add-other-major-btn"
+                  variant="outline"
+                  onClick={() => Taro.navigateTo({ url: '/pages/majors/index' })}
+                >
+                  ＋ 添加其他专业
+                </Button>
+              </View>
             </View>
           )
         )}

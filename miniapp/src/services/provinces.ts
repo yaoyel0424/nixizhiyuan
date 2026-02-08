@@ -221,3 +221,14 @@ export const getFavoriteCount = async (): Promise<FavoriteCountResponse> => {
   return response
 }
 
+/** 省份相关 API（默认导出，兼容小程序构建） */
+export default {
+  getProvinces,
+  getFavoriteProvinces,
+  favoriteProvince,
+  unfavoriteProvince,
+  batchAddFavorites,
+  batchRemoveFavorites,
+  checkFavoriteProvince,
+  getFavoriteCount
+}
