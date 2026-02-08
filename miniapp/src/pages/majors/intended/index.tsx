@@ -1029,14 +1029,17 @@ export default function IntendedMajorsPage() {
         // 如果 API 失败，继续使用本地存储的数据
       }
       
-      // 初始化意向省份数量（用于检测变化）
+      // 初始化意向省份数量、心动专业数量（用于检测变化）
       try {
         const relatedData = await getUserRelatedDataCount()
         if (relatedData?.provinceFavoritesCount !== undefined) {
           await setStorage('previousProvinceFavoritesCount', relatedData.provinceFavoritesCount)
         }
+        if (relatedData?.majorFavoritesCount !== undefined) {
+          await setStorage('previousMajorFavoritesCount', relatedData.majorFavoritesCount)
+        }
       } catch (error) {
-        console.error('初始化意向省份数量失败:', error)
+        console.error('初始化意向省份/心动专业数量失败:', error)
         // 如果失败，不影响页面正常加载
       }
     }
@@ -1162,6 +1165,18 @@ export default function IntendedMajorsPage() {
               currentCount: currentProvinceFavoritesCount
             })
           }
+
+          // 检查心动专业数量是否变化（从专业探索页添加/删除专业后返回需刷新）
+          const previousMajorFavoritesCount = await getStorage<number>('previousMajorFavoritesCount')
+          const currentMajorFavoritesCount = relatedData?.majorFavoritesCount ?? 0
+          const majorFavoritesCountChanged = previousMajorFavoritesCount !== currentMajorFavoritesCount
+          if (majorFavoritesCountChanged) {
+            await setStorage('previousMajorFavoritesCount', currentMajorFavoritesCount)
+            console.log('页面显示时检测到心动专业变化，刷新招生计划数据:', {
+              previousCount: previousMajorFavoritesCount,
+              currentCount: currentMajorFavoritesCount
+            })
+          }
           
           // 优先从本地存储获取高考信息，避免频繁调用可能有问题的接口
           const savedProvince = await getStorage<string>('examProvince')
@@ -1198,14 +1213,15 @@ export default function IntendedMajorsPage() {
           const subjectsChanged = examInfo?.preferredSubjects !== localInfo.preferredSubjects ||
                                   examInfo?.secondarySubjects !== localInfo.secondarySubjects
           
-          // 如果任何关键信息发生变化（包括意向省份），刷新数据
-          if (provinceChanged || scoreChanged || rankChanged || subjectsChanged || provinceFavoritesCountChanged) {
+          // 如果任何关键信息发生变化（包括意向省份、心动专业），刷新数据
+          if (provinceChanged || scoreChanged || rankChanged || subjectsChanged || provinceFavoritesCountChanged || majorFavoritesCountChanged) {
             console.log('页面显示时检测到信息变化，刷新招生计划数据:', {
               provinceChanged,
               scoreChanged,
               rankChanged,
               subjectsChanged,
               provinceFavoritesCountChanged,
+              majorFavoritesCountChanged,
               oldProvince: examInfo?.province,
               newProvince: localInfo.province,
               previousProvinceFavoritesCount,
