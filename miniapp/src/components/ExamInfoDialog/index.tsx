@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
-import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
+import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig, ScoreRangeBatchItem } from '@/services/exam-info'
 import './index.less'
 
 /** 3+3 选科模式省份列表（与 intended 页保持一致） */
@@ -34,6 +34,11 @@ export function ExamInfoDialog({
   const [showProvinceDropdown, setShowProvinceDropdown] = useState(false)
   const [isUpdatingProvince, setIsUpdatingProvince] = useState(false)
   const [isFetchingRank, setIsFetchingRank] = useState(false)
+  /** score-range 返回的批次列表，用于下拉展示 */
+  const [batchList, setBatchList] = useState<ScoreRangeBatchItem[]>([])
+  /** 当前选中的批次名称，默认使用 matchedBatch */
+  const [selectedBatch, setSelectedBatch] = useState<string>('')
+  const [showBatchDropdown, setShowBatchDropdown] = useState(false)
   const scoreChangeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastProcessedScoreRef = useRef<string | null>(null) // 记录上次处理的分数，避免重复调用
   const isLoadingDataRef = useRef(false) // 标记是否正在加载数据
@@ -59,11 +64,13 @@ export function ExamInfoDialog({
       // previousProvinceRef.current !== null 表示不是第一次初始化
       // previousProvinceRef.current !== selectedProvince 表示省份确实变化了
       if (previousProvinceRef.current !== null && previousProvinceRef.current !== selectedProvince) {
-        // 用户主动切换省份时，清空所有已选数据
+        // 用户主动切换省份时，清空所有已选数据及批次（批次下拉默认不可选、显示为空白）
         setFirstChoice(null)
         setOptionalSubjects(new Set())
         setTotalScore('')
         setRanking('')
+        setBatchList([])
+        setSelectedBatch('')
       }
       // 更新记录的省份
       previousProvinceRef.current = selectedProvince
@@ -91,15 +98,17 @@ export function ExamInfoDialog({
       const loadData = async () => {
         try {
           // 先加载高考科目配置（如果还没有加载）
-          if (gaokaoConfig.length === 0) {
-            const config = await getGaokaoConfig()
-            setGaokaoConfig(config)
+          let configList = gaokaoConfig
+          if (configList.length === 0) {
+            configList = await getGaokaoConfig()
+            setGaokaoConfig(configList)
           }
 
-          // 优先使用传入的 examInfo，如果 examInfo 为空，则从本地存储加载
+          // 优先使用传入的 examInfo（父组件通常已调 getExamInfo/user/{id}，含 enrollType），避免重复请求
           let dataToUse = examInfo
+          let apiExamInfo: ExamInfo | null = null
           if (!dataToUse) {
-            // 从本地存储加载
+            // 无传入数据时从本地存储加载
             const savedProvince = await getStorage<string>('examProvince')
             const savedFirstChoice = await getStorage<string>('examFirstChoice')
             const savedOptional = await getStorage<string[]>('examOptionalSubjects')
@@ -127,6 +136,16 @@ export function ExamInfoDialog({
                 rank: savedRanking ? parseInt(savedRanking, 10) : undefined,
               }
             }
+            // 仅在没有传入 examInfo 时请求 user/{id}，用于拿 enrollType 显示批次下拉，避免与父组件重复请求
+            try {
+              apiExamInfo = await getExamInfo()
+            } catch (_) {
+              // 未登录或接口失败时忽略
+            }
+          }
+          // 无传入数据时用接口返回的 enrollType 补全，确保批次下拉有默认值
+          if (apiExamInfo?.enrollType !== undefined && apiExamInfo?.enrollType !== null && apiExamInfo.enrollType !== '') {
+            dataToUse = { ...(dataToUse || {}), enrollType: apiExamInfo.enrollType }
           }
           
           // 使用 dataToUse 设置所有状态
@@ -170,6 +189,37 @@ export function ExamInfoDialog({
             if (dataToUse.province) {
               console.log('设置省份:', dataToUse.province)
               setSelectedProvince(dataToUse.province)
+            }
+            // 批次（enrollType）：先按 user 的 enrollType 显示，下面有分数时会再根据 score-range 结果调整
+            if (dataToUse.enrollType) {
+              setSelectedBatch(dataToUse.enrollType)
+            } else {
+              setSelectedBatch('')
+            }
+
+            // 用户信息已包含分数时，再调用一次 score-range，用于批次列表与默认选中（enrollType 在 batches 中则显示 enrollType，否则显示 matchedBatch）
+            const scoreNum = dataToUse.score
+            const hasValidScore = scoreNum !== undefined && scoreNum !== null && !isNaN(Number(scoreNum)) && String(scoreNum).trim() !== ''
+            if (hasValidScore && dataToUse.province && dataToUse.preferredSubjects) {
+              const provinceConfig = configList.find((c: GaokaoSubjectConfig) => c.province === dataToUse!.province)
+              const isWenli = provinceConfig?.mode === '文理科'
+              const is33 = provinceConfig?.mode === '3+3' || provinceConfig?.mode === '3+4'
+              const subjectType = isWenli ? dataToUse.preferredSubjects! : (is33 ? '综合' : dataToUse.preferredSubjects!)
+              try {
+                const scoreRangeInfo = await getScoreRange(dataToUse.province!, subjectType, String(scoreNum))
+                if (scoreRangeInfo?.batches && scoreRangeInfo.batches.length > 0) {
+                  setBatchList(scoreRangeInfo.batches)
+                  const enrollType = dataToUse.enrollType
+                  const inBatches = enrollType && scoreRangeInfo.batches.some((b: ScoreRangeBatchItem) => b.batch === enrollType)
+                  setSelectedBatch(inBatches ? enrollType! : (scoreRangeInfo.matchedBatch ?? scoreRangeInfo.batches[0].batch))
+                }
+                if (scoreRangeInfo?.rankRange) {
+                  const rankMatch = scoreRangeInfo.rankRange.match(/^(\d+)/)
+                  if (rankMatch) setRanking(rankMatch[1])
+                }
+              } catch (_) {
+                // 忽略 score-range 失败
+              }
             }
           } else {
             console.log('弹框加载数据 - 没有找到数据（examInfo 和本地存储都为空）')
@@ -281,6 +331,17 @@ export function ExamInfoDialog({
           setRanking(minRank)
         }
       }
+      // 批次列表与默认选中：使用 batches 和 matchedBatch
+      if (scoreRangeInfo) {
+        if (scoreRangeInfo.batches && scoreRangeInfo.batches.length > 0) {
+          setBatchList(scoreRangeInfo.batches)
+          const defaultBatch = scoreRangeInfo.matchedBatch ?? scoreRangeInfo.batches[0].batch
+          setSelectedBatch(defaultBatch)
+        } else {
+          setBatchList([])
+          setSelectedBatch('')
+        }
+      }
     } catch (error) {
       console.error('获取排名信息失败:', error)
       // 不显示错误提示，避免打扰用户输入
@@ -376,6 +437,7 @@ export function ExamInfoDialog({
         secondarySubjects: finalSecondarySubjects.length > 0 ? finalSecondarySubjects.join(',') : undefined,
         score: totalScore ? parseInt(totalScore, 10) : undefined,
         rank: ranking ? parseInt(ranking, 10) : undefined,
+        enrollType: selectedBatch || undefined,
       }
       const updatedInfo = await updateExamInfo(updateData)
       await setStorage('examProvince', selectedProvince)
@@ -431,6 +493,7 @@ export function ExamInfoDialog({
                 onClick={(e) => {
                   e.stopPropagation()
                   setShowProvinceDropdown(!showProvinceDropdown)
+                  setShowBatchDropdown(false)
                 }}
                 className="exam-info-dialog__province-button"
                 variant="outline"
@@ -528,7 +591,7 @@ export function ExamInfoDialog({
                       次选 ({currentProvinceConfig.secondarySubjects.subjects.length}选{currentProvinceConfig.secondarySubjects.count})
                     </Text>
                   </View>
-                  <View className="exam-info-dialog__button-grid">
+                  <View className={!is3Plus3Mode ? 'exam-info-dialog__secondary-row' : 'exam-info-dialog__button-grid exam-info-dialog__button-grid--three-col'}>
                     {currentProvinceConfig.secondarySubjects.subjects.map((subject) => (
                       <Button
                         key={subject}
@@ -589,10 +652,11 @@ export function ExamInfoDialog({
                   scoreChangeTimerRef.current = null
                 }
                 
-                // 如果分数为空或无效，不设置定时器
+                // 如果分数为空或无效，不设置定时器并清空批次
                 if (!score || score.trim() === '' || isNaN(Number(score))) {
-                  // 清除上次处理的分数记录
                   lastProcessedScoreRef.current = null
+                  setBatchList([])
+                  setSelectedBatch('')
                   return
                 }
                 
@@ -619,7 +683,49 @@ export function ExamInfoDialog({
               className="exam-info-dialog__input"
             />
           </View>
- 
+
+          {/* 批次选择（默认显示；无数据时显示空白且不可选，接口返回 batches 后可选并默认选中 matchedBatch） */}
+          <View className="exam-info-dialog__row">
+            <Text className="exam-info-dialog__label">批次</Text>
+            <View className="exam-info-dialog__province-select-wrapper">
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (batchList.length === 0) return
+                  setShowBatchDropdown(!showBatchDropdown)
+                  setShowProvinceDropdown(false)
+                }}
+                disabled={batchList.length === 0}
+                className={`exam-info-dialog__province-button ${batchList.length === 0 ? 'exam-info-dialog__province-button--disabled' : ''}`}
+                variant="outline"
+              >
+                <Text>{selectedBatch || ' '}</Text>
+                <Text className={`exam-info-dialog__province-arrow ${showBatchDropdown ? 'exam-info-dialog__province-arrow--open' : ''}`}>▼</Text>
+              </Button>
+              {showBatchDropdown && batchList.length > 0 && (
+                <View className="exam-info-dialog__province-dropdown">
+                  <View className="exam-info-dialog__province-dropdown-content">
+                    <View className="exam-info-dialog__batch-dropdown-list">
+                      {batchList.map((item) => (
+                        <Button
+                          key={item.id}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedBatch(item.batch)
+                            setShowBatchDropdown(false)
+                          }}
+                          className={`exam-info-dialog__province-dropdown-item ${selectedBatch === item.batch ? 'exam-info-dialog__province-dropdown-item--active' : ''}`}
+                          variant={selectedBatch === item.batch ? 'default' : 'ghost'}
+                        >
+                          {item.batch}
+                        </Button>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
 
           {/* 确认按钮 */}
           <Button

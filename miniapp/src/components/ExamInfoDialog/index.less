@@ -52,6 +52,12 @@
   font-size: 28rpx;
   color: #374151;
   width: 100%;
+
+  /* 批次暂无数据时：灰色不可选 */
+  &--disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+  }
 }
 
 .exam-info-dialog__province-arrow {
@@ -106,6 +112,14 @@
 .exam-info-dialog__province-dropdown-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+}
+
+/* 批次下拉：同一行排列 */
+.exam-info-dialog__batch-dropdown-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 12rpx;
 }
 
@@ -239,6 +253,24 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16rpx;
+
+  /* 次选科目（3+3/3+4）：每行 3 个 */
+  &--three-col {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 次选科目：强制同一行，不换行 */
+.exam-info-dialog__secondary-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 16rpx;
+
+  .exam-info-dialog__button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 
 // 高考信息对话框按钮样式

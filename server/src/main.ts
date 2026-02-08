@@ -1,11 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 import { ValidationPipe as CustomValidationPipe } from './common/pipes/validation.pipe';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const basicAuth = require('express-basic-auth');
+
+/** 请求体大小上限（DoS 防护），默认 1MB */
+const BODY_LIMIT = '1mb';
 
 /**
  * 应用入口文件
@@ -15,6 +19,10 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       bufferLogs: true,
     });
+
+    // DoS 防护：限制请求体大小，拒绝超大 payload
+    app.use(json({ limit: BODY_LIMIT }));
+    app.use(urlencoded({ extended: true, limit: BODY_LIMIT }));
 
     const configService = app.get(ConfigService);
     const port = configService.get<number>('app.port') || 3000;

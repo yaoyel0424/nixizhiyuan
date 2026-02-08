@@ -10,6 +10,7 @@ import { Request } from 'express';
 import { RedisService } from '@/redis/redis.service';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import { IpBlockGuard } from './ip-block.guard';
 
 /**
  * 速率限制元数据键
@@ -37,8 +38,8 @@ export const SkipRateLimit = () => {
 };
 
 /**
- * 速率限制守卫
- * 使用 Redis 实现分布式速率限制
+ * DoS 防护守卫：请求超过阈值时直接封禁 IP（不返回 429 速率限制）
+ * 使用 Redis 统计请求次数，超限则调用 IpBlockGuard 封禁并返回 403
  */
 @Injectable()
 export class RateLimitGuard implements CanActivate {
@@ -50,6 +51,7 @@ export class RateLimitGuard implements CanActivate {
     private readonly redisService: RedisService,
     private readonly configService: ConfigService,
     private readonly reflector: Reflector,
+    private readonly ipBlockGuard: IpBlockGuard,
   ) {
     // 从环境变量读取默认配置
     this.defaultMaxRequests =
@@ -92,19 +94,18 @@ export class RateLimitGuard implements CanActivate {
       const count = currentCount ? parseInt(currentCount, 10) : 0;
 
       if (count >= maxRequests) {
-        // 获取剩余时间
-        const ttl = await this.redisService.ttl(key);
+        // DoS 防护：超限直接封禁 IP，不返回 429
         this.logger.warn(
-          `速率限制触发: IP ${ip}, 路径 ${request.path}, 限制: ${maxRequests}/${windowSeconds}秒`,
+          `DoS 防护: 请求超限，封禁 IP - ${ip}, 路径 ${request.path}, 限制: ${maxRequests}/${windowSeconds}秒`,
         );
+        await this.ipBlockGuard.blockIp(ip);
         throw new HttpException(
           {
             success: false,
-            code: 'RATE_LIMIT_EXCEEDED',
-            message: `请求过于频繁，请稍后再试。限制: ${maxRequests} 次/${windowSeconds} 秒`,
-            retryAfter: ttl > 0 ? ttl : windowSeconds,
+            code: 'IP_BLOCKED',
+            message: '请求异常频繁，IP 已被封禁',
           },
-          HttpStatus.TOO_MANY_REQUESTS,
+          HttpStatus.FORBIDDEN,
         );
       }
 

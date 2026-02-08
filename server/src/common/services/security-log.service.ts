@@ -54,7 +54,7 @@ export class SecurityLogService {
   }
 
   /**
-   * 记录恶意请求
+   * 记录恶意请求（并记录违规，达到次数后封禁）
    */
   async logMaliciousRequest(
     request: Request,
@@ -65,6 +65,21 @@ export class SecurityLogService {
       reason,
       ...details,
     });
+  }
+
+  /**
+   * 记录恶意请求并立即封禁 IP（用于 SQL 注入、严重恶意负载等，不做速率限制）
+   */
+  async logMaliciousRequestAndBlockIp(
+    request: Request,
+    reason: string,
+    details?: Record<string, any>,
+  ): Promise<void> {
+    const ip = this.getClientIp(request);
+    this.logger.warn(`[安全威胁] 立即封禁 IP - ${reason} - IP: ${ip}`, { reason, ip, ...details });
+    if (this.ipBlockGuard) {
+      await this.ipBlockGuard.blockIp(ip);
+    }
   }
 
   /**

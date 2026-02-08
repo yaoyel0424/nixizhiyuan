@@ -47,6 +47,23 @@ const MALICIOUS_PATTERNS = [
 ];
 
 /**
+ * SQL 注入常见模式（用于 query、body 检测，拦截疑似注入请求）
+ * 仅检测明显恶意片段，避免误伤正常内容
+ */
+const SQL_INJECTION_PATTERNS = [
+  /\b(union\s+all\s+select|union\s+select)\b/i,
+  /\b(insert\s+into|update\s+.*\s+set)\s+.*\bwhere\b/i,
+  /\b(drop\s+table|truncate\s+table|delete\s+from)\s/i,
+  /\b(exec\s*\(|execute\s*\(|execute immediate)\s*/i,
+  /\b(select\s+.*\s+from\s+information_schema|from\s+pg_|from\s+sys\.)\b/i,
+  /'\s*or\s*'1'\s*=\s*'1|"\s*or\s*"1"\s*=\s*"1/i,
+  /;\s*(drop|delete|insert|update|truncate)\s/i,
+  /--\s*$|#\s*$/m,
+  /\b(benchmark|sleep)\s*\(/i,
+  /\b(extractvalue|updatexml)\s*\(/i,
+];
+
+/**
  * 安全中间件
  * 检测和阻止恶意请求
  */
@@ -56,8 +73,8 @@ export class SecurityMiddleware implements NestMiddleware {
 
   constructor(private readonly securityLogService: SecurityLogService) {}
 
-  use(req: Request, res: Response, next: NextFunction) {
-    const { url, method, body, ip } = req;
+  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const { url, method, body, query } = req;
     const userAgent = req.get('user-agent') || '';
 
     // 检查 URL 路径
@@ -71,16 +88,36 @@ export class SecurityMiddleware implements NestMiddleware {
       throw new HttpException('Not Found', HttpStatus.NOT_FOUND);
     }
 
-    // 检查请求体中的恶意内容
+    // SQL 注入检测：URL 查询字符串，命中则直接封禁 IP（不速率限制）
+    const queryStr = typeof query === 'object' && query !== null ? JSON.stringify(query) : String(query ?? '');
+    if (queryStr && this.isSqlInjectionAttempt(queryStr)) {
+      await this.securityLogService.logMaliciousRequestAndBlockIp(req, 'SQL 注入检测(Query)', {
+        url,
+        method,
+        userAgent,
+        snippet: queryStr.substring(0, 200),
+      });
+      throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+    }
+
+    // 检查请求体中的恶意内容（含 SQL 注入），命中则直接封禁 IP
     if (body && typeof body === 'object') {
       const bodyStr = JSON.stringify(body);
       if (this.isMaliciousPayload(bodyStr)) {
-        // 使用安全日志服务记录并触发 IP 封禁逻辑
-        this.securityLogService.logMaliciousRequest(req, '恶意负载检测', {
+        await this.securityLogService.logMaliciousRequestAndBlockIp(req, '恶意负载检测', {
           url,
           method,
           userAgent,
-          body: bodyStr.substring(0, 200), // 只记录前200字符
+          body: bodyStr.substring(0, 200),
+        });
+        throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+      }
+      if (this.isSqlInjectionAttempt(bodyStr)) {
+        await this.securityLogService.logMaliciousRequestAndBlockIp(req, 'SQL 注入检测(Body)', {
+          url,
+          method,
+          userAgent,
+          body: bodyStr.substring(0, 200),
         });
         throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
       }
@@ -109,6 +146,13 @@ export class SecurityMiddleware implements NestMiddleware {
    */
   private isMaliciousPayload(body: string): boolean {
     return MALICIOUS_PATTERNS.some((pattern) => pattern.test(body));
+  }
+
+  /**
+   * 检查是否包含疑似 SQL 注入片段（用于防 SQL 注入）
+   */
+  private isSqlInjectionAttempt(input: string): boolean {
+    return SQL_INJECTION_PATTERNS.some((pattern) => pattern.test(input));
   }
 
   /**

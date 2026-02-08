@@ -19,6 +19,7 @@
 **功能**:
 - 检测恶意 URL 路径（如 `.git`, `.env`, Laravel 漏洞路径等）
 - 检测恶意请求负载（如 `androxgh0st` 等恶意 payload）
+- **SQL 注入防护**：对 Query 与 Body 做常见 SQL 注入模式检测（如 `union select`、`drop table`、`' or '1'='1` 等），命中即**拒绝并立即封禁该 IP**（不做速率限制）
 - 识别可疑 User-Agent（扫描工具、爬虫等）
 - 自动记录安全威胁并触发 IP 封禁
 
@@ -51,19 +52,20 @@
 3. 超过阈值时自动封禁 IP
 4. 封禁的 IP 在指定时长内无法访问
 
-### 3. 速率限制守卫 (RateLimitGuard)
+### 3. DoS 防护守卫 (RateLimitGuard)
 
 **位置**: `server/src/common/guards/rate-limit.guard.ts`
 
 **功能**:
-- 限制每个 IP 的请求频率
-- 使用 Redis 实现分布式速率限制
-- 支持为不同接口配置不同的限制
-- 使用装饰器灵活控制
+- **超限即封禁 IP**：每个 IP 在时间窗内请求超过阈值时，**直接封禁该 IP**（调用 IpBlockGuard），并返回 403，不做 429 速率限制
+- 使用 Redis 统计请求次数
+- 支持为不同接口配置不同阈值；支持 `@SkipRateLimit()` 跳过
 
 **配置项** (环境变量):
-- `RATE_LIMIT_MAX_REQUESTS`: 默认最大请求数，默认 100 次
+- `RATE_LIMIT_MAX_REQUESTS`: 默认最大请求数，默认 300 次
 - `RATE_LIMIT_WINDOW_SECONDS`: 默认时间窗口（秒），默认 60 秒
+
+**DoS 防护**：请求超限时直接封禁 IP（403），不返回 429。另在 `main.ts` 中设置请求体大小上限（默认 1MB），防止超大 body 导致 DoS。
 
 **使用示例**:
 ```typescript

@@ -132,6 +132,17 @@ export const getGaokaoConfig = async (): Promise<GaokaoSubjectConfig[]> => {
   return []
 }
 
+/** 批次项（与 score-range 接口返回一致） */
+export interface ScoreRangeBatchItem {
+  id: number
+  batch: string
+  minScore?: number | null
+  volunteerCount?: number
+  startAt?: string | null
+  endAt?: string | null
+  isMatch?: boolean
+}
+
 /**
  * 分数范围信息接口
  */
@@ -141,6 +152,10 @@ export interface ScoreRangeInfo {
   rankRange: string
   batchName: string
   controlScore: number
+  /** 批次列表（score-range 接口返回） */
+  batches?: ScoreRangeBatchItem[]
+  /** 最符合分数的批次名称，用作下拉默认选中 */
+  matchedBatch?: string | null
 }
 
 /**
@@ -166,12 +181,15 @@ export const getScoreRange = async (
     if (response && typeof response === 'object') {
       // 如果包含 data 字段，提取 data
       if (response.data && typeof response.data === 'object') {
+        const data = response.data
         return {
-          num: response.data.num,
-          total: response.data.total,
-          rankRange: response.data.rankRange,
-          batchName: response.data.batchName,
-          controlScore: response.data.controlScore,
+          num: data.num,
+          total: data.total,
+          rankRange: data.rankRange,
+          batchName: data.batchName,
+          controlScore: data.controlScore,
+          batches: data.batches,
+          matchedBatch: data.matchedBatch ?? null,
         }
       }
       // 如果直接包含分数范围信息字段，直接返回
@@ -182,6 +200,8 @@ export const getScoreRange = async (
           rankRange: response.rankRange,
           batchName: response.batchName,
           controlScore: response.controlScore,
+          batches: response.batches,
+          matchedBatch: response.matchedBatch ?? null,
         }
       }
     }
