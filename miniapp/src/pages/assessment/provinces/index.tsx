@@ -194,51 +194,69 @@ export default function ProvincesPage() {
     setShowDetail(true)
   }
 
+  /** 当前类型文案（用于提示） */
+  const typeLabel = selectedType === '全部' ? '全部' : selectedType
+
   /**
-   * 添加全部：使用批量接口将当前筛选结果中的省份全部加入已选
+   * 添加全部：添加当前 type 下的未选省份，先弹窗确认再执行，提示带类型信息
    */
   const handleAddAll = async () => {
     const toAddIds = filteredProvinces.filter((p) => !favoriteProvinceIds.has(p.id)).map((p) => p.id)
     if (toAddIds.length === 0) {
-      Taro.showToast({ title: '当前列表已全部选择', icon: 'none' })
+      Taro.showToast({ title: `当前类型【${typeLabel}】下已全部选择`, icon: 'none' })
       return
     }
-    try {
-      const { added } = await batchAddFavorites(toAddIds)
-      setFavoriteProvinceIds((prev) => {
-        const next = new Set(prev)
-        toAddIds.forEach((id) => next.add(id))
-        return next
-      })
-      setFavoriteCount((prev) => prev + added)
-      Taro.showToast({ title: added > 0 ? `已添加 ${added} 个省份` : '当前列表已全部选择', icon: 'success' })
-    } catch (error) {
-      console.error('添加全部失败:', error)
-      Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
-    }
+    Taro.showModal({
+      title: '确认添加全部',
+      content: `确定要添加当前类型【${typeLabel}】下的 ${toAddIds.length} 个省份吗？`,
+      confirmText: '确定',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          const { added } = await batchAddFavorites(toAddIds)
+          setFavoriteProvinceIds((prev) => {
+            const next = new Set(prev)
+            toAddIds.forEach((id) => next.add(id))
+            return next
+          })
+          setFavoriteCount((prev) => prev + added)
+          Taro.showToast({
+            title: added > 0 ? `已添加 ${added} 个省份（当前类型：${typeLabel}）` : `当前类型【${typeLabel}】下已全部选择`,
+            icon: 'success'
+          })
+        } catch (error) {
+          console.error('添加全部失败:', error)
+          Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
+        }
+      }
+    })
   }
 
   /**
-   * 删除全部：使用批量接口清空已选省份
+   * 删除全部：仅删除当前 type 下的已选省份，提示带类型信息
    */
   const handleRemoveAll = async () => {
-    if (favoriteProvinceIds.size === 0) {
-      Taro.showToast({ title: '暂无已选省份', icon: 'none' })
+    const toRemoveIds = filteredProvinces.filter((p) => favoriteProvinceIds.has(p.id)).map((p) => p.id)
+    if (toRemoveIds.length === 0) {
+      Taro.showToast({ title: `当前类型【${typeLabel}】下暂无已选省份`, icon: 'none' })
       return
     }
     Taro.showModal({
       title: '确认删除全部',
-      content: `确定要取消已选择的 ${favoriteProvinceIds.size} 个省份吗？`,
+      content: `确定要取消已选择的 ${toRemoveIds.length} 个【${typeLabel}】省份吗？`,
       confirmText: '确定',
       confirmColor: '#dc2626',
       success: async (res) => {
         if (!res.confirm) return
         try {
-          const ids = Array.from(favoriteProvinceIds)
-          await batchRemoveFavorites(ids)
-          setFavoriteProvinceIds(new Set())
-          setFavoriteCount(0)
-          Taro.showToast({ title: '已清空', icon: 'success' })
+          await batchRemoveFavorites(toRemoveIds)
+          setFavoriteProvinceIds((prev) => {
+            const next = new Set(prev)
+            toRemoveIds.forEach((id) => next.delete(id))
+            return next
+          })
+          setFavoriteCount((prev) => Math.max(0, prev - toRemoveIds.length))
+          Taro.showToast({ title: `已清空【${typeLabel}】的已选省份`, icon: 'success' })
         } catch (error) {
           console.error('删除全部失败:', error)
           Taro.showToast({ title: '操作失败，请重试', icon: 'none' })
