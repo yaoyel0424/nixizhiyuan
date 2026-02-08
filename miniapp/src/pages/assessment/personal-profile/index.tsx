@@ -185,6 +185,7 @@ function WordCloudCSS({
   onItemClick?: (portrait: Portrait) => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showOverview, setShowOverview] = useState(false); // 是否显示总览模式
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   // 翻书动画：是否正在翻转、目标索引、当前翻转角度
@@ -303,20 +304,92 @@ function WordCloudCSS({
     return <View className="word-cloud-css word-cloud-css--stack" />;
   }
 
+  // 总览模式：瀑布流显示所有画像
+  if (showOverview) {
+    return (
+      <View className="word-cloud-css word-cloud-css--overview">
+        {/* 总览头部：返回按钮 */}
+        <View className="word-cloud-css__overview-header">
+          <View
+            className="word-cloud-css__overview-back-btn"
+            onClick={() => setShowOverview(false)}
+          >
+            <Text className="word-cloud-css__overview-back-text">← 返回</Text>
+          </View>
+          <Text className="word-cloud-css__overview-title">总览报告</Text>
+          <View className="word-cloud-css__overview-placeholder" />
+        </View>
+        {/* 瀑布流容器 */}
+        <View className="word-cloud-css__overview-container">
+          {cardItems.map((item, index) => (
+            <View
+              key={item.id}
+              className={`word-cloud-css__overview-card ${item.isQuadrant1 ? 'word-cloud-css__overview-card--quadrant1' : ''}`}
+              style={{
+                borderLeftColor: item.color,
+                borderLeftWidth: 4,
+              }}
+              onClick={() => {
+                setShowOverview(false);
+                setSafeIndex(index);
+              }}
+            >
+              <Text className="word-cloud-css__overview-card-name" style={{ color: item.color }}>
+                {item.portrait.name?.trim() || `${(item.prefix || '')}${item.core}`.trim() || '—'}
+              </Text>
+              {item.portrait.status && (
+                <Text className="word-cloud-css__overview-card-status" numberOfLines={2}>
+                  {item.portrait.status}
+                </Text>
+              )}
+              {(item.portrait.likeElement || item.portrait.talentElement) && (
+                <View className="word-cloud-css__overview-card-elements">
+                  {item.portrait.likeElement && (
+                    <View className="word-cloud-css__overview-card-element">
+                      <Text className="word-cloud-css__overview-card-element-label">喜欢</Text>
+                      <Text className="word-cloud-css__overview-card-element-name">
+                        {item.portrait.likeElement.name}
+                      </Text>
+                    </View>
+                  )}
+                  {item.portrait.talentElement && (
+                    <View className="word-cloud-css__overview-card-element">
+                      <Text className="word-cloud-css__overview-card-element-label">天赋</Text>
+                      <Text className="word-cloud-css__overview-card-element-name">
+                        {item.portrait.talentElement.name}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View className="word-cloud-css word-cloud-css--stack">
       {/* 仅保留上一个 / 当前 x/x / 下一个，画像名称在卡片内完整显示 */}
       <View className="word-cloud-css__stack-footer">
         <View className="word-cloud-css__stack-nav-row">
-          {/* 第一个页面隐藏"上一个"按钮文字，但保留占位符 */}
-          <View
-            className={`word-cloud-css__stack-nav-item ${safeIndex > 0 ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
-            onClick={safeIndex > 0 ? () => setSafeIndex(safeIndex - 1) : undefined}
-          >
-            {safeIndex > 0 && (
+          {/* 第一个页面显示"总览报告"按钮，其他页面显示"上一个"按钮 */}
+          {safeIndex === 0 ? (
+            <View
+              className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--clickable"
+              onClick={() => setShowOverview(true)}
+            >
+              <Text className="word-cloud-css__stack-nav-label">总览报告</Text>
+            </View>
+          ) : (
+            <View
+              className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--clickable"
+              onClick={() => setSafeIndex(safeIndex - 1)}
+            >
               <Text className="word-cloud-css__stack-nav-label">上一个</Text>
-            )}
-          </View>
+            </View>
+          )}
           <View className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--current">
             <Text className="word-cloud-css__stack-nav-label">当前 {safeIndex + 1} / {cardItems.length}</Text>
           </View>
