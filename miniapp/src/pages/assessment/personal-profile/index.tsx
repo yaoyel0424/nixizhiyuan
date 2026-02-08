@@ -4,6 +4,7 @@ import { View, Text, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
+import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getUserPortrait, Portrait } from '@/services/portraits'
 import './index.less'
@@ -180,12 +181,15 @@ const SWIPE_THRESHOLD = 50;
 function WordCloudCSS({
   portraits,
   onItemClick,
+  showOverviewModal,
+  setShowOverviewModal,
 }: {
   portraits: Portrait[];
   onItemClick?: (portrait: Portrait) => void;
+  showOverviewModal: boolean;
+  setShowOverviewModal: (show: boolean) => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showOverview, setShowOverview] = useState(false); // 是否显示总览模式
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   // 翻书动画：是否正在翻转、目标索引、当前翻转角度
@@ -304,91 +308,21 @@ function WordCloudCSS({
     return <View className="word-cloud-css word-cloud-css--stack" />;
   }
 
-  // 总览模式：瀑布流显示所有画像
-  if (showOverview) {
-    return (
-      <View className="word-cloud-css word-cloud-css--overview">
-        {/* 总览头部：返回按钮 */}
-        <View className="word-cloud-css__overview-header">
-          <View
-            className="word-cloud-css__overview-back-btn"
-            onClick={() => setShowOverview(false)}
-          >
-            <Text className="word-cloud-css__overview-back-text">← 返回</Text>
-          </View>
-          <Text className="word-cloud-css__overview-title">总览报告</Text>
-          <View className="word-cloud-css__overview-placeholder" />
-        </View>
-        {/* 瀑布流容器 */}
-        <View className="word-cloud-css__overview-container">
-          {cardItems.map((item, index) => (
-            <View
-              key={item.id}
-              className={`word-cloud-css__overview-card ${item.isQuadrant1 ? 'word-cloud-css__overview-card--quadrant1' : ''}`}
-              style={{
-                borderLeftColor: item.color,
-                borderLeftWidth: 4,
-              }}
-              onClick={() => {
-                setShowOverview(false);
-                setSafeIndex(index);
-              }}
-            >
-              <Text className="word-cloud-css__overview-card-name" style={{ color: item.color }}>
-                {item.portrait.name?.trim() || `${(item.prefix || '')}${item.core}`.trim() || '—'}
-              </Text>
-              {item.portrait.status && (
-                <Text className="word-cloud-css__overview-card-status" numberOfLines={2}>
-                  {item.portrait.status}
-                </Text>
-              )}
-              {(item.portrait.likeElement || item.portrait.talentElement) && (
-                <View className="word-cloud-css__overview-card-elements">
-                  {item.portrait.likeElement && (
-                    <View className="word-cloud-css__overview-card-element">
-                      <Text className="word-cloud-css__overview-card-element-label">喜欢</Text>
-                      <Text className="word-cloud-css__overview-card-element-name">
-                        {item.portrait.likeElement.name}
-                      </Text>
-                    </View>
-                  )}
-                  {item.portrait.talentElement && (
-                    <View className="word-cloud-css__overview-card-element">
-                      <Text className="word-cloud-css__overview-card-element-label">天赋</Text>
-                      <Text className="word-cloud-css__overview-card-element-name">
-                        {item.portrait.talentElement.name}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View className="word-cloud-css word-cloud-css--stack">
       {/* 仅保留上一个 / 当前 x/x / 下一个，画像名称在卡片内完整显示 */}
       <View className="word-cloud-css__stack-footer">
         <View className="word-cloud-css__stack-nav-row">
-          {/* 第一个页面显示"总览报告"按钮，其他页面显示"上一个"按钮 */}
-          {safeIndex === 0 ? (
-            <View
-              className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--clickable"
-              onClick={() => setShowOverview(true)}
-            >
-              <Text className="word-cloud-css__stack-nav-label">总览报告</Text>
-            </View>
-          ) : (
+          {/* 第一个页面隐藏"上一个"按钮，其他页面显示 */}
+          {safeIndex > 0 ? (
             <View
               className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--clickable"
               onClick={() => setSafeIndex(safeIndex - 1)}
             >
               <Text className="word-cloud-css__stack-nav-label">上一个</Text>
             </View>
+          ) : (
+            <View className="word-cloud-css__stack-nav-item" />
           )}
           <View className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--current">
             <Text className="word-cloud-css__stack-nav-label">当前 {safeIndex + 1} / {cardItems.length}</Text>
@@ -558,6 +492,60 @@ function WordCloudCSS({
           );
         })}
       </View>
+
+      {/* 总览报告弹出框 */}
+      <Dialog open={showOverviewModal} onOpenChange={setShowOverviewModal}>
+        <DialogContent className="personal-profile-overview-dialog overview-dialog" showCloseButton={true}>
+          <View className="word-cloud-css__overview-header">
+            <Text className="word-cloud-css__overview-title">总览报告</Text>
+          </View>
+          <View className="word-cloud-css__overview-container">
+            {cardItems.map((item, index) => (
+              <View
+                key={item.id}
+                className={`word-cloud-css__overview-card ${item.isQuadrant1 ? 'word-cloud-css__overview-card--quadrant1' : ''}`}
+                style={{
+                  borderLeftColor: item.color,
+                  borderLeftWidth: 4,
+                }}
+                onClick={() => {
+                  setShowOverviewModal(false);
+                  setSafeIndex(index);
+                }}
+              >
+                <Text className="word-cloud-css__overview-card-name" style={{ color: item.color }}>
+                  {item.portrait.name?.trim() || `${(item.prefix || '')}${item.core}`.trim() || '—'}
+                </Text>
+                {item.portrait.status && (
+                  <Text className="word-cloud-css__overview-card-status" numberOfLines={2}>
+                    {item.portrait.status}
+                  </Text>
+                )}
+                {(item.portrait.likeElement || item.portrait.talentElement) && (
+                  <View className="word-cloud-css__overview-card-elements">
+                    {item.portrait.likeElement && (
+                      <View className="word-cloud-css__overview-card-element">
+                        <Text className="word-cloud-css__overview-card-element-label">喜欢</Text>
+                        <Text className="word-cloud-css__overview-card-element-name">
+                          {item.portrait.likeElement.name}
+                        </Text>
+                      </View>
+                    )}
+                    {item.portrait.talentElement && (
+                      <View className="word-cloud-css__overview-card-element">
+                        <Text className="word-cloud-css__overview-card-element-label">天赋</Text>
+                        <Text className="word-cloud-css__overview-card-element-name">
+                          {item.portrait.talentElement.name}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        </DialogContent>
+      </Dialog>
     </View>
   );
 }
@@ -1513,9 +1501,17 @@ export default function PersonalProfilePage() {
   // 检查问卷完成状态
   const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck();
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false);
+  const [showOverviewModal, setShowOverviewModal] = useState(false);
   
   const [portraits, setPortraits] = useState<Portrait[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 浮动按钮位置和拖动状态
+  const [floatButtonTop, setFloatButtonTop] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [dragStartTop, setDragStartTop] = useState(0);
+  const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null);
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1523,6 +1519,12 @@ export default function PersonalProfilePage() {
       setShowQuestionnaireModal(true);
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted]);
+
+  useEffect(() => {
+    Promise.resolve(Taro.getWindowInfo()).then((info) => {
+      windowInfoRef.current = { windowWidth: info.windowWidth, windowHeight: info.windowHeight };
+    });
+  }, []);
 
   useEffect(() => {
     // 加载用户画像数据
@@ -1553,6 +1555,72 @@ export default function PersonalProfilePage() {
     Taro.navigateTo({ url: '/pages/assessment/portrait-detail/index' });
   }, []);
 
+  // 打开总览报告对话框
+  const handleOpenOverview = useCallback(() => {
+    // 如果正在拖动或刚拖动完，不触发打开
+    if (isDragging) {
+      return;
+    }
+    
+    // 延迟检查，避免拖动结束后立即触发点击
+    setTimeout(() => {
+      if (!isDragging) {
+        setShowOverviewModal(true);
+      }
+    }, 150);
+  }, [isDragging]);
+
+  // 处理拖动开始
+  const handleTouchStart = useCallback((e: any) => {
+    e.stopPropagation();
+    const touch = e.touches?.[0] || e.changedTouches?.[0];
+    if (!touch) return;
+    setIsDragging(false); // 先设为false，等待移动距离判断
+    setDragStartY(touch.clientY || touch.y || 0);
+    const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 };
+    const defaultBottom = 160 * (win.windowWidth / 750); // rpx转px
+    const currentTop = floatButtonTop > 0 
+      ? floatButtonTop 
+      : win.windowHeight - defaultBottom - 112 * (win.windowWidth / 750);
+    setDragStartTop(currentTop);
+  }, [floatButtonTop]);
+
+  // 处理拖动中
+  const handleTouchMove = useCallback((e: any) => {
+    e.stopPropagation();
+    const touch = e.touches?.[0] || e.changedTouches?.[0];
+    if (!touch) return;
+    const currentY = touch.clientY || touch.y || 0;
+    const deltaY = Math.abs(currentY - dragStartY);
+    
+    // 如果移动距离超过5px，认为是拖动
+    if (deltaY > 5) {
+      setIsDragging(true);
+    }
+    
+    if (deltaY > 5) {
+      const newTop = dragStartTop + (currentY - dragStartY);
+      const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 };
+      const rpxToPx = win.windowWidth / 750;
+      const buttonHeight = 112 * rpxToPx; // 按钮高度
+      const bottomNavHeight = 100 * rpxToPx; // 底部导航栏高度
+      const headerHeight = 200 * rpxToPx; // 顶部区域高度
+      const minTop = headerHeight;
+      const maxTop = win.windowHeight - buttonHeight - bottomNavHeight;
+      const clampedTop = Math.max(minTop, Math.min(maxTop, newTop));
+      setFloatButtonTop(clampedTop);
+    }
+  }, [dragStartY, dragStartTop]);
+
+  // 处理拖动结束
+  const handleTouchEnd = useCallback((e: any) => {
+    e.stopPropagation();
+    // 延迟重置拖动状态，避免立即触发点击事件
+    setTimeout(() => {
+      setIsDragging(false);
+    }, 100);
+  }, []);
+
   if (loading) {
     return (
       <View className="personal-profile-page">
@@ -1577,7 +1645,31 @@ export default function PersonalProfilePage() {
 
   return (
     <View className="personal-profile-page">
-      <WordCloudCSS portraits={portraits} onItemClick={handleWordCloudItemClick} />
+      <WordCloudCSS 
+        portraits={portraits} 
+        onItemClick={handleWordCloudItemClick}
+        showOverviewModal={showOverviewModal}
+        setShowOverviewModal={setShowOverviewModal}
+      />
+      
+      {/* 浮动按钮：打开总览报告 */}
+      <View 
+        className={`personal-profile-page__float-button ${isDragging ? 'personal-profile-page__float-button--dragging' : ''}`}
+        style={{ 
+          bottom: floatButtonTop > 0 ? 'auto' : '160rpx',
+          top: floatButtonTop > 0 ? `${floatButtonTop}px` : 'auto',
+          transform: isDragging ? 'scale(1.05)' : 'scale(1)'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleOpenOverview}
+      >
+        <View className="personal-profile-page__float-button-content">
+          <Text className="personal-profile-page__float-button-text">总览报告</Text>
+        </View>
+      </View>
+      
       <BottomNav />
 
       {/* 问卷完成提示弹窗 */}

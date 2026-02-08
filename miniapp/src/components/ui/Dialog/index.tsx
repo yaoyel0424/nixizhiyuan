@@ -96,7 +96,8 @@ const DialogContent: React.FC<DialogContentProps> = ({
   // 真机 iOS 低版本需要使用 ScrollView 组件才能滚动
   const needsScroll = className.includes('popular-majors-page__dialog') || 
                       className.includes('pre-assessment-dialog') ||
-                      className.includes('element-dialog')
+                      className.includes('element-dialog') ||
+                      className.includes('overview-dialog')
 
   return (
     <View className={cn('ui-dialog-content', className)}>
@@ -116,6 +117,14 @@ const DialogContent: React.FC<DialogContentProps> = ({
           onTouchMove={(e) => {
             e.stopPropagation()
           }}
+          onTouchStart={(e) => {
+            e.stopPropagation()
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation()
+          }}
+          // 阻止滚动事件传递到背景
+          catchMove={true}
         >
           {children}
         </ScrollView>

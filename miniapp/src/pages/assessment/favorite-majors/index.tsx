@@ -13,7 +13,7 @@ import {
   unfavoriteMajor, 
   getFavoriteMajorsCount
 } from '@/services/majors'
-import intentionData from '@/assets/data/intention.json'
+import { getAllScores } from '@/services/scores'
 import './index.less'
 
 // 合并后的专业数据接口（与 getFavoriteMajors 返回结构对齐，含 major 与分数）
@@ -43,6 +43,7 @@ export default function FavoriteMajorsPage() {
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [majorToDelete, setMajorToDelete] = useState<string | null>(null)
+  const [allScores, setAllScores] = useState<Array<{ code: string; name: string; score: number }>>([])
   // 浮动按钮位置
   const [floatButtonTop, setFloatButtonTop] = useState<number>(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -63,16 +64,25 @@ export default function FavoriteMajorsPage() {
     })
   }, [])
 
-  // 加载心动专业列表（getFavoriteMajors 已包含分数与专业信息，无需再请求 scores/all）
+  // 加载心动专业列表和所有专业分数（用于计算前20%）
   useEffect(() => {
     const loadFavoriteMajors = async () => {
       try {
         setLoading(true)
 
-        const [favorites, count] = await Promise.all([
+        const [favorites, count, scores] = await Promise.all([
           getFavoriteMajors(),
-          getFavoriteMajorsCount()
+          getFavoriteMajorsCount(),
+          getAllScores() // 获取所有专业分数，用于计算前20%
         ])
+        
+        // 处理分数数据，转换为 { code, name, score } 格式
+        const scoresList = scores.map((item: any) => ({
+          code: item.majorCode || item.code || '',
+          name: item.majorName || item.name || '',
+          score: typeof item.score === 'string' ? parseFloat(item.score) : (item.score || 0)
+        }))
+        setAllScores(scoresList)
 
         const favoritesList = Array.isArray(favorites) ? favorites : []
         const mergedList: FavoriteMajorWithScore[] = favoritesList
@@ -251,20 +261,19 @@ export default function FavoriteMajorsPage() {
   // 计算热爱能量前20%的专业
   const top20PercentCount = useMemo(() => {
     try {
-      const allMajorsWithScores = (intentionData as any[])
-        .map((item: any) => ({
-          code: item.major.code,
-          name: item.major.name,
-          score: parseFloat(item.major.score || '0')
-        }))
-        .filter((major: any) => major.score > 0)
+      if (allScores.length === 0) {
+        return 0
+      }
       
-      const sortedAllMajors = [...allMajorsWithScores].sort((a: any, b: any) => b.score - a.score)
+      const allMajorsWithScores = allScores
+        .filter((major) => major.score > 0)
+      
+      const sortedAllMajors = [...allMajorsWithScores].sort((a, b) => b.score - a.score)
       const top20PercentThresholdIndex = sortedAllMajors.length > 0 
         ? Math.ceil(sortedAllMajors.length * 0.2) 
         : 0
       const top20PercentMajorCodes = new Set(
-        sortedAllMajors.slice(0, top20PercentThresholdIndex).map((m: any) => m.code)
+        sortedAllMajors.slice(0, top20PercentThresholdIndex).map((m) => m.code)
       )
       const top20PercentInFavorites = filteredMajors.filter((major) => {
         return top20PercentMajorCodes.has(major.majorCode)
@@ -274,7 +283,7 @@ export default function FavoriteMajorsPage() {
       console.error('计算前20%专业失败:', error)
       return 0
     }
-  }, [filteredMajors])
+  }, [filteredMajors, allScores])
 
   if (loading) {
     return (
