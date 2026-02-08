@@ -144,6 +144,61 @@ export class ProvincesService {
   }
 
   /**
+   * 批量添加收藏（通过数据方式）
+   * @param userId 用户ID
+   * @param provinceIds 省份ID列表
+   * @returns 本次新增的收藏数量
+   */
+  async batchAddFavorites(
+    userId: number,
+    provinceIds: number[],
+  ): Promise<{ added: number }> {
+    const uniqueIds = [...new Set(provinceIds)];
+    let added = 0;
+    for (const provinceId of uniqueIds) {
+      const province = await this.provinceRepository.findOne({
+        where: { id: provinceId },
+      });
+      if (!province) continue;
+      const existing = await this.provinceFavoriteRepository.findOne({
+        where: { userId, provinceId },
+      });
+      if (existing) continue;
+      await this.provinceFavoriteRepository.save(
+        this.provinceFavoriteRepository.create({ userId, provinceId }),
+      );
+      added++;
+    }
+    this.logger.log(
+      `用户 ${userId} 批量添加收藏: 请求 ${provinceIds.length} 个，成功添加 ${added} 个`,
+    );
+    return { added };
+  }
+
+  /**
+   * 批量取消收藏（通过数据方式）
+   * @param userId 用户ID
+   * @param provinceIds 省份ID列表
+   * @returns 本次取消的收藏数量
+   */
+  async batchRemoveFavorites(
+    userId: number,
+    provinceIds: number[],
+  ): Promise<{ removed: number }> {
+    const uniqueIds = [...new Set(provinceIds)];
+    const favorites = await this.provinceFavoriteRepository.find({
+      where: uniqueIds.map((provinceId) => ({ userId, provinceId })),
+    });
+    if (favorites.length > 0) {
+      await this.provinceFavoriteRepository.remove(favorites);
+    }
+    this.logger.log(
+      `用户 ${userId} 批量取消收藏: 请求 ${provinceIds.length} 个，成功取消 ${favorites.length} 个`,
+    );
+    return { removed: favorites.length };
+  }
+
+  /**
    * 查询用户的收藏列表
    * @param userId 用户ID
    * @returns 收藏列表（包含省份信息）

@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { ProvincesService } from './provinces.service';
 import { CreateProvinceFavoriteDto } from './dto/create-province-favorite.dto';
+import { BatchProvinceFavoritesDto } from './dto/batch-province-favorites.dto';
 import {
   ProvincesListResponseDto,
   ProvinceFavoriteResponseDto,
@@ -104,6 +105,54 @@ export class ProvincesController {
   ): Promise<{ message: string }> {
     await this.provincesService.removeFavorite(user.id, provinceId);
     return { message: '取消收藏成功' };
+  }
+
+  /**
+   * 通过数据方式批量添加收藏
+   */
+  @Post('favorites/batch')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '批量添加收藏' })
+  @ApiResponse({
+    status: 200,
+    description: '操作成功',
+    schema: {
+      type: 'object',
+      properties: {
+        added: { type: 'number', description: '本次新增的收藏数量' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: '参数错误' })
+  async batchAddFavorites(
+    @CurrentUser() user: any,
+    @Body() dto: BatchProvinceFavoritesDto,
+  ): Promise<{ added: number }> {
+    return await this.provincesService.batchAddFavorites(user.id, dto.provinceIds);
+  }
+
+  /**
+   * 通过数据方式批量取消收藏
+   */
+  @Post('favorites/batch/remove')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '批量取消收藏' })
+  @ApiResponse({
+    status: 200,
+    description: '操作成功',
+    schema: {
+      type: 'object',
+      properties: {
+        removed: { type: 'number', description: '本次取消的收藏数量' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: '参数错误' })
+  async batchRemoveFavorites(
+    @CurrentUser() user: any,
+    @Body() dto: BatchProvinceFavoritesDto,
+  ): Promise<{ removed: number }> {
+    return await this.provincesService.batchRemoveFavorites(user.id, dto.provinceIds);
   }
 
   /**

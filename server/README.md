@@ -154,6 +154,63 @@ docker-compose logs -f
 docker-compose down
 ```
 
+### 通过 Docker 连接 Redis，查看封禁 IP 与速率数据
+
+本项目的 Redis 由主应用提供，在 `docker-compose.yml` 中通过环境变量指向：
+
+- **主机**：`REDIS_HOST=rbridge-redis`
+- **端口**：`REDIS_PORT=6379`
+- **密码**：`REDIS_PASSWORD`（来自主应用环境变量，可能为空）
+
+**方式一：Redis 跑在容器里（容器名为 `rbridge-redis`）**
+
+在宿主机执行：
+
+```bash
+# 有密码时（与主应用 .env 中 REDIS_PASSWORD 一致）
+docker exec -it rbridge-redis redis-cli -a 你的REDIS密码
+
+# 无密码时
+docker exec -it rbridge-redis redis-cli
+```
+
+**方式二：用临时 redis-cli 容器连接**
+
+```bash
+# 有密码时
+docker run --rm -it --network rbridge_app-network redis:alpine redis-cli -h rbridge-redis -p 6379 -a 你的REDIS密码
+
+# 无密码时
+docker run --rm -it --network rbridge_app-network redis:alpine redis-cli -h rbridge-redis -p 6379
+```
+
+连上 Redis 后，在 `redis-cli` 中执行：
+
+**1. 封禁 IP（key 前缀 `ip_block:`）**
+
+```bash
+# 列出所有被封禁的 IP 的 key
+KEYS ip_block:*
+
+# 查看某 IP 剩余封禁时间（秒）
+TTL ip_block:某个IP
+```
+
+**2. 访问速率 / DoS 计数（key 前缀 `rate_limit:`）**
+
+```bash
+# 列出所有正在计数的 速率限制 key（按 IP + 路径）
+KEYS rate_limit:*
+
+# 查看某 key 的当前请求次数
+GET rate_limit:某个IP:某路径
+
+# 查看该 key 剩余时间（秒）
+TTL rate_limit:某个IP:某路径
+```
+
+若不确定 Redis 容器名，可执行 `docker ps -a | grep redis` 查看；网络名见 `docker network ls | grep rbridge`。
+
 ## 开发命令
 
 ```bash
