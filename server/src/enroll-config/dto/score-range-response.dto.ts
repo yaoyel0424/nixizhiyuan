@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { ProvinceBatchItemDto } from '@/users/dto/province-batches-response.dto';
 
 /**
  * 分数范围响应 DTO
@@ -39,5 +40,20 @@ export class ScoreRangeResponseDto {
   })
   @Expose()
   controlScore: number;
+
+  @ApiProperty({
+    description: '最符合分数的批次名称（当传入 score 时有值）',
+    required: false,
+  })
+  @Expose()
+  matchedBatch?: string | null;
+
+  @ApiProperty({
+    description: '该省份该年下所有批次列表',
+    type: [ProvinceBatchItemDto],
+  })
+  @Expose()
+  @Type(() => ProvinceBatchItemDto)
+  batches: ProvinceBatchItemDto[];
 }
 

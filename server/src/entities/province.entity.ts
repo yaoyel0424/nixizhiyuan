@@ -99,6 +99,17 @@ export class Province {
   typicalEmployers: string;
 
   /**
+   * 年份（如招生年度）
+   */
+  @Column({
+    type: 'varchar',
+    length: 10,
+    default: '2025',
+    comment: '年份',
+  })
+  year: string;
+
+  /**
    * 记录创建时间
    */
   @CreateDateColumn({

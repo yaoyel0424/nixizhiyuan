@@ -65,13 +65,13 @@ export const GAOKAO_SUBJECT_CONFIG: SubjectConfig[] = [
   },
   {
     province: '浙江',
-    mode: GaoKaoMode.MODE_3_4,
+    mode: GaoKaoMode.MODE_3_3,
     primarySubjects: {
       count: 0,
       subjects: ['综合']
     },
     secondarySubjects: {
-      count: 4,
+      count: 3,
       subjects: ['物理', '化学', '生物', '历史', '政治', '地理', '技术']
     }
   },

@@ -8,7 +8,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '@/entities/user.entity';
-import { ProvincialControlLine } from '@/entities/provincial-control-line.entity';
+import { Province } from '@/entities/province.entity';
+import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { MajorFavorite } from '@/entities/major-favorite.entity';
 import { ProvinceFavorite } from '@/entities/province-favorite.entity';
@@ -22,6 +23,10 @@ import { ErrorCode } from '../common/constants/error-code.constant';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { UserRelatedDataResponseDto } from './dto/user-related-data-response.dto';
+import {
+  ProvinceBatchesResponseDto,
+  ProvinceBatchItemDto,
+} from './dto/province-batches-response.dto';
 import { ContentSecurityService } from '@/common/services/content-security.service';
 
 /**
@@ -35,8 +40,10 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(ProvincialControlLine)
-    private readonly provincialControlLineRepository: Repository<ProvincialControlLine>,
+    @InjectRepository(Province)
+    private readonly provinceRepository: Repository<Province>,
+    @InjectRepository(ProvinceBatch)
+    private readonly provinceBatchRepository: Repository<ProvinceBatch>,
     @InjectRepository(ScaleAnswer)
     private readonly scaleAnswerRepository: Repository<ScaleAnswer>,
     @InjectRepository(MajorFavorite)
@@ -149,32 +156,28 @@ export class UsersService {
         'UsersService',
       );
 
-      const results = await this.provincialControlLineRepository
-        .createQueryBuilder('pcl')
-        .select(['pcl.batchName', 'pcl.score'])
-        .where('pcl.province = :province', { province })
-        .andWhere('pcl.year = :year', { year })
-        .andWhere('pcl.typeName = :typeName', { typeName })
-        .andWhere('pcl.convention_batch=:conventionBatch', { conventionBatch: true })
-        .orderBy('pcl.score', 'DESC')
-        .getRawMany();
+      const results = await this.provinceBatchRepository
+        .createQueryBuilder('pb')
+        .select(['pb.batch', 'pb.minScore'])
+        .where('pb.province = :province', { province })
+        .andWhere('pb.year = :year', { year })
+        .orderBy('pb.minScore', 'DESC')
+        .getMany();
 
       if (!results || results.length === 0) {
         this.logger.warn(
-          `未找到省份控制线数据，province: ${province}, year: ${year}, typeName: ${typeName}`,
+          `未找到省份批次数据，province: ${province}, year: ${year}`,
           'UsersService',
         );
         return '未达到录取线';
       }
 
-      console.log(results);
-      
-      // 找到用户分数能够达到的最高批次（按分数降序排列，找到第一个用户分数 >= 批次分数）
+      // 找到用户分数能够达到的最高批次（按最低分降序排列，找到第一个用户分数 >= 批次最低分）
       let enrollType: string = '未达到录取线';
       for (const item of results) {
-        const batchScore = parseInt(item.pcl_score) || 0; 
+        const batchScore = Number(item.minScore) ?? 0;
         if (userScore >= batchScore) {
-          enrollType = item.pcl_batch_name || '未达到录取线';
+          enrollType = item.batch || '未达到录取线';
           break;
         }
       }
@@ -195,6 +198,55 @@ export class UsersService {
   }
 
   /**
+   * 查询指定省份、年份下的所有批次，并标记最符合给定分数的批次
+   * @param province 省份名称
+   * @param year 年份
+   * @param score 用户分数（可选）；传入时用于标记 isMatch 和 matchedBatch
+   * @returns 批次列表及匹配结果
+   */
+  async getProvinceBatchesWithMatch(
+    province: string,
+    year: string,
+    score?: number | null,
+  ): Promise<ProvinceBatchesResponseDto> {
+    const list = await this.provinceBatchRepository.find({
+      where: { province, year },
+      select: ['id', 'batch', 'minScore', 'volunteerCount', 'startAt', 'endAt'],
+      order: { minScore: 'DESC' },
+    });
+
+    let matchedBatch: string | null = null;
+    const batches: ProvinceBatchItemDto[] = list.map((row) => {
+      const minScoreNum = row.minScore != null ? Number(row.minScore) : null;
+      const isMatch =
+        score != null &&
+        minScoreNum != null &&
+        score >= minScoreNum &&
+        matchedBatch === null;
+      if (isMatch) {
+        matchedBatch = row.batch;
+      }
+      return {
+        id: row.id,
+        batch: row.batch,
+        minScore: minScoreNum,
+        volunteerCount: row.volunteerCount ?? null,
+        startAt: row.startAt ?? null,
+        endAt: row.endAt ?? null,
+        isMatch: !!isMatch,
+      };
+    });
+
+    return {
+      province,
+      year,
+      ...(score != null && { score }),
+      ...(matchedBatch != null && { matchedBatch }),
+      batches,
+    };
+  }
+
+  /**
    * 更新用户选科和分数信息
    * @param id 用户ID
    * @param updateData 更新数据
@@ -206,19 +258,7 @@ export class UsersService {
   ): Promise<User> {
     const user = await this.findOne(id);
 
-    // 如果提供了分数和省份信息，查询录取类型
-    if (updateData.score !== undefined && updateData.province) {
-      const year =
-        this.configService.get<string>('CURRENT_YEAR') || '2025';
-      const typeName = updateData.preferredSubjects || '综合';
-      const enrollType = await this.getEnrollTypeByScore(
-        updateData.score,
-        updateData.province,
-        year,
-        typeName,
-      );
-      updateData.enrollType = enrollType;
-    }
+    // enrollType 由前端/调用方通过 updateData.enrollType 传入，不再在此计算
 
      //if (updateData.preferredSubjects=="物理"){
      //updateData.preferredSubjects="物理类"

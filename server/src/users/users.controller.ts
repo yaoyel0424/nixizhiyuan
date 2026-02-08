@@ -21,6 +21,7 @@ import { UpdateNicknameDto } from './dto/update-nickname.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRelatedDataResponseDto } from './dto/user-related-data-response.dto';
+import { ProvinceBatchesResponseDto } from './dto/province-batches-response.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator'; 
@@ -68,6 +69,40 @@ export class UsersController {
     @CurrentUser() user: any,
   ): Promise<UserRelatedDataResponseDto> {
     return await this.usersService.getUserRelatedDataCount(user.id);
+  }
+
+  /**
+   * 查询指定省份、年份下所有批次，并标记最符合分数的批次（可选传入 score，不传则用当前用户分数）
+   */
+  @Get('province-batches')
+  @ApiOperation({ summary: '查询省份年份下所有批次并标记最符合分数批次' })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: ProvinceBatchesResponseDto,
+  })
+  @ApiResponse({ status: 400, description: '缺少省份或年份' })
+  async getProvinceBatches(
+    @CurrentUser() user: any,
+    @Query('province') province: string,
+    @Query('year') year: string,
+    @Query('score') scoreStr?: string,
+  ): Promise<ProvinceBatchesResponseDto> {
+    if (!province?.trim() || !year?.trim()) {
+      throw new BadRequestException('请提供省份(province)和年份(year)');
+    }
+    const score =
+      scoreStr !== undefined && scoreStr !== ''
+        ? parseInt(scoreStr, 10)
+        : (user.score ?? undefined);
+    if (scoreStr !== undefined && scoreStr !== '' && Number.isNaN(score)) {
+      throw new BadRequestException('分数(score)必须为数字');
+    }
+    return this.usersService.getProvinceBatchesWithMatch(
+      province.trim(),
+      year.trim(),
+      score,
+    );
   }
 
   /**

@@ -11,6 +11,7 @@ import { ProvinceFavorite } from '@/entities/province-favorite.entity';
 import { Province } from '@/entities/province.entity';
 import { ScoresModule } from '@/scores/scores.module';
 import { EnrollPlanController } from './enroll-plan.controller';
+import { ConfigModule } from '@nestjs/config';
 import { EnrollPlanService } from './enroll-plan.service';
 
 /**
@@ -18,6 +19,7 @@ import { EnrollPlanService } from './enroll-plan.service';
  */
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([
       EnrollmentPlan,
       MajorFavorite,

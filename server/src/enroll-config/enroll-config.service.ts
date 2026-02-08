@@ -6,7 +6,16 @@ import { ProvincialControlLine } from '@/entities/provincial-control-line.entity
 import { User } from '@/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
+import { UsersService } from '@/users/users.service';
+import { ProvinceBatchItemDto } from '@/users/dto/province-batches-response.dto';
 import { ProvincialControlLineResponseDto } from './dto/provincial-control-line-response.dto';
+
+/** getScoreRange 返回类型：分数范围 + 省份批次列表及最符合批次 */
+export type GetScoreRangeResult = {
+  scoreRange: ScoreRange;
+  batches: ProvinceBatchItemDto[];
+  matchedBatch: string | null;
+};
 
 /**
  * 招生配置服务
@@ -24,28 +33,24 @@ export class EnrollConfigService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
 
   /**
-   * 根据省份名称、科目类型和分数键值获取分数范围信息
+   * 根据省份名称、科目类型和分数键值获取分数范围信息，并调用用户服务获取该省份该年下所有批次及最符合分数的批次
    * @param provinceName 省份名称
    * @param subjectType 科目类型
    * @param scoreKey 分数键值
    * @param year 年份
-   * @returns 分数范围信息
+   * @returns 分数范围信息 + batches、matchedBatch，未找到分数范围时返回 null
    */
   async getScoreRange(
     provinceName: string,
     subjectType: string,
     scoreKey: string,
     year: string,
-  ): Promise<ScoreRange | null> {
+  ): Promise<GetScoreRangeResult | null> {
     try {
-      this.logger.log(
-        `尝试获取分数范围信息，provinceName: ${provinceName}, subjectType: ${subjectType}, scoreKey: ${scoreKey}, year: ${year}`,
-        'EnrollConfigService',
-      );
-
       const scoreRange = await this.scoreRangeRepository.findOne({
         where: {
           provinceName,
@@ -56,24 +61,25 @@ export class EnrollConfigService {
       });
 
       if (!scoreRange) {
-        this.logger.warn(
-          `未找到分数范围信息，provinceName: ${provinceName}, subjectType: ${subjectType}, scoreKey: ${scoreKey}, year: ${year}`,
-          'EnrollConfigService',
-        );
         return null;
       }
 
-      this.logger.log(
-        `成功找到分数范围信息: ${JSON.stringify(scoreRange)}`,
-        'EnrollConfigService',
+      const scoreNum =
+        scoreKey !== undefined && scoreKey !== '' && !Number.isNaN(Number(scoreKey))
+          ? Number(scoreKey)
+          : undefined;
+      const provinceBatches = await this.usersService.getProvinceBatchesWithMatch(
+        provinceName,
+        year,
+        scoreNum ?? null,
       );
-      return scoreRange;
+
+      return {
+        scoreRange,
+        batches: provinceBatches.batches,
+        matchedBatch: provinceBatches.matchedBatch ?? null,
+      };
     } catch (error) {
-      this.logger.error(
-        `获取分数范围信息失败，provinceName: ${provinceName}, subjectType: ${subjectType}, scoreKey: ${scoreKey}, year: ${year}`,
-        error instanceof Error ? error.stack : String(error),
-        'EnrollConfigService',
-      );
       throw error;
     }
   }

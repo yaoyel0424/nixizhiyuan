@@ -4,7 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from '@/entities/user.entity';
-import { ProvincialControlLine } from '@/entities/provincial-control-line.entity';
+import { Province } from '@/entities/province.entity';
+import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { MajorFavorite } from '@/entities/major-favorite.entity';
 import { ProvinceFavorite } from '@/entities/province-favorite.entity';
@@ -20,7 +21,8 @@ import { ContentSecurityService } from '@/common/services/content-security.servi
   imports: [
     TypeOrmModule.forFeature([
       User,
-      ProvincialControlLine,
+      Province,
+      ProvinceBatch,
       ScaleAnswer,
       MajorFavorite,
       ProvinceFavorite,

@@ -12,8 +12,12 @@ import {
   ApiQuery,
   ApiBearerAuth
 } from '@nestjs/swagger';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { GAOKAO_SUBJECT_CONFIG } from '@/config/gaokao-subjects';
 import { EnrollConfigService } from './enroll-config.service';
+import { Province } from '@/entities/province.entity';
 import { GetScoreRangeDto } from './dto/get-score-range.dto';
 import { ScoreRangeResponseDto } from './dto/score-range-response.dto';
 import { ProvincialControlLineResponseDto } from './dto/provincial-control-line-response.dto';
@@ -28,7 +32,12 @@ import { plainToInstance } from 'class-transformer';
 @Controller('enroll-config')
 @ApiBearerAuth()
 export class EnrollConfigController {
-  constructor(private readonly enrollConfigService: EnrollConfigService) {}
+  constructor(
+    private readonly enrollConfigService: EnrollConfigService,
+    @InjectRepository(Province)
+    private readonly provinceRepository: Repository<Province>,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * 获取高考科目配置信息
@@ -95,25 +104,34 @@ export class EnrollConfigController {
       );
     }
 
-    const year = process.env.CURRENT_YEAR || '2025';
-    const scoreRange = await this.enrollConfigService.getScoreRange(
+    const provinceRow = await this.provinceRepository.findOne({
+      where: { name: provinceName },
+      select: ['year'],
+    });
+    const year =
+      provinceRow?.year ||
+      this.configService.get<string>('CURRENT_YEAR') ||
+      '2025';
+    const result = await this.enrollConfigService.getScoreRange(
       provinceName,
       subjectType,
       score,
       year,
     );
 
-    if (!scoreRange) {
+    if (!result) {
       throw new NotFoundException('未找到对应的分数范围信息');
     }
 
-    // 转换为响应 DTO
+    const { scoreRange, batches, matchedBatch } = result;
     return plainToInstance(ScoreRangeResponseDto, {
       num: scoreRange.num,
       total: scoreRange.total,
       rankRange: scoreRange.rankRange,
       batchName: scoreRange.batchName,
       controlScore: scoreRange.controlScore,
+      batches,
+      matchedBatch,
     });
   }
 
@@ -136,7 +154,17 @@ export class EnrollConfigController {
   async getProvincialControlLines(
     @CurrentUser() user: any,
   ): Promise<ProvincialControlLineResponseDto[]> {
-    const year = process.env.CURRENT_YEAR || '2025';
+    const provinceName = user?.province;
+    const provinceRow = provinceName
+      ? await this.provinceRepository.findOne({
+          where: { name: provinceName },
+          select: ['year'],
+        })
+      : null;
+    const year =
+      provinceRow?.year ||
+      this.configService.get<string>('CURRENT_YEAR') ||
+      '2025';
     return await this.enrollConfigService.findProvincialControlLinesByUser(
       user,
       year,

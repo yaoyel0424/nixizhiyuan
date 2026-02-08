@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, ArrayOverlap } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { EnrollmentPlan } from '@/entities/enrollment-plan.entity';
 import { MajorFavorite } from '@/entities/major-favorite.entity';
@@ -53,6 +54,7 @@ export class EnrollPlanService {
     @InjectRepository(Province)
     private readonly provinceRepository: Repository<Province>,
     private readonly scoresService: ScoresService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -1086,9 +1088,9 @@ export class EnrollPlanService {
   }
 
   /**
-   * 根据当前用户（users 表）及配置年份，查询去重后的 level3_major_id 列表
+   * 根据当前用户（users 表）及年份，查询去重后的 level3_major_id 列表
    * @param userId 用户ID
-   * @param year 年份，不传则从 process.env.CURRENT_YEAR 读取，默认 2025
+   * @param year 年份，不传则从省份表（按用户 province）获取，再否则用配置或默认 2025
    * @returns 去重后的 level3_major_id 数组
    */
   async getDistinctLevel3MajorIdsByCurrentUser(
@@ -1101,7 +1103,15 @@ export class EnrollPlanService {
       return [];
     }
 
-    const resolvedYear = year || process.env.CURRENT_YEAR || '2025';
+    let resolvedYear = year;
+    if (!resolvedYear && user.province?.trim()) {
+      const provinceRow = await this.provinceRepository.findOne({
+        where: { name: user.province.trim() },
+        select: ['year'],
+      });
+      resolvedYear = provinceRow?.year ?? undefined;
+    }
+    resolvedYear = resolvedYear || this.configService.get<string>('CURRENT_YEAR') || '2025';
     const province = user.province?.trim() || '';
     const batch = user.enrollType?.trim() || '';
     const primarySubject = user.preferredSubjects?.trim() || '';
