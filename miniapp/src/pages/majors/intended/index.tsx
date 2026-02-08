@@ -19,8 +19,6 @@ import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustM
 import { RangeSlider } from '@/components/RangeSlider'
 import { exportWishlistToPdf } from '@/utils/exportPdf'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
-import intentionData from '@/assets/data/intention.json'
-import groupData from '@/assets/data/group.json'
 import './index.less'
 
 interface Major {
@@ -131,7 +129,6 @@ export default function IntendedMajorsPage() {
     majorGroupId?: number
   } | null>(null)
   const [groupDialogOpen, setGroupDialogOpen] = useState(false)
-  const [groupDataList, setGroupDataList] = useState<any[]>([])
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null)
   const [expandedMajorGroups, setExpandedMajorGroups] = useState<Set<string>>(new Set()) // 展开的专业组
@@ -363,7 +360,7 @@ export default function IntendedMajorsPage() {
   // 仅在“高考信息弹窗从打开->关闭”时刷新：避免初始 showExamInfoDialog=false 也触发刷新导致重复请求
   const prevShowExamInfoDialogRef = useRef(showExamInfoDialog)
 
-  // 加载数据（院校探索页面使用API数据，意向志愿页面使用静态数据）
+  // 加载数据（院校探索页面和意向志愿页面都使用API数据）
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -376,8 +373,61 @@ export default function IntendedMajorsPage() {
           // 注意：不要在这里手动操作 fetchingEnrollmentPlansRef，避免与 refreshEnrollmentPlans 内部的并发控制冲突
           await refreshEnrollmentPlans()
         } else {
-          // 意向志愿页面：使用静态数据
-          setData(intentionData as unknown as IntentionMajor[])
+          // 意向志愿页面：调用API获取用户的志愿选择列表
+          try {
+            const choicesData = await getChoices()
+            // 将 API 返回的分组数据转换为 IntentionMajor[] 格式
+            // convertGroupedChoicesToItems 返回的是扁平化的列表，需要转换为 IntentionMajor 格式
+            const items = convertGroupedChoicesToItems(choicesData)
+            // 将 items 转换为 IntentionMajor[] 格式（按专业分组）
+            const majorMap = new Map<string, IntentionMajor>()
+            items.forEach((item: any) => {
+              const majorKey = item.majorName || item.enrollmentMajor || 'unknown'
+              if (!majorMap.has(majorKey)) {
+                majorMap.set(majorKey, {
+                  major: {
+                    code: item.majorCode || '',
+                    name: item.majorName || item.enrollmentMajor || '',
+                    displayName: item.majorName || item.enrollmentMajor || '',
+                    developmentPotential: '',
+                    score: '',
+                    opportunityScore: '',
+                    academicDevelopmentScore: '',
+                    careerDevelopmentScore: '',
+                    growthPotentialScore: '',
+                    industryProspectsScore: '',
+                    lexueScore: '',
+                    shanxueScore: '',
+                    yanxueDeduction: '',
+                    tiaozhanDeduction: '',
+                    eduLevel: ''
+                  },
+                  schools: []
+                })
+              }
+              const intentionMajor = majorMap.get(majorKey)!
+              intentionMajor.schools.push({
+                schoolName: item.schoolName || '',
+                schoolNature: item.schoolNature || 'public',
+                rankDiffPer: 0,
+                group: 0,
+                historyScores: item.historyScore || [],
+                schoolFeature: item.schoolFeature || '',
+                belong: item.belong || '',
+                provinceName: item.provinceName || '',
+                cityName: item.cityName || '',
+                enrollmentRate: item.enrollmentRate || '0',
+                employmentRate: item.employmentRate || '0',
+                majorGroupName: item.majorGroupName || null,
+                majorGroupId: item.majorGroupId || null
+              })
+            })
+            setData(Array.from(majorMap.values()))
+          } catch (error) {
+            console.error('加载意向志愿数据失败:', error)
+            // 如果加载失败，设置为空数组
+            setData([])
+          }
         }
         setLoading(false)
       } catch (error) {
@@ -387,18 +437,6 @@ export default function IntendedMajorsPage() {
     }
     loadData()
   }, [activeTab, scoreRangeReady])
-
-  // 加载专业组数据
-  useEffect(() => {
-    try {
-      const groupJson = groupData as any
-      if (groupJson.data && Array.isArray(groupJson.data)) {
-        setGroupDataList(groupJson.data)
-      }
-    } catch (error) {
-      console.error('加载专业组数据失败:', error)
-    }
-  }, [])
 
   // 将API返回的分组数据转换为扁平化的列表
   const convertGroupedChoicesToItems = (groupedData: GroupedChoiceResponse): any[] => {
