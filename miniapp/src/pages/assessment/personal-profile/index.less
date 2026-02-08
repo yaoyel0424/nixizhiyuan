@@ -955,3 +955,123 @@
   font-weight: 600;
   color: #1a56db;
 }
+
+// 浮动按钮：打开总览报告
+.personal-profile-page__float-button {
+  position: fixed;
+  right: 32rpx;
+  bottom: 160rpx; // 在底部导航栏上方
+  z-index: 999;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1A4099 0%, #2B5FC7 100%);
+  box-shadow: 0 8rpx 24rpx rgba(26, 64, 153, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.3s;
+  touch-action: none; // 禁用默认触摸行为，允许自定义拖动
+  
+  &--dragging {
+    transition: none; // 拖动时禁用过渡动画
+    box-shadow: 0 12rpx 32rpx rgba(26, 64, 153, 0.6);
+  }
+  
+  &:active:not(&--dragging) {
+    transform: scale(0.95);
+    box-shadow: 0 4rpx 12rpx rgba(26, 64, 153, 0.3);
+  }
+}
+
+.personal-profile-page__float-button-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx;
+}
+
+.personal-profile-page__float-button-text {
+  font-size: 24rpx;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.2;
+  text-align: center;
+  filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.2));
+}
+
+// Dialog 中的总览报告样式
+.personal-profile-overview-dialog {
+  max-height: 85vh;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 !important; // 移除默认 padding
+  
+  // 确保关闭按钮可见且位置正确
+  .ui-dialog-content__close {
+    top: 16rpx !important;
+    right: 16rpx !important;
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 50%;
+    width: 56rpx;
+    height: 56rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+  }
+  
+  .word-cloud-css__overview-header {
+    flex-shrink: 0;
+    padding: 32rpx 32rpx 24rpx;
+    background: #ffffff;
+    border-bottom: 1rpx solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: 0;
+  }
+  
+  // ScrollView 容器样式（Dialog 自动包裹）
+  .ui-dialog-content__scroll {
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    // 阻止滚动事件冒泡
+    touch-action: pan-y;
+    // 确保 ScrollView 有明确的高度
+    height: 100%;
+    max-height: calc(85vh - 120rpx); // 减去 header 的高度，使用 85vh
+  }
+  
+  .word-cloud-css__overview-container {
+    flex: 1;
+    min-height: 0;
+    padding: 24rpx 32rpx 32rpx;
+    display: flex;
+    flex-direction: column;
+    gap: 24rpx;
+    // 确保内容可以滚动
+    width: 100%;
+  }
+}
+
+// 确保 Dialog 垂直居中
+.ui-dialog {
+  &.personal-profile-overview-dialog-wrapper {
+    align-items: center;
+    justify-content: center;
+  }
+}
