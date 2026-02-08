@@ -308,20 +308,26 @@ function WordCloudCSS({
       {/* 仅保留上一个 / 当前 x/x / 下一个，画像名称在卡片内完整显示 */}
       <View className="word-cloud-css__stack-footer">
         <View className="word-cloud-css__stack-nav-row">
+          {/* 第一个页面隐藏"上一个"按钮文字，但保留占位符 */}
           <View
-            className={`word-cloud-css__stack-nav-item ${cardItems[safeIndex - 1] ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
-            onClick={cardItems[safeIndex - 1] ? () => setSafeIndex(safeIndex - 1) : undefined}
+            className={`word-cloud-css__stack-nav-item ${safeIndex > 0 ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
+            onClick={safeIndex > 0 ? () => setSafeIndex(safeIndex - 1) : undefined}
           >
-            <Text className="word-cloud-css__stack-nav-label">上一个</Text>
+            {safeIndex > 0 && (
+              <Text className="word-cloud-css__stack-nav-label">上一个</Text>
+            )}
           </View>
           <View className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--current">
             <Text className="word-cloud-css__stack-nav-label">当前 {safeIndex + 1} / {cardItems.length}</Text>
           </View>
+          {/* 最后一个页面隐藏"下一个"按钮文字，但保留占位符 */}
           <View
-            className={`word-cloud-css__stack-nav-item ${cardItems[safeIndex + 1] ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
-            onClick={cardItems[safeIndex + 1] ? () => setSafeIndex(safeIndex + 1) : undefined}
+            className={`word-cloud-css__stack-nav-item ${safeIndex < cardItems.length - 1 ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
+            onClick={safeIndex < cardItems.length - 1 ? () => setSafeIndex(safeIndex + 1) : undefined}
           >
-            <Text className="word-cloud-css__stack-nav-label">下一个</Text>
+            {safeIndex < cardItems.length - 1 && (
+              <Text className="word-cloud-css__stack-nav-label">下一个</Text>
+            )}
           </View>
         </View>
       </View>
