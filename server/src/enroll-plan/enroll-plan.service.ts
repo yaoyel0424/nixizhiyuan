@@ -1131,5 +1131,34 @@ export class EnrollPlanService {
       secondarySubjects,
     });
   }
+
+  /**
+   * 根据专业组 ID 数组查询每个专业组对应的去重后的 level3_major_id 列表
+   * @param majorGroupIds 专业组 ID 数组
+   * @returns 每个 majorGroupId 与其对应的 level3MajorIds（去重）
+   */
+  async getLevel3MajorIdsByMajorGroupIds(
+    majorGroupIds: number[],
+  ): Promise<Array<{ majorGroupId: number; level3MajorIds: number[] }>> {
+    if (!majorGroupIds?.length) {
+      return [];
+    }
+    const sql = `
+      SELECT major_group_id AS "majorGroupId",
+             array_agg(DISTINCT elem) AS "level3MajorIds"
+      FROM enrollment_plans,
+           LATERAL unnest(COALESCE(level3_major_id, ARRAY[]::integer[])) AS elem
+      WHERE major_group_id = ANY($1::integer[])
+        AND major_group_id IS NOT NULL
+      GROUP BY major_group_id
+    `;
+    const rows = await this.enrollmentPlanRepository.manager.query(sql, [
+      majorGroupIds,
+    ]);
+    return rows.map((r: { majorGroupId: number; level3MajorIds: number[] }) => ({
+      majorGroupId: r.majorGroupId,
+      level3MajorIds: r.level3MajorIds ?? [],
+    }));
+  }
 }
 

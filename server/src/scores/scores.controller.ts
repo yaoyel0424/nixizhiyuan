@@ -14,8 +14,9 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { ScoresService } from './scores.service';
-import { ScoreResponseDto } from './dto/score-response.dto';
+import { ScoreResponseDto, ScoreSummaryItemDto } from './dto/score-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { UsersService } from '@/users/users.service';
 import { plainToInstance } from 'class-transformer';
 import { LoggerService } from '@/logger/logger.service';
 import { Cache } from '@/common/decorators/cache.decorator';
@@ -29,6 +30,7 @@ export class ScoresController {
   constructor(
     private readonly scoresService: ScoresService,
     private readonly logger: LoggerService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Get('major/:majorCode')
@@ -92,7 +94,7 @@ export class ScoresController {
     isArray: true,
   })
 
-  @Cache(120)
+  @Cache(300)
   async getAllScores(
     @Query('eduLevel') eduLevel?: string,
     @CurrentUser() user?: any,
@@ -108,7 +110,30 @@ export class ScoresController {
     });
   }
 
-  
-
+  @Get('bottom-20')
+  @Cache(600)
+  @ApiOperation({
+    summary: '获取分数倒序后20%的专业',
+    description: '获取用户专业匹配分数按分数倒序排列后的后20%（即分数最低的20%），仅返回 majorId 和 score。eduLevel 根据用户表 enrollType 自动推断：含「专科」或为「普通类二段」时为 zhuan，否则为 ben',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功',
+    type: ScoreSummaryItemDto,
+    isArray: true,
+  })
+  async getBottom20Scores(@CurrentUser() user: any): Promise<ScoreSummaryItemDto[]> {
+    const dbUser = await this.usersService.findOne(user.id);
+    const enrollType = dbUser.enrollType?.trim() ?? '';
+    const eduLevel =
+      enrollType.includes('专科') || enrollType === '普通类二段' ? 'zhuan' : 'ben,gao_ben';
+    const scores = await this.scoresService.calculateScores(user.id, eduLevel);
+    // 按 score 倒序（从高到低），取后 20%
+    const sorted = [...scores].sort((a, b) => b.score - a.score);
+    const total = sorted.length;
+    const takeCount = Math.max(0, Math.ceil(total * 0.2));
+    const bottom = takeCount === 0 ? [] : sorted.slice(-takeCount);
+    return bottom.map((item) => ({ majorId: item.majorId, score: item.score }));
+  }
 }
 

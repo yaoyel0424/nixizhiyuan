@@ -116,7 +116,7 @@ export class ScoresService {
   /**
    * 查询普通专业原始数据（不进行计算）
    * @param userId 用户ID
-   * @param eduLevel 教育层次（可选）
+   * @param eduLevel 教育层次（可选），多个用逗号分隔，如 "ben,zhuan"
    * @param majorCodes 专业代码列表（可选）
    * @returns 原始数据列表
    */
@@ -131,9 +131,19 @@ export class ScoresService {
     let paramIndex = 2;
 
     if (eduLevel) {
-      whereCondition = `AND m.edu_level = $${paramIndex} AND m.edu_level IS NOT NULL`;
-      queryParams.push(eduLevel);
-      paramIndex++;
+      const eduLevels = eduLevel
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (eduLevels.length > 0) {
+        const placeholders = eduLevels
+          .map(() => `$${paramIndex++}`)
+          .join(', ');
+        whereCondition = `AND m.edu_level IN (${placeholders}) AND m.edu_level IS NOT NULL`;
+        queryParams.push(...eduLevels);
+      } else {
+        whereCondition = `AND m.edu_level IS NOT NULL`;
+      }
     } else {
       whereCondition = `AND m.edu_level IS NOT NULL`;
     }

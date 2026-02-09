@@ -46,7 +46,16 @@ export class ScoreResponseDto {
   shanxueScore: number;
 }
 
+/**
+ * 专业分数简要项（仅 majorId、score，用于后 20% 等接口）
+ */
+export class ScoreSummaryItemDto {
+  @ApiProperty({ description: '专业ID' })
+  majorId: number;
 
+  @ApiProperty({ description: '匹配分数' })
+  score: number;
+}
 
 
 

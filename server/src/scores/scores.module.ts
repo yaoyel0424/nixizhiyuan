@@ -4,6 +4,7 @@ import { PopularMajor } from '@/entities/popular-major.entity';
 import { ScoresService } from './scores.service';
 import { ScoresController } from './scores.controller';
 import { LoggerModule } from '@/logger/logger.module';
+import { UsersModule } from '@/users/users.module';
 
 /**
  * 专业分数模块
@@ -13,6 +14,7 @@ import { LoggerModule } from '@/logger/logger.module';
   imports: [
     TypeOrmModule.forFeature([PopularMajor]),
     LoggerModule,
+    UsersModule,
   ],
   controllers: [ScoresController],
   providers: [ScoresService],

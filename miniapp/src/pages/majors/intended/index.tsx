@@ -1029,7 +1029,7 @@ export default function IntendedMajorsPage() {
         // 如果 API 失败，继续使用本地存储的数据
       }
       
-      // 初始化意向省份数量、心动专业数量（用于检测变化）
+      // 初始化意向省份/心动专业数量（用于检测变化），并检查是否需弹出高考信息对话框（仅请求一次 related-data-count）
       try {
         const relatedData = await getUserRelatedDataCount()
         if (relatedData?.provinceFavoritesCount !== undefined) {
@@ -1037,6 +1037,9 @@ export default function IntendedMajorsPage() {
         }
         if (relatedData?.majorFavoritesCount !== undefined) {
           await setStorage('previousMajorFavoritesCount', relatedData.majorFavoritesCount)
+        }
+        if (!relatedData?.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
+          setShowExamInfoDialog(true)
         }
       } catch (error) {
         console.error('初始化意向省份/心动专业数量失败:', error)
@@ -1309,20 +1312,7 @@ export default function IntendedMajorsPage() {
             console.log('从 API 获取高考信息:', examInfoData)
             setExamInfo(examInfoData)
           }
-          
-          // 调用 related-data-count 接口检查用户是否填写了高考信息
-          try {
-            const relatedData = await getUserRelatedDataCount()
-            // 如果 preferredSubjects 为空或 null，自动打开高考信息对话框
-            if (!relatedData.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
-              console.log('检测到用户未填写高考信息，自动打开高考信息对话框')
-              setShowExamInfoDialog(true)
-            }
-          } catch (error) {
-            console.error('获取用户相关数据统计失败:', error)
-            // 如果接口调用失败，不阻止页面正常加载
-          }
-          
+          // 选科/高考信息弹窗已在 loadData 中通过 getUserRelatedDataCount 统一处理，此处不再重复请求
           // 标记已获取，避免重复请求
           hasFetchedUserDetailOnceRef.current = true
         } catch (error) {

@@ -18,6 +18,9 @@ import { SchoolDetail } from './school-detail.entity';
 @Entity('enrollment_plans')
 @Index(['schoolCode', 'province', 'subjectSelectionMode', 'batch', 'enrollmentType', 'year']) // 复合索引，提高查询性能
 @Index(['majorGroupId']) // 专业组ID索引
+// CREATE INDEX CONCURRENTLY idx_enrollment_plans_major_group_id_cover
+// ON enrollment_plans (major_group_id)
+// INCLUDE (level3_major_id);
 @Index(['year', 'province', 'batch', 'primarySubject', 'enrollmentType']) // 针对 findEnrollmentPlansByMajorId 查询的优化索引，enrollmentType 放在最后
 @Index(['province', 'year']) // 针对按省份和年份过滤的查询优化
 @Index(['year', 'province', 'batch', 'enrollmentType', 'schoolCode', 'subjectSelectionMode', 'majorGroupId', 'enrollmentMajor']) // 针对 choices.findByUser 的 JOIN：一次索引查找定位单行，避免 Rows Removed by Filter

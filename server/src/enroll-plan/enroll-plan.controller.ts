@@ -27,6 +27,7 @@ import {
 } from './dto/enrollment-plan-with-scores.dto';
 import { MajorGroupInfoResponseDto } from './dto/major-group-info-response.dto';
 import { Cache } from '@/common/decorators/cache.decorator';
+import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
  * 招生计划控制器
@@ -249,5 +250,61 @@ export class EnrollPlanController {
       );
     return { level3MajorIds };
   }
- 
+
+  /**
+   * 通过专业组 ID 数组查询每个专业组对应的去重 level3_major_id 列表
+   */
+  @Get('level3-major-ids-by-major-group')
+  @Cache(60)
+  @ApiOperation({
+    summary: '通过 major_group_id 数组查询 level3_major_id',
+    description: '传入专业组 ID 数组，返回每个 majorGroupId 与其对应的去重后的 level3MajorIds',
+  })
+  @ApiQuery({
+    name: 'majorGroupIds',
+    required: true,
+    description: '专业组 ID 数组（混淆后的 mgId），逗号分隔，如 123456,234567',
+    example: '123456,234567',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '每个 majorGroupId 与其对应的 level3MajorIds 数组',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          majorGroupId: { type: 'number', description: '专业组ID ' },
+          level3MajorIds: {
+            type: 'array',
+            items: { type: 'number' },
+            description: '去重后的三级专业ID列表',
+          },
+        },
+      },
+    },
+  })
+  async getLevel3MajorIdsByMajorGroupIds(
+    @Query('majorGroupIds') majorGroupIdsParam: string,
+  ): Promise<Array<{ majorGroupId: number; level3MajorIds: number[] }>> {
+    const encodedIds = (majorGroupIdsParam ?? '')
+      .split(',')
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    const decodedIds: number[] = [];
+    const decodedToEncoded = new Map<number, number>();
+    for (const enc of encodedIds) {
+      const dec = IdTransformUtil.decode(enc);
+      if (dec != null && Number.isInteger(dec) && dec > 0) {
+        decodedIds.push(dec);
+        decodedToEncoded.set(dec, enc);
+      }
+    }
+    const result =
+      await this.enrollPlanService.getLevel3MajorIdsByMajorGroupIds(decodedIds);
+    return result.map((r) => ({
+      majorGroupId: decodedToEncoded.get(r.majorGroupId) ?? r.majorGroupId,
+      level3MajorIds: r.level3MajorIds,
+    }));
+  }
 } 
