@@ -14,7 +14,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { ScoresService } from './scores.service';
-import { ScoreResponseDto, ScoreSummaryItemDto } from './dto/score-response.dto';
+import { ScoreResponseDto, ScoreSummaryItemDto, Bottom20ScoresResponseDto } from './dto/score-response.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { UsersService } from '@/users/users.service';
 import { plainToInstance } from 'class-transformer';
@@ -119,10 +119,9 @@ export class ScoresController {
   @ApiResponse({
     status: 200,
     description: '查询成功',
-    type: ScoreSummaryItemDto,
-    isArray: true,
+    type: Bottom20ScoresResponseDto,
   })
-  async getBottom20Scores(@CurrentUser() user: any): Promise<ScoreSummaryItemDto[]> {
+  async getBottom20Scores(@CurrentUser() user: any): Promise<Bottom20ScoresResponseDto> {
     const dbUser = await this.usersService.findOne(user.id);
     const enrollType = dbUser.enrollType?.trim() ?? '';
     const eduLevel =
@@ -133,7 +132,11 @@ export class ScoresController {
     const total = sorted.length;
     const takeCount = Math.max(0, Math.ceil(total * 0.2));
     const bottom = takeCount === 0 ? [] : sorted.slice(-takeCount);
-    return bottom.map((item) => ({ majorId: item.majorId, score: item.score }));
+    const items = bottom.map((item) => ({ majorId: item.majorId, score: item.score }));
+    const scoreValues = bottom.map((item) => item.score);
+    const maxScore = scoreValues.length > 0 ? Math.max(...scoreValues) : null;
+    const minScore = scoreValues.length > 0 ? Math.min(...scoreValues) : null;
+    return { items, maxScore, minScore };
   }
 }
 

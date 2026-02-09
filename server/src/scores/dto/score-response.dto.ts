@@ -57,5 +57,30 @@ export class ScoreSummaryItemDto {
   score: number;
 }
 
+/**
+ * 分数后20%接口响应（含列表及该段内的最高分、最低分）
+ */
+export class Bottom20ScoresResponseDto {
+  @ApiProperty({
+    description: '后20%专业列表',
+    type: [ScoreSummaryItemDto],
+  })
+  items: ScoreSummaryItemDto[];
+
+  @ApiProperty({
+    description: '后20%数据中的最高分',
+    nullable: true,
+    example: 65,
+  })
+  maxScore: number | null;
+
+  @ApiProperty({
+    description: '后20%数据中的最低分',
+    nullable: true,
+    example: 42,
+  })
+  minScore: number | null;
+}
+
 
 
