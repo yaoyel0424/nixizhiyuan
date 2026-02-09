@@ -171,6 +171,15 @@
   color: #153a8a;
 }
 
+// 省份筛选下方：对标记符号的说明，方便用户理解
+.schools-page__warning-legend {
+  display: block;
+  padding: 12rpx 32rpx 20rpx;
+  font-size: 24rpx;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
 .schools-page__content {
   flex: 1;
   padding: 32rpx 16rpx;
@@ -229,6 +238,7 @@
   color: #111827;
   display: inline-block;
 }
+
 
 .schools-page__school-item-location-inline {
   font-size: 24rpx;
@@ -387,6 +397,14 @@
   justify-content: space-between;
   gap: 8rpx;
   font-size: 28rpx;
+}
+
+// 专业组名称前的警告标识（该专业组包含分数后20%的专业）
+.schools-page__school-item-plan-warning {
+  font-size: 26rpx;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .schools-page__school-item-plan-major-label {
@@ -715,6 +733,15 @@
   font-size: 26rpx;
   color: #1A4099;
   font-weight: 500;
+}
+
+// 专业组弹框内：分数低于后20%最高分的标记
+.schools-page__group-dialog-score-warning {
+  font-size: 24rpx;
+  color: #d97706;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 // 专业组弹出框的加入志愿按钮使用公用样式

@@ -478,9 +478,8 @@
   border-radius: 16rpx;
   font-size: 30rpx;
   font-weight: 600;
-  color: #fff !important;
-  background: linear-gradient(135deg, #1A4099 0%, #2563eb 100%) !important;
-  box-shadow: 0 8rpx 24rpx rgba(26, 64, 153, 0.35);
+  color: #2563eb !important; /* 蓝字 */
+  background: #fff !important; /* 白底 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -493,8 +492,7 @@
   }
 
   &:active {
-    background: linear-gradient(135deg, #153a8a 0%, #1e4ed8 100%) !important;
-    box-shadow: 0 4rpx 16rpx rgba(26, 64, 153, 0.4);
+    background: #f5f5f5 !important;
     transform: scale(0.98);
   }
 }
@@ -503,6 +501,17 @@
   display: flex;
   flex-direction: column;
   gap: 16rpx;
+}
+
+// 志愿列表上方：警示符号说明，方便用户理解
+.intended-majors-page__warning-legend {
+  display: block;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 0;
+  font-size: 24rpx;
+  color: #6b7280;
+  line-height: 1.5;
 }
 
 .intended-majors-page__wishlist-item {
@@ -1559,6 +1568,15 @@
   font-weight: 700; // “热爱能量”加粗
 }
 
+// 专业组弹框内：分数低于后20%最高分的标记
+.intended-majors-page__group-dialog-score-warning {
+  font-size: 24rpx;
+  color: #d97706;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 .intended-majors-page__group-major-action {
   font-size: 24rpx;
   color: #1A4099;
@@ -2240,6 +2258,14 @@
   }
 }
 
+// 专业组名称后的警示标识（该专业组包含分数后20%的专业）
+.intended-majors-page__wishlist-item-plan-warning {
+  font-size: 26rpx;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
 .intended-majors-page__wishlist-item-major-group-subject {
   font-size: 24rpx;
   color: #666;
@@ -2357,6 +2383,15 @@
   gap: 8rpx;
   flex-wrap: wrap;
   flex: 1;
+}
+
+// 展开的已选专业行：热爱能量低于后20%最高分时的标记
+.intended-majors-page__wishlist-item-plan-score-warning {
+  font-size: 24rpx;
+  color: #d97706;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .intended-majors-page__wishlist-item-plan-major-action {

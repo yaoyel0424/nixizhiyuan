@@ -323,4 +323,35 @@ export const getLevel3MajorIds = async (): Promise<{
     console.error('获取 level3MajorIds 失败:', error)
     return { level3MajorIds: [] }
   }
+}
+
+/**
+ * 根据专业组 ID 数组查询每个专业组对应的去重 level3_major_id 列表
+ * @param majorGroupIds 专业组 ID 数组（混淆后的 mgId，逗号分隔传给接口）
+ * @returns 每个 majorGroupId 与其对应的 level3MajorIds
+ */
+export const getLevel3MajorIdsByMajorGroupIds = async (
+  majorGroupIds: number[],
+): Promise<Array<{ majorGroupId: number; level3MajorIds: number[] }>> => {
+  if (!majorGroupIds?.length) return []
+  try {
+    const params = { majorGroupIds: majorGroupIds.join(',') }
+    const response: any = await get(
+      '/enroll-plan/level3-major-ids-by-major-group',
+      params,
+    )
+    if (response && typeof response === 'object') {
+      const list = response.data ?? response
+      if (Array.isArray(list)) {
+        return list.map((r: any) => ({
+          majorGroupId: r.majorGroupId,
+          level3MajorIds: Array.isArray(r.level3MajorIds) ? r.level3MajorIds : [],
+        }))
+      }
+    }
+    return []
+  } catch (error) {
+    console.error('获取 level3MajorIds 按专业组失败:', error)
+    return []
+  }
 } 

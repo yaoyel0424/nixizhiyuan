@@ -14,7 +14,8 @@ import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import { getCurrentUserDetail, getUserRelatedDataCount } from '@/services/user'
-import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo } from '@/services/enroll-plan'
+import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo, getLevel3MajorIdsByMajorGroupIds } from '@/services/enroll-plan'
+import { getBottom20Scores } from '@/services/scores'
 import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, ChoiceResponse, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
 import { exportWishlistToPdf } from '@/utils/exportPdf'
@@ -139,6 +140,9 @@ export default function IntendedMajorsPage() {
   const [expandedChoicesInGroup, setExpandedChoicesInGroup] = useState<Set<string>>(new Set()) // 展开的专业组内的志愿列表
   const [expandedScores, setExpandedScores] = useState<Set<number>>(new Set()) // 展开的 scores 列表索引（用于多个 scores 的展开）
   const [expandedLoveEnergyChoiceIds, setExpandedLoveEnergyChoiceIds] = useState<Set<number>>(new Set()) // 展开的热爱能量（意向志愿）
+  // 包含「分数后20%」专业的专业组 ID，用于标记警示符号；后20%最高分用于弹框内标记
+  const [warningMajorGroupIds, setWarningMajorGroupIds] = useState<Set<number>>(new Set())
+  const [bottom20MaxScore, setBottom20MaxScore] = useState<number | null>(null)
   // 移动动画标记：记录需要高亮的组件ID（志愿的mgIndex或专业的choice.id）
   const [highlightedVolunteerId, setHighlightedVolunteerId] = useState<number | null>(null) // 高亮的志愿ID（mgIndex）
   const [highlightedChoiceId, setHighlightedChoiceId] = useState<number | null>(null) // 高亮的专业ID（choice.id）
@@ -741,6 +745,50 @@ export default function IntendedMajorsPage() {
       loadChoicesFromAPI()
     }
   }, [activeTab])
+
+  // 意向志愿：请求后20%分数（用于「低于后20%线」标记）；若有专业组则再请求 level3 并计算专业组警示
+  useEffect(() => {
+    if (activeTab !== '意向志愿' || !groupedChoices?.volunteers?.length) {
+      return
+    }
+    const majorGroupIdSet = new Set<number>()
+    groupedChoices.volunteers.forEach((v) => {
+      v.majorGroups?.forEach((mg) => {
+        const mgId = mg.majorGroup?.mgId
+        if (mgId != null && Number(mgId) > 0) majorGroupIdSet.add(Number(mgId))
+      })
+    })
+    const allMajorGroupIds = Array.from(majorGroupIdSet)
+    let cancelled = false
+    // 始终请求 bottom-20，保证院校+专业模式下也能拿到 maxScore 做「低于后20%线」标记
+    const bottom20Promise = getBottom20Scores()
+    const level3Promise = allMajorGroupIds.length > 0
+      ? getLevel3MajorIdsByMajorGroupIds(allMajorGroupIds)
+      : Promise.resolve([])
+    Promise.all([bottom20Promise, level3Promise]).then(([bottom20Res, level3Result]) => {
+      if (cancelled) return
+      setBottom20MaxScore(bottom20Res.maxScore)
+      if (allMajorGroupIds.length === 0) {
+        setWarningMajorGroupIds(new Set())
+        return
+      }
+      const bottom20MajorIdSet = new Set(bottom20Res.items.map((r) => r.majorId))
+      const warningIds = new Set<number>()
+      level3Result.forEach(({ majorGroupId, level3MajorIds }) => {
+        if (level3MajorIds?.some((id) => bottom20MajorIdSet.has(id))) {
+          warningIds.add(majorGroupId)
+        }
+      })
+      setWarningMajorGroupIds(warningIds)
+    }).catch((err) => {
+      if (!cancelled) {
+        console.error('意向志愿警示数据加载失败:', err)
+        setWarningMajorGroupIds(new Set())
+        setBottom20MaxScore(null)
+      }
+    })
+    return () => { cancelled = true }
+  }, [activeTab, groupedChoices])
 
   /**
    * 根据省份获取最高分限制
@@ -2176,8 +2224,16 @@ export default function IntendedMajorsPage() {
                     (a, b) => (a.mgIndex ?? 999999) - (b.mgIndex ?? 999999)
                   )
                   const volunteersToShow = sortedVolunteers.slice(0, visibleVolunteerCount)
+                  // 院校+专业模式：没有任何专业组信息时，说明文案不同
+                  const hasAnyMajorGroup = groupedChoices.volunteers.some((v) =>
+                    v.majorGroups?.some((mg) => mg.majorGroup != null)
+                  )
+                  const warningLegendText = hasAnyMajorGroup
+                    ? '⚠️表示该专业组包含热爱能量低的专业'
+                    : '⚠️表示该专业的热爱能量低'
                   return (
                     <>
+                      <Text className="intended-majors-page__warning-legend">{warningLegendText}</Text>
                   {volunteersToShow.map((volunteer, volunteerIdx) => {
                     const volunteerNumber = volunteerIdx + 1
                     const school = volunteer.school
@@ -2471,6 +2527,9 @@ export default function IntendedMajorsPage() {
                                           }}
                                         >
                                           专业组: {majorGroupName}
+                                          {mgId != null && warningMajorGroupIds.has(Number(mgId)) && (
+                                            <Text className="intended-majors-page__wishlist-item-plan-warning"> ⚠️</Text>
+                                          )}
                                         </Text>
                                         {majorGroupInfo && (
                                           <Text className="intended-majors-page__wishlist-item-major-group-subject">
@@ -2527,6 +2586,17 @@ export default function IntendedMajorsPage() {
                                           .map((item) => (item.majorName ? `${item.majorName}:${item.scoreText}` : item.scoreText))
                                           .join('、')
 
+                                      // 该条已选专业是否包含「热爱能量低于后20%最高分」的项（与弹框内标记逻辑一致）
+                                      const toNum = (v: unknown): number | null => {
+                                        if (v == null) return null
+                                        const n = typeof v === 'string' ? parseFloat(v) : Number(v)
+                                        if (Number.isNaN(n)) return null
+                                        if (n > 0 && n < 1) return Math.floor(n * 100)
+                                        return n
+                                      }
+                                      const loveEnergyNums = loveEnergyScores.map((s: any) => toNum(s?.score ?? s?.loveEnergy)).filter((n): n is number => n !== null)
+                                      const hasChoiceScoreBelowMax = bottom20MaxScore != null && loveEnergyNums.some((n) => n < bottom20MaxScore)
+
                                       return (
                                         <View 
                                           key={choiceIdx} 
@@ -2537,6 +2607,9 @@ export default function IntendedMajorsPage() {
                                             <View className="intended-majors-page__wishlist-item-plan-major">
                                               <Text className="intended-majors-page__wishlist-item-plan-major-value" data-enrollment-major="true">
                                                 {choice.enrollmentMajor}
+                                                {hasChoiceScoreBelowMax && (
+                                                  <Text className="intended-majors-page__wishlist-item-plan-score-warning">⚠️</Text>
+                                                )}
                                               </Text>
                                               {/* 操作按钮：移除、上移、下移 */}
                                               <View className="intended-majors-page__wishlist-item-plan-actions-inline">
@@ -2990,6 +3063,14 @@ export default function IntendedMajorsPage() {
                   ? normalizeLoveEnergy(plan.scores[0].loveEnergy) 
                   : null
 
+                // 是否存在分数低于后20%最高分的项（用于弹框内标记）
+                const hasScoreBelowMax =
+                  bottom20MaxScore != null &&
+                  (plan.scores ?? []).some((s) => {
+                    const v = normalizeLoveEnergy(s.loveEnergy)
+                    return v !== null && v < bottom20MaxScore
+                  })
+
                 return (
                   <View key={planIdx} className="intended-majors-page__group-section-new">
                     {/* 第一行：enrollmentMajor + 加入志愿/删除志愿按钮 */}
@@ -3002,6 +3083,9 @@ export default function IntendedMajorsPage() {
                             <Text className="intended-majors-page__group-major-energy">
                               热爱能量：{singleLoveEnergy}
                             </Text>
+                          )}
+                          {hasScoreBelowMax && (
+                            <Text className="intended-majors-page__group-dialog-score-warning">⚠️</Text>
                           )}
                         </View>
                         {(() => {

@@ -16,7 +16,9 @@ import {
   getMajorGroupInfo,
   MajorGroupInfo,
   EnrollmentPlanItem,
+  getLevel3MajorIdsByMajorGroupIds,
 } from '@/services/enroll-plan'
+import { getBottom20Scores } from '@/services/scores'
 import { createChoice, CreateChoiceDto, getChoices, deleteChoice, GroupedChoiceResponse } from '@/services/choices'
 import { getExamInfo, updateExamInfo, ExamInfo } from '@/services/exam-info'
 import { getUserRelatedDataCount } from '@/services/user'
@@ -137,6 +139,10 @@ export default function IntendedMajorsSchoolsPage() {
   const [isProvincesOverflow, setIsProvincesOverflow] = useState(false)
   // 省份列表容器的 ref
   const provinceFilterRef = useRef<HTMLDivElement>(null)
+  // 包含「分数后20%」专业的 majorId 集合，用于标记需警告的专业组
+  const [warningMajorGroupIds, setWarningMajorGroupIds] = useState<Set<number>>(new Set())
+  // 后20%数据中的最高分，用于弹框内标记「分数低于此值的项」
+  const [bottom20MaxScore, setBottom20MaxScore] = useState<number | null>(null)
 
   // 优先使用接口返回的 provinces，如果没有则从数据中提取
   const provinces = React.useMemo(() => {
@@ -388,6 +394,9 @@ export default function IntendedMajorsSchoolsPage() {
           return
         }
 
+        // 页面加载时同时请求分数后20%专业（与招生计划接口并行）
+        const bottom20Promise = getBottom20Scores()
+
         const grouped: EnrollmentPlansByScoreRange = await getEnrollmentPlansByMajorId(
           majorId,
           Number.isFinite(minScore as number) ? (minScore as number) : undefined,
@@ -418,7 +427,35 @@ export default function IntendedMajorsSchoolsPage() {
             majorCode
           setMajorName(majorNameFromApi)
         }
-        
+
+        // 从 inRange 和 notInRange 的 plans 中收集所有 majorGroupId，请求 level3-major-ids-by-major-group
+        const majorGroupIdSet = new Set<number>()
+        ;[...inRangeList, ...notInRangeList].forEach((item) => {
+          item.plans?.forEach((plan) => {
+            const mgId = plan.majorGroupId ?? plan.majorGroup?.mgId
+            if (mgId != null && mgId > 0) majorGroupIdSet.add(mgId)
+          })
+        })
+        const allMajorGroupIds = Array.from(majorGroupIdSet)
+        const level3Result =
+          allMajorGroupIds.length > 0
+            ? await getLevel3MajorIdsByMajorGroupIds(allMajorGroupIds)
+            : []
+
+        const bottom20Res = await bottom20Promise
+        const bottom20List = bottom20Res.items
+        setBottom20MaxScore(bottom20Res.maxScore)
+        const bottom20MajorIdSet = new Set(bottom20List.map((r) => r.majorId))
+        const warningIds = new Set<number>()
+        level3Result.forEach(({ majorGroupId, level3MajorIds }) => {
+          if (
+            level3MajorIds.some((id) => bottom20MajorIdSet.has(id))
+          ) {
+            warningIds.add(majorGroupId)
+          }
+        })
+        setWarningMajorGroupIds(warningIds)
+
         const convertedData = convertApiDataToSchoolList(apiData, majorCode)
         setData(convertedData)
         setLoading(false)
@@ -1179,6 +1216,15 @@ export default function IntendedMajorsSchoolsPage() {
   const pagedSchools = displayData.schools.slice(0, visibleSchoolCount)
   const hasMoreSchools = visibleSchoolCount < totalSchoolCount
 
+  // 按模式选择警示说明：有专业组时为专业组说明，院校+专业模式时为专业说明（依据接口数据中的 plan 是否有专业组）
+  const allApiItems = [...(inRangeApiData || []), ...(notInRangeApiData || [])]
+  const hasAnyMajorGroup = allApiItems.some((item) =>
+    item.plans?.some((p: EnrollmentPlanItem) => (p.majorGroupId != null && p.majorGroupId > 0 &&  p.majorGroupId != 98746631) || p.majorGroup != null )
+  )
+  const warningLegendText = hasAnyMajorGroup
+    ? '⚠️表示该专业组包含热爱能量低的专业'
+    : '该专业的热爱能量低'
+
   // 其他院校（notInRange）分段展示
   const totalNotInRangeSchoolCount = filteredNotInRangeSchools.length
   const pagedNotInRangeSchools = filteredNotInRangeSchools.slice(0, visibleNotInRangeSchoolCount)
@@ -1634,6 +1680,10 @@ export default function IntendedMajorsSchoolsPage() {
                             }}
                           >
                             查看专业组{plan.majorGroup?.mgName ? `: ${plan.majorGroup.mgName}` : ''}
+                            {(plan.majorGroupId != null || plan.majorGroup?.mgId != null) &&
+                              warningMajorGroupIds.has(plan.majorGroupId ?? plan.majorGroup?.mgId ?? 0) && (
+                              <Text className="schools-page__school-item-plan-warning"> ⚠️</Text>
+                            )}
                           </Text>
                         </View>
                       )}
@@ -1741,6 +1791,9 @@ export default function IntendedMajorsSchoolsPage() {
               )}
             </View>
           </View>
+          {hasAnyMajorGroup && (
+            <Text className="schools-page__warning-legend">{warningLegendText}</Text>
+          )}
         </View>
       )}
 
@@ -1919,6 +1972,14 @@ export default function IntendedMajorsSchoolsPage() {
                   ? normalizeLoveEnergy(plan.scores[0].loveEnergy) 
                   : null
 
+                // 是否存在分数低于后20%最高分的项（用于弹框内标记）
+                const hasScoreBelowMax =
+                  bottom20MaxScore != null &&
+                  (plan.scores ?? []).some((s) => {
+                    const v = normalizeLoveEnergy(s.loveEnergy)
+                    return v !== null && v < bottom20MaxScore
+                  })
+
                 return (
                   <View key={planIdx} className="schools-page__group-section-new">
                     {/* 第一行：enrollmentMajor + 加入志愿/删除志愿按钮 */}
@@ -1931,6 +1992,10 @@ export default function IntendedMajorsSchoolsPage() {
                             <Text className="schools-page__group-major-energy">
                               热爱能量：{singleLoveEnergy}
                             </Text>
+                          )}
+                          {/* 该专业存在分数低于后20%最高分时显示标记 */}
+                          {hasScoreBelowMax && (
+                            <Text className="schools-page__group-dialog-score-warning"> ⚠️</Text>
                           )}
                         </View>
                         {(() => {
