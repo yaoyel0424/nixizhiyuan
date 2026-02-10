@@ -94,7 +94,9 @@ export function ExamInfoDialog({
     if (open && !isUpdatingProvince) {
       // 对话框打开时，清除上次处理的分数记录，避免影响新的输入
       lastProcessedScoreRef.current = null
-      
+      // 标记正在加载数据，防止「省份变化」effect 误判为用户切换省份而清空表单
+      isLoadingDataRef.current = true
+
       const loadData = async () => {
         try {
           // 先加载高考科目配置（如果还没有加载）
@@ -189,6 +191,8 @@ export function ExamInfoDialog({
             if (dataToUse.province) {
               console.log('设置省份:', dataToUse.province)
               setSelectedProvince(dataToUse.province)
+              // 同步更新 ref，与「省份变化」effect 保持一致，避免下次打开时误判为切换省份
+              previousProvinceRef.current = dataToUse.province
             }
             // 批次（enrollType）：先按 user 的 enrollType 显示，下面有分数时会再根据 score-range 结果调整
             if (dataToUse.enrollType) {
@@ -226,6 +230,9 @@ export function ExamInfoDialog({
           }
         } catch (error) {
           console.error('加载高考信息失败:', error)
+        } finally {
+          // 加载结束后解除标记，允许后续用户主动切换省份时正常清空
+          isLoadingDataRef.current = false
         }
       }
       loadData()
