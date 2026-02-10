@@ -189,7 +189,8 @@ function WordCloudCSS({
   onItemClick?: (portrait: Portrait) => void;
   showOverviewModal: boolean;
   setShowOverviewModal: (show: boolean) => void;
-  onFeedbackClick?: () => void;
+  /** 点击「我要反馈」时调用，传入当前展示的画像 id */
+  onFeedbackClick?: (portraitId?: number) => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef<number>(0);
@@ -330,7 +331,10 @@ function WordCloudCSS({
             <Text className="word-cloud-css__stack-nav-label">当前 {safeIndex + 1} / {cardItems.length}</Text>
           </View>
           {onFeedbackClick && (
-            <View className="word-cloud-css__feedback-btn" onClick={onFeedbackClick}>
+            <View
+              className="word-cloud-css__feedback-btn"
+              onClick={() => onFeedbackClick(cardItems[safeIndex]?.id)}
+            >
               <Text className="word-cloud-css__feedback-btn-text">我要反馈</Text>
             </View>
           )}
@@ -1520,8 +1524,9 @@ export default function PersonalProfilePage() {
   const [dragStartTop, setDragStartTop] = useState(0);
   const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null);
 
-  // 我要反馈：下拉展示与选项，当前已选反馈（由接口返回值赋值）
+  // 我要反馈：下拉展示与选项，当前已选反馈（由接口返回值赋值），当前反馈对应的画像 id
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+  const [feedbackPortraitId, setFeedbackPortraitId] = useState<number | undefined>(undefined);
   const [currentFeedbackOption, setCurrentFeedbackOption] = useState<string | null>(null);
   const [showFeedbackRightArrow, setShowFeedbackRightArrow] = useState(true);
   const feedbackScrollRef = useRef<{ viewWidth: number; contentWidth: number } | null>(null);
@@ -1537,7 +1542,7 @@ export default function PersonalProfilePage() {
     setShowFeedbackDropdown(false);
     try {
       Taro.showLoading({ title: '提交中...', mask: true });
-      await createPortraitFeedback(option);
+      await createPortraitFeedback(option, feedbackPortraitId);
       setCurrentFeedbackOption(option);
       Taro.hideLoading();
       Taro.showToast({ title: '反馈已提交', icon: 'success', duration: 1500 });
@@ -1549,21 +1554,28 @@ export default function PersonalProfilePage() {
         duration: 2000,
       });
     }
-  }, []);
+  }, [feedbackPortraitId]);
 
-  // 打开「我要反馈」下拉时请求接口，用返回值给选项赋值（已选状态）
+  // 打开「我要反馈」下拉时请求接口，用返回值给选项赋值（已选状态）；传入当前画像 id
   useEffect(() => {
     if (!showFeedbackDropdown) return;
     let cancelled = false;
-    getPortraitFeedback()
+    getPortraitFeedback(feedbackPortraitId)
       .then((res) => {
         if (cancelled) return;
         if (res == null) {
           setCurrentFeedbackOption(null);
           return;
         }
-        const option = Array.isArray(res) ? res[0]?.option ?? null : res.option ?? null;
-        setCurrentFeedbackOption(option);
+        if (Array.isArray(res)) {
+          const forPortrait = feedbackPortraitId != null
+            ? res.find((r) => r.portraitId === feedbackPortraitId)
+            : res.find((r) => r.portraitId == null);
+          const item = forPortrait ?? res[0];
+          setCurrentFeedbackOption(item?.option ?? null);
+        } else {
+          setCurrentFeedbackOption(res.option ?? null);
+        }
       })
       .catch(() => {
         if (!cancelled) setCurrentFeedbackOption(null);
@@ -1571,7 +1583,7 @@ export default function PersonalProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [showFeedbackDropdown]);
+  }, [showFeedbackDropdown, feedbackPortraitId]);
 
   // 下拉打开时查询滚动区域与内容宽度，判断是否显示右侧箭头
   useEffect(() => {
@@ -1761,7 +1773,7 @@ export default function PersonalProfilePage() {
                   {FEEDBACK_OPTIONS.map((opt) => (
                     <View
                       key={opt}
-                      className="personal-profile-page__feedback-option"
+                      className={`personal-profile-page__feedback-option${currentFeedbackOption === opt ? ' personal-profile-page__feedback-option--selected' : ''}`}
                       onClick={() => handleFeedbackOption(opt)}
                     >
                       <Text className="personal-profile-page__feedback-option-text">{opt}</Text>
@@ -1782,7 +1794,10 @@ export default function PersonalProfilePage() {
           onItemClick={handleWordCloudItemClick}
           showOverviewModal={showOverviewModal}
           setShowOverviewModal={setShowOverviewModal}
-          onFeedbackClick={() => setShowFeedbackDropdown((v) => !v)}
+          onFeedbackClick={(portraitId) => {
+            setFeedbackPortraitId(portraitId);
+            setShowFeedbackDropdown((v) => !v);
+          }}
         />
       </View>
 
