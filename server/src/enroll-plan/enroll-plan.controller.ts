@@ -242,9 +242,15 @@ export class EnrollPlanController {
   async getDistinctLevel3MajorIds(
     @CurrentUser() user: any,
     @Query('eduLevel') eduLevel?: string,
-  ): Promise<number[]> {
+  ): Promise<{ level3MajorIds: number[] }> {
     const year = await this.getYearByUserProvince(user);
-    return await this.enrollPlanService.getDistinctLevel3MajorIdsByCurrentUser(user.id, year, eduLevel);
+    const level3MajorIds =
+      await this.enrollPlanService.getDistinctLevel3MajorIdsByCurrentUser(
+        user.id,
+        year,
+        eduLevel,
+      );
+    return { level3MajorIds };
   }
 
   /**
