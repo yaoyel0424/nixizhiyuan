@@ -426,6 +426,7 @@ export class UsersService {
         preferredSubjects: user.preferredSubjects || null,
         provinceFavorites: provinceFavoritesList,
         province: user.province || null,
+        enrollType: user.enrollType || null,
       },
       {
         excludeExtraneousValues: true,

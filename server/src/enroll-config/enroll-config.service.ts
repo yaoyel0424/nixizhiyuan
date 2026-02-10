@@ -105,15 +105,15 @@ export class EnrollConfigService {
 
     // 验证用户信息
     if (!userInfo.province) {
-      throw new BadRequestException('用户信息不完整：缺少省份信息');
+      throw new BadRequestException('用户信息不完整：缺少省份信息，请完善您的高考信息');
     }
 
     if (!userInfo.preferredSubjects) {
-      throw new BadRequestException('用户信息不完整：缺少首选科目信息');
+      throw new BadRequestException('用户信息不完整：缺少首选科目信息，请完善您的高考信息');
     }
 
     if (!userInfo.enrollType) {
-      throw new BadRequestException('用户信息不完整：缺少录取类型信息');
+      throw new BadRequestException('用户信息不完整：缺少批次信息，请完善您的高考信息');
     }
 
     const province = userInfo.province;

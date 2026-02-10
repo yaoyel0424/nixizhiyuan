@@ -21,5 +21,8 @@ export class UserRelatedDataResponseDto {
 
   @Expose()
   provinceFavorites?: string[];
+
+  @Expose()
+  enrollType?: string;
 }
 
