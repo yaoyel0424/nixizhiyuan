@@ -1,4 +1,4 @@
-import { get } from './api'
+import { get, post } from './api'
 
 /**
  * 用户画像数据接口
@@ -189,4 +189,36 @@ export const getUserPortrait = async (): Promise<PortraitData> => {
     element: [],
     mechanism: []
   }
+}
+
+/**
+ * 获取画像反馈（不传 portraitId 返回全部，传则返回该画像的反馈）
+ */
+export const getPortraitFeedback = async (
+  portraitId?: number,
+): Promise<
+  | { id: number; option: string; portraitId: number | null; createdAt: string }
+  | { id: number; option: string; portraitId: number | null; createdAt: string }[]
+  | null
+> => {
+  const url = portraitId != null ? `/portraits/feedback?portraitId=${portraitId}` : '/portraits/feedback'
+  const res: any = await get(url)
+  const data = res?.data ?? res
+  return data
+}
+
+/**
+ * 创建画像反馈（存在则更新）
+ * @param option 反馈选项
+ * @param portraitId 画像ID（可选）
+ */
+export const createPortraitFeedback = async (
+  option: string,
+  portraitId?: number,
+): Promise<{ id: number; option: string; portraitId: number | null; createdAt: string }> => {
+  const payload: { option: string; portraitId?: number } = { option }
+  if (portraitId != null) payload.portraitId = portraitId
+  const res: any = await post('/portraits/feedback', payload)
+  const data = res?.data ?? res
+  return data
 }

@@ -12,6 +12,7 @@ import { Quadrant3Weakness } from '@/entities/quadrant-3-weakness.entity';
 import { Quadrant3Compensation } from '@/entities/quadrant-3-compensation.entity';
 import { Quadrant4Dilemma } from '@/entities/quadrant-4-dilemma.entity';
 import { Quadrant4GrowthPath } from '@/entities/quadrant-4-growth-path.entity';
+import { PortraitFeedback } from '@/entities/portrait-feedback.entity';
 
 /**
  * 元素得分分类枚举
@@ -69,6 +70,8 @@ export class PortraitsService {
     private readonly quadrant4DilemmaRepository: Repository<Quadrant4Dilemma>,
     @InjectRepository(Quadrant4GrowthPath)
     private readonly quadrant4GrowthPathRepository: Repository<Quadrant4GrowthPath>,
+    @InjectRepository(PortraitFeedback)
+    private readonly portraitFeedbackRepository: Repository<PortraitFeedback>,
   ) {} 
 
   /**
@@ -426,6 +429,52 @@ export class PortraitsService {
       selectedTalentElements: q1Talents.map(formatItem),
       portraits: [],
     };
+  }
+
+  /**
+   * 创建或更新画像反馈：同一用户对同一画像仅保留一条，存在则更新选项
+   * @param userId 用户ID
+   * @param option 反馈选项
+   * @param portraitId 画像ID（可选）
+   */
+  async createFeedback(
+    userId: number,
+    option: string,
+    portraitId?: number,
+  ): Promise<PortraitFeedback> {
+    const pid = portraitId ?? null;
+    const optionVal = option.trim().slice(0, 64);
+    const existing = await this.portraitFeedbackRepository.findOne({
+      where: { userId, portraitId: pid },
+    });
+    if (existing) {
+      existing.option = optionVal;
+      return this.portraitFeedbackRepository.save(existing);
+    }
+    const feedback = this.portraitFeedbackRepository.create({
+      userId,
+      option: optionVal,
+      portraitId: pid,
+    });
+    return this.portraitFeedbackRepository.save(feedback);
+  }
+
+  /**
+   * 获取用户反馈：不传 portraitId 时返回该用户全部反馈，传时返回该画像的反馈（可能为空）
+   */
+  async getFeedback(
+    userId: number,
+    portraitId?: number,
+  ): Promise<PortraitFeedback | PortraitFeedback[] | null> {
+    if (portraitId != null) {
+      return this.portraitFeedbackRepository.findOne({
+        where: { userId, portraitId },
+      });
+    }
+    return this.portraitFeedbackRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
   }
 }
 

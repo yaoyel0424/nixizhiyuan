@@ -1,12 +1,12 @@
 // 个人特质报告页面
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { View, Text, Canvas } from '@tarojs/components'
+import { View, Text, Canvas, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
 import { Dialog, DialogContent } from '@/components/ui/Dialog'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
-import { getUserPortrait, Portrait } from '@/services/portraits'
+import { getUserPortrait, getPortraitFeedback, createPortraitFeedback, Portrait } from '@/services/portraits'
 import './index.less'
 
 // ==================== 色彩系统 ====================
@@ -183,11 +183,13 @@ function WordCloudCSS({
   onItemClick,
   showOverviewModal,
   setShowOverviewModal,
+  onFeedbackClick,
 }: {
   portraits: Portrait[];
   onItemClick?: (portrait: Portrait) => void;
   showOverviewModal: boolean;
   setShowOverviewModal: (show: boolean) => void;
+  onFeedbackClick?: () => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef<number>(0);
@@ -327,6 +329,11 @@ function WordCloudCSS({
           <View className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--current">
             <Text className="word-cloud-css__stack-nav-label">当前 {safeIndex + 1} / {cardItems.length}</Text>
           </View>
+          {onFeedbackClick && (
+            <View className="word-cloud-css__feedback-btn" onClick={onFeedbackClick}>
+              <Text className="word-cloud-css__feedback-btn-text">我要反馈</Text>
+            </View>
+          )}
           {/* 最后一个页面隐藏"下一个"按钮文字，但保留占位符 */}
           <View
             className={`word-cloud-css__stack-nav-item ${safeIndex < cardItems.length - 1 ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
@@ -1513,6 +1520,89 @@ export default function PersonalProfilePage() {
   const [dragStartTop, setDragStartTop] = useState(0);
   const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null);
 
+  // 我要反馈：下拉展示与选项，当前已选反馈（由接口返回值赋值）
+  const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
+  const [currentFeedbackOption, setCurrentFeedbackOption] = useState<string | null>(null);
+  const [showFeedbackRightArrow, setShowFeedbackRightArrow] = useState(true);
+  const feedbackScrollRef = useRef<{ viewWidth: number; contentWidth: number } | null>(null);
+  const FEEDBACK_OPTIONS = [
+    '非常符合',
+    '比较符合',
+    '一般',
+    '不太符合',
+    '完全不符合',
+    '符合我以前的状态',
+  ];
+  const handleFeedbackOption = useCallback(async (option: string) => {
+    setShowFeedbackDropdown(false);
+    try {
+      Taro.showLoading({ title: '提交中...', mask: true });
+      await createPortraitFeedback(option);
+      setCurrentFeedbackOption(option);
+      Taro.hideLoading();
+      Taro.showToast({ title: '反馈已提交', icon: 'success', duration: 1500 });
+    } catch (e) {
+      Taro.hideLoading();
+      Taro.showToast({
+        title: (e as Error)?.message || '提交失败，请重试',
+        icon: 'none',
+        duration: 2000,
+      });
+    }
+  }, []);
+
+  // 打开「我要反馈」下拉时请求接口，用返回值给选项赋值（已选状态）
+  useEffect(() => {
+    if (!showFeedbackDropdown) return;
+    let cancelled = false;
+    getPortraitFeedback()
+      .then((res) => {
+        if (cancelled) return;
+        if (res == null) {
+          setCurrentFeedbackOption(null);
+          return;
+        }
+        const option = Array.isArray(res) ? res[0]?.option ?? null : res.option ?? null;
+        setCurrentFeedbackOption(option);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentFeedbackOption(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showFeedbackDropdown]);
+
+  // 下拉打开时查询滚动区域与内容宽度，判断是否显示右侧箭头
+  useEffect(() => {
+    if (!showFeedbackDropdown) return;
+    setShowFeedbackRightArrow(true);
+    const t = setTimeout(() => {
+      const query = Taro.createSelectorQuery();
+      query.select('.personal-profile-page__feedback-scroll').boundingClientRect();
+      query.select('.personal-profile-page__feedback-row').boundingClientRect();
+      query.exec((res) => {
+        if (res[0] && res[1] && res[1].width > res[0].width) {
+          feedbackScrollRef.current = { viewWidth: res[0].width, contentWidth: res[1].width };
+          setShowFeedbackRightArrow(true);
+        } else {
+          feedbackScrollRef.current = null;
+          setShowFeedbackRightArrow(false);
+        }
+      });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [showFeedbackDropdown]);
+
+  const handleFeedbackScroll = useCallback((e: any) => {
+    const { scrollLeft } = e?.detail ?? {};
+    const ref = feedbackScrollRef.current;
+    if (ref && typeof scrollLeft === 'number') {
+      const threshold = ref.contentWidth - ref.viewWidth - 20;
+      setShowFeedbackRightArrow(threshold > 0 && scrollLeft < threshold);
+    }
+  }, []);
+
   // 检查问卷完成状态
   useEffect(() => {
     if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
@@ -1634,9 +1724,17 @@ export default function PersonalProfilePage() {
 
   if (portraits.length === 0) {
     return (
-      <View className="personal-profile-page">
+      <View className="personal-profile-page personal-profile-page--empty">
         <View className="personal-profile-page__empty">
-          <Text>暂无画像数据</Text>
+          <View className="personal-profile-page__empty-card">
+            <View className="personal-profile-page__empty-icon-wrap">
+              <Text className="personal-profile-page__empty-icon">✦</Text>
+            </View>
+            <Text className="personal-profile-page__empty-title">自我发现建议</Text>
+            <Text className="personal-profile-page__empty-desc">
+              您的自评数据，暂时未呈现出明显的“待发展特质”，建议启动“走进内心世界，寻找最真的自己”配套服务，基于更深入细致的自我发现，“遇见”独一无二的自己！
+            </Text>
+          </View>
         </View>
         <BottomNav />
       </View>
@@ -1645,13 +1743,49 @@ export default function PersonalProfilePage() {
 
   return (
     <View className="personal-profile-page">
-      <WordCloudCSS 
-        portraits={portraits} 
-        onItemClick={handleWordCloudItemClick}
-        showOverviewModal={showOverviewModal}
-        setShowOverviewModal={setShowOverviewModal}
-      />
-      
+      {/* 画像内容区：「我要反馈」在导航行（当前/下一个之间），下拉浮层 */}
+      <View className="personal-profile-page__main">
+        {showFeedbackDropdown && (
+          <>
+            <View
+              className="personal-profile-page__feedback-mask"
+              onClick={() => setShowFeedbackDropdown(false)}
+            />
+            <View className="personal-profile-page__feedback-dropdown">
+              <ScrollView
+                scrollX
+                className="personal-profile-page__feedback-scroll"
+                onScroll={handleFeedbackScroll}
+              >
+                <View className="personal-profile-page__feedback-row">
+                  {FEEDBACK_OPTIONS.map((opt) => (
+                    <View
+                      key={opt}
+                      className="personal-profile-page__feedback-option"
+                      onClick={() => handleFeedbackOption(opt)}
+                    >
+                      <Text className="personal-profile-page__feedback-option-text">{opt}</Text>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+              {showFeedbackRightArrow && (
+                <View className="personal-profile-page__feedback-arrow" aria-hidden>
+                  <Text className="personal-profile-page__feedback-arrow-icon">›</Text>
+                </View>
+              )}
+            </View>
+          </>
+        )}
+        <WordCloudCSS 
+          portraits={portraits} 
+          onItemClick={handleWordCloudItemClick}
+          showOverviewModal={showOverviewModal}
+          setShowOverviewModal={setShowOverviewModal}
+          onFeedbackClick={() => setShowFeedbackDropdown((v) => !v)}
+        />
+      </View>
+
       {/* 浮动按钮：打开总览报告 */}
       <View 
         className={`personal-profile-page__float-button ${isDragging ? 'personal-profile-page__float-button--dragging' : ''}`}

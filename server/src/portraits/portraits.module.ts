@@ -13,6 +13,7 @@ import { Quadrant3Weakness } from '@/entities/quadrant-3-weakness.entity';
 import { Quadrant3Compensation } from '@/entities/quadrant-3-compensation.entity';
 import { Quadrant4Dilemma } from '@/entities/quadrant-4-dilemma.entity';
 import { Quadrant4GrowthPath } from '@/entities/quadrant-4-growth-path.entity';
+import { PortraitFeedback } from '@/entities/portrait-feedback.entity';
 import { PortraitsController } from './portraits.controller';
 import { PortraitsService } from './portraits.service';
 
@@ -35,6 +36,7 @@ import { PortraitsService } from './portraits.service';
       Quadrant3Compensation,
       Quadrant4Dilemma,
       Quadrant4GrowthPath,
+      PortraitFeedback,
     ]),
   ],
   controllers: [PortraitsController],
