@@ -26,12 +26,13 @@ export class ElementScoreInfoDto {
   score: number;
 
   @ApiProperty({
-    description: '分类',
+    description: '分类（已不再计算）',
     example: 'A',
     enum: ['A', 'B', 'C'],
+    required: false,
   })
   @Expose()
-  category: string;
+  category?: string;
 }
 
 /**
@@ -438,34 +439,31 @@ export class UserPortraitResponseDto {
 */
 
   @ApiProperty({
-    description: '选中的喜欢元素',
-    type: ElementScoreInfoDto,
+    description: '选中的喜欢元素（前20%）',
+    type: [ElementScoreInfoDto],
     required: false,
   })
   @Expose()
   @Type(() => ElementScoreInfoDto)
-  selectedLikeElement?: ElementScoreInfoDto;
+  selectedLikeElements?: ElementScoreInfoDto[];
 
   @ApiProperty({
-    description: '选中的天赋元素',
-    type: ElementScoreInfoDto,
+    description: '选中的天赋元素（前20%）',
+    type: [ElementScoreInfoDto],
     required: false,
   })
   @Expose()
   @Type(() => ElementScoreInfoDto)
-  selectedTalentElement?: ElementScoreInfoDto;
-
-  @ApiProperty({ description: '象限ID', required: false })
-  @Expose()
-  quadrantId?: number;
+  selectedTalentElements?: ElementScoreInfoDto[];
 
   @ApiProperty({
-    description: '匹配的画像列表',
+    description: '第一象限画像列表（like 与对应 talent 均在各自前 20% 的配对所匹配的画像）',
     type: [PortraitDetailDto],
+    required: false,
   })
   @Expose()
   @Type(() => PortraitDetailDto)
-  portraits: PortraitDetailDto[];
+  portraits?: PortraitDetailDto[];
 
   @ApiProperty({ description: '提示信息', required: false })
   @Expose()
