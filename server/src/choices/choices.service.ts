@@ -931,13 +931,28 @@ export class ChoicesService {
         throw new BadRequestException('已经是第一个，无法上移');
       }
 
-      const targetChoice = await manager.findOne(Choice, {
-        where: {
-          userId,
-          mgIndex: currentChoice.mgIndex,
-          majorIndex: targetMajorIndex,
-        },
-      });
+      // 与唯一约束一致：必须在同一组（省份+选科+年份）内查找交换目标，避免跨组交换导致重复键
+      const qb = manager
+        .getRepository(Choice)
+        .createQueryBuilder('choice')
+        .where('choice.userId = :userId', { userId })
+        .andWhere('choice.province = :province', { province: currentChoice.province })
+        .andWhere('choice.preferredSubjects = :preferredSubjects', {
+          preferredSubjects: currentChoice.preferredSubjects ?? null,
+        })
+        .andWhere('choice.year = :year', { year: currentChoice.year ?? null })
+        .andWhere('choice.mgIndex = :mgIndex', { mgIndex: currentChoice.mgIndex })
+        .andWhere('choice.majorIndex = :majorIndex', { majorIndex: targetMajorIndex });
+      if (currentChoice.secondarySubjects != null && currentChoice.secondarySubjects.length > 0) {
+        qb.andWhere('choice.secondarySubjects = :secondarySubjects', {
+          secondarySubjects: currentChoice.secondarySubjects,
+        });
+      } else {
+        qb.andWhere('(choice.secondarySubjects IS NULL OR choice.secondarySubjects = :emptyArray)', {
+          emptyArray: [],
+        });
+      }
+      const targetChoice = await qb.getOne();
 
       if (!targetChoice) {
         throw new BadRequestException(
