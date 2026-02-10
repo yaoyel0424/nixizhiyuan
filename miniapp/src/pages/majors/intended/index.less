@@ -1325,20 +1325,18 @@
   font-weight: 600;
 }
 
-// 专业组对话框样式
+// 专业组对话框样式（普通弹框，非满屏）
 .intended-majors-page__group-dialog {
   width: 100%;
-  height: 100%;
-  max-width: none;
-  max-height: none;
+  max-height: 92vh;
+  height: auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  // 全屏弹框内边距
+  border-radius: 16rpx;
+  border: 2rpx solid #e5e7eb;
+  box-shadow: 0 20rpx 30rpx -6rpx rgba(0, 0, 0, 0.1);
   padding: 32rpx;
 
   // 缩小头部与内容间距，并为关闭按钮留空间
@@ -1353,20 +1351,18 @@
   }
 }
 
-// 专业组弹框：占满全屏（需要同时覆盖外层容器 .ui-dialog__content 的限制）
+// 专业组弹框：垂直方向留白，不铺满屏幕
 .intended-majors-page__group-dialog-wrapper {
   .ui-dialog__content {
-    width: 100vw;
-    height: 100vh;
-    max-width: none;
-    max-height: none;
-    overflow: hidden;
+    margin-top: 2vh;
+    margin-bottom: 2vh;
+    max-height: 92vh; // 留白缩小，弹框内容区域更大
   }
 }
 
-// 删除确认框需要盖在“专业组弹框”之上，避免被遮挡
+// 删除确认框需要盖在“专业组弹框”之上，避免被遮挡（须高于 .ui-dialog 的 10000）
 .intended-majors-page__delete-confirm-dialog {
-  z-index: 2100;
+  z-index: 10001;
 }
 
 .intended-majors-page__group-dialog-title-wrapper {

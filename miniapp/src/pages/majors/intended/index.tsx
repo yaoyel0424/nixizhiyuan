@@ -112,8 +112,8 @@ export default function IntendedMajorsPage() {
   const [scoreRange, setScoreRange] = useState<[number, number]>([500, 650])
   // 分数区间是否已从本地存储/高考信息初始化完成（避免用默认值触发一次错误请求）
   const [scoreRangeReady, setScoreRangeReady] = useState(false)
-  // 是否启用分数区间筛选
-  const [enableScoreFilter, setEnableScoreFilter] = useState<boolean>(false)
+  // 是否启用分数区间筛选（院校探索页默认勾选）
+  const [enableScoreFilter, setEnableScoreFilter] = useState<boolean>(true)
   // 区间输入框的临时值（用于实时显示，不立即更新 scoreRange）
   // 使用 null 表示未编辑状态，字符串表示正在编辑
   const [tempMinValue, setTempMinValue] = useState<string | null>(null)
