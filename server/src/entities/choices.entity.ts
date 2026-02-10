@@ -20,7 +20,7 @@ import { School } from './school.entity';
 @Index(['mgId']) // 专业组ID索引
 @Index(['schoolCode']) // 学校代码索引
 @Index(['userId', 'province', 'preferredSubjects', 'year']) // 复合索引：用户ID、省份、首选科目、年份
-@Index('idx_choices_user_province_subjects_year_mg_major_unique', ['userId', 'province', 'preferredSubjects', 'year', 'mgIndex', 'majorIndex'], { unique: true }) // 同一用户、同一省份选科年份下同一专业组内专业序号唯一，支持多省份/选科多套志愿
+@Index('idx_choices_user_province_subjects_year_mg_major_unique', ['userId', 'province', 'preferredSubjects', 'secondarySubjects', 'year', 'mgIndex', 'majorIndex'], { unique: true }) // 同一用户、同一省份选科年份下同一专业组内专业序号唯一，支持多省份/选科多套志愿
 export class Choice {
   /**
    * 选择记录唯一标识符 (自增长ID)

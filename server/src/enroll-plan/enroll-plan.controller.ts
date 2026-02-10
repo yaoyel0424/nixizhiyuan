@@ -257,7 +257,7 @@ export class EnrollPlanController {
    * 通过专业组 ID 数组查询每个专业组对应的去重 level3_major_id 列表
    */
   @Get('level3-major-ids-by-major-group')
-  @Cache(60)
+  @Cache(600)
   @ApiOperation({
     summary: '通过 major_group_id 数组查询 level3_major_id',
     description: '传入专业组 ID 数组，返回每个 majorGroupId 与其对应的去重后的 level3MajorIds',
