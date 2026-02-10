@@ -80,10 +80,12 @@ const responseInterceptor = (response: any) => {
     // 如果没有明确的成功/失败标识，HTTP 2xx 就认为是成功
     return data
   } else if (statusCode === 401) {
-    // 401 由 request() 内先尝试静默登录并重试，只有静默登录失败或重试仍 401 时才走到这里：清 token 并跳转登录页
+    // 静默登录模式：仅清除 token 并提示，不跳转登录页
     Taro.removeStorageSync('token')
-    Taro.navigateTo({
-      url: '/pages/login/index'
+    Taro.showToast({
+      title: '登录已过期，请重新打开小程序',
+      icon: 'none',
+      duration: 2500
     })
     return Promise.reject(new Error('未授权'))
   } else if (statusCode === 403) {
@@ -143,7 +145,11 @@ export const request = async <T = any>(config: RequestConfig): Promise<BaseRespo
       const ok = await silentLogin()
       if (!ok) {
         Taro.removeStorageSync('token')
-        Taro.navigateTo({ url: '/pages/login/index' })
+        Taro.showToast({
+          title: '登录已过期，请重新打开小程序',
+          icon: 'none',
+          duration: 2500
+        })
         return Promise.reject(new Error('未授权'))
       }
       is401Retried = true

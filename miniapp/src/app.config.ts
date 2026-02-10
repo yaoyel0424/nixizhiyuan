@@ -1,7 +1,6 @@
 export default {
   pages: [
     'pages/index/index',
-    'pages/login/index',
     'pages/assessment/index',
     'pages/assessment/all-majors/index',
     'pages/assessment/personal-profile/index',

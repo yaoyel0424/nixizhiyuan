@@ -1,24 +1,36 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import { useAppSelector, useAppDispatch } from '@/store/hooks'
 import { setTabBarIndex } from '@/store/slices/appSlice'
 import { clearUserInfo } from '@/store/slices/userSlice'
 import { Button } from '@/components'
 import Taro from '@tarojs/taro'
+import { silentLogin } from '@/utils/auth'
 import './index.less'
 
 const User: React.FC = () => {
   const dispatch = useAppDispatch()
   const { isLogin, userInfo } = useAppSelector(state => state.user)
+  const [loginLoading, setLoginLoading] = useState(false)
 
   useEffect(() => {
     dispatch(setTabBarIndex(1))
   }, [dispatch])
 
-  const handleLogin = () => {
-    Taro.navigateTo({
-      url: '/pages/login/index'
-    })
+  /** 静默登录：重新尝试登录，不跳转登录页 */
+  const handleLogin = async () => {
+    if (loginLoading) return
+    setLoginLoading(true)
+    try {
+      const ok = await silentLogin()
+      if (ok) {
+        Taro.showToast({ title: '登录成功', icon: 'success' })
+      } else {
+        Taro.showToast({ title: '登录失败，请重新打开小程序', icon: 'none' })
+      }
+    } finally {
+      setLoginLoading(false)
+    }
   }
 
   const handleLogout = () => {
@@ -71,10 +83,10 @@ const User: React.FC = () => {
           </View>
         ) : (
           <View className="user-page__login-prompt">
-            <Text className="user-page__login-title">请先登录</Text>
-            <Text className="user-page__login-desc">登录后享受更多服务</Text>
-            <Button type="primary" onClick={handleLogin}>
-              立即登录
+            <Text className="user-page__login-title">未登录</Text>
+            <Text className="user-page__login-desc">重新打开小程序将自动登录</Text>
+            <Button type="primary" onClick={handleLogin} disabled={loginLoading}>
+              {loginLoading ? '登录中…' : '重新登录'}
             </Button>
           </View>
         )}

@@ -8,12 +8,11 @@ const TABBAR_PAGES = [
   '/pages/profile/index',
 ]
 
-// 路由配置
+// 路由配置（小程序采用静默登录，无登录页）
 export const routes = {
   // 主要页面
   INDEX: '/pages/index/index',
   USER: '/pages/user/index',
-  LOGIN: '/pages/login/index',
   
   // 用户相关
   REGISTER: '/pages/register/index',
@@ -89,24 +88,16 @@ export const routeGuard = {
     return routeGuard.requireAuth.includes(url)
   },
   
-  // 路由拦截
+  // 路由拦截（静默登录：不跳转登录页，未登录时仍允许进入，由页面展示未登录状态）
   intercept: (url: string) => {
     if (routeGuard.checkAuth(url)) {
-      // 检查是否已登录
       const token = Taro.getStorageSync('token')
       if (!token) {
-        Taro.showModal({
-          title: '提示',
-          content: '请先登录',
-          success: (res) => {
-            if (res.confirm) {
-              Taro.navigateTo({
-                url: routes.LOGIN
-              })
-            }
-          }
+        Taro.showToast({
+          title: '请重新打开小程序完成登录',
+          icon: 'none'
         })
-        return false
+        // 允许进入页面，由页面自身展示未登录状态
       }
     }
     return true
@@ -117,7 +108,6 @@ export const routeGuard = {
 export const pageTitles = {
   [routes.INDEX]: '首页',
   [routes.USER]: '我的',
-  [routes.LOGIN]: '登录',
   [routes.REGISTER]: '注册',
   [routes.FORGOT_PASSWORD]: '忘记密码',
   [routes.PROFILE]: '个人资料',

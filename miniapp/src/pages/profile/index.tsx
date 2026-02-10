@@ -5,6 +5,7 @@ import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearUserInfo, updateUserInfo } from '@/store/slices/userSlice'
 import { logout, checkToken } from '@/services/auth'
+import { silentLogin } from '@/utils/auth'
 import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
@@ -274,14 +275,14 @@ export default function ProfilePage() {
               duration: 1500
             })
             
-            // 跳转到登录页（清除页面栈）
+            // 静默登录模式：跳转首页
             setTimeout(() => {
               Taro.reLaunch({
-                url: '/pages/login/index'
+                url: '/pages/index/index'
               })
             }, 1500)
           } catch (error: any) {
-            // 即使接口调用失败，也清除本地状态并跳转
+            // 即使接口调用失败，也清除本地状态并跳转首页
             console.error('退出登录失败:', error)
             Taro.removeStorageSync('token')
             Taro.removeStorageSync('refreshToken')
@@ -295,7 +296,7 @@ export default function ProfilePage() {
             
             setTimeout(() => {
               Taro.reLaunch({
-                url: '/pages/login/index'
+                url: '/pages/index/index'
               })
             }, 1500)
           }
@@ -465,9 +466,21 @@ export default function ProfilePage() {
                 <Text className="profile-page__logout-text">退出登录</Text>
               </View>
             ) : (
-              <View className="profile-page__login" onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}>
+              <View
+                className="profile-page__login"
+                onClick={async () => {
+                  Taro.showLoading({ title: '登录中…' })
+                  const ok = await silentLogin()
+                  Taro.hideLoading()
+                  if (ok) {
+                    Taro.showToast({ title: '登录成功', icon: 'success' })
+                  } else {
+                    Taro.showToast({ title: '登录失败，请重新打开小程序', icon: 'none' })
+                  }
+                }}
+              >
                 <Text className="profile-page__login-icon">🔑</Text>
-                <Text className="profile-page__login-text">登录/注册</Text>
+                <Text className="profile-page__login-text">重新登录</Text>
               </View>
             )}
           </Card>
