@@ -251,7 +251,13 @@ export function ExamInfoDialog({
         })
         return
       }
-      
+
+      // 切换首选科目（如物理/历史）时清空分数、位次和批次，让用户按新科目重新填写
+      setTotalScore('')
+      setRanking('')
+      setBatchList([])
+      setSelectedBatch('')
+
       if (currentProvinceConfig.primarySubjects.count === 1) {
         // 单选模式
         setFirstChoice(subject === firstChoice ? null : subject)
@@ -424,9 +430,14 @@ export function ExamInfoDialog({
       // 文理科：preferredSubjects 为所选科类，不提交次选；3+3 为「综合」+ 次选；其余为首选 + 次选
       const preferred = isWenliKeMode ? firstChoice : (is3Plus3Mode ? '综合' : firstChoice)
       // 文理科不提交次选；非文理科时，3+1+2 模式下 secondarySubjects 不包含首选科目
+      // 次选科目按页面显示顺序（currentProvinceConfig.secondarySubjects.subjects）保存，与界面一致
       let finalSecondarySubjects: string[] = []
       if (!isWenliKeMode && optionalSubjects.size > 0) {
-        finalSecondarySubjects = Array.from(optionalSubjects)
+        const displayOrder = currentProvinceConfig?.secondarySubjects?.subjects ?? []
+        const orderedSelected = displayOrder.length > 0
+          ? displayOrder.filter(s => optionalSubjects.has(s))
+          : Array.from(optionalSubjects)
+        finalSecondarySubjects = orderedSelected
         if (!is3Plus3Mode && firstChoice) {
           finalSecondarySubjects = finalSecondarySubjects.filter(subject => subject !== firstChoice)
         }
@@ -444,7 +455,11 @@ export function ExamInfoDialog({
       if (preferred) {
         await setStorage('examFirstChoice', preferred)
       }
-      await setStorage('examOptionalSubjects', isWenliKeMode ? [] : Array.from(optionalSubjects))
+      // 本地存储的次选科目也按页面显示顺序保存，与提交的 secondarySubjects 一致
+      const orderedOptional = currentProvinceConfig?.secondarySubjects?.subjects
+        ? currentProvinceConfig.secondarySubjects.subjects.filter(s => optionalSubjects.has(s))
+        : Array.from(optionalSubjects)
+      await setStorage('examOptionalSubjects', isWenliKeMode ? [] : orderedOptional)
       await setStorage('examTotalScore', totalScore)
       await setStorage('examRanking', ranking)
 
