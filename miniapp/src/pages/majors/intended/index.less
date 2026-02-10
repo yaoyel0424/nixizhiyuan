@@ -1389,11 +1389,15 @@
   white-space: nowrap;
 }
 
+// 专业组弹框内容区：真机 ScrollView 必须有明确高度才能滚动
 .intended-majors-page__group-dialog-content {
   margin-top: 12rpx;
   flex: 1;
   min-height: 0;
+  height: 80vh;
+  max-height: 80vh;
   overflow-y: auto;
+  box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
   // 给底部浮动按钮留出空间，避免遮挡最后一条内容
   padding-bottom: 140rpx;
@@ -1406,6 +1410,13 @@
     height: 0;
     display: none;
   }
+}
+
+// 专业组弹框滚动内容内层：右侧留白，让滚动条显示在空白处不压住文字
+.intended-majors-page__group-dialog-content-inner {
+  box-sizing: border-box;
+  padding-right: 48rpx;
+  min-width: 0;
 }
 
 .intended-majors-page__group-dialog-footer {

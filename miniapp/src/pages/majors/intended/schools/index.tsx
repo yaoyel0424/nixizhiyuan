@@ -1942,7 +1942,8 @@ export default function IntendedMajorsSchoolsPage() {
               </Text>
             </View>
           </DialogHeader>
-          <ScrollView className="schools-page__group-dialog-content" scrollY>
+          <ScrollView className="schools-page__group-dialog-content" scrollY style={{ height: '80vh' }}>
+            <View className="schools-page__group-dialog-content-inner">
             {loadingGroupInfo ? (
               <View className="schools-page__group-dialog-empty">
                 <Text>加载中...</Text>
@@ -2095,6 +2096,7 @@ export default function IntendedMajorsSchoolsPage() {
                 )
               })
             )}
+            </View>
           </ScrollView>
 
           {/* 底部浮动关闭按钮：不随内容滚动 */}

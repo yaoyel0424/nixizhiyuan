@@ -14,13 +14,17 @@ import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { getExamInfo, updateExamInfo, getGaokaoConfig, getScoreRange, ExamInfo, GaokaoSubjectConfig } from '@/services/exam-info'
 import { getCurrentUserDetail, getUserRelatedDataCount } from '@/services/user'
-import { getUserEnrollmentPlans, UserEnrollmentPlan, getProvincialControlLines, ProvincialControlLine, getMajorGroupInfo, MajorGroupInfo, getLevel3MajorIdsByMajorGroupIds } from '@/services/enroll-plan'
+import type { UserEnrollmentPlan, ProvincialControlLine, MajorGroupInfo } from '@/services/enroll-plan'
+import * as enrollPlan from '@/services/enroll-plan'
 import { getBottom20Scores } from '@/services/scores'
 import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, ChoiceResponse, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
 import { exportWishlistToPdf } from '@/utils/exportPdf'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import './index.less'
+
+// 从 enroll-plan 命名空间解构到模块级常量，避免打包后闭包中引用导致 is not defined
+const { getUserEnrollmentPlans, getProvincialControlLines, getMajorGroupInfo, getLevel3MajorIdsByMajorGroupIds } = enrollPlan
 
 interface Major {
   code: string
@@ -3033,7 +3037,8 @@ export default function IntendedMajorsPage() {
               </Text>
             </View>
           </DialogHeader>
-          <ScrollView className="intended-majors-page__group-dialog-content" scrollY>
+          <ScrollView className="intended-majors-page__group-dialog-content" scrollY style={{ height: '80vh' }}>
+            <View className="intended-majors-page__group-dialog-content-inner">
             {loadingGroupInfo ? (
               <View className="intended-majors-page__group-dialog-empty">
                 <Text>加载中...</Text>
@@ -3180,6 +3185,7 @@ export default function IntendedMajorsPage() {
                 )
               })
             )}
+            </View>
           </ScrollView>
 
           {/* 底部浮动关闭按钮：不随内容滚动 */}
