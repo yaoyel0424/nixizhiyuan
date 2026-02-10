@@ -232,7 +232,7 @@ export class EnrollPlanController {
    * year 从省份表根据当前用户 province 获取，其余条件从 users 表当前用户读取
    */
   @Get('level3-major-ids')
-  @Cache(30)
+ // @Cache(30)
   @ApiOperation({
     summary: '按当前用户及省份年份查询去重后的 level3_major_id 列表',
     description:
