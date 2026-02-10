@@ -12,6 +12,7 @@ import { SchoolDetail } from '@/entities/school-detail.entity';
 import { MajorScore } from '@/entities/major-score.entity';
 import { ProvinceFavorite } from '@/entities/province-favorite.entity';
 import { Province } from '@/entities/province.entity';
+import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ScoresService } from '@/scores/scores.service';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
 import {
@@ -53,6 +54,8 @@ export class EnrollPlanService {
     private readonly provinceFavoriteRepository: Repository<ProvinceFavorite>,
     @InjectRepository(Province)
     private readonly provinceRepository: Repository<Province>,
+    @InjectRepository(ProvinceBatch)
+    private readonly provinceBatchRepository: Repository<ProvinceBatch>,
     private readonly scoresService: ScoresService,
     private readonly configService: ConfigService,
   ) {}
@@ -1044,7 +1047,7 @@ export class EnrollPlanService {
   async getDistinctLevel3MajorIds(params: {
     year: string;
     province: string;
-    batch: string;
+    batch: string[];
     primarySubject: string;
     enrollmentType: string;
     secondarySubjects: string[];
@@ -1064,7 +1067,7 @@ export class EnrollPlanService {
            LATERAL unnest(COALESCE(level3_major_id, ARRAY[]::integer[])) AS elem
       WHERE year = $1
         AND province = $2
-        AND batch = $3
+        AND batch = ANY($3::text[])
         AND primary_subject = $4
         AND enrollment_type = $5
         AND (
@@ -1096,11 +1099,24 @@ export class EnrollPlanService {
   async getDistinctLevel3MajorIdsByCurrentUser(
     userId: number,
     year?: string,
+    eduLevel?: string,
   ): Promise<number[]> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       this.logger.warn(`getDistinctLevel3MajorIdsByCurrentUser: 用户 ${userId} 不存在`);
       return [];
+    }
+    let batch=['本科批'];
+
+    if (eduLevel) {
+      batch = await this.provinceBatchRepository.find({
+        where: {
+          province: user.province?.trim() ?? '',
+          type: eduLevel ==="zhuan" ? 'zhuan' : 'ben',
+          year: year ?? '2025',
+        },
+        select: ['batch'],
+      }).then((items) => items.map((item) => item.batch));
     }
 
     let resolvedYear = year;
@@ -1112,8 +1128,7 @@ export class EnrollPlanService {
       resolvedYear = provinceRow?.year ?? undefined;
     }
     resolvedYear = resolvedYear || this.configService.get<string>('CURRENT_YEAR') || '2025';
-    const province = user.province?.trim() || '';
-    const batch = user.enrollType?.trim() || '';
+    const province = user.province?.trim() || ''; 
     const primarySubject = user.preferredSubjects?.trim() || '';
     const secondarySubjects = user.secondarySubjects
       ? user.secondarySubjects

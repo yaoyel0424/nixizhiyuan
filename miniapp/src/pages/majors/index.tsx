@@ -100,7 +100,14 @@ export default function MajorsPage() {
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
 
-  // 勾选「符合选科的专业」时调用 api/v1/enroll-plan/level3-major-ids，用返回的 level3MajorIds 筛选；返回 0 条时保持勾选并按空结果展示
+  // 教育层次映射：页面标签 -> API 参数（提前定义，供下方 useEffect 使用）
+  const eduLevelMap: Record<string, string> = {
+    '本科': 'ben',
+    '本科(职业)': 'gao_ben',
+    '专科': 'zhuan'
+  }
+
+  // 勾选「符合选科的专业」时调用 level3-major-ids，传入当前 Tab 对应的 eduLevel；用返回的 level3MajorIds 筛选
   useEffect(() => {
     if (!onlyMatchSubject) {
       setMatchSubjectLevel3Ids(new Set())
@@ -109,7 +116,8 @@ export default function MajorsPage() {
     }
     setLevel3IdsLoaded(false)
     let cancelled = false
-    getLevel3MajorIds()
+    const eduLevel = eduLevelMap[activeTab] || undefined
+    getLevel3MajorIds(eduLevel)
       .then((res) => {
         if (cancelled) return
         const ids = res.level3MajorIds && Array.isArray(res.level3MajorIds) ? res.level3MajorIds : []
@@ -123,14 +131,7 @@ export default function MajorsPage() {
         setLevel3IdsLoaded(false)
       })
     return () => { cancelled = true }
-  }, [onlyMatchSubject])
-
-  // 教育层次映射：页面标签 -> API 参数
-  const eduLevelMap: Record<string, string> = {
-    '本科': 'ben',
-    '本科(职业)': 'gao_ben',
-    '专科': 'zhuan'
-  }
+  }, [onlyMatchSubject, activeTab])
 
   // 符合选科时的有效列表：用 allMajors 中的 majorId 与接口返回值匹配；再按 scoreSortOrder 排序（默认倒序）
   const effectiveList = useMemo(() => {

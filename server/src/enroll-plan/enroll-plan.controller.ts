@@ -241,14 +241,10 @@ export class EnrollPlanController {
   @ApiResponse({ status: 200, description: '去重后的 level3_major_id 数组' })
   async getDistinctLevel3MajorIds(
     @CurrentUser() user: any,
-  ): Promise<{ level3MajorIds: number[] }> {
+    @Query('eduLevel') eduLevel?: string,
+  ): Promise<number[]> {
     const year = await this.getYearByUserProvince(user);
-    const level3MajorIds =
-      await this.enrollPlanService.getDistinctLevel3MajorIdsByCurrentUser(
-        user.id,
-        year,
-      );
-    return { level3MajorIds };
+    return await this.enrollPlanService.getDistinctLevel3MajorIdsByCurrentUser(user.id, year, eduLevel);
   }
 
   /**

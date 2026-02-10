@@ -39,6 +39,12 @@ export class ProvinceBatch {
   year: string;
 
   /**
+   * 类型：ben-本科，zhuan-专科
+   */
+  @Column({ type: 'varchar', length: 10, comment: '类型：ben-本科，zhuan-专科' })
+  type: 'ben' | 'zhuan';
+
+  /**
    * 最低分/分数线
    */
   @Column({

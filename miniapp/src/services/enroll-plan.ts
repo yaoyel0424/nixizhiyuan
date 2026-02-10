@@ -307,12 +307,14 @@ export const getMatchSubjectMajorIds = async (): Promise<number[]> => {
 
 /**
  * 调用 level3-major-ids 接口：返回去重 level3_major_id 列表（用于符合选科筛选）
+ * @param eduLevel 教育层次：ben | gao_ben | zhuan，不传则后端按用户信息推断
  */
-export const getLevel3MajorIds = async (): Promise<{
+export const getLevel3MajorIds = async (eduLevel?: string): Promise<{
   level3MajorIds: number[]
 }> => {
   try {
-    const response: any = await get('/enroll-plan/level3-major-ids')
+    const params = eduLevel ? { eduLevel } : undefined
+    const response: any = await get('/enroll-plan/level3-major-ids', params)
     if (response && typeof response === 'object') {
       const data = response.data ?? response
       const level3MajorIds = Array.isArray(data.level3MajorIds) ? data.level3MajorIds : []

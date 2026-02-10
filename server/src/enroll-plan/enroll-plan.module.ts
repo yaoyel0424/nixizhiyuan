@@ -9,6 +9,7 @@ import { SchoolDetail } from '@/entities/school-detail.entity';
 import { MajorScore } from '@/entities/major-score.entity';
 import { ProvinceFavorite } from '@/entities/province-favorite.entity';
 import { Province } from '@/entities/province.entity';
+import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ScoresModule } from '@/scores/scores.module';
 import { EnrollPlanController } from './enroll-plan.controller';
 import { ConfigModule } from '@nestjs/config';
@@ -30,6 +31,7 @@ import { EnrollPlanService } from './enroll-plan.service';
       MajorScore,
       ProvinceFavorite,
       Province,
+      ProvinceBatch,
     ]),
     ScoresModule,
   ],
