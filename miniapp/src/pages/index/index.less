@@ -528,6 +528,13 @@
   }
 }
 
+.index-page__dialog-step-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0; /* 避免被挤压，保证「重新答题进度」与 (x/168) 都可见 */
+}
+
 .index-page__dialog-step-progress {
   font-size: 22rpx; // 稍微减小字体
   font-weight: bold;
@@ -566,6 +573,16 @@
   color: #10b981;
   font-weight: 600;
   margin-left: 4rpx;
+}
+
+// 重新答题进度标记（repeatCount > 0 时显示，在 (x/168) 左侧）
+.index-page__dialog-step-repeat-tag {
+  font-size: 20rpx;
+  color: #1a56db;
+  background: rgba(26, 86, 219, 0.1);
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  font-weight: 500;
 }
 
 .index-page__dialog-step-badge {

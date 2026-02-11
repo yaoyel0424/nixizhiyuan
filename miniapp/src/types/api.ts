@@ -117,11 +117,36 @@ export interface ScaleAnswer {
 }
 
 /**
+ * 快照中的历史答案（repeat=true 时由服务端返回）
+ */
+export interface ScaleSnapshotAnswer {
+  scaleId: number
+  score: number
+  submittedAt?: string | null
+}
+
+/**
+ * 量表接口返回的快照（仅 repeat=true 时可能包含）
+ */
+export interface ScaleSnapshotPayload {
+  answers: ScaleSnapshotAnswer[]
+  savedAt: string
+}
+
+export interface ScaleSnapshot {
+  version: string
+  createdAt: string
+  payload: ScaleSnapshotPayload
+}
+
+/**
  * 量表列表及用户答案响应
+ * repeat=true 时可能包含 snapshot，其 payload.answers 为上次答题的历史数据
  */
 export interface ScalesWithAnswersResponse {
   scales: Scale[]
   answers: ScaleAnswer[]
+  snapshot?: ScaleSnapshot
 }
 
 /**
@@ -388,5 +413,7 @@ export interface UserRelatedDataResponse {
   majorFavoritesCount: number
   provinceFavoritesCount: number
   choicesCount: number
+  /** 大于 0 表示可判断为二次答题（已完成过一轮） */
+  repeatCount?: number
   preferredSubjects?: string | null
 }

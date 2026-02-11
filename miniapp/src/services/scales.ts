@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro'
-import { get, post } from './api'
+import { get, post, del } from './api'
 import { ScalesWithAnswersResponse, CreateScaleAnswerParams, ScaleAnswer } from '@/types/api'
 
 /**
@@ -49,38 +49,48 @@ function getCurrentUserId(): number | null {
 
 /**
  * 获取所有量表列表及用户答案
- * @returns 包含量表列表和答案列表的响应
+ * @param opts.repeat 为 true 时请求带 repeat=true，可获取上次答题快照（snapshot.payload.answers）
+ * @returns 包含量表列表、答案列表，repeat 时可能含 snapshot
  */
-export const getScalesWithAnswers = async (): Promise<ScalesWithAnswersResponse> => {
-  const response: any = await get<ScalesWithAnswersResponse>('/scales')
+export const getScalesWithAnswers = async (opts?: { repeat?: boolean }): Promise<ScalesWithAnswersResponse> => {
+  const params = opts?.repeat ? { repeat: 'true' } : undefined
+  const response: any = await get<ScalesWithAnswersResponse>('/scales', params)
   console.log('getScalesWithAnswers 原始响应:', response)
-  
-  // 响应拦截器可能返回原始数据或 BaseResponse 格式
-  if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提�?data（后端标准格式：{ success, code, message, data: { scales, answers } }�?
-    if (response.data && typeof response.data === 'object') {
-      // 检�?data 中是否包�?scales �?answers
-      if (response.data.scales || response.data.answers) {
-        console.log('�?response.data 提取数据:', response.data)
-        return response.data
-      }
-      // 如果 data 本身没有 scales �?answers，但 response 有，说明 data 就是 scales �?answers
-      if (response.scales || response.answers) {
-        console.log('直接使用 response:', response)
-        return response
-      }
-    }
-    // 如果直接包含 scales �?answers 字段，直接返�?
-    if (response.scales || response.answers) {
-      console.log('直接返回 response（包�?scales/answers�?', response)
-      return response
-    }
-    // 其他情况直接返回
-    console.log('其他情况，直接返�?response:', response)
+
+  if (!response || typeof response !== 'object') {
     return response
   }
-  console.log('响应格式异常:', response)
-  return response
+  let data = response
+  if (response.data && typeof response.data === 'object' && (response.data.scales || response.data.answers)) {
+    data = response.data
+  }
+  if (response.scales || response.answers) {
+    data = response
+  }
+  if (!data.scales && !data.answers) {
+    return response
+  }
+  const result: ScalesWithAnswersResponse = {
+    scales: data.scales || [],
+    answers: data.answers || [],
+  }
+  if (data.snapshot && data.snapshot.payload) {
+    result.snapshot = data.snapshot
+  }
+  return result
+}
+
+/**
+ * 删除当前用户在 scale_answers 表中的所有答案（用于重新开始自我测评）
+ * @returns 删除结果，含 deleted、snapshotted 等
+ */
+export const deleteScaleAnswers = async (): Promise<{ deleted?: number; snapshotted?: boolean }> => {
+  const response: any = await del('/scales/answers')
+  if (response && typeof response === 'object') {
+    if (response.data) return response.data
+    if (typeof response.deleted === 'number' || response.snapshotted !== undefined) return response
+  }
+  return response ?? {}
 }
 
 /**

@@ -7,6 +7,7 @@ import { clearUserInfo, updateUserInfo } from '@/store/slices/userSlice'
 import { logout, checkToken } from '@/services/auth'
 import { silentLogin } from '@/utils/auth'
 import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
+import { deleteScaleAnswers } from '@/services/scales'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -32,6 +33,7 @@ export default function ProfilePage() {
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0) // 专业收藏数量
   const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0) // 省份收藏数量
   const [choicesCount, setChoicesCount] = useState(0) // 备选方案数量
+  const [repeatCount, setRepeatCount] = useState(0) // 二次答题标识，>0 表示已完成过一轮
   const [dataLoaded, setDataLoaded] = useState(false) // 数据是否已加载
   
   // 判断各个维度是否完成（大于0）
@@ -119,6 +121,7 @@ export default function ProfilePage() {
           setMajorFavoritesCount(data.majorFavoritesCount || 0)
           setProvinceFavoritesCount(data.provinceFavoritesCount || 0)
           setChoicesCount(data.choicesCount || 0)
+          setRepeatCount(data.repeatCount ?? 0)
           setDataLoaded(true)
         })
         .catch((error) => {
@@ -132,6 +135,7 @@ export default function ProfilePage() {
       setMajorFavoritesCount(0)
       setProvinceFavoritesCount(0)
       setChoicesCount(0)
+      setRepeatCount(0)
       setDataLoaded(false)
     }
   }, [isLogin, userInfo])
@@ -161,35 +165,55 @@ export default function ProfilePage() {
 
   const statusInfo = getStatusInfo()
 
+  /** repeatCount > 0 且未答完 168 题：继续完成，不调用删除接口，跳转并定位未答题、带上次答题标记 */
+  const handleContinueSelfAssessment = () => {
+    Taro.navigateTo({
+      url: '/pages/assessment/all-majors/index?continue=1'
+    })
+  }
+
+  /**
+   * 重新开始自我测评：仅当已答完 168 题时调用清除接口；repeatCount > 0 且未答完时由「继续完成」处理，不调用删除
+   */
   const handleRestartAssessment = () => {
+    if (scaleAnswersCount < TOTAL_QUESTIONS) {
+      if (repeatCount > 0) {
+        handleContinueSelfAssessment()
+        return
+      }
+      Taro.showToast({
+        title: '请先完成全部168题后再重新开始',
+        icon: 'none',
+        duration: 2500
+      })
+      return
+    }
     Taro.showModal({
-      title: '提示',
-      content: '确定要重新开始测评吗？之前的答题记录将被清空，需要重新完成168题。',
-      success: (res) => {
-        if (res.confirm) {
-          try {
-            // 清空本地存储的问卷答案
-            Taro.removeStorageSync('questionnaire_answers')
-            Taro.removeStorageSync('questionnaire_previous_answers')
-            
-            // 跳转到168题问卷页面（不加载答案，从头开始）
-            Taro.navigateTo({
-              url: '/pages/assessment/all-majors/index?restart=true'
-            })
-            
-            Taro.showToast({
-              title: '已清空答题记录',
-              icon: 'success',
-              duration: 1500
-            })
-          } catch (error) {
-            console.error('清空答案失败:', error)
-            Taro.showToast({
-              title: '操作失败，请重试',
-              icon: 'none',
-              duration: 2000
-            })
-          }
+      title: '谨慎操作',
+      content: '重新开始将清除所有答题数据，此操作不可恢复。确定要继续吗？',
+      confirmText: '确定清除',
+      cancelText: '取消',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          Taro.showLoading({ title: '清除中...', mask: true })
+          await deleteScaleAnswers()
+          Taro.removeStorageSync('questionnaire_answers')
+          Taro.removeStorageSync('questionnaire_previous_answers')
+          Taro.hideLoading()
+          Taro.showToast({ title: '已清空答题记录', icon: 'success', duration: 1500 })
+          setScaleAnswersCount(0)
+          Taro.navigateTo({
+            url: '/pages/assessment/all-majors/index?restart=true'
+          })
+        } catch (error) {
+          Taro.hideLoading()
+          console.error('清除答案失败:', error)
+          Taro.showToast({
+            title: (error as Error)?.message || '操作失败，请重试',
+            icon: 'none',
+            duration: 2000
+          })
         }
       }
     })
@@ -360,16 +384,23 @@ export default function ProfilePage() {
               <Text className="profile-page__card-title">我的探索之旅</Text>
             </View>
             <View className="profile-page__card-body">
-              {/* 重启自我测评 */}
-              <View className="profile-page__card-item" onClick={handleRestartAssessment}>
-                <View className="profile-page__card-icon profile-page__card-icon--restart">
-                  <Text className="profile-page__card-icon-text">🔄</Text>
+              {/* repeatCount > 0 且未答完：继续完成自我测评（不调删除）；答完 168 题：重新开始（调删除）；否则禁用 */}
+              <View
+                className={`profile-page__card-item ${scaleAnswersCount < TOTAL_QUESTIONS && repeatCount === 0 ? 'profile-page__card-item--disabled' : ''}`}
+                onClick={handleRestartAssessment}
+              >
+                <View className={`profile-page__card-icon ${scaleAnswersCount >= TOTAL_QUESTIONS ? 'profile-page__card-icon--restart' : repeatCount > 0 ? 'profile-page__card-icon--continue' : 'profile-page__card-icon--disabled'}`}>
+                  <Text className="profile-page__card-icon-text">{scaleAnswersCount >= TOTAL_QUESTIONS ? '🔄' : repeatCount > 0 ? '📝' : '🔄'}</Text>
                 </View>
                 <View className="profile-page__card-item-content">
-                  <Text className="profile-page__card-item-title">重新开始自我测评</Text>
-                  <Text className="profile-page__card-item-desc">重新答题，刷新你的专属地图</Text>
+                  <Text className={`profile-page__card-item-title ${scaleAnswersCount < TOTAL_QUESTIONS && repeatCount === 0 ? 'profile-page__card-item-title--disabled' : ''}`}>
+                    {scaleAnswersCount >= TOTAL_QUESTIONS ? '重新开始自我测评' : repeatCount > 0 ? '继续完成自我测评' : '重新开始自我测评'}
+                  </Text>
+                  <Text className={`profile-page__card-item-desc ${scaleAnswersCount < TOTAL_QUESTIONS && repeatCount === 0 ? 'profile-page__card-item-desc--disabled' : ''}`}>
+                    {scaleAnswersCount >= TOTAL_QUESTIONS ? '清除数据后重新答题，请谨慎操作' : repeatCount > 0 ? '定位到未答题，并参考上次答题内容' : '完成168题后可重新开始'}
+                  </Text>
                 </View>
-                <Text className="profile-page__card-arrow">›</Text>
+                <Text className={`profile-page__card-arrow ${scaleAnswersCount < TOTAL_QUESTIONS && repeatCount === 0 ? 'profile-page__card-arrow--disabled' : ''}`}>›</Text>
               </View>
 
               {/* 查看我的报告 */}

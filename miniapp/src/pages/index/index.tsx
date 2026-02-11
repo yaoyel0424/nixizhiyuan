@@ -73,6 +73,7 @@ export default function IndexPage() {
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0);
   const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0);
   const [choicesCount, setChoicesCount] = useState(0);
+  const [repeatCount, setRepeatCount] = useState(0); // 大于 0 表示二次答题，与个人中心一致
   // 标记是否成功获取了 API 数据
   const [apiDataLoaded, setApiDataLoaded] = useState(false);
   // 降级使用的本地数据（API 失败时使用）
@@ -104,11 +105,12 @@ export default function IndexPage() {
     Promise.resolve(Taro.getWindowInfo()).then(setSystemInfo);
   }, []);
 
-  // 当对话框打开时，仅同步本地问卷答案；进度数据使用页面已有 state（来自首次加载或 useDidShow 返回时）
+  // 当探索之旅弹框打开时，同步本地答案并刷新进度数据（含 repeatCount），确保「重新答题进度」等展示正确
   useEffect(() => {
     if (isGuideDialogOpen && isClient) {
       const storedAnswers = loadAnswersFromStorage();
       setAnswers(storedAnswers);
+      fetchUserProgress();
     }
   }, [isGuideDialogOpen, isClient]);
 
@@ -122,6 +124,7 @@ export default function IndexPage() {
         setMajorFavoritesCount(data.majorFavoritesCount || 0);
         setProvinceFavoritesCount(data.provinceFavoritesCount || 0);
         setChoicesCount(data.choicesCount || 0);
+        setRepeatCount(data.repeatCount ?? 0);
         setApiDataLoaded(true);
       })
       .catch(() => {
@@ -198,9 +201,10 @@ export default function IndexPage() {
 
   const handleConfirmStart = withErrorHandler(() => {
     setIsGuideDialogOpen(false);
-    Taro.navigateTo({
-      url: '/pages/assessment/all-majors/index',
-    });
+    const url = repeatCount > 0
+      ? '/pages/assessment/all-majors/index?continue=1'
+      : '/pages/assessment/all-majors/index';
+    Taro.navigateTo({ url });
   }, '开始测评功能暂时不可用，请稍后重试');
 
   // 处理三个功能的点击事件
@@ -248,13 +252,13 @@ export default function IndexPage() {
     });
   }, '院校探索功能暂时不可用，请稍后重试');
 
-  // 处理深度自我洞察点击事件
+  // 处理深度自我洞察点击事件（repeatCount > 0 时带 continue=1，all-majors 会请求 repeat=true 并标记上次答题）
   const handleSelfInsight = withErrorHandler(() => {
     setIsGuideDialogOpen(false);
-    // 使用 reLaunch 跳转到探索成果页面
-    Taro.navigateTo({
-      url: '/pages/assessment/all-majors/index',
-    });
+    const url = repeatCount > 0
+      ? '/pages/assessment/all-majors/index?continue=1'
+      : '/pages/assessment/all-majors/index';
+    Taro.navigateTo({ url });
   }, '深度自我洞察功能暂时不可用，请稍后重试');
 
   // 处理重新探索点击事件
@@ -478,9 +482,15 @@ export default function IndexPage() {
                           深度自我洞察
                         </Text>
                         {isClient && (
-                          <Text className="index-page__dialog-step-progress">
-                            ({step1AnswerCount}/{totalQuestions})
-                          </Text>
+                          <View className="index-page__dialog-step-progress-row">
+                            {/* repeatCount > 0 为二次答题；或有进度未完成 168 题时也显示，便于用户识别可继续答题 */}
+                            {(repeatCount > 0 || (step1AnswerCount > 0 && step1AnswerCount < totalQuestions)) && !isStepLocked && (
+                              <Text className="index-page__dialog-step-repeat-tag">重新答题进度</Text>
+                            )}
+                            <Text className="index-page__dialog-step-progress">
+                              ({step1AnswerCount}/{totalQuestions})
+                            </Text>
+                          </View>
                         )}
                         {isStepCompleted && (
                           <View

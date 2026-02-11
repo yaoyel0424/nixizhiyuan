@@ -81,9 +81,10 @@ function convertScaleToQuestion(scale: Scale): Question {
 }
 
 export default function AllMajorsPage() {
-  // 获取路由参数，判断是否是重新开始
+  // 获取路由参数：重新开始（清空后重答） / 继续完成（repeatCount>0 时，不删数据、带上次答题标记）
   const router = useRouter()
   const isRestart = router.params?.restart === 'true'
+  const isContinue = router.params?.continue === '1' || router.params?.continue === 'true'
   
   // 从 Redux store 获取用户信息
   const userInfo = useAppSelector((state) => state.user.userInfo)
@@ -117,69 +118,51 @@ export default function AllMajorsPage() {
       try {
         setIsLoading(true)
         setLoadError(null)
-        const result = await getScalesWithAnswers()
-        
+        const result = await getScalesWithAnswers(isRestart || isContinue ? { repeat: true } : undefined)
+
         console.log('API 返回的数据:', result)
-        
-        // 设置量表数据
+
         setScales(result.scales || [])
-        
-        // 设置 API 返回的答案
         setApiAnswers(result.answers || [])
-        
-        // 将 API 答案转换为本地答案格式
-        // 注意：answer.scaleId 对应 question.id，answer.score 对应 option.optionValue
+
         const apiAnswersMap: Record<number, number> = {}
         if (result.answers && Array.isArray(result.answers)) {
           result.answers.forEach((answer) => {
             if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
-              // 确保 scaleId 和 score 都是数字类型
               const scaleId = Number(answer.scaleId)
               const score = Number(answer.score)
-              if (!isNaN(scaleId) && !isNaN(score)) {
-                apiAnswersMap[scaleId] = score
-              }
+              if (!isNaN(scaleId) && !isNaN(score)) apiAnswersMap[scaleId] = score
             }
           })
         }
-        
-        console.log('API 返回的答案数组:', result.answers)
-        console.log('API 答案映射:', apiAnswersMap)
-        
-        // 如果是重新开始，不加载任何答案，从头开始
+
+        const prevMap: Record<number, number> = {}
+        if (result.snapshot?.payload?.answers && Array.isArray(result.snapshot.payload.answers)) {
+          result.snapshot.payload.answers.forEach((a: { scaleId: number; score: number }) => {
+            const scaleId = Number(a.scaleId)
+            const score = Number(a.score)
+            if (!isNaN(scaleId) && !isNaN(score)) prevMap[scaleId] = score
+          })
+        }
+
         if (isRestart) {
           setAnswers({})
-          setPreviousAnswers({})
+          setPreviousAnswers(prevMap)
+        } else if (isContinue) {
+          setAnswers(apiAnswersMap)
+          setPreviousAnswers(prevMap)
         } else {
-          // 正常流程：只使用 API 返回的答案
           setAnswers(apiAnswersMap)
           setPreviousAnswers({})
         }
-        
-        // 如果有题目数据，初始化当前索引
+
         if (result.scales && result.scales.length > 0) {
           const questions = result.scales.map(convertScaleToQuestion)
           const sorted = sortQuestions(questions)
-          
+
           if (isRestart) {
-            // 重新开始：从第一题开始
             setCurrentIndex(0)
           } else {
-            // 正常流程：找到第一个未答题的题目
-            // 只使用 API 返回的答案
-            const apiAnswersMap: Record<number, number> = {}
-            if (result.answers && Array.isArray(result.answers)) {
-              result.answers.forEach((answer) => {
-                if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
-                  const scaleId = Number(answer.scaleId)
-                  const score = Number(answer.score)
-                  if (!isNaN(scaleId) && !isNaN(score)) {
-                    apiAnswersMap[scaleId] = score
-                  }
-                }
-              })
-            }
-            // 查找第一个未答题的题目索引
             const firstUnanswered = findFirstUnansweredIndex(sorted, apiAnswersMap)
             // 查找所有未答题的题目
             const unansweredIndices = findUnansweredQuestions(sorted, apiAnswersMap)
@@ -227,7 +210,7 @@ export default function AllMajorsPage() {
     }
 
     loadData()
-  }, [isRestart])
+  }, [isRestart, isContinue])
 
   // 当题目切换时，清除闪烁状态
   useEffect(() => {
@@ -748,7 +731,7 @@ export default function AllMajorsPage() {
                         handleAnswer(option.optionValue)
                       }
                     }}
-                    className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${wasPreviousAnswer ? 'all-majors-page__option--previous' : ''} ${isAnySubmitting ? 'all-majors-page__option--disabled' : ''}`}
+                    className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${isAnySubmitting ? 'all-majors-page__option--disabled' : ''}`}
                     style={isAnySubmitting ? { opacity: 0.5, pointerEvents: 'none' } : {}}
                   >
                     <View className="all-majors-page__option-content">
