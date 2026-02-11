@@ -334,6 +334,12 @@ export class UsersService {
           WHERE pf.user_id = :userId)`,
         'provinceFavorites',
       )
+      .addSelect(
+        `(SELECT COALESCE(MAX(CAST(s.version AS INTEGER)), 0)
+          FROM snapshots s
+          WHERE s.user_id = :userId AND s.type = 'scale_answers')`,
+        'repeatCount',
+      )
       .where('user.id = :userId', { userId })
       .getRawOne();
 
@@ -349,6 +355,7 @@ export class UsersService {
       countsResult?.provinceFavoritesCount || '0',
       10,
     );
+    const repeatCount = parseInt(countsResult?.repeatCount ?? '0', 10);
 
     // 3. 解析省份名称数组 JSON（如果查询结果为空，返回空数组）
     let provinceFavoritesList: string[] = [];
@@ -423,6 +430,7 @@ export class UsersService {
         majorFavoritesCount,
         provinceFavoritesCount,
         choicesCount,
+        repeatCount,
         preferredSubjects: user.preferredSubjects || null,
         provinceFavorites: provinceFavoritesList,
         province: user.province || null,

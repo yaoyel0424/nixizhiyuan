@@ -16,6 +16,10 @@ export class UserRelatedDataResponseDto {
   @Expose()
   choicesCount: number;
 
+  /** 量表问卷重新作答次数（快照 version 最大值，无快照为 0） */
+  @Expose()
+  repeatCount: number;
+
   @Expose()
   preferredSubjects?: string;
 
