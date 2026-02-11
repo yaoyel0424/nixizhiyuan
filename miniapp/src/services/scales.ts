@@ -111,8 +111,19 @@ export const submitScaleAnswer = async (
   userId?: number
 ): Promise<any> => {
   // 如果没有提供 userId，尝试自动获�?
-  const finalUserId = userId || getCurrentUserId()
-  
+  let finalUserId = userId || getCurrentUserId()
+
+  // 无 userId 时先尝试静默登录（兼容启动未完成或 iOS 等真机时序），再重试获取
+  if (!finalUserId) {
+    try {
+      const { silentLogin } = await import('@/utils/auth')
+      const ok = await silentLogin()
+      if (ok) finalUserId = getCurrentUserId()
+    } catch (_) {
+      // 静默登录失败则下方统一抛错
+    }
+  }
+
   if (!finalUserId) {
     throw new Error('无法获取用户ID，请先登陆')
   }
