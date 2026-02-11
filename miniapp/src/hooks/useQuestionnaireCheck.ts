@@ -22,15 +22,14 @@ function loadAnswersFromStorage(): Record<number, number> {
 
 /**
  * 检查问卷是否完成的 Hook
- * @returns { isCompleted, isLoading, answerCount, majorFavoritesCount, repeatCount }
- * repeatCount > 0 表示二次答题（来自 api/v1/users/related-data-count）
+ * @returns { isCompleted: boolean, isLoading: boolean, answerCount: number, majorFavoritesCount: number }
  */
 export function useQuestionnaireCheck() {
   const [isCompleted, setIsCompleted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [answerCount, setAnswerCount] = useState(0)
+  // 心动专业（专业收藏）数量：用于页面空态提示
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0)
-  const [repeatCount, setRepeatCount] = useState(0)
 
   const fetchRelatedData = useCallback(async () => {
     try {
@@ -41,7 +40,6 @@ export function useQuestionnaireCheck() {
         setAnswerCount(count)
         setIsCompleted(count >= UNLOCK_THRESHOLD)
         setMajorFavoritesCount(data.majorFavoritesCount || 0)
-        setRepeatCount(data.repeatCount ?? 0)
       } catch (error) {
         console.error('获取问卷完成状态失败，使用本地数据:', error)
         const storedAnswers = loadAnswersFromStorage()
@@ -49,14 +47,12 @@ export function useQuestionnaireCheck() {
         setAnswerCount(count)
         setIsCompleted(count >= UNLOCK_THRESHOLD)
         setMajorFavoritesCount(0)
-        setRepeatCount(0)
       }
     } catch (error) {
       console.error('检查问卷完成状态失败:', error)
       setIsCompleted(false)
       setAnswerCount(0)
       setMajorFavoritesCount(0)
-      setRepeatCount(0)
     } finally {
       setIsLoading(false)
     }
@@ -68,6 +64,7 @@ export function useQuestionnaireCheck() {
     fetchRelatedData()
   }, [fetchRelatedData])
 
+  // 页面再次显示时（如从专业探索页返回）重新拉取心动专业数量等，保证数据最新；跳过首次避免与 useEffect 重复请求
   useDidShow(() => {
     if (isFirstShowRef.current) {
       isFirstShowRef.current = false
@@ -76,5 +73,5 @@ export function useQuestionnaireCheck() {
     fetchRelatedData()
   })
 
-  return { isCompleted, isLoading, answerCount, majorFavoritesCount, repeatCount }
+  return { isCompleted, isLoading, answerCount, majorFavoritesCount }
 }

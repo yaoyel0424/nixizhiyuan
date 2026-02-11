@@ -1233,7 +1233,7 @@ function MajorScoreDisplay({ majorData }: { majorData: any }) {
 
 export default function CareerExplorationPage() {
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, repeatCount } = useQuestionnaireCheck()
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const router = useRouter()
@@ -1253,7 +1253,7 @@ export default function CareerExplorationPage() {
   // 检查问卷完成状态（从热门专业进入时跳过校验）
   useEffect(() => {
     if (isFromPopularMajors) return
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted && repeatCount <= 0) {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
       setShowQuestionnaireModal(true)
     }
   }, [isFromPopularMajors, isCheckingQuestionnaire, isQuestionnaireCompleted])
@@ -1564,7 +1564,6 @@ export default function CareerExplorationPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
-        repeatCount={repeatCount}
       />
     </View>
   )

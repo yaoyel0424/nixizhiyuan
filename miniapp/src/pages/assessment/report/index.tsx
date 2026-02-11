@@ -9,12 +9,12 @@ import './index.less'
 
 export default function ReportPage() {
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, repeatCount } = useQuestionnaireCheck()
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
 
-  // 检查问卷完成状态（二次答题 repeatCount > 0 时不弹窗，避免打扰）
+  // 检查问卷完成状态
   useEffect(() => {
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted && repeatCount <= 0) {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
       setShowQuestionnaireModal(true)
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
@@ -36,7 +36,6 @@ export default function ReportPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
-        repeatCount={repeatCount}
       />
     </PageContainer>
   )

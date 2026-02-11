@@ -213,27 +213,6 @@
   &:last-child {
     border-bottom: none;
   }
-
-  /* 联系客服按钮：去掉原生按钮样式，与列表项一致，避免文字被裁切 */
-  &--contact {
-    margin: 0;
-    padding: 32rpx;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    text-align: left;
-    line-height: normal;
-    overflow: visible;
-    box-sizing: border-box;
-    &::after {
-      border: none;
-    }
-  }
-
-  /* 点击/长按时不显示蓝色背景 */
-  &--contact-hover {
-    background: transparent !important;
-  }
   
   &::after {
     content: '';
@@ -319,16 +298,6 @@
   flex: 1;
   text-align: left;
   min-width: 0;
-}
-
-/* 联系客服项内标题与描述不裁切 */
-.profile-page__card-item--contact .profile-page__card-item-content {
-  overflow: visible;
-  min-width: 0;
-}
-
-.profile-page__card-item--contact .profile-page__card-item-title {
-  overflow: visible;
 }
 
 .profile-page__card-item-title {

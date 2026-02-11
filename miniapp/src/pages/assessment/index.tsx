@@ -28,7 +28,6 @@ export default function AssessmentPage() {
   const [intendedMajorsCount, setIntendedMajorsCount] = useState(0)
   const [selectedProvincesCount, setSelectedProvincesCount] = useState(0)
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0) // 量表答案数量
-  const [repeatCount, setRepeatCount] = useState(0) // API 返回的重新作答次数，>0 表示二次答题
   const [loading, setLoading] = useState(false)
   const fetchingRef = useRef(false) // 使用 ref 来防止重复调用
 
@@ -56,10 +55,10 @@ export default function AssessmentPage() {
       fetchingRef.current = true
       setLoading(true)
       const data = await getUserRelatedDataCount()
+      // 使用接口返回的数据
       setIntendedMajorsCount(data.majorFavoritesCount || 0)
       setSelectedProvincesCount(data.provinceFavoritesCount || 0)
       setScaleAnswersCount(data.scaleAnswersCount || 0)
-      setRepeatCount(data.repeatCount ?? 0)
     } catch (error) {
       console.error('获取用户统计数据失败:', error)
       // 如果接口调用失败，降级使用本地存储数据
@@ -89,6 +88,8 @@ export default function AssessmentPage() {
     const loadData = async () => {
       const storedAnswers = loadAnswersFromStorage()
       setAnswers(storedAnswers)
+      
+      // 从接口获取统计数据
       await fetchUserRelatedData()
     }
     loadData()
@@ -97,8 +98,11 @@ export default function AssessmentPage() {
 
   // 页面显示时重新加载数据（从其他页面返回时刷新）
   useDidShow(() => {
+    // 重新加载答案数据
     const storedAnswers = loadAnswersFromStorage()
     setAnswers(storedAnswers)
+    
+    // 重新获取统计数据（心动专业、意向省份、量表答案数量）
     fetchUserRelatedData()
   })
 
@@ -165,22 +169,14 @@ export default function AssessmentPage() {
               <Text className="assessment-page__progress-text">
                 维度已解锁 {completedCount}/{totalCount}
               </Text>
-              {repeatCount > 0 ? (
-                <Text className="assessment-page__progress-text assessment-page__progress-text--optimize">
-                  已答 {scaleAnswersCount}/168（未答将使用第一次答案，无需全部打完）
-                </Text>
-              ) : (
-                <Text className="assessment-page__progress-text">
-                  已解锁特质{completedTraitsCount}项，已匹配专业{matchedMajorsCount}个
-                </Text>
-              )}
+              <Text className="assessment-page__progress-text">
+                已解锁特质{completedTraitsCount}项，已匹配专业{matchedMajorsCount}个
+              </Text>
             </View>
             <Button
               onClick={() => {
                 Taro.navigateTo({
-                  url: repeatCount > 0
-                    ? '/pages/assessment/all-majors/index?mode=optimize'
-                    : '/pages/assessment/all-majors/index'
+                  url: '/pages/assessment/all-majors/index'
                 })
               }}
               className="assessment-page__continue-button"

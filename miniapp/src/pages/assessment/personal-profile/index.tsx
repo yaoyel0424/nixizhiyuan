@@ -1510,7 +1510,7 @@ function WordCloudCanvas({
 
 export default function PersonalProfilePage() {
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, repeatCount } = useQuestionnaireCheck();
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck();
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false);
   const [showOverviewModal, setShowOverviewModal] = useState(false);
   
@@ -1528,6 +1528,8 @@ export default function PersonalProfilePage() {
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
   const [feedbackPortraitId, setFeedbackPortraitId] = useState<number | undefined>(undefined);
   const [currentFeedbackOption, setCurrentFeedbackOption] = useState<string | null>(null);
+  const [showFeedbackRightArrow, setShowFeedbackRightArrow] = useState(true);
+  const feedbackScrollRef = useRef<{ viewWidth: number; contentWidth: number } | null>(null);
   const FEEDBACK_OPTIONS = [
     '非常符合',
     '比较符合',
@@ -1583,9 +1585,39 @@ export default function PersonalProfilePage() {
     };
   }, [showFeedbackDropdown, feedbackPortraitId]);
 
-  // 检查问卷完成状态（二次答题时不弹窗）
+  // 下拉打开时查询滚动区域与内容宽度，判断是否显示右侧箭头
   useEffect(() => {
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted && repeatCount <= 0) {
+    if (!showFeedbackDropdown) return;
+    setShowFeedbackRightArrow(true);
+    const t = setTimeout(() => {
+      const query = Taro.createSelectorQuery();
+      query.select('.personal-profile-page__feedback-scroll').boundingClientRect();
+      query.select('.personal-profile-page__feedback-row').boundingClientRect();
+      query.exec((res) => {
+        if (res[0] && res[1] && res[1].width > res[0].width) {
+          feedbackScrollRef.current = { viewWidth: res[0].width, contentWidth: res[1].width };
+          setShowFeedbackRightArrow(true);
+        } else {
+          feedbackScrollRef.current = null;
+          setShowFeedbackRightArrow(false);
+        }
+      });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [showFeedbackDropdown]);
+
+  const handleFeedbackScroll = useCallback((e: any) => {
+    const { scrollLeft } = e?.detail ?? {};
+    const ref = feedbackScrollRef.current;
+    if (ref && typeof scrollLeft === 'number') {
+      const threshold = ref.contentWidth - ref.viewWidth - 20;
+      setShowFeedbackRightArrow(threshold > 0 && scrollLeft < threshold);
+    }
+  }, []);
+
+  // 检查问卷完成状态
+  useEffect(() => {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
       setShowQuestionnaireModal(true);
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted]);
@@ -1732,7 +1764,11 @@ export default function PersonalProfilePage() {
               onClick={() => setShowFeedbackDropdown(false)}
             />
             <View className="personal-profile-page__feedback-dropdown">
-              <View className="personal-profile-page__feedback-scroll">
+              <ScrollView
+                scrollX
+                className="personal-profile-page__feedback-scroll"
+                onScroll={handleFeedbackScroll}
+              >
                 <View className="personal-profile-page__feedback-row">
                   {FEEDBACK_OPTIONS.map((opt) => (
                     <View
@@ -1744,7 +1780,12 @@ export default function PersonalProfilePage() {
                     </View>
                   ))}
                 </View>
-              </View>
+              </ScrollView>
+              {showFeedbackRightArrow && (
+                <View className="personal-profile-page__feedback-arrow" aria-hidden>
+                  <Text className="personal-profile-page__feedback-arrow-icon">›</Text>
+                </View>
+              )}
             </View>
           </>
         )}
@@ -1785,7 +1826,6 @@ export default function PersonalProfilePage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
-        repeatCount={repeatCount}
       />
     </View>
   );

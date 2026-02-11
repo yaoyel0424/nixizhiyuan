@@ -33,7 +33,7 @@ interface FavoriteMajorWithScore {
 
 export default function FavoriteMajorsPage() {
   // 检查问卷完成状态
-  const { isCompleted, isLoading: isCheckingQuestionnaire, answerCount, repeatCount } = useQuestionnaireCheck()
+  const { isCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const [loading, setLoading] = useState(true)
@@ -51,9 +51,9 @@ export default function FavoriteMajorsPage() {
   const [dragStartTop, setDragStartTop] = useState(0)
   const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null)
 
-  // 检查问卷完成状态（二次答题时不弹窗）
+  // 检查问卷完成状态
   useEffect(() => {
-    if (!isCheckingQuestionnaire && !isCompleted && repeatCount <= 0) {
+    if (!isCheckingQuestionnaire && !isCompleted) {
       setShowQuestionnaireModal(true)
     }
   }, [isCheckingQuestionnaire, isCompleted])
@@ -468,7 +468,6 @@ export default function FavoriteMajorsPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
-        repeatCount={repeatCount}
       />
 
     </View>
