@@ -19,7 +19,14 @@ export class LoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest<Request>();
-    const { method, url, ip } = request;
+    const { method, url } = request;
+    // 与 IpBlockGuard / RateLimitGuard 一致：优先 X-Forwarded-For、X-Real-IP，否则为代理内网 IP
+    const ip =
+      (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (request.headers['x-real-ip'] as string) ||
+      request.ip ||
+      request.socket?.remoteAddress ||
+      'unknown';
     const userId = (request as any).user?.id;
     const startTime = Date.now();
 

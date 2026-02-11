@@ -241,46 +241,88 @@ export class PortraitsService {
     const q4Talents = talentBottom20.filter((t) => q4TalentIds.has(t.elementId));
 
     const formatItem = (item: ElementScoreInfo) => ({
-      elementId: item.elementId,
-      elementName: item.elementName,
-      elementType: item.elementType,
-      score: item.score,
-      dimension: item.dimension,
-      correspondingElementId: item.correspondingElementId,
+          elementId: item.elementId,
+          elementName: item.elementName,
+          elementType: item.elementType,
+          score: item.score,
+          dimension: item.dimension,
+          correspondingElementId: item.correspondingElementId,
     });
 
+    /**
+     * 同一象限内维度排序：1.喜欢+天赋合计分倒序 2.合计分相等则天生喜欢得分更高的先
+     */
+    const sortPairsByLikeAndTalentScore = (
+      pairs: { likeId: number; talentId: number; quadrantId: number }[],
+      likes: ElementScoreInfo[],
+      talents: ElementScoreInfo[],
+    ) => {
+      const likeScoreMap = new Map(likes.map((l) => [l.elementId, l.score]));
+      const talentScoreMap = new Map(talents.map((t) => [t.elementId, t.score]));
+      const sortedPairs = [...pairs].sort((a, b) => {
+        const aLike = likeScoreMap.get(a.likeId) ?? 0;
+        const aTalent = talentScoreMap.get(a.talentId) ?? 0;
+        const bLike = likeScoreMap.get(b.likeId) ?? 0;
+        const bTalent = talentScoreMap.get(b.talentId) ?? 0;
+        const aSum = aLike + aTalent;
+        const bSum = bLike + bTalent;
+        if (bSum !== aSum) return bSum - aSum;
+        return bLike - aLike;
+      });
+      const sortedLikes = sortedPairs
+        .map((p) => likes.find((l) => l.elementId === p.likeId))
+        .filter((x): x is ElementScoreInfo => x != null);
+      const sortedTalents = sortedPairs
+        .map((p) => talents.find((t) => t.elementId === p.talentId))
+        .filter((x): x is ElementScoreInfo => x != null);
+      return { sortedPairs, sortedLikes, sortedTalents };
+    };
+
+    /** 按 sortedPairs 顺序重排 portrait 列表 */
+    const orderPortraitListByPairs = <T extends { likeId: number; talentId: number }>(
+      list: T[],
+      pairs: { likeId: number; talentId: number }[],
+    ): T[] => {
+      const orderMap = new Map(pairs.map((p, i) => [`${p.likeId},${p.talentId}`, i]));
+      return [...list].sort(
+        (a, b) =>
+          (orderMap.get(`${a.likeId},${a.talentId}`) ?? 999) -
+          (orderMap.get(`${b.likeId},${b.talentId}`) ?? 999),
+      );
+    };
+
     const formatPortrait = (portrait: Portrait, extra: Record<string, any> = {}) => ({
-      id: portrait.id,
-      name: portrait.name,
-      status: portrait.status,
-      partOneMainTitle: portrait.partOneMainTitle,
-      partOneSubTitle: portrait.partOneSubTitle,
-      partOneDescription: portrait.partOneDescription,
-      partTwoDescription: portrait.partTwoDescription,
-      likeElement: portrait.likeElement
-        ? {
-            id: portrait.likeElement.id,
-            name: portrait.likeElement.name,
-            type: portrait.likeElement.type,
+        id: portrait.id,
+        name: portrait.name,
+        status: portrait.status,
+        partOneMainTitle: portrait.partOneMainTitle,
+        partOneSubTitle: portrait.partOneSubTitle,
+        partOneDescription: portrait.partOneDescription,
+        partTwoDescription: portrait.partTwoDescription,
+        likeElement: portrait.likeElement
+          ? {
+              id: portrait.likeElement.id,
+              name: portrait.likeElement.name,
+              type: portrait.likeElement.type,
             ownedNaturalState: portrait.likeElement.ownedNaturalState,
-          }
-        : null,
-      talentElement: portrait.talentElement
-        ? {
-            id: portrait.talentElement.id,
-            name: portrait.talentElement.name,
-            type: portrait.talentElement.type,
+            }
+          : null,
+        talentElement: portrait.talentElement
+          ? {
+              id: portrait.talentElement.id,
+              name: portrait.talentElement.name,
+              type: portrait.talentElement.type,
             ownedNaturalState: portrait.talentElement.ownedNaturalState,
-          }
-        : null,
-      quadrant: portrait.quadrant
-        ? {
-            id: portrait.quadrant.id,
-            quadrants: portrait.quadrant.quadrants,
-            name: portrait.quadrant.name,
-            title: portrait.quadrant.title,
-          }
-        : null,
+            }
+          : null,
+        quadrant: portrait.quadrant
+          ? {
+              id: portrait.quadrant.id,
+              quadrants: portrait.quadrant.quadrants,
+              name: portrait.quadrant.name,
+              title: portrait.quadrant.title,
+            }
+          : null,
       ...extra,
     });
 
@@ -318,87 +360,113 @@ export class PortraitsService {
       quadrant4GrowthPaths: [] as any[],
     });
 
-    // 1. 第一象限
+    // 1. 第一象限（同一象限内：喜欢+天赋合计分倒序，同分则喜欢得分高的先）
     if (q1Pairs.length > 0) {
-      const portraitList = await queryPortraitsByPairs(q1Pairs);
+      const { sortedPairs, sortedLikes, sortedTalents } = sortPairsByLikeAndTalentScore(
+        q1Pairs,
+        q1Likes,
+        q1Talents,
+      );
+      const portraitList = orderPortraitListByPairs(
+        await queryPortraitsByPairs(sortedPairs),
+        sortedPairs,
+      );
       if (portraitList.length > 0) {
         const portraitIds = portraitList.map((p) => p.id);
         const [challenges1, niches1] = await Promise.all([
           this.quadrant1ChallengeRepository.find({ where: { portraitId: In(portraitIds) } }),
           this.quadrant1NicheRepository.find({ where: { portraitId: In(portraitIds) } }),
         ]);
-        const portraits = portraitList
-          .map((p) =>
-            formatPortrait(p, {
-              ...emptyExtra(),
-              quadrant1Challenges: challenges1.filter((c) => c.portraitId === p.id),
-              quadrant1Niches: niches1.filter((n) => n.portraitId === p.id),
-            }),
-          )
-          .sort((a, b) => a.id - b.id);
+        const portraits = portraitList.map((p) =>
+          formatPortrait(p, {
+            ...emptyExtra(),
+            quadrant1Challenges: challenges1.filter((c) => c.portraitId === p.id),
+            quadrant1Niches: niches1.filter((n) => n.portraitId === p.id),
+          }),
+        );
         return {
-          selectedLikeElements: q1Likes.map(formatItem),
-          selectedTalentElements: q1Talents.map(formatItem),
+          selectedLikeElements: sortedLikes.map(formatItem),
+          selectedTalentElements: sortedTalents.map(formatItem),
           portraits,
         };
       }
     }
 
-    // 2. 第二象限（第一象限无内容时）
+    // 2. 第二象限（第一象限无内容时；同一象限内：合计分倒序，同分则喜欢得分高的先）
     if (q2Pairs.length > 0) {
-      const portraitList = await queryPortraitsByPairs(q2Pairs);
+      const { sortedPairs, sortedLikes, sortedTalents } = sortPairsByLikeAndTalentScore(
+        q2Pairs,
+        q2Likes,
+        q2Talents,
+      );
+      const portraitList = orderPortraitListByPairs(
+        await queryPortraitsByPairs(sortedPairs),
+        sortedPairs,
+      );
       if (portraitList.length > 0) {
         const portraitIds = portraitList.map((p) => p.id);
         const [lifeChallenges2, feasibility2] = await Promise.all([
           this.quadrant2LifeChallengeRepository.find({ where: { portraitId: In(portraitIds) } }),
           this.quadrant2FeasibilityStudyRepository.find({ where: { portraitId: In(portraitIds) } }),
         ]);
-        const portraits = portraitList
-          .map((p) =>
-            formatPortrait(p, {
-              ...emptyExtra(),
-              quadrant2LifeChallenges: lifeChallenges2.filter((c) => c.portraitId === p.id),
-              quadrant2FeasibilityStudies: feasibility2.filter((s) => s.portraitId === p.id),
-            }),
-          )
-          .sort((a, b) => a.id - b.id);
+        const portraits = portraitList.map((p) =>
+          formatPortrait(p, {
+            ...emptyExtra(),
+            quadrant2LifeChallenges: lifeChallenges2.filter((c) => c.portraitId === p.id),
+            quadrant2FeasibilityStudies: feasibility2.filter((s) => s.portraitId === p.id),
+          }),
+        );
         return {
-          selectedLikeElements: q2Likes.map(formatItem),
-          selectedTalentElements: q2Talents.map(formatItem),
+          selectedLikeElements: sortedLikes.map(formatItem),
+          selectedTalentElements: sortedTalents.map(formatItem),
           portraits,
         };
       }
     }
 
-    // 3. 第四象限（第一、二象限均无内容时）
+    // 3. 第四象限（第一、二象限均无内容时；同一象限内：合计分倒序，同分则喜欢得分高的先）
     if (q4Pairs.length > 0) {
-      const portraitList = await queryPortraitsByPairs(q4Pairs);
+      const { sortedPairs, sortedLikes, sortedTalents } = sortPairsByLikeAndTalentScore(
+        q4Pairs,
+        q4Likes,
+        q4Talents,
+      );
+      const portraitList = orderPortraitListByPairs(
+        await queryPortraitsByPairs(sortedPairs),
+        sortedPairs,
+      );
       if (portraitList.length > 0) {
         const portraitIds = portraitList.map((p) => p.id);
         const [dilemmas4, growthPaths4] = await Promise.all([
           this.quadrant4DilemmaRepository.find({ where: { portraitId: In(portraitIds) } }),
           this.quadrant4GrowthPathRepository.find({ where: { portraitId: In(portraitIds) } }),
         ]);
-        const portraits = portraitList
-          .map((p) =>
-            formatPortrait(p, {
-              ...emptyExtra(),
-              quadrant4Dilemmas: dilemmas4.filter((d) => d.portraitId === p.id),
-              quadrant4GrowthPaths: growthPaths4.filter((g) => g.portraitId === p.id),
-            }),
-          )
-          .sort((a, b) => a.id - b.id);
+        const portraits = portraitList.map((p) =>
+          formatPortrait(p, {
+            ...emptyExtra(),
+            quadrant4Dilemmas: dilemmas4.filter((d) => d.portraitId === p.id),
+            quadrant4GrowthPaths: growthPaths4.filter((g) => g.portraitId === p.id),
+          }),
+        );
         return {
-          selectedLikeElements: q4Likes.map(formatItem),
-          selectedTalentElements: q4Talents.map(formatItem),
+          selectedLikeElements: sortedLikes.map(formatItem),
+          selectedTalentElements: sortedTalents.map(formatItem),
           portraits,
         };
       }
     }
 
-    // 4. 第三象限（其他象限均无内容时）
+    // 4. 第三象限（其他象限均无内容时；同一象限内：合计分倒序，同分则喜欢得分高的先）
     if (q3Pairs.length > 0) {
-      const portraitList = await queryPortraitsByPairs(q3Pairs);
+      const { sortedPairs, sortedLikes, sortedTalents } = sortPairsByLikeAndTalentScore(
+        q3Pairs,
+        q3Likes,
+        q3Talents,
+      );
+      const portraitList = orderPortraitListByPairs(
+        await queryPortraitsByPairs(sortedPairs),
+        sortedPairs,
+      );
       const portraitIds = portraitList.map((p) => p.id);
       const [weaknesses3, compensations3] =
         portraitIds.length > 0
@@ -407,18 +475,16 @@ export class PortraitsService {
               this.quadrant3CompensationRepository.find({ where: { portraitId: In(portraitIds) } }),
             ])
           : [[], []];
-      const portraits = portraitList
-        .map((p) =>
-          formatPortrait(p, {
-            ...emptyExtra(),
-            quadrant3Weaknesses: weaknesses3.filter((w) => w.portraitId === p.id),
-            quadrant3Compensations: compensations3.filter((c) => c.portraitId === p.id),
-          }),
-        )
-        .sort((a, b) => a.id - b.id);
+      const portraits = portraitList.map((p) =>
+        formatPortrait(p, {
+          ...emptyExtra(),
+          quadrant3Weaknesses: weaknesses3.filter((w) => w.portraitId === p.id),
+          quadrant3Compensations: compensations3.filter((c) => c.portraitId === p.id),
+        }),
+      );
       return {
-        selectedLikeElements: q3Likes.map(formatItem),
-        selectedTalentElements: q3Talents.map(formatItem),
+        selectedLikeElements: sortedLikes.map(formatItem),
+        selectedTalentElements: sortedTalents.map(formatItem),
         portraits,
       };
     }

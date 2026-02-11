@@ -11,6 +11,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { UserPortraitResponseDto } from './dto/portrait-response.dto';
 import { CreatePortraitFeedbackDto } from './dto/create-portrait-feedback.dto';
 import { plainToInstance } from 'class-transformer';
+import { Cache } from '@/common/decorators/cache.decorator';
 
 /**
  * 画像控制器
@@ -26,6 +27,7 @@ export class PortraitsController {
    * 根据用户的元素得分计算并匹配对应的画像
    */
   @Get('user')
+  @Cache(600)
   @ApiOperation({ summary: '查询用户画像' })
   @ApiResponse({
     status: 200,

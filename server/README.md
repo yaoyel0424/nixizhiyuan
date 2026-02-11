@@ -194,6 +194,12 @@ KEYS ip_block:*
 
 # 查看某 IP 剩余封禁时间（秒）
 TTL ip_block:某个IP
+
+# 删除单个封禁（解封某 IP）
+DEL ip_block:某个IP
+
+# 删除所有封禁（解封全部 IP，在 redis-cli 内执行；key 很多时慎用）
+EVAL "return redis.call('del', unpack(redis.call('keys', 'ip_block:*')))" 0
 ```
 
 **2. 访问速率 / DoS 计数（key 前缀 `rate_limit:`）**

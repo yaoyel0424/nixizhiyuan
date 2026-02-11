@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useRouter } from '@tarojs/taro'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import type { Portrait } from '@/services/portraits'
 import './index.less'
@@ -78,6 +78,9 @@ export default function PortraitDetailPage() {
   const [quadrant3CompensationTab, setQuadrant3CompensationTab] = useState<string>('0')
   const [quadrant4DilemmaTab, setQuadrant4DilemmaTab] = useState<string>('')
   const [quadrant4GrowthTab, setQuadrant4GrowthTab] = useState<string>('0')
+  const router = useRouter()
+  /** 用于从个人画像页「核心生态位·查看详情」跳转后滚动到该区块 */
+  const [scrollIntoViewId, setScrollIntoViewId] = useState<string>('')
 
   useEffect(() => {
     try {
@@ -90,6 +93,20 @@ export default function PortraitDetailPage() {
       console.warn('portrait detail parse:', e)
     }
   }, [])
+
+  // 从个人画像页带 anchor=niche 进入时，等画像与 DOM 就绪后滚动到核心生态位
+  useEffect(() => {
+    const anchor = router.params?.anchor
+    if (anchor !== 'niche' || !portrait?.quadrant1Niches?.length) return
+    const timer = setTimeout(() => {
+      setScrollIntoViewId('section-niche')
+    }, 250)
+    const clearTimer = setTimeout(() => setScrollIntoViewId(''), 1000)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(clearTimer)
+    }
+  }, [portrait, router.params?.anchor])
 
   // 挑战列表加载后默认选中第一项
   useEffect(() => {
@@ -135,7 +152,7 @@ export default function PortraitDetailPage() {
         )}
       </View>
 
-      <ScrollView className="portrait-detail-page__body" scrollY>
+      <ScrollView className="portrait-detail-page__body" scrollY scrollIntoView={scrollIntoViewId} scrollWithAnimation>
         {/* 第一块：status */}
         {portrait.status && (
           <View className="portrait-detail-page__chunk portrait-detail-page__chunk--1">
@@ -268,9 +285,9 @@ export default function PortraitDetailPage() {
           </View>
         )}
 
-        {/* 第三块：你的独特价值生态位 */}
+        {/* 第三块：你的独特价值生态位（id 供从个人画像页「核心生态位·查看详情」跳转定位） */}
         {portrait.quadrant1Niches && portrait.quadrant1Niches.length > 0 && (
-          <View className="portrait-detail-page__chunk portrait-detail-page__chunk--3">
+          <View id="section-niche" className="portrait-detail-page__chunk portrait-detail-page__chunk--3">
             <Section
               title="你的独特价值生态位"
               description={

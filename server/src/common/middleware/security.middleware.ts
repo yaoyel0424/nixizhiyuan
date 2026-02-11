@@ -64,6 +64,20 @@ const SQL_INJECTION_PATTERNS = [
 ];
 
 /**
+ * JNDI / Log4j 类 RCE 探测（用于 query、body 检测，命中则直接封禁 IP）
+ * 拦截 ${jndi:...}、jndi:rmi/ldap 等载荷，防止 Log4j 等漏洞探测与利用
+ */
+const JNDI_INJECTION_PATTERNS = [
+  /\$\{jndi\s*:/i,
+  /\$\{env\s*:/i,
+  /\$\{sys\s*:/i,
+  /\$\{java\s*:/i,
+  /\$\{lower\s*:/i,
+  /jndi\s*:\s*(rmi|ldap|ldaps|dns|nis|corba)\s*:/i,
+  /\$\{[^}]*jndi[^}]*\}/i,
+];
+
+/**
  * 安全中间件
  * 检测和阻止恶意请求
  */
@@ -99,8 +113,18 @@ export class SecurityMiddleware implements NestMiddleware {
       });
       throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
     }
+    // JNDI/Log4j 类探测：Query，命中则直接封禁 IP
+    if (queryStr && this.isJndiInjectionAttempt(queryStr)) {
+      await this.securityLogService.logMaliciousRequestAndBlockIp(req, 'JNDI/Log4j 注入检测(Query)', {
+        url,
+        method,
+        userAgent,
+        snippet: queryStr.substring(0, 200),
+      });
+      throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+    }
 
-    // 检查请求体中的恶意内容（含 SQL 注入），命中则直接封禁 IP
+    // 检查请求体中的恶意内容（含 SQL 注入、JNDI 探测），命中则直接封禁 IP
     if (body && typeof body === 'object') {
       const bodyStr = JSON.stringify(body);
       if (this.isMaliciousPayload(bodyStr)) {
@@ -114,6 +138,15 @@ export class SecurityMiddleware implements NestMiddleware {
       }
       if (this.isSqlInjectionAttempt(bodyStr)) {
         await this.securityLogService.logMaliciousRequestAndBlockIp(req, 'SQL 注入检测(Body)', {
+          url,
+          method,
+          userAgent,
+          body: bodyStr.substring(0, 200),
+        });
+        throw new HttpException('Bad Request', HttpStatus.BAD_REQUEST);
+      }
+      if (this.isJndiInjectionAttempt(bodyStr)) {
+        await this.securityLogService.logMaliciousRequestAndBlockIp(req, 'JNDI/Log4j 注入检测(Body)', {
           url,
           method,
           userAgent,
@@ -153,6 +186,13 @@ export class SecurityMiddleware implements NestMiddleware {
    */
   private isSqlInjectionAttempt(input: string): boolean {
     return SQL_INJECTION_PATTERNS.some((pattern) => pattern.test(input));
+  }
+
+  /**
+   * 检查是否包含 JNDI/Log4j 类 RCE 探测载荷（命中则直接封禁 IP）
+   */
+  private isJndiInjectionAttempt(input: string): boolean {
+    return JNDI_INJECTION_PATTERNS.some((pattern) => pattern.test(input));
   }
 
   /**

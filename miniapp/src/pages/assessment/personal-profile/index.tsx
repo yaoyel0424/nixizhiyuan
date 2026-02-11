@@ -187,7 +187,8 @@ function WordCloudCSS({
   feedbackDropdownContent,
 }: {
   portraits: Portrait[];
-  onItemClick?: (portrait: Portrait) => void;
+  /** 点击查看详情时调用，可选 anchor：如 'niche' 表示跳转到详情页后定位到核心生态位 */
+  onItemClick?: (portrait: Portrait, anchor?: string) => void;
   showOverviewModal: boolean;
   setShowOverviewModal: (show: boolean) => void;
   /** 点击「我要反馈」时调用，传入当前展示的画像 id */
@@ -272,10 +273,10 @@ function WordCloudCSS({
     });
   }, [cardItems.length]);
 
-  // 处理点击：仅当前卡片可点击进入详情
-  const handleItemClick = useCallback((portrait: Portrait) => {
+  // 处理点击：仅当前卡片可点击进入详情；anchor 可选，如 'niche' 表示跳转到详情页核心生态位
+  const handleItemClick = useCallback((portrait: Portrait, anchor?: string) => {
     if (onItemClick) {
-      onItemClick(portrait);
+      onItemClick(portrait, anchor);
     }
   }, [onItemClick]);
 
@@ -316,10 +317,8 @@ function WordCloudCSS({
 
   return (
     <View className="word-cloud-css word-cloud-css--stack">
-      {/* 仅保留上一个 / 当前 x/x / 下一个，画像名称在卡片内完整显示 */}
       <View className="word-cloud-css__stack-footer">
         <View className="word-cloud-css__stack-nav-row">
-          {/* 第一个页面隐藏"上一个"按钮，其他页面显示 */}
           {safeIndex > 0 ? (
             <View
               className="word-cloud-css__stack-nav-item word-cloud-css__stack-nav-item--clickable"
@@ -341,7 +340,6 @@ function WordCloudCSS({
               <Text className="word-cloud-css__feedback-btn-text">我要反馈</Text>
             </View>
           )}
-          {/* 最后一个页面隐藏"下一个"按钮文字，但保留占位符 */}
           <View
             className={`word-cloud-css__stack-nav-item ${safeIndex < cardItems.length - 1 ? 'word-cloud-css__stack-nav-item--clickable' : ''}`}
             onClick={safeIndex < cardItems.length - 1 ? () => setSafeIndex(safeIndex + 1) : undefined}
@@ -352,7 +350,6 @@ function WordCloudCSS({
           </View>
         </View>
       </View>
-      {feedbackDropdownContent}
       <View
         className="word-cloud-css__stack-container"
         onTouchStart={onTouchStart}
@@ -502,6 +499,30 @@ function WordCloudCSS({
                     </View>
                   </View>
                 )}
+                {/* 核心生态位 — 放在三大挑战下面，查看详情跳转到详情页核心生态位 */}
+                {item.portrait.quadrant1Niches && item.portrait.quadrant1Niches.length > 0 && (
+                  <View className="word-cloud-css__card-section">
+                    <View className="word-cloud-css__card-section-title-row">
+                      <Text className="word-cloud-css__card-section-title">独特价值生态位</Text>
+                      <Text
+                        className="word-cloud-css__card-detail-link"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleItemClick(item.portrait, 'niche');
+                        }}
+                      >
+                        查看详情
+                      </Text>
+                    </View>
+                    <View className="word-cloud-css__card-tags">
+                      {item.portrait.quadrant1Niches.map((n) => (
+                        <Text key={n.id} className="word-cloud-css__card-tag" style={{ borderColor: item.color }}>
+                          {n.title || n.description?.slice(0, 12) || '生态位'}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
             </View>
           );
@@ -573,7 +594,7 @@ function WordCloudCanvas({
   onItemClick,
 }: {
   portraits: Portrait[];
-  onItemClick?: (portrait: Portrait) => void;
+  onItemClick?: (portrait: Portrait, anchor?: string) => void;
 }) {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [dpr, setDpr] = useState(2);
@@ -1558,20 +1579,19 @@ export default function PersonalProfilePage() {
     }
   }, [feedbackPortraitId]);
 
-  // 打开「我要反馈」下拉时请求接口，用返回值给选项赋值（已选状态）；传入当前画像 id
-  useEffect(() => {
-    if (!showFeedbackDropdown) return;
-    let cancelled = false;
-    getPortraitFeedback(feedbackPortraitId)
+  // 点击「我要反馈」时：先请求接口拉取已选反馈，再打开下拉（保证一定会发请求）
+  const handleOpenFeedback = useCallback((portraitId: number | undefined) => {
+    setFeedbackPortraitId(portraitId);
+    setShowFeedbackDropdown((v) => !v);
+    getPortraitFeedback(portraitId)
       .then((res) => {
-        if (cancelled) return;
         if (res == null) {
           setCurrentFeedbackOption(null);
           return;
         }
         if (Array.isArray(res)) {
-          const forPortrait = feedbackPortraitId != null
-            ? res.find((r) => r.portraitId === feedbackPortraitId)
+          const forPortrait = portraitId != null
+            ? res.find((r) => r.portraitId === portraitId)
             : res.find((r) => r.portraitId == null);
           const item = forPortrait ?? res[0];
           setCurrentFeedbackOption(item?.option ?? null);
@@ -1579,13 +1599,8 @@ export default function PersonalProfilePage() {
           setCurrentFeedbackOption(res.option ?? null);
         }
       })
-      .catch(() => {
-        if (!cancelled) setCurrentFeedbackOption(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [showFeedbackDropdown, feedbackPortraitId]);
+      .catch(() => setCurrentFeedbackOption(null));
+  }, []);
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1624,9 +1639,10 @@ export default function PersonalProfilePage() {
   }, []);
 
   // 处理词云项点击：跳转到独立详情页（返回由导航栏处理，符合手机端习惯）
-  const handleWordCloudItemClick = useCallback((portrait: Portrait) => {
+  const handleWordCloudItemClick = useCallback((portrait: Portrait, anchor?: string) => {
     Taro.setStorageSync('portraitDetail', portrait);
-    Taro.navigateTo({ url: '/pages/assessment/portrait-detail/index' });
+    const url = '/pages/assessment/portrait-detail/index' + (anchor ? `?anchor=${anchor}` : '');
+    Taro.navigateTo({ url });
   }, []);
 
   // 打开总览报告对话框
@@ -1740,28 +1756,25 @@ export default function PersonalProfilePage() {
           onItemClick={handleWordCloudItemClick}
           showOverviewModal={showOverviewModal}
           setShowOverviewModal={setShowOverviewModal}
-          onFeedbackClick={(portraitId) => {
-            setFeedbackPortraitId(portraitId);
-            setShowFeedbackDropdown((v) => !v);
-          }}
-          feedbackDropdownContent={
-            showFeedbackDropdown ? (
-              <View className="personal-profile-page__feedback-dropdown">
-                <View className="personal-profile-page__feedback-row">
-                  {FEEDBACK_OPTIONS.map((opt) => (
-                    <View
-                      key={opt}
-                      className={`personal-profile-page__feedback-option${currentFeedbackOption === opt ? ' personal-profile-page__feedback-option--selected' : ''}`}
-                      onClick={() => handleFeedbackOption(opt)}
-                    >
-                      <Text className="personal-profile-page__feedback-option-text">{opt}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null
-          }
+          onFeedbackClick={handleOpenFeedback}
+          feedbackDropdownContent={null}
         />
+        {/* 下拉框在遮罩之上、紧贴导航下方，保证能显示且可点击 */}
+        {showFeedbackDropdown && (
+          <View className="personal-profile-page__feedback-dropdown personal-profile-page__feedback-dropdown--fixed">
+            <View className="personal-profile-page__feedback-row">
+              {FEEDBACK_OPTIONS.map((opt) => (
+                <View
+                  key={opt}
+                  className={`personal-profile-page__feedback-option${currentFeedbackOption === opt ? ' personal-profile-page__feedback-option--selected' : ''}`}
+                  onClick={() => handleFeedbackOption(opt)}
+                >
+                  <Text className="personal-profile-page__feedback-option-text">{opt}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
 
       {/* 浮动按钮：打开总览报告 */}

@@ -1002,7 +1002,7 @@ function MajorAnalysisActionCard({
                       )}
                       <View className="single-major-page__element-dialog-item-score career-exploration-page__score-result-row">
                         <View className="career-exploration-page__score-result-label-wrap">
-                          <Text className="single-major-page__element-dialog-item-score-label">测评结果：</Text>
+                          <Text className="single-major-page__element-dialog-item-score-label">自评结果：</Text>
                         </View>
                         <View className="career-exploration-page__score-bar-wrap">
                           <View className="career-exploration-page__score-bar-inner">

@@ -1,6 +1,9 @@
 @import '@/styles/variables.less';
 
 .portrait-detail-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   min-height: 100vh;
   background: #f8fafc;
   padding-bottom: env(safe-area-inset-bottom);
@@ -27,7 +30,10 @@
 }
 
 .portrait-detail-page__body {
+  flex: 1;
+  min-height: 0;
   padding: 24rpx;
+  height: 0; /* 配合 flex:1 使 scroll-view 获得固定高度，scrollIntoView 才能生效 */
 }
 
 /* 内容分块：块与块之间留出间距，卡片容器区分三部分 */

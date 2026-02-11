@@ -58,9 +58,19 @@
   border-radius: 16rpx;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
   border: 1rpx solid #e5e7eb;
+
   padding: 16rpx;
   overflow: visible;
   margin: 12rpx 24rpx 0;
+
+  /* 浮在遮罩之上，紧贴导航「我要反馈」下方 */
+  &--fixed {
+    position: fixed;
+    left: 24rpx;
+    right: 24rpx;
+    top: 220rpx;
+    z-index: 9999;
+  }
 }
 
 .personal-profile-page__feedback-row {
