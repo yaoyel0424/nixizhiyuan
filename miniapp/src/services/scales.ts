@@ -1,5 +1,5 @@
 import Taro from '@tarojs/taro'
-import { get, post } from './api'
+import { get, post, del } from './api'
 import { ScalesWithAnswersResponse, CreateScaleAnswerParams, ScaleAnswer } from '@/types/api'
 
 /**
@@ -48,11 +48,25 @@ function getCurrentUserId(): number | null {
 }
 
 /**
+ * 删除当前用户在 scale_answers 表中的所有答案
+ * @returns 删除后返回的快照（原来的答案），用于重测合并等
+ */
+export const deleteScaleAnswers = async (): Promise<any> => {
+  const response: any = await del<any>('/scales/answers')
+  if (response && typeof response === 'object' && response.data !== undefined) {
+    return response.data
+  }
+  return response
+}
+
+/**
  * 获取所有量表列表及用户答案
+ * @param repeat 是否重新作答场景，为 true 时返回合并后的快照（重测用）
  * @returns 包含量表列表和答案列表的响应
  */
-export const getScalesWithAnswers = async (): Promise<ScalesWithAnswersResponse> => {
-  const response: any = await get<ScalesWithAnswersResponse>('/scales')
+export const getScalesWithAnswers = async (repeat?: boolean): Promise<ScalesWithAnswersResponse> => {
+  const params = repeat === true ? { repeat: 'true' } : undefined
+  const response: any = await get<ScalesWithAnswersResponse>('/scales', params)
   console.log('getScalesWithAnswers 原始响应:', response)
   
   // 响应拦截器可能返回原始数据或 BaseResponse 格式

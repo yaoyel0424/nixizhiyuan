@@ -76,7 +76,7 @@ export default function IntendedMajorsSchoolsPage() {
   }
 
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, repeatCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const router = useRouter()
@@ -197,7 +197,7 @@ export default function IntendedMajorsSchoolsPage() {
   // 检查问卷完成状态（从热门专业进入时跳过校验）
   useEffect(() => {
     if (isFromPopularMajors) return
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted && repeatCount <= 0) {
       setShowQuestionnaireModal(true)
     }
   }, [isFromPopularMajors, isCheckingQuestionnaire, isQuestionnaireCompleted])
@@ -2116,6 +2116,7 @@ export default function IntendedMajorsSchoolsPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
+        repeatCount={repeatCount}
       />
 
       {/* 高考信息对话框 */}

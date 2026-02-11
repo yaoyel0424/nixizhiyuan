@@ -50,7 +50,7 @@
 
 .personal-profile-page__feedback-dropdown {
   position: fixed;
-  top: 72rpx;
+  top: 160rpx; /* 下移避免挡住「我要反馈」按钮 */
   left: 24rpx;
   right: 24rpx;
   z-index: 9999;
@@ -62,50 +62,25 @@
   overflow: visible;
 }
 
-.personal-profile-page__feedback-arrow {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 12rpx;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.95) 30%);
-  pointer-events: none;
-}
-
-.personal-profile-page__feedback-arrow-icon {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #1a56db;
-  line-height: 1;
-}
-
 .personal-profile-page__feedback-scroll {
   width: 100%;
 }
 
+/* 反馈选项折行显示，无需横向滑动 */
 .personal-profile-page__feedback-row {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
-  flex-wrap: nowrap;
-  padding: 0 8rpx;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 0 24rpx;
+  align-items: center;
 }
 
 .personal-profile-page__feedback-option {
-  flex-shrink: 0;
+  flex: 0 1 auto;
   padding: 16rpx 24rpx;
-  margin-left: 16rpx;
   background: #f9fafb;
   border-radius: 24rpx;
-  &:first-child {
-    margin-left: 24rpx;
-  }
-  &:last-child {
-    margin-right: 24rpx;
-  }
   &:active {
     background: #eff6ff;
   }

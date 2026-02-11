@@ -14,7 +14,7 @@ import './index.less'
 
 export default function ProvincesPage() {
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, repeatCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const [provinces, setProvinces] = useState<ProvinceResponse[]>([])
@@ -25,9 +25,9 @@ export default function ProvincesPage() {
   const [selectedType, setSelectedType] = useState<string>('全部')
   const [favoriteCount, setFavoriteCount] = useState(0)
 
-  // 检查问卷完成状态
+  // 检查问卷完成状态（二次答题时不弹窗）
   useEffect(() => {
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted && repeatCount <= 0) {
       setShowQuestionnaireModal(true)
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
@@ -488,6 +488,7 @@ export default function ProvincesPage() {
           open={showQuestionnaireModal}
           onOpenChange={setShowQuestionnaireModal}
           answerCount={answerCount}
+          repeatCount={repeatCount}
         />
       </View>
     </PageContainer>

@@ -45,7 +45,7 @@ const ELEMENT_ORDER = [
 
 export default function MajorsPage() {
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, repeatCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const [activeTab, setActiveTab] = useState<string>("本科")
@@ -93,9 +93,9 @@ export default function MajorsPage() {
   const [showShareGuide, setShowShareGuide] = useState(false)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
 
-  // 检查问卷完成状态
+  // 检查问卷完成状态（二次答题时不弹窗）
   useEffect(() => {
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted && repeatCount <= 0) {
       setShowQuestionnaireModal(true)
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
@@ -1159,6 +1159,7 @@ export default function MajorsPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
+        repeatCount={repeatCount}
       />
 
       {/* 高考信息弹窗（与意向专业页一致） */}

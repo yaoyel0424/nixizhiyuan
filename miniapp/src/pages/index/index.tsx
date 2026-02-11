@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/Dialog';
 import { getStorage } from '@/utils/storage';
 import { getUserRelatedDataCount } from '@/services/user';
+import { deleteScaleAnswers } from '@/services/scales';
 import { withErrorHandler, withAsyncErrorHandler } from '@/utils/errorHandler';
 import './index.less';
 
@@ -68,11 +69,12 @@ export default function IndexPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [isClient, setIsClient] = useState(false);
   const [systemInfo, setSystemInfo] = useState<any>(null);
-  // API 返回的数据统计
+  // API 返回的数据统计（repeatCount > 0 表示二次答题）
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0);
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0);
   const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0);
   const [choicesCount, setChoicesCount] = useState(0);
+  const [repeatCount, setRepeatCount] = useState(0);
   // 标记是否成功获取了 API 数据
   const [apiDataLoaded, setApiDataLoaded] = useState(false);
   // 降级使用的本地数据（API 失败时使用）
@@ -122,6 +124,7 @@ export default function IndexPage() {
         setMajorFavoritesCount(data.majorFavoritesCount || 0);
         setProvinceFavoritesCount(data.provinceFavoritesCount || 0);
         setChoicesCount(data.choicesCount || 0);
+        setRepeatCount(data.repeatCount ?? 0);
         setApiDataLoaded(true);
       })
       .catch(() => {
@@ -159,10 +162,10 @@ export default function IndexPage() {
   const useApiData = apiDataLoaded;
 
   // 步骤1：深度自我洞察 - 完成168题
-  // 使用 API 的 scaleAnswersCount 或本地 answeredCount
+  // 二次答题（repeatCount > 0）时第一次已答完，答案合并，后续步骤均解锁
   const step1AnswerCount = useApiData ? scaleAnswersCount : answeredCount;
   const step1Completed = step1AnswerCount >= UNLOCK_THRESHOLD;
-  const isUnlocked = isClient && step1AnswerCount >= UNLOCK_THRESHOLD;
+  const isUnlocked = isClient && (step1AnswerCount >= UNLOCK_THRESHOLD || repeatCount > 0);
 
   // 步骤2：发现契合专业 - 已解锁且访问过专业页面
   // 使用 API 的 majorFavoritesCount 或 choicesCount 判断是否访问过专业页面
@@ -189,8 +192,13 @@ export default function IndexPage() {
 
   const currentStep = getCurrentStep();
 
-  // 获取步骤状态
+  // 获取步骤状态；二次答题时步骤 2、3、4 不锁定（第一次已答完、答案合并）
   const getStepStatus = (stepNumber: number): StepStatus => {
+    if (repeatCount > 0 && stepNumber >= 2) {
+      if (stepNumber === 2) return step2Completed ? 'completed' : 'current';
+      if (stepNumber === 3) return step3Completed ? 'completed' : 'current';
+      if (stepNumber === 4) return step4Completed ? 'completed' : 'current';
+    }
     if (stepNumber < currentStep) return 'completed';
     if (stepNumber === currentStep) return 'current';
     return 'locked';
@@ -257,11 +265,13 @@ export default function IndexPage() {
     });
   }, '深度自我洞察功能暂时不可用，请稍后重试');
 
-  // 处理重新探索点击事件
-  const handleReExplore = withErrorHandler((e: any) => {
-    e.stopPropagation(); // 阻止事件冒泡，避免触发步骤点击
+  // 处理重新探索点击事件：先调用删除接口，删除后返回快照，再跳转重测页（将拉取合并快照）
+  const handleReExplore = withErrorHandler(async (e: any) => {
+    e.stopPropagation();
     setIsGuideDialogOpen(false);
-    // 跳转到评估页面重新开始，传递 restart=true 参数
+    Taro.showLoading({ title: '处理中...' });
+    await deleteScaleAnswers();
+    Taro.hideLoading();
     Taro.navigateTo({
       url: '/pages/assessment/all-majors/index?restart=true',
     });
@@ -413,6 +423,11 @@ export default function IndexPage() {
               <Text className="index-page__dialog-desc">
                 欢迎开启你的深度探索！请按以下步骤随心而行，自在发现。
               </Text>
+              {repeatCount > 0 && (
+                <Text className="index-page__dialog-desc index-page__dialog-desc--optimize">
+                  二次重新答题时，未答题目将使用第一次答案、与第一次合并，无需全部打完。
+                </Text>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -479,6 +494,9 @@ export default function IndexPage() {
                         </Text>
                         {isClient && (
                           <Text className="index-page__dialog-step-progress">
+                            {repeatCount > 0 && (
+                              <Text className="index-page__dialog-step-progress-label">二次答题进度 </Text>
+                            )}
                             ({step1AnswerCount}/{totalQuestions})
                           </Text>
                         )}

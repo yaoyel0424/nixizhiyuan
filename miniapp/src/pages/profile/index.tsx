@@ -7,6 +7,7 @@ import { clearUserInfo, updateUserInfo } from '@/store/slices/userSlice'
 import { logout, checkToken } from '@/services/auth'
 import { silentLogin } from '@/utils/auth'
 import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
+import { deleteScaleAnswers } from '@/services/scales'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -27,8 +28,9 @@ export default function ProfilePage() {
   // 从 Redux store 中获取用户信息
   const { userInfo, isLogin } = useAppSelector((state) => state.user)
   
-  // 用户数据统计
+  // 用户数据统计（repeatCount > 0 表示二次答题）
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0) // 量表答案数量
+  const [repeatCount, setRepeatCount] = useState(0) // 重新作答次数，来自 api
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0) // 专业收藏数量
   const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0) // 省份收藏数量
   const [choicesCount, setChoicesCount] = useState(0) // 备选方案数量
@@ -116,6 +118,7 @@ export default function ProfilePage() {
       getUserRelatedDataCount()
         .then((data) => {
           setScaleAnswersCount(data.scaleAnswersCount || 0)
+          setRepeatCount(data.repeatCount ?? 0)
           setMajorFavoritesCount(data.majorFavoritesCount || 0)
           setProvinceFavoritesCount(data.provinceFavoritesCount || 0)
           setChoicesCount(data.choicesCount || 0)
@@ -161,43 +164,80 @@ export default function ProfilePage() {
 
   const statusInfo = getStatusInfo()
 
+  /**
+   * 重新开始自我测评：
+   * - 未答满 168 且 repeatCount>0：引导「继续完成二次答题」，不调用删除接口
+   * - 未答满 168 且 repeatCount=0：引导去答题，不调用删除接口
+   * - 答满 168：弹框说明两种方式（清空重做 / 优化选项）及两次答案合并规则，仅选「清空重做」时调用删除接口
+   */
   const handleRestartAssessment = () => {
+    const isFull = scaleAnswersCount >= TOTAL_QUESTIONS
+    const isRepeat = repeatCount > 0
+
+    if (!isFull && isRepeat) {
+      Taro.showModal({
+        title: '继续完成二次答题',
+        content: '您正在二次答题中，未答题目将使用第一次答案并与后端自动合并。是否继续完成？',
+        confirmText: '继续答题',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/pages/assessment/all-majors/index?mode=optimize' })
+          }
+        }
+      })
+      return
+    }
+
+    if (!isFull) {
+      Taro.showModal({
+        title: '提示',
+        content: '您还未完成168题测评，是否前往继续答题？',
+        confirmText: '去答题',
+        success: (res) => {
+          if (res.confirm) {
+            Taro.navigateTo({ url: '/pages/assessment/all-majors/index' })
+          }
+        }
+      })
+      return
+    }
+
+    // 已答满 168：选择「清空重做」或「优化选项」，并明确说明两次答案合并
     Taro.showModal({
-      title: '提示',
-      content: '确定要重新开始测评吗？之前的答题记录将被清空，需要重新完成168题。',
-      success: (res) => {
+      title: '重新开始自我测评',
+      content: '可选两种方式：\n\n【清空重做】删除当前答案，重新答满168题。\n\n【优化选项】保留第一次答案作为基础，只修改想改的题目；未答题目将使用第一次答案，与第一次答案在后端自动合并，无需答满168题。',
+      showCancel: true,
+      cancelText: '优化选项',
+      confirmText: '清空重做',
+      success: async (res) => {
         if (res.confirm) {
           try {
-            // 清空本地存储的问卷答案
+            Taro.showLoading({ title: '处理中...' })
+            await deleteScaleAnswers()
+            Taro.hideLoading()
             Taro.removeStorageSync('questionnaire_answers')
             Taro.removeStorageSync('questionnaire_previous_answers')
-            
-            // 跳转到168题问卷页面（不加载答案，从头开始）
-            Taro.navigateTo({
-              url: '/pages/assessment/all-majors/index?restart=true'
-            })
-            
-            Taro.showToast({
-              title: '已清空答题记录',
-              icon: 'success',
-              duration: 1500
-            })
+            Taro.removeStorageSync('assessment_optimize_mode')
+            Taro.removeStorageSync('assessment_first_time_snapshot')
+            Taro.navigateTo({ url: '/pages/assessment/all-majors/index?restart=true' })
+            Taro.showToast({ title: '已清空答题记录', icon: 'success', duration: 1500 })
           } catch (error) {
+            Taro.hideLoading()
             console.error('清空答案失败:', error)
-            Taro.showToast({
-              title: '操作失败，请重试',
-              icon: 'none',
-              duration: 2000
-            })
+            Taro.showToast({ title: '操作失败，请重试', icon: 'none', duration: 2000 })
           }
+        } else {
+          Taro.navigateTo({ url: '/pages/assessment/all-majors/index?mode=optimize' })
         }
       }
     })
   }
 
+  // 答满168题或二次答题（repeatCount>0）时可查看特质报告
+  const canViewReport = scaleAnswersCount >= TOTAL_QUESTIONS || repeatCount > 0
+
   const handleViewReport = () => {
-    // 完成168题就可以查看
-    if (scaleAnswersCount < TOTAL_QUESTIONS) {
+    if (!canViewReport) {
       Taro.showToast({
         title: '请先完成168题测评',
         icon: 'none'
@@ -212,13 +252,6 @@ export default function ProfilePage() {
   const handleContinueAssessment = () => {
     Taro.navigateTo({
       url: '/pages/assessment/questionnaire/index'
-    })
-  }
-
-  const handleFeedback = () => {
-    Taro.showToast({
-      title: '功能开发中',
-      icon: 'none'
     })
   }
 
@@ -381,21 +414,21 @@ export default function ProfilePage() {
 
               {/* 查看我的报告 */}
               <View 
-                className={`profile-page__card-item ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-item--disabled' : ''}`}
+                className={`profile-page__card-item ${!canViewReport ? 'profile-page__card-item--disabled' : ''}`}
                 onClick={handleViewReport}
               >
-                <View className={`profile-page__card-icon ${scaleAnswersCount >= TOTAL_QUESTIONS ? 'profile-page__card-icon--report' : 'profile-page__card-icon--disabled'}`}>
+                <View className={`profile-page__card-icon ${canViewReport ? 'profile-page__card-icon--report' : 'profile-page__card-icon--disabled'}`}>
                   <Text className="profile-page__card-icon-text">📊</Text>
                 </View>
                 <View className="profile-page__card-item-content">
-                  <Text className={`profile-page__card-item-title ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-item-title--disabled' : ''}`}>
+                  <Text className={`profile-page__card-item-title ${!canViewReport ? 'profile-page__card-item-title--disabled' : ''}`}>
                     查看我的特质报告
                   </Text>
-                  <Text className={`profile-page__card-item-desc ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-item-desc--disabled' : ''}`}>
-                    {scaleAnswersCount >= TOTAL_QUESTIONS ? "全面了解自己与众不同的特质、面临的挑战和应对策略" : "完成168题后可查看"}
+                  <Text className={`profile-page__card-item-desc ${!canViewReport ? 'profile-page__card-item-desc--disabled' : ''}`}>
+                    {canViewReport ? "全面了解自己与众不同的特质、面临的挑战和应对策略" : "完成168题后可查看"}
                   </Text>
                 </View>
-                <Text className={`profile-page__card-arrow ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-arrow--disabled' : ''}`}>›</Text>
+                <Text className={`profile-page__card-arrow ${!canViewReport ? 'profile-page__card-arrow--disabled' : ''}`}>›</Text>
               </View>
 
               {/* 继续未完成测评（仅当有未完成测评时显示） */}
@@ -420,17 +453,21 @@ export default function ProfilePage() {
               <Text className="profile-page__card-title">更多</Text>
             </View>
             <View className="profile-page__card-body">
-              {/* 用户反馈 */}
-              <View className="profile-page__card-item" onClick={handleFeedback}>
+              {/* 联系客服：使用小程序客服会话 */}
+              <Button
+                openType="contact"
+                className="profile-page__card-item profile-page__card-item--contact"
+                hoverClass="profile-page__card-item--contact-hover"
+              >
                 <View className="profile-page__card-icon profile-page__card-icon--feedback">
                   <Text className="profile-page__card-icon-text">💬</Text>
                 </View>
                 <View className="profile-page__card-item-content">
-                  <Text className="profile-page__card-item-title">意见反馈</Text>
-                  <Text className="profile-page__card-item-desc">帮助我们做得更好</Text>
+                  <Text className="profile-page__card-item-title">联系客服</Text>
+                  <Text className="profile-page__card-item-desc">在线客服将及时回复您</Text>
                 </View>
                 <Text className="profile-page__card-arrow">›</Text>
-              </View>
+              </Button>
 
               {/* 关于我们 */}
               <View className="profile-page__card-item" onClick={handleAbout}>

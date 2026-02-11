@@ -81,7 +81,7 @@ const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '�
 
 export default function IntendedMajorsPage() {
   // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, majorFavoritesCount } = useQuestionnaireCheck()
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, majorFavoritesCount, repeatCount } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const router = useRouter()
@@ -345,9 +345,9 @@ export default function IntendedMajorsPage() {
     return false
   }
 
-  // 检查问卷完成状态
+  // 检查问卷完成状态（二次答题时不弹窗）
   useEffect(() => {
-    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+    if (!isCheckingQuestionnaire && !isQuestionnaireCompleted && repeatCount <= 0) {
       setShowQuestionnaireModal(true)
     }
   }, [isCheckingQuestionnaire, isQuestionnaireCompleted])
@@ -3205,6 +3205,7 @@ export default function IntendedMajorsPage() {
         open={showQuestionnaireModal}
         onOpenChange={setShowQuestionnaireModal}
         answerCount={answerCount}
+        repeatCount={repeatCount}
       />
     </View>
   )

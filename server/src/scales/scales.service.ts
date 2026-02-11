@@ -230,20 +230,8 @@ export class ScalesService {
       return { scales: sortedScales, answers: currentAnswers };
     }
 
-    // 将快照答案与现有答案合并（现有答案覆盖同 scaleId 的快照），合并结果放入快照中返回；顶层 answers 仍为当前库中答案
+    // snapshot.payload.answers 约定为第一次作答快照，供前端标注「第一次」选项；顶层 answers 为当前库中答案
     const snapshotAnswers = payload.answers ?? [];
-    const byScaleId = new Map<number, { scaleId: number; score: number; submittedAt: string | null }>();
-    snapshotAnswers.forEach((a) => {
-      byScaleId.set(a.scaleId, { scaleId: a.scaleId, score: a.score, submittedAt: a.submittedAt ?? null });
-    });
-    currentAnswers.forEach((a) => {
-      byScaleId.set(a.scaleId, {
-        scaleId: a.scaleId,
-        score: a.score,
-        submittedAt: a.submittedAt ? a.submittedAt.toISOString() : null,
-      });
-    });
-    const mergedAnswers = Array.from(byScaleId.values()).sort((a, b) => a.scaleId - b.scaleId);
 
     return {
       scales: sortedScales,
@@ -251,7 +239,10 @@ export class ScalesService {
       snapshot: {
         version: latest.version,
         createdAt: latest.createdAt,
-        payload: { answers: mergedAnswers, savedAt: payload.savedAt },
+        payload: {
+          answers: snapshotAnswers,
+          savedAt: payload.savedAt,
+        },
       },
     };
   }

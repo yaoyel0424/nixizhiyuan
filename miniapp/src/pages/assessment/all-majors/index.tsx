@@ -9,7 +9,8 @@ import { Progress } from '@/components/ui/Progress'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Question } from '@/types/questionnaire'
 import { Scale, ScaleAnswer } from '@/types/api'
-import { getScalesWithAnswers, submitScaleAnswer } from '@/services/scales'
+import { getScalesWithAnswers, submitScaleAnswer, deleteScaleAnswers } from '@/services/scales'
+import { getUserRelatedDataCount } from '@/services/user'
 import { useAppSelector } from '@/store/hooks'
 import './index.less'
 
@@ -80,18 +81,36 @@ function convertScaleToQuestion(scale: Scale): Question {
   }
 }
 
+const ASSESSMENT_OPTIMIZE_MODE_KEY = 'assessment_optimize_mode'
+/** 第一次答案快照持久化 key，用于进入页时恢复「第一次」标注 */
+const FIRST_TIME_SNAPSHOT_STORAGE_KEY = 'assessment_first_time_snapshot'
+
+/** 从 storage 恢复的 snapshot 可能是字符串 key，归一化为 number key */
+function normalizeSnapshot(raw: Record<string, number> | Record<number, number>): Record<number, number> {
+  const out: Record<number, number> = {}
+  Object.entries(raw).forEach(([k, v]) => {
+    const numK = Number(k)
+    const numV = Number(v)
+    if (!isNaN(numK) && !isNaN(numV)) out[numK] = numV
+  })
+  return out
+}
+
 export default function AllMajorsPage() {
-  // 获取路由参数，判断是否是重新开始
   const router = useRouter()
   const isRestart = router.params?.restart === 'true'
-  
-  // 从 Redux store 获取用户信息
+  const isOptimizeFromUrl = router.params?.mode === 'optimize'
+
   const userInfo = useAppSelector((state) => state.user.userInfo)
-  
+
   const [scales, setScales] = useState<Scale[]>([])
   const [apiAnswers, setApiAnswers] = useState<ScaleAnswer[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  /** 二次重新答题（优化模式）：未答题目将使用第一次答案，API 合并 */
+  const [optimizeMode, setOptimizeMode] = useState(false)
+  /** 第一次答案快照，用于问卷内标注「第一次」 */
+  const [beforeOptimizeSnapshot, setBeforeOptimizeSnapshot] = useState<Record<number, number> | null>(null)
 
   // 使用 useMemo 缓存排序后的题目，避免每次渲染都重新计算
   const sortedQuestions = useMemo(() => {
@@ -117,43 +136,70 @@ export default function AllMajorsPage() {
       try {
         setIsLoading(true)
         setLoadError(null)
-        const result = await getScalesWithAnswers()
-        
-        console.log('API 返回的数据:', result)
-        
-        // 设置量表数据
+        // 清空重做：不传 repeat。二次答题：传 repeat=true，snapshot.payload.answers 为第一次作答快照
+        const needRepeat = !(isRestart && !isOptimizeFromUrl)
+        const result = await getScalesWithAnswers(needRepeat)
+
         setScales(result.scales || [])
-        
-        // 设置 API 返回的答案
         setApiAnswers(result.answers || [])
-        
-        // 将 API 答案转换为本地答案格式
-        // 注意：answer.scaleId 对应 question.id，answer.score 对应 option.optionValue
+
         const apiAnswersMap: Record<number, number> = {}
         if (result.answers && Array.isArray(result.answers)) {
           result.answers.forEach((answer) => {
             if (answer.scaleId && answer.score !== undefined && answer.score !== null) {
-              // 确保 scaleId 和 score 都是数字类型
               const scaleId = Number(answer.scaleId)
               const score = Number(answer.score)
-              if (!isNaN(scaleId) && !isNaN(score)) {
-                apiAnswersMap[scaleId] = score
-              }
+              if (!isNaN(scaleId) && !isNaN(score)) apiAnswersMap[scaleId] = score
             }
           })
         }
-        
-        console.log('API 返回的答案数组:', result.answers)
-        console.log('API 答案映射:', apiAnswersMap)
-        
-        // 如果是重新开始，不加载任何答案，从头开始
-        if (isRestart) {
+
+        if (isRestart && !isOptimizeFromUrl) {
           setAnswers({})
           setPreviousAnswers({})
+          setBeforeOptimizeSnapshot(null)
+          setOptimizeMode(false)
+          Taro.removeStorageSync(ASSESSMENT_OPTIMIZE_MODE_KEY)
+          Taro.removeStorageSync(FIRST_TIME_SNAPSHOT_STORAGE_KEY)
         } else {
-          // 正常流程：只使用 API 返回的答案
           setAnswers(apiAnswersMap)
           setPreviousAnswers({})
+          const firstTimeList = result.snapshot?.payload?.answers
+          if (firstTimeList && Array.isArray(firstTimeList) && firstTimeList.length > 0) {
+            const firstTimeMap: Record<number, number> = {}
+            firstTimeList.forEach((a) => {
+              const scaleId = Number(a.scaleId)
+              const score = Number(a.score)
+              if (!isNaN(scaleId) && !isNaN(score)) firstTimeMap[scaleId] = score
+            })
+            setOptimizeMode(true)
+            setBeforeOptimizeSnapshot(firstTimeMap)
+            Taro.setStorageSync(ASSESSMENT_OPTIMIZE_MODE_KEY, '1')
+            try {
+              Taro.setStorageSync(FIRST_TIME_SNAPSHOT_STORAGE_KEY, JSON.stringify(firstTimeMap))
+            } catch (_) {}
+          } else if (isOptimizeFromUrl) {
+            setOptimizeMode(true)
+            const fallback = { ...apiAnswersMap }
+            setBeforeOptimizeSnapshot(fallback)
+            Taro.setStorageSync(ASSESSMENT_OPTIMIZE_MODE_KEY, '1')
+            try {
+              Taro.setStorageSync(FIRST_TIME_SNAPSHOT_STORAGE_KEY, JSON.stringify(fallback))
+            } catch (_) {}
+          } else {
+            try {
+              const related = await getUserRelatedDataCount()
+              if ((related.repeatCount ?? 0) > 0) {
+                setOptimizeMode(true)
+                const fallback = { ...apiAnswersMap }
+                setBeforeOptimizeSnapshot(fallback)
+                Taro.setStorageSync(ASSESSMENT_OPTIMIZE_MODE_KEY, '1')
+                try {
+                  Taro.setStorageSync(FIRST_TIME_SNAPSHOT_STORAGE_KEY, JSON.stringify(fallback))
+                } catch (_) {}
+              }
+            } catch (_) {}
+          }
         }
         
         // 如果有题目数据，初始化当前索引
@@ -227,7 +273,22 @@ export default function AllMajorsPage() {
     }
 
     loadData()
-  }, [isRestart])
+  }, [isRestart, isOptimizeFromUrl])
+
+  // 二次答题时从 storage 恢复优化模式与「第一次」快照，避免标注不显示
+  useEffect(() => {
+    if (beforeOptimizeSnapshot != null) return
+    const optimizeFromStorage = Taro.getStorageSync(ASSESSMENT_OPTIMIZE_MODE_KEY)
+    if (!optimizeMode && optimizeFromStorage) setOptimizeMode(true)
+    if (!optimizeMode && !optimizeFromStorage) return
+    try {
+      const stored = Taro.getStorageSync(FIRST_TIME_SNAPSHOT_STORAGE_KEY)
+      if (stored) {
+        const raw = JSON.parse(stored) as Record<string, number>
+        if (raw && typeof raw === 'object') setBeforeOptimizeSnapshot(normalizeSnapshot(raw))
+      }
+    } catch (_) {}
+  }, [optimizeMode, beforeOptimizeSnapshot])
 
   // 当题目切换时，清除闪烁状态
   useEffect(() => {
@@ -256,36 +317,40 @@ export default function AllMajorsPage() {
     setShowRestartConfirm(true)
   }
 
-  // 确认重新探索
-  const confirmRestartExploration = () => {
+  // 确认重新探索：调用删除接口（返回快照），再拉取 repeat=true 的合并快照，清空当前答案从头答
+  const confirmRestartExploration = async () => {
+    setShowRestartConfirm(false)
     try {
-      // 保存当前答案为上一次答案
+      Taro.showLoading({ title: '处理中...' })
+      await deleteScaleAnswers()
+      const result = await getScalesWithAnswers(true)
+      Taro.hideLoading()
+      // 保存当前答案为上一次答案（仅本地展示用）
       if (Object.keys(answers).length > 0) {
         savePreviousAnswersToStorage(answers)
         setPreviousAnswers(answers)
       }
-      // 清空当前答案
-      const emptyAnswers: Record<number, number> = {}
-      setAnswers(emptyAnswers)
-      // 回到第一题
+      setBeforeOptimizeSnapshot(null)
+      setOptimizeMode(false)
+      Taro.removeStorageSync(ASSESSMENT_OPTIMIZE_MODE_KEY)
+      Taro.removeStorageSync(FIRST_TIME_SNAPSHOT_STORAGE_KEY)
+      setScales(result.scales || [])
+      setApiAnswers(result.answers || [])
+      setAnswers({})
       setCurrentIndex(0)
-      // 关闭确认对话框
-      setShowRestartConfirm(false)
-      // 显示提示
       Taro.showToast({
         title: '已开始重新探索',
         icon: 'success',
         duration: 2000
       })
     } catch (error) {
+      Taro.hideLoading()
       console.error('重新探索失败:', error)
       Taro.showToast({
         title: '操作失败，请稍后重试',
         icon: 'none',
         duration: 2000
       })
-      // 即使出错也关闭对话框，避免卡住
-      setShowRestartConfirm(false)
     }
   }
 
@@ -572,7 +637,7 @@ export default function AllMajorsPage() {
               setIsLoading(true)
               setLoadError(null)
               try {
-                const result = await getScalesWithAnswers()
+                const result = await getScalesWithAnswers(isRestart)
                 setScales(result.scales || [])
                 setApiAnswers(result.answers || [])
                 const apiAnswersMap: Record<number, number> = {}
@@ -636,14 +701,6 @@ export default function AllMajorsPage() {
             <Text className={`all-majors-page__header-title ${progressAnimation ? 'all-majors-page__header-title--animated' : ''}`}>
               第 {currentIndex + 1} / {totalQuestions}题
             </Text>
-            {/* <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRestartExploration}
-              className="all-majors-page__header-clear"
-            >
-              重新探索
-            </Button> */}
           </View>
 
           {/* 维度进度条 */}
@@ -694,6 +751,11 @@ export default function AllMajorsPage() {
             </View>
           </View>
 
+          {optimizeMode && (
+            <View className="all-majors-page__header-optimize-tip">
+              <Text className="all-majors-page__header-optimize-tip-text">二次重新答题：未答题目将使用第一次答案，API 自动合并。</Text>
+            </View>
+          )}
           {/* 当前维度信息 */}
           <View className="all-majors-page__header-info">
             <Text className="all-majors-page__header-info-text">
@@ -729,6 +791,10 @@ export default function AllMajorsPage() {
                 const isSelected = answerValue === optionValue && !isNaN(answerValue) && !isNaN(optionValue)
                 const hasCurrentAnswer = questionId in answers && answers[questionId] !== undefined && answers[questionId] !== null
                 const wasPreviousAnswer = !hasCurrentAnswer && Number(previousAnswers[questionId]) === optionValue
+                const firstScore = beforeOptimizeSnapshot != null
+                  ? (beforeOptimizeSnapshot[questionId] ?? beforeOptimizeSnapshot[String(questionId) as unknown as number])
+                  : undefined
+                const isFirstTimeAnswer = optimizeMode && firstScore != null && !isNaN(optionValue) && Number(firstScore) === optionValue
                 const additionalInfoLines = (option.additionalInfo || '')
                   .split(';;')
                   .map((line) => line.trim())
@@ -748,9 +814,12 @@ export default function AllMajorsPage() {
                         handleAnswer(option.optionValue)
                       }
                     }}
-                    className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${wasPreviousAnswer ? 'all-majors-page__option--previous' : ''} ${isAnySubmitting ? 'all-majors-page__option--disabled' : ''}`}
+                    className={`all-majors-page__option ${isSelected ? 'all-majors-page__option--selected' : ''} ${wasPreviousAnswer ? 'all-majors-page__option--previous' : ''} ${isFirstTimeAnswer ? 'all-majors-page__option--first-time' : ''} ${isAnySubmitting ? 'all-majors-page__option--disabled' : ''}`}
                     style={isAnySubmitting ? { opacity: 0.5, pointerEvents: 'none' } : {}}
                   >
+                    {isFirstTimeAnswer && (
+                      <Text className="all-majors-page__option-first-badge">第一次</Text>
+                    )}
                     <View className="all-majors-page__option-content">
                       <View className="all-majors-page__option-text-wrapper">
                         <Text className="all-majors-page__option-text">{option.optionName}</Text>

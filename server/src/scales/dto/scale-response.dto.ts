@@ -92,11 +92,17 @@ export class ScaleSnapshotResponseDto {
   createdAt: Date;
 
   @ApiProperty({
-    description: '快照内容',
-    example: { answers: [{ scaleId: 113, score: 5, submittedAt: '2024-01-01T00:00:00.000Z' }], savedAt: '2024-01-01T00:00:00.000Z' },
+    description: '快照内容；answers 为第一次作答的答案，用于前端标注「第一次」选项',
+    example: {
+      answers: [{ scaleId: 113, score: 5, submittedAt: '2024-01-01T00:00:00.000Z' }],
+      savedAt: '2024-01-01T00:00:00.000Z',
+    },
   })
   @Expose()
-  payload: { answers: Array<{ scaleId: number; score: number; submittedAt: string | null }>; savedAt: string };
+  payload: {
+    answers: Array<{ scaleId: number; score: number; submittedAt: string | null }>;
+    savedAt: string;
+  };
 }
 
 /**
