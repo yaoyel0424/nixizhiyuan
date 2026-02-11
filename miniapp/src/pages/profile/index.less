@@ -237,6 +237,19 @@
     opacity: 0.5;
     pointer-events: none;
   }
+
+  /* 联系客服：小程序 Button open-type="contact" 需重置默认样式，与其它卡片项一致 */
+  &--contact {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    text-align: left;
+    line-height: normal;
+    &::after {
+      border: none;
+    }
+  }
 }
 
 .profile-page__card-icon {

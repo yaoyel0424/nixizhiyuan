@@ -48,64 +48,40 @@
   background: transparent;
 }
 
+/* 弹框在文档流中紧接「我要反馈」下方，不遮挡按钮 */
 .personal-profile-page__feedback-dropdown {
-  position: fixed;
-  top: 72rpx;
-  left: 24rpx;
-  right: 24rpx;
-  z-index: 9999;
+  position: relative;
+  left: 0;
+  right: 0;
+  z-index: 10;
   background: #fff;
   border-radius: 16rpx;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
   border: 1rpx solid #e5e7eb;
-  padding: 16rpx 0;
+  padding: 16rpx;
   overflow: visible;
-}
-
-.personal-profile-page__feedback-arrow {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 12rpx;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.95) 30%);
-  pointer-events: none;
-}
-
-.personal-profile-page__feedback-arrow-icon {
-  font-size: 40rpx;
-  font-weight: 600;
-  color: #1a56db;
-  line-height: 1;
-}
-
-.personal-profile-page__feedback-scroll {
-  width: 100%;
+  margin: 12rpx 24rpx 0;
 }
 
 .personal-profile-page__feedback-row {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  gap: 16rpx;
   padding: 0 8rpx;
 }
 
 .personal-profile-page__feedback-option {
   flex-shrink: 0;
   padding: 16rpx 24rpx;
-  margin-left: 16rpx;
   background: #f9fafb;
   border-radius: 24rpx;
-  &:first-child {
-    margin-left: 24rpx;
-  }
-  &:last-child {
-    margin-right: 24rpx;
-  }
+  min-height: 44rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   &:active {
     background: #eff6ff;
   }
@@ -122,6 +98,8 @@
 .personal-profile-page__feedback-option-text {
   font-size: 24rpx;
   color: #374151;
+  word-break: keep-all;
+  white-space: normal;
 }
 
 .personal-profile-page__loading {

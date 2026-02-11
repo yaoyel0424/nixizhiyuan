@@ -1,6 +1,6 @@
 // 个人中心页面
 import React, { useState, useEffect } from 'react'
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text, Image, Button as TaroButton } from '@tarojs/components'
 import Taro, { useShareAppMessage } from '@tarojs/taro'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearUserInfo, updateUserInfo } from '@/store/slices/userSlice'
@@ -215,13 +215,6 @@ export default function ProfilePage() {
     })
   }
 
-  const handleFeedback = () => {
-    Taro.showToast({
-      title: '功能开发中',
-      icon: 'none'
-    })
-  }
-
   const handleAbout = () => {
     Taro.showToast({
       title: '功能开发中',
@@ -420,17 +413,17 @@ export default function ProfilePage() {
               <Text className="profile-page__card-title">更多</Text>
             </View>
             <View className="profile-page__card-body">
-              {/* 用户反馈 */}
-              <View className="profile-page__card-item" onClick={handleFeedback}>
+              {/* 联系客服：使用小程序客服功能 */}
+              <TaroButton className="profile-page__card-item profile-page__card-item--contact" openType="contact">
                 <View className="profile-page__card-icon profile-page__card-icon--feedback">
                   <Text className="profile-page__card-icon-text">💬</Text>
                 </View>
                 <View className="profile-page__card-item-content">
-                  <Text className="profile-page__card-item-title">意见反馈</Text>
-                  <Text className="profile-page__card-item-desc">帮助我们做得更好</Text>
+                  <Text className="profile-page__card-item-title">联系客服</Text>
+                  <Text className="profile-page__card-item-desc">直接联系客服</Text>
                 </View>
                 <Text className="profile-page__card-arrow">›</Text>
-              </View>
+              </TaroButton>
 
               {/* 关于我们 */}
               <View className="profile-page__card-item" onClick={handleAbout}>

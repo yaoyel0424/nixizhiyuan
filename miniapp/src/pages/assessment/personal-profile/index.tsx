@@ -184,6 +184,7 @@ function WordCloudCSS({
   showOverviewModal,
   setShowOverviewModal,
   onFeedbackClick,
+  feedbackDropdownContent,
 }: {
   portraits: Portrait[];
   onItemClick?: (portrait: Portrait) => void;
@@ -191,6 +192,8 @@ function WordCloudCSS({
   setShowOverviewModal: (show: boolean) => void;
   /** 点击「我要反馈」时调用，传入当前展示的画像 id */
   onFeedbackClick?: (portraitId?: number) => void;
+  /** 反馈选项弹框内容，渲染在「我要反馈」按钮下方，不遮挡按钮 */
+  feedbackDropdownContent?: React.ReactNode;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef<number>(0);
@@ -349,6 +352,7 @@ function WordCloudCSS({
           </View>
         </View>
       </View>
+      {feedbackDropdownContent}
       <View
         className="word-cloud-css__stack-container"
         onTouchStart={onTouchStart}
@@ -1528,8 +1532,6 @@ export default function PersonalProfilePage() {
   const [showFeedbackDropdown, setShowFeedbackDropdown] = useState(false);
   const [feedbackPortraitId, setFeedbackPortraitId] = useState<number | undefined>(undefined);
   const [currentFeedbackOption, setCurrentFeedbackOption] = useState<string | null>(null);
-  const [showFeedbackRightArrow, setShowFeedbackRightArrow] = useState(true);
-  const feedbackScrollRef = useRef<{ viewWidth: number; contentWidth: number } | null>(null);
   const FEEDBACK_OPTIONS = [
     '非常符合',
     '比较符合',
@@ -1584,36 +1586,6 @@ export default function PersonalProfilePage() {
       cancelled = true;
     };
   }, [showFeedbackDropdown, feedbackPortraitId]);
-
-  // 下拉打开时查询滚动区域与内容宽度，判断是否显示右侧箭头
-  useEffect(() => {
-    if (!showFeedbackDropdown) return;
-    setShowFeedbackRightArrow(true);
-    const t = setTimeout(() => {
-      const query = Taro.createSelectorQuery();
-      query.select('.personal-profile-page__feedback-scroll').boundingClientRect();
-      query.select('.personal-profile-page__feedback-row').boundingClientRect();
-      query.exec((res) => {
-        if (res[0] && res[1] && res[1].width > res[0].width) {
-          feedbackScrollRef.current = { viewWidth: res[0].width, contentWidth: res[1].width };
-          setShowFeedbackRightArrow(true);
-        } else {
-          feedbackScrollRef.current = null;
-          setShowFeedbackRightArrow(false);
-        }
-      });
-    }, 100);
-    return () => clearTimeout(t);
-  }, [showFeedbackDropdown]);
-
-  const handleFeedbackScroll = useCallback((e: any) => {
-    const { scrollLeft } = e?.detail ?? {};
-    const ref = feedbackScrollRef.current;
-    if (ref && typeof scrollLeft === 'number') {
-      const threshold = ref.contentWidth - ref.viewWidth - 20;
-      setShowFeedbackRightArrow(threshold > 0 && scrollLeft < threshold);
-    }
-  }, []);
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -1755,20 +1727,26 @@ export default function PersonalProfilePage() {
 
   return (
     <View className="personal-profile-page">
-      {/* 画像内容区：「我要反馈」在导航行（当前/下一个之间），下拉浮层 */}
+      {/* 画像内容区：「我要反馈」在导航行（当前/下一个之间），弹框在其下方不遮挡 */}
       <View className="personal-profile-page__main">
         {showFeedbackDropdown && (
-          <>
-            <View
-              className="personal-profile-page__feedback-mask"
-              onClick={() => setShowFeedbackDropdown(false)}
-            />
-            <View className="personal-profile-page__feedback-dropdown">
-              <ScrollView
-                scrollX
-                className="personal-profile-page__feedback-scroll"
-                onScroll={handleFeedbackScroll}
-              >
+          <View
+            className="personal-profile-page__feedback-mask"
+            onClick={() => setShowFeedbackDropdown(false)}
+          />
+        )}
+        <WordCloudCSS
+          portraits={portraits}
+          onItemClick={handleWordCloudItemClick}
+          showOverviewModal={showOverviewModal}
+          setShowOverviewModal={setShowOverviewModal}
+          onFeedbackClick={(portraitId) => {
+            setFeedbackPortraitId(portraitId);
+            setShowFeedbackDropdown((v) => !v);
+          }}
+          feedbackDropdownContent={
+            showFeedbackDropdown ? (
+              <View className="personal-profile-page__feedback-dropdown">
                 <View className="personal-profile-page__feedback-row">
                   {FEEDBACK_OPTIONS.map((opt) => (
                     <View
@@ -1780,24 +1758,9 @@ export default function PersonalProfilePage() {
                     </View>
                   ))}
                 </View>
-              </ScrollView>
-              {showFeedbackRightArrow && (
-                <View className="personal-profile-page__feedback-arrow" aria-hidden>
-                  <Text className="personal-profile-page__feedback-arrow-icon">›</Text>
-                </View>
-              )}
-            </View>
-          </>
-        )}
-        <WordCloudCSS 
-          portraits={portraits} 
-          onItemClick={handleWordCloudItemClick}
-          showOverviewModal={showOverviewModal}
-          setShowOverviewModal={setShowOverviewModal}
-          onFeedbackClick={(portraitId) => {
-            setFeedbackPortraitId(portraitId);
-            setShowFeedbackDropdown((v) => !v);
-          }}
+              </View>
+            ) : null
+          }
         />
       </View>
 
