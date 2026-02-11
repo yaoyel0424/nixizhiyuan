@@ -80,8 +80,28 @@ export class ScaleResponseDto {
 }
 
 /**
+ * 快照信息（仅 repeat=true 时返回）
+ */
+export class ScaleSnapshotResponseDto {
+  @ApiProperty({ description: '快照版本', example: '1' })
+  @Expose()
+  version: string;
+
+  @ApiProperty({ description: '快照创建时间' })
+  @Expose()
+  createdAt: Date;
+
+  @ApiProperty({
+    description: '快照内容',
+    example: { answers: [{ scaleId: 113, score: 5, submittedAt: '2024-01-01T00:00:00.000Z' }], savedAt: '2024-01-01T00:00:00.000Z' },
+  })
+  @Expose()
+  payload: { answers: Array<{ scaleId: number; score: number; submittedAt: string | null }>; savedAt: string };
+}
+
+/**
  * 量表与答案组合响应 DTO
- * 包含量表列表和答案列表
+ * 包含量表列表和答案列表；repeat=true 时额外包含 snapshot
  */
 export class ScalesWithAnswersResponseDto {
   @ApiProperty({
@@ -99,5 +119,14 @@ export class ScalesWithAnswersResponseDto {
   @Expose()
   @Type(() => ScaleAnswerResponseDto)
   answers: ScaleAnswerResponseDto[];
+
+  @ApiProperty({
+    description: '快照信息（仅 repeat=true 且存在快照时返回）',
+    type: ScaleSnapshotResponseDto,
+    required: false,
+  })
+  @Expose()
+  @Type(() => ScaleSnapshotResponseDto)
+  snapshot?: ScaleSnapshotResponseDto;
 }
 

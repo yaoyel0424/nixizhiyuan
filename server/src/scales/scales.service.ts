@@ -1,12 +1,14 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, MoreThanOrEqual } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository, In, MoreThan, MoreThanOrEqual } from 'typeorm';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { Scale } from '@/entities/scale.entity';
 import { User } from '@/entities/user.entity';
+import { Snapshot } from '@/entities/snapshot.entity';
 import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
 import { PopularMajor } from '@/entities/popular-major.entity';
 import { PopularMajorAnswer } from '@/entities/popular-major-answer.entity';
@@ -32,10 +34,14 @@ export class ScalesService {
     private readonly popularMajorRepository: Repository<PopularMajor>,
     @InjectRepository(PopularMajorAnswer)
     private readonly popularMajorAnswerRepository: Repository<PopularMajorAnswer>,
+    @InjectRepository(Snapshot)
+    private readonly snapshotRepository: Repository<Snapshot>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
-   * 创建或更新量表答案
+   * 创建或更新量表答案（同一用户同一量表仅一条，在事务内加锁保证并发安全）
    * @param createDto 创建量表答案 DTO
    * @returns 创建或更新的量表答案
    */
@@ -44,19 +50,16 @@ export class ScalesService {
     const user = await this.userRepository.findOne({
       where: { id: createDto.userId },
     });
-
     if (!user) {
       throw new NotFoundException({
         code: ErrorCode.RESOURCE_NOT_FOUND,
         message: '用户不存在',
       });
     }
-
     // 验证量表是否存在
     const scale = await this.scaleRepository.findOne({
       where: { id: createDto.scaleId },
     });
-
     if (!scale) {
       throw new NotFoundException({
         code: ErrorCode.RESOURCE_NOT_FOUND,
@@ -64,52 +67,111 @@ export class ScalesService {
       });
     }
 
-    // 检查是否已存在相同的答案（同一用户同一量表）
-    const existingAnswer = await this.scaleAnswerRepository.findOne({
-      where: {
-        userId: createDto.userId,
+    return this.dataSource.transaction(async (manager) => {
+      const answerRepo = manager.getRepository(ScaleAnswer);
+      // 加行锁，避免同一 (userId, scaleId) 并发创建重复记录
+      const existingAnswer = await answerRepo.findOne({
+        where: {
+          userId: createDto.userId,
+          scaleId: createDto.scaleId,
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (existingAnswer) {
+        existingAnswer.score = createDto.score;
+        existingAnswer.submittedAt = new Date();
+        return answerRepo.save(existingAnswer);
+      }
+
+      const scaleAnswer = answerRepo.create({
         scaleId: createDto.scaleId,
-      },
+        userId: createDto.userId,
+        score: createDto.score,
+      });
+      return answerRepo.save(scaleAnswer);
     });
-
-    if (existingAnswer) {
-      // 如果答案已存在，更新它
-      existingAnswer.score = createDto.score;
-      existingAnswer.submittedAt = new Date();
-      const updatedAnswer = await this.scaleAnswerRepository.save(existingAnswer);
-      return updatedAnswer;
-    }
-
-    // 如果答案不存在，创建新的
-    const scaleAnswer = this.scaleAnswerRepository.create({
-      scaleId: createDto.scaleId,
-      userId: createDto.userId,
-      score: createDto.score,
-    });
-
-    const savedAnswer = await this.scaleAnswerRepository.save(scaleAnswer);
-
-    return savedAnswer;
   }
 
   /**
-   * 删除当前用户在 scale_answers 表中的所有记录
+   * 删除当前用户在 scale_answers 表中的所有记录。
+   * 删除前若用户已完成全部 168 量表，则先将旧答案写入快照再删除。
    * @param userId 用户ID
-   * @returns 删除的记录数
+   * @returns 删除的记录数、是否已做快照，以及快照信息（当已做快照时）
    */
-  async deleteAnswersByUserId(userId: number): Promise<{ deleted: number }> {
-    const result = await this.scaleAnswerRepository.delete({ userId });
-    return { deleted: result.affected ?? 0 };
+  async deleteAnswersByUserId(userId: number): Promise<{
+    deleted: number;
+    snapshotted: boolean;
+    snapshot?: { version: string; createdAt: Date; payload: { answers: Array<{ scaleId: number; score: number; submittedAt: string | null }>; savedAt: string } };
+  }> {
+    // 快照（若需要）与删除在同一事务中完成，保证要么都成功要么都回滚
+    return this.dataSource.transaction(async (manager) => {
+      const answerRepo = manager.getRepository(ScaleAnswer);
+      const snapshotRepo = manager.getRepository(Snapshot);
+      // 直接查询当前用户 scaleId > 112 的答案（168 问卷）；若数量为 168 则视为已做完，删除前做快照
+      const answers168 = await answerRepo.find({
+        where: { userId, scaleId: MoreThan(112) },
+        select: ['id', 'scaleId', 'userId', 'score', 'submittedAt'],
+        order: { scaleId: 'ASC' },
+      });
+      if (answers168.length < 168) {
+        throw new BadRequestException('请完成问卷后再重新作答');
+      }
+      const needSnapshot = answers168.length >= 168;
+      let snapshotReturn: { version: string; createdAt: Date; payload: { answers: Array<{ scaleId: number; score: number; submittedAt: string | null }>; savedAt: string } } | undefined;
+
+      if (needSnapshot) {
+        const payload = {
+          answers: answers168.map((a) => ({
+            scaleId: a.scaleId,
+            score: a.score,
+            submittedAt: a.submittedAt?.toISOString?.() ?? null,
+          })),
+          savedAt: new Date().toISOString(),
+        };
+        const existing = await snapshotRepo.find({
+          where: { userId, type: 'scale_answers' },
+          select: ['version'],
+        });
+        const maxVer = existing.reduce((max, row) => {
+          const n = parseInt(row.version, 10);
+          return Number.isNaN(n) ? max : Math.max(max, n);
+        }, 0);
+        const nextVersion = String(maxVer + 1);
+        const saved = await snapshotRepo.save(
+          snapshotRepo.create({
+            userId,
+            type: 'scale_answers',
+            version: nextVersion,
+            payload: JSON.stringify(payload),
+          }),
+        );
+        snapshotReturn = {
+          version: saved.version,
+          createdAt: saved.createdAt,
+          payload,
+        };
+      }
+
+      const result = await answerRepo.delete({ userId, scaleId: MoreThan(112) });
+      return {
+        deleted: result.affected ?? 0,
+        snapshotted: needSnapshot,
+        ...(snapshotReturn && { snapshot: snapshotReturn }),
+      };
+    });
   }
 
   /**
    * 获取所有量表列表及用户答案
    * @param userId 用户ID
-   * @returns 包含量表列表和答案列表的对象
+   * @param repeat 是否重新作答场景；为 true 时取快照中 version 最大的版本与现有答案合并，并返回该快照信息
+   * @returns 包含量表列表、答案列表，以及 repeat 时的快照（可选）
    */
-  async findAllWithAnswers(userId: number): Promise<{
+  async findAllWithAnswers(userId: number, repeat = false): Promise<{
     scales: Scale[];
     answers: ScaleAnswer[];
+    snapshot?: { version: string; createdAt: Date; payload: { answers: Array<{ scaleId: number; score: number; }>; savedAt: string } };
   }> {
     // 查询所有量表，包含 options 关系
     const scales = await this.scaleRepository.find({
@@ -124,31 +186,73 @@ export class ScalesService {
     const sortedScales = scales.sort((a, b) => {
       const indexA = dimensionOrder.indexOf(a.dimension);
       const indexB = dimensionOrder.indexOf(b.dimension);
-      // 如果 dimension 不在预定义列表中，排在最后
       const finalIndexA = indexA === -1 ? dimensionOrder.length : indexA;
       const finalIndexB = indexB === -1 ? dimensionOrder.length : indexB;
       return finalIndexA - finalIndexB;
     });
 
-    // 对每个 scale 的 options 按照 id 排序
     sortedScales.forEach((scale) => {
       if (scale.options && scale.options.length > 0) {
         scale.options.sort((a, b) => a.id - b.id);
       }
     });
- 
 
-    // 根据用户ID和量表ID列表查询答案
-    const answers = await this.scaleAnswerRepository.find({
+    // 当前用户 scaleId >= 113 的答案
+    const currentAnswers = await this.scaleAnswerRepository.find({
       where: {
         userId,
-        scaleId: MoreThanOrEqual(113)
+        scaleId: MoreThanOrEqual(113),
       },
     });
 
+    if (!repeat) {
+      return { scales: sortedScales, answers: currentAnswers };
+    }
+
+    // repeat 为 true：取 version 最大的快照，与现有答案合并，并返回快照
+    const snapshots = await this.snapshotRepository.find({
+      where: { userId, type: 'scale_answers' },
+      select: ['id', 'version', 'payload', 'createdAt'],
+      order: { createdAt: 'DESC' },
+    });
+    const latest = snapshots.length === 0
+      ? null
+      : snapshots.reduce((a, b) => (parseInt(a.version, 10) > parseInt(b.version, 10) ? a : b));
+
+    if (!latest) {
+      return { scales: sortedScales, answers: currentAnswers };
+    }
+
+    let payload: { answers: Array<{ scaleId: number; score: number; submittedAt: string | null }>; savedAt: string };
+    try {
+      payload = JSON.parse(latest.payload) as typeof payload;
+    } catch {
+      return { scales: sortedScales, answers: currentAnswers };
+    }
+
+    // 将快照答案与现有答案合并（现有答案覆盖同 scaleId 的快照），合并结果放入快照中返回；顶层 answers 仍为当前库中答案
+    const snapshotAnswers = payload.answers ?? [];
+    const byScaleId = new Map<number, { scaleId: number; score: number; submittedAt: string | null }>();
+    snapshotAnswers.forEach((a) => {
+      byScaleId.set(a.scaleId, { scaleId: a.scaleId, score: a.score, submittedAt: a.submittedAt ?? null });
+    });
+    currentAnswers.forEach((a) => {
+      byScaleId.set(a.scaleId, {
+        scaleId: a.scaleId,
+        score: a.score,
+        submittedAt: a.submittedAt ? a.submittedAt.toISOString() : null,
+      });
+    });
+    const mergedAnswers = Array.from(byScaleId.values()).sort((a, b) => a.scaleId - b.scaleId);
+
     return {
       scales: sortedScales,
-      answers,
+      answers: currentAnswers,
+      snapshot: {
+        version: latest.version,
+        createdAt: latest.createdAt,
+        payload: { answers: mergedAnswers, savedAt: payload.savedAt },
+      },
     };
   }
 

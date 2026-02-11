@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { Scale } from '@/entities/scale.entity';
 import { User } from '@/entities/user.entity';
+import { Snapshot } from '@/entities/snapshot.entity';
 import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
 import { PopularMajor } from '@/entities/popular-major.entity';
 import { PopularMajorAnswer } from '@/entities/popular-major-answer.entity';
@@ -18,6 +19,7 @@ import { ScalesController } from './scales.controller';
       ScaleAnswer,
       Scale,
       User,
+      Snapshot,
       MajorElementAnalysis,
       PopularMajor,
       PopularMajorAnswer,

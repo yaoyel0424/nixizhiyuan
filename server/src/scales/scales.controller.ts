@@ -6,10 +6,12 @@ import {
   Body,
   Param,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
@@ -20,6 +22,7 @@ import { CreateScaleAnswerDto } from './dto/create-scale-answer.dto';
 import { ScaleAnswerResponseDto } from './dto/scale-answer-response.dto';
 import {
   ScaleResponseDto,
+  ScaleSnapshotResponseDto,
   ScalesWithAnswersResponseDto,
 } from './dto/scale-response.dto';
 import { PopularMajorAnswerResponseDto } from '../popular-majors/dto/popular-major-answer-response.dto';
@@ -37,6 +40,7 @@ export class ScalesController {
 
   @Get()
   @ApiOperation({ summary: '获取所有量表列表及用户答案' })
+  @ApiQuery({ name: 'repeat', required: false, description: '是否重新作答场景', example: false })
   @ApiResponse({
     status: 200,
     description: '查询成功',
@@ -44,9 +48,11 @@ export class ScalesController {
   })
   async findAll(
     @CurrentUser() user: any,
+    @Query('repeat') repeat?: string,
   ): Promise<ScalesWithAnswersResponseDto> {
-    const result = await this.scalesService.findAllWithAnswers(user.id);
-    return {
+    const repeatFlag = repeat === 'true';
+    const result = await this.scalesService.findAllWithAnswers(user.id, repeatFlag);
+    const response: ScalesWithAnswersResponseDto = {
       scales: plainToInstance(ScaleResponseDto, result.scales, {
         excludeExtraneousValues: true,
       }),
@@ -54,6 +60,12 @@ export class ScalesController {
         excludeExtraneousValues: true,
       }),
     };
+    if (result.snapshot) {
+      response.snapshot = plainToInstance(ScaleSnapshotResponseDto, result.snapshot, {
+        excludeExtraneousValues: true,
+      });
+    }
+    return response;
   }
 
   @Get('major-detail/:majorDetailId')
@@ -213,7 +225,10 @@ export class ScalesController {
   }
 
   @Delete('answers')
-  @ApiOperation({ summary: '删除当前用户在 scale_answers 表中的所有答案' })
+  @ApiOperation({
+    summary: '删除当前用户在 scale_answers 表中的所有答案',
+    description: '删除前会判断用户是否已完成全部 168 量表；若已完成则先将旧数据写入快照再删除。',
+  })
   @ApiResponse({
     status: 200,
     description: '删除成功',
@@ -221,13 +236,31 @@ export class ScalesController {
       type: 'object',
       properties: {
         deleted: { type: 'number', description: '删除的记录数' },
+        snapshotted: { type: 'boolean', description: '是否在删除前已做快照（仅当完成全部 168 量表时为 true）' },
+        snapshot: {
+          type: 'object',
+          description: '快照信息（仅当 snapshotted 为 true 时返回）',
+          properties: {
+            version: { type: 'string' },
+            createdAt: { type: 'string', format: 'date-time' },
+            payload: { type: 'object', description: '含 answers、savedAt' },
+          },
+        },
       },
     },
   })
   async deleteMyAnswers(
     @CurrentUser() user: any,
-  ): Promise<{ deleted: number }> {
-    return this.scalesService.deleteAnswersByUserId(user.id);
+  ): Promise<{ deleted: number; snapshotted: boolean; snapshot?: ScaleSnapshotResponseDto }> {
+    const result = await this.scalesService.deleteAnswersByUserId(user.id);
+    if (result.snapshot) {
+      return {
+        deleted: result.deleted,
+        snapshotted: result.snapshotted,
+        snapshot: plainToInstance(ScaleSnapshotResponseDto, result.snapshot, { excludeExtraneousValues: true }),
+      };
+    }
+    return { deleted: result.deleted, snapshotted: result.snapshotted };
   }
 }
 

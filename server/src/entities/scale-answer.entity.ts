@@ -1,9 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn, Index, Unique } from 'typeorm';
 import { Scale } from './scale.entity';
 import { User } from './user.entity';
 
 @Entity('scale_answers')
 @Index(['userId', 'scaleId']) // 复合索引：用于优化查询 WHERE user_id = ? AND scale_id > 112
+@Unique(['userId', 'scaleId']) // 同一用户同一量表仅一条答案
 export class ScaleAnswer {
   @PrimaryGeneratedColumn()
   id: number;
