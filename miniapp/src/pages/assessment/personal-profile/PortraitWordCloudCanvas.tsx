@@ -357,9 +357,10 @@ export default function PortraitWordCloudCanvas ({ portraits, onPortraitClick, v
     const navHeightPx = (navRpx * windowWidth) / 750 + safeBottom + 20
     const headerAndPadding = 120
     const h = Math.max(280, windowHeight - navHeightPx - headerAndPadding)
+    // iOS 真机不允许 0 延迟，用最小延迟避免 setInterval/setTimeout 报错
     const timer = setTimeout(() => {
       if (!cancelled) setCanvasHeight(h)
-    }, 0)
+    }, 10)
     return () => {
       cancelled = true
       clearTimeout(timer)

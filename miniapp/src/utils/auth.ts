@@ -6,22 +6,96 @@ import { store } from '@/store';
 import { setUserInfo, setLoginLoading } from '@/store/slices/userSlice';
 import { wechatLogin } from '@/services';
 
+/** 从本地 storage 解析出的 userInfo 格式（用于 setUserInfo） */
+interface FormattedUserInfo {
+  id: string;
+  username: string;
+  nickname: string;
+  avatar: string;
+  phone: string;
+  email: string;
+  token: string;
+}
+
+/**
+ * 从 Taro storage 恢复 userInfo：先读 key「userInfo」，没有再从「persist:root」里取 user 切片（兼容 iOS 仅 persist 有数据）
+ * 供静默登录与个人中心等页面恢复展示用
+ */
+const DEBUG_AUTH = false; // 真机调试登录态时可改为 true
+
+export function getUserInfoFromStorage(token: string): FormattedUserInfo | null {
+  try {
+    let parsed: any = null;
+    let source = '';
+    const rawUserInfo = Taro.getStorageSync('userInfo');
+    if (rawUserInfo !== null && rawUserInfo !== undefined && rawUserInfo !== '') {
+      parsed = typeof rawUserInfo === 'string' ? JSON.parse(rawUserInfo) : rawUserInfo;
+      source = 'userInfo';
+    }
+    if (!parsed && token) {
+      const persistRoot = Taro.getStorageSync('persist:root');
+      if (DEBUG_AUTH) {
+        console.log('[auth] getUserInfoFromStorage: userInfo 为空，persist:root 存在?', !!persistRoot, '长度', persistRoot ? String(persistRoot).length : 0);
+      }
+      if (persistRoot) {
+        const root = typeof persistRoot === 'string' ? JSON.parse(persistRoot) : persistRoot;
+        const userStr = root?.user;
+        if (userStr) {
+          const userSlice = typeof userStr === 'string' ? JSON.parse(userStr) : userStr;
+          parsed = userSlice?.userInfo;
+          source = 'persist:root';
+        }
+      }
+    }
+    if (DEBUG_AUTH) {
+      console.log('[auth] getUserInfoFromStorage: source=', source || '无', 'parsed有id?', !!parsed?.id, 'nickname?', !!parsed?.nickname);
+    }
+    if (!parsed || (!parsed.nickname && !parsed.username && !parsed.id)) {
+      if (DEBUG_AUTH) console.log('[auth] getUserInfoFromStorage: 返回 null，未从 storage 拿到有效 userInfo');
+      return null;
+    }
+    return {
+      id: String(parsed.id || ''),
+      username: parsed.username || parsed.nickname || parsed.nickName || '微信用户',
+      nickname: parsed.nickname || parsed.nickName || parsed.username || '微信用户',
+      avatar: parsed.avatar || parsed.avatarUrl || '',
+      phone: parsed.phone || '',
+      email: parsed.email || '',
+      token: parsed.token || token || '',
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * 静默登录（不显示提示，不跳转页面）
  * 在应用启动时自动执行，获取 token
  */
 export const silentLogin = async (): Promise<boolean> => {
   try {
-    // 检查是否已有 token，如果有且有效，则不需要重新登录
+    // 检查是否已有 token，如果有则不需要发登录请求，但需保证 Redux 有 userInfo（iOS 上 persist 可能未同步）
     const existingToken = Taro.getStorageSync('token');
     if (existingToken) {
-      // 确保 userInfo 也在存储中（兼容仅 token 存在但 userInfo 被清理或未写入的情况，如 iOS 真机）
-      const storedUserInfo = Taro.getStorageSync('userInfo');
-      if (!storedUserInfo) {
-        const state = store.getState() as { user?: { userInfo?: any } };
-        const userInfo = state?.user?.userInfo;
-        if (userInfo) {
-          Taro.setStorageSync('userInfo', userInfo);
+      const state = store.getState() as { user?: { userInfo?: any } };
+      const hasUserInStore = !!state?.user?.userInfo;
+      if (DEBUG_AUTH) {
+        console.log('[auth] silentLogin: 已有 token，hasUserInStore=', hasUserInStore);
+      }
+      if (!hasUserInStore) {
+        const formatted = getUserInfoFromStorage(existingToken);
+        if (DEBUG_AUTH) {
+          console.log('[auth] silentLogin: 从 storage 恢复 formatted?', !!formatted, 'nickname=', formatted?.nickname);
+        }
+        if (formatted) {
+          store.dispatch(setUserInfo(formatted));
+        }
+        // 若 storage 无有效 userInfo（如 iOS 上 persist:root 长度仅 15），由个人中心页 tryRestore 调 check-token 拉取并写入，避免此处循环依赖
+      } else {
+        // 确保 userInfo 也在存储中（兼容仅 token 存在但 userInfo 被清理的情况）
+        const storedUserInfo = Taro.getStorageSync('userInfo');
+        if (!storedUserInfo && state?.user?.userInfo) {
+          Taro.setStorageSync('userInfo', state.user.userInfo);
         }
       }
       return true;

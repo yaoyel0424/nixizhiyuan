@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, Image, Button as TaroButton } from '@tarojs/components'
 import Taro, { useShareAppMessage } from '@tarojs/taro'
+import { store } from '@/store'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { clearUserInfo, updateUserInfo } from '@/store/slices/userSlice'
+import { clearUserInfo, updateUserInfo, setUserInfo } from '@/store/slices/userSlice'
 import { logout, checkToken } from '@/services/auth'
-import { silentLogin } from '@/utils/auth'
+import { silentLogin, getUserInfoFromStorage } from '@/utils/auth'
 import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
 import { deleteScaleAnswers } from '@/services/scales'
 import { PageContainer } from '@/components/PageContainer'
@@ -85,6 +86,43 @@ export default function ProfilePage() {
   useEffect(() => {
     setAvatarError(false)
   }, [userInfo?.avatar])
+
+  // iOS 等真机兜底：Redux 未登录但本地有 token 时，从 storage 恢复；若 storage 无则用 check-token 拉取
+  useEffect(() => {
+    const tryRestore = () => {
+      const hasUser = !!store.getState().user?.userInfo
+      const token = Taro.getStorageSync('token')
+      if (hasUser) return
+      if (!token) return
+      let formatted = getUserInfoFromStorage(token)
+      if (formatted) {
+        dispatch(setUserInfo(formatted))
+        return
+      }
+      checkToken()
+        .then((data: any) => {
+          const user = data?.user ?? data?.userInfo ?? data
+          const nickname = (user?.nickname ?? user?.nickName ?? user?.username ?? '').toString().trim()
+          const id = user?.id ?? user?.userId ?? ''
+          if (!id && !nickname) return
+          const next = {
+            id: String(id || ''),
+            username: nickname || '微信用户',
+            nickname: nickname || '微信用户',
+            avatar: (user?.avatar ?? user?.avatarUrl ?? '').toString(),
+            phone: (user?.phone ?? '').toString(),
+            email: (user?.email ?? '').toString(),
+            token,
+          }
+          dispatch(setUserInfo(next))
+          Taro.setStorageSync('userInfo', next)
+        })
+        .catch(() => {})
+    }
+    tryRestore()
+    const t = setTimeout(tryRestore, 300)
+    return () => clearTimeout(t)
+  }, [dispatch])
 
   // 个人中心页：调用 /auth/check-token 获取最新 nickname 并同步到 Redux
   useEffect(() => {

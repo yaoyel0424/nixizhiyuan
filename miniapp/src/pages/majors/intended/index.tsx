@@ -247,7 +247,7 @@ export default function IntendedMajorsPage() {
       // 监听暂停状态变化，实时更新ref
       const pauseCheckInterval = setInterval(() => {
         pausedRef.current = exportPaused
-      }, 50)
+      }, Math.max(50, 1))
 
       try {
         // 调用导出函数

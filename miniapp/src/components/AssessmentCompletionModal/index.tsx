@@ -47,7 +47,7 @@ export function AssessmentCompletionModal({
     // 生成报告阶段 - 循环显示消息
     const messageInterval = setInterval(() => {
       setCurrentMessageIndex((prev) => (prev + 1) % loadingMessages.length)
-    }, 2000)
+    }, Math.max(2000, 1))
 
     // 完成阶段
     const completeTimer = setTimeout(() => {
