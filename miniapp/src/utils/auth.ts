@@ -15,8 +15,15 @@ export const silentLogin = async (): Promise<boolean> => {
     // 检查是否已有 token，如果有且有效，则不需要重新登录
     const existingToken = Taro.getStorageSync('token');
     if (existingToken) {
-      // 可以在这里验证 token 是否有效，如果有效则直接返回
-      // 为了简化，这里假设有 token 就认为已登录
+      // 确保 userInfo 也在存储中（兼容仅 token 存在但 userInfo 被清理或未写入的情况，如 iOS 真机）
+      const storedUserInfo = Taro.getStorageSync('userInfo');
+      if (!storedUserInfo) {
+        const state = store.getState() as { user?: { userInfo?: any } };
+        const userInfo = state?.user?.userInfo;
+        if (userInfo) {
+          Taro.setStorageSync('userInfo', userInfo);
+        }
+      }
       return true;
     }
 
@@ -64,6 +71,9 @@ export const silentLogin = async (): Promise<boolean> => {
 
       // 保存用户信息到 store
       store.dispatch(setUserInfo(formattedUserInfo));
+
+      // 同步写入 userInfo 到本地存储，供 getCurrentUserId 等读取（不依赖 redux-persist 时机，兼容 iOS 等真机）
+      Taro.setStorageSync('userInfo', formattedUserInfo);
 
       // 保存 token 到本地存储
       if (token) {
