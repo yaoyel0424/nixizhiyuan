@@ -855,6 +855,32 @@ export class EnrollPlanService {
       Number.isFinite(maxScore) &&
       minScore <= maxScore;
 
+    /** 按每个学校下各 plan 的 majorScores 最后一项的 minRank 排序：key 越小越靠后，Infinity 排最后；预计算 key 一次 O(n)，再排序 O(n log n) */
+    const sortByLastMinRank = (arr: { plans?: any[] }[]) => {
+      if (arr.length <= 1) return;
+      const withKey = arr.map((item) => {
+        const plans = item.plans ?? [];
+        let key = Infinity;
+        for (let i = 0; i < plans.length; i++) {
+          const scores = plans[i]?.majorScores;
+          const lastRank =
+            scores?.length > 0 ? scores[scores.length - 1]?.minRank ?? Infinity : Infinity;
+          const val = lastRank == null ? Infinity : Number(lastRank);
+          if (Number.isFinite(val) && val < key) key = val;
+        }
+        return { item, key };
+      });
+      // minRank 越小的学校排在越后；key 为 Infinity 的学校排在最后
+      withKey.sort((a, b) => {
+        if (a.key === Infinity && b.key === Infinity) return 0;
+        if (a.key === Infinity) return 1;
+        if (b.key === Infinity) return -1;
+        return b.key - a.key;
+      });
+      arr.length = 0;
+      arr.push(...withKey.map((x) => x.item));
+    };
+
     const isPlanInRange = (
       plan: EnrollmentPlanItemDto,
       min: number,
@@ -903,9 +929,16 @@ export class EnrollPlanService {
             }
           });
 
+          // 按「每个学校下各 plan 的 majorScores 最后一项的 minRank」排序：预计算 key 一次，再排序，保证 O(n) 取键 + O(n log n) 排序
+          sortByLastMinRank(inRange);
+          sortByLastMinRank(notInRange);
+
           return { inRange, notInRange };
         })()
-      : { inRange: simplifiedResults, notInRange: [] };
+      : (() => {
+          sortByLastMinRank(simplifiedResults);
+          return { inRange: simplifiedResults, notInRange: [] };
+        })();
 
     const totalPlans = simplifiedResults.reduce(
       (sum, school) => sum + school.plans.length,
