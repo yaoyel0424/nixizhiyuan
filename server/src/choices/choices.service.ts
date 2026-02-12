@@ -16,11 +16,11 @@ import { SchoolDetail } from '@/entities/school-detail.entity';
 import { EnrollmentPlan } from '@/entities/enrollment-plan.entity';
 import { MajorScore } from '@/entities/major-score.entity';
 import { Major } from '@/entities/major.entity';
+import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ScoresService } from '@/scores/scores.service';
 import { CreateChoiceDto } from './dto/create-choice.dto';
 import { ChoiceResponseDto } from './dto/choice-response.dto';
 import { GroupedChoiceResponseDto, SchoolGroupDto, MajorGroupGroupDto, ChoiceInGroupDto, VolunteerStatisticsDto } from './dto/grouped-choice-response.dto'; 
-import { PROVINCE_NAME_TO_CODE, PROVINCE_CODE_TO_VOLUNTEER_COUNT } from '@/config/province';
 import { plainToInstance } from 'class-transformer';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
@@ -59,6 +59,8 @@ export class ChoicesService {
     private readonly schoolDetailRepository: Repository<SchoolDetail>,
     @InjectRepository(Major)
     private readonly majorRepository: Repository<Major>,
+    @InjectRepository(ProvinceBatch)
+    private readonly provinceBatchRepository: Repository<ProvinceBatch>,
     private readonly scoresService: ScoresService,
     private readonly configService: ConfigService,
   ) {}
@@ -273,6 +275,17 @@ export class ChoicesService {
 
     // 2. 确定年份
     const queryYear = year || this.configService.get<string>('CURRENT_YEAR') || '2025';
+
+    // 2.1 根据用户省份、批次、年份从 province_batches 获取志愿总数（用于统计 total）
+    const provinceBatch = await this.provinceBatchRepository.findOne({
+      where: {
+        province: user.province ?? '',
+        batch: user.enrollType ?? '',
+        year: queryYear,
+      },
+      select: ['volunteerCount'],
+    });
+    const totalCount = provinceBatch?.volunteerCount ?? 0;
 
     // 3. 准备查询条件
     // 从用户信息中获取：province, enrollType (对应 batch), preferredSubjects, secondarySubjects
@@ -508,9 +521,7 @@ export class ChoicesService {
 
     if (choices.length === 0) {
       this.logger.log(`用户 ${userId} 在 ${queryYear} 年没有志愿选择记录`);
-      // 返回空数据，但包含统计信息
-      const provinceCode = user.province ? PROVINCE_NAME_TO_CODE[user.province] : null;
-      const totalCount = provinceCode ? (PROVINCE_CODE_TO_VOLUNTEER_COUNT[provinceCode] || 0) : 0;
+      // 返回空数据，但包含统计信息（totalCount 已从 province_batches 按用户省份/批次/年份查得）
       const emptyResponse = {
         volunteers: [],
         statistics: {
@@ -673,10 +684,7 @@ export class ChoicesService {
       })
       .filter((item): item is any => item !== null);
 
-    // 9. 构建最终响应（包含分组数据和统计信息）
-    const provinceCode = user.province ? PROVINCE_NAME_TO_CODE[user.province] : null;
-    const totalCount = provinceCode ? (PROVINCE_CODE_TO_VOLUNTEER_COUNT[provinceCode] || 0) : 0;
-
+    // 9. 构建最终响应（包含分组数据和统计信息，totalCount 已从 province_batches 按用户省份/批次/年份查得）
     return plainToInstance(
       GroupedChoiceResponseDto,
       {

@@ -20,6 +20,10 @@ export class UserRelatedDataResponseDto {
   @Expose()
   repeatCount: number;
 
+  /** 当前省份+批次+年份对应的志愿数量（来自 province_batches.volunteer_count） */
+  @Expose()
+  volunteerCount?: number | null;
+
   @Expose()
   preferredSubjects?: string;
 

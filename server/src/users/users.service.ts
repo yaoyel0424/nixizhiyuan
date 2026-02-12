@@ -304,44 +304,58 @@ export class UsersService {
       throw new NotFoundException('用户不存在');
     }
 
-    // 2. 使用一条 SQL 查询同时获取三个 COUNT 统计和省份数组
-    // 使用子查询将 scaleAnswers、majorFavorites、provinceFavorites 的统计合并
-    // 使用 json_agg 聚合省份信息为 JSON 数组
-    const countsResult = await this.userRepository
-      .createQueryBuilder('user')
-      .select(
-        `(SELECT COUNT(DISTINCT sa.scale_id) 
-          FROM scale_answers sa 
-          WHERE sa.user_id = :userId AND sa.scale_id > 112)`,
-        'scaleAnswersCount',
-      )
-      .addSelect(
-        `(SELECT COUNT(*) 
-          FROM major_favorites mf 
-          WHERE mf.user_id = :userId)`,
-        'majorFavoritesCount',
-      )
-      .addSelect(
-        `(SELECT COUNT(*) 
-          FROM province_favorites pf 
-          WHERE pf.user_id = :userId)`,
-        'provinceFavoritesCount',
-      )
-      .addSelect(
-        `(SELECT COALESCE(json_agg(p.name ORDER BY pf.created_at DESC), '[]'::json)
-          FROM province_favorites pf
-          INNER JOIN provinces p ON p.id = pf.province_id
-          WHERE pf.user_id = :userId)`,
-        'provinceFavorites',
-      )
-      .addSelect(
-        `(SELECT COALESCE(MAX(CAST(s.version AS INTEGER)), 0)
-          FROM snapshots s
-          WHERE s.user_id = :userId AND s.type = 'scale_answers')`,
-        'repeatCount',
-      )
-      .where('user.id = :userId', { userId })
-      .getRawOne();
+    // 2. 单条 SQL：用 LEFT JOIN 派生表替代多个 SELECT 标量子查询，减少重复扫描、便于优化器整体优化
+    const year = this.configService.get<string>('CURRENT_YEAR') || '2025';
+    const province = user.province ?? '';
+    const enrollType = user.enrollType ?? '';
+    const [countsResult] = await this.userRepository.query(
+      `
+      SELECT
+        COALESCE(sa.cnt, 0)::int AS "scaleAnswersCount",
+        COALESCE(mf.cnt, 0)::int AS "majorFavoritesCount",
+        COALESCE(pfc.cnt, 0)::int AS "provinceFavoritesCount",
+        COALESCE(pfj.agg, '[]'::json) AS "provinceFavorites",
+        COALESCE(sn.maxv, 0)::int AS "repeatCount",
+        pb.volunteer_count AS "volunteerCount"
+      FROM users u
+      LEFT JOIN (
+        SELECT user_id, COUNT(DISTINCT scale_id) AS cnt
+        FROM scale_answers
+        WHERE scale_id > 112
+        GROUP BY user_id
+      ) sa ON sa.user_id = u.id
+      LEFT JOIN (
+        SELECT user_id, COUNT(*) AS cnt
+        FROM major_favorites
+        GROUP BY user_id
+      ) mf ON mf.user_id = u.id
+      LEFT JOIN (
+        SELECT user_id, COUNT(*) AS cnt
+        FROM province_favorites
+        GROUP BY user_id
+      ) pfc ON pfc.user_id = u.id
+      LEFT JOIN (
+        SELECT pf.user_id, json_agg(p.name ORDER BY pf.created_at DESC) AS agg
+        FROM province_favorites pf
+        INNER JOIN provinces p ON p.id = pf.province_id
+        GROUP BY pf.user_id
+      ) pfj ON pfj.user_id = u.id
+      LEFT JOIN (
+        SELECT user_id, MAX(CAST(version AS INTEGER)) AS maxv
+        FROM snapshots
+        WHERE type = 'scale_answers'
+        GROUP BY user_id
+      ) sn ON sn.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT volunteer_count
+        FROM province_batches
+        WHERE province = $2 AND batch = $3 AND year = $4
+        LIMIT 1
+      ) pb ON true
+      WHERE u.id = $1
+      `,
+      [userId, province, enrollType, year],
+    );
 
     const scaleAnswersCount = parseInt(
       countsResult?.scaleAnswersCount || '0',
@@ -356,6 +370,10 @@ export class UsersService {
       10,
     );
     const repeatCount = parseInt(countsResult?.repeatCount ?? '0', 10);
+    const volunteerCount =
+      countsResult?.volunteerCount != null
+        ? parseInt(String(countsResult.volunteerCount), 10)
+        : null;
 
     // 3. 解析省份名称数组 JSON（如果查询结果为空，返回空数组）
     let provinceFavoritesList: string[] = [];
@@ -431,6 +449,7 @@ export class UsersService {
         provinceFavoritesCount,
         choicesCount,
         repeatCount,
+        volunteerCount,
         preferredSubjects: user.preferredSubjects || null,
         provinceFavorites: provinceFavoritesList,
         province: user.province || null,

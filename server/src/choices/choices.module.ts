@@ -7,6 +7,7 @@ import { MajorGroup } from '@/entities/major-group.entity';
 import { School } from '@/entities/school.entity';
 import { SchoolDetail } from '@/entities/school-detail.entity';
 import { Major } from '@/entities/major.entity';
+import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ChoicesService } from './choices.service';
 import { ChoicesController } from './choices.controller';
 import { PdfExportService } from './pdf-export.service';
@@ -17,7 +18,7 @@ import { ScoresModule } from '@/scores/scores.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Choice, User, MajorGroup, School, SchoolDetail, Major]),
+    TypeOrmModule.forFeature([Choice, User, MajorGroup, School, SchoolDetail, Major, ProvinceBatch]),
     ConfigModule,
     ScoresModule,
   ],
