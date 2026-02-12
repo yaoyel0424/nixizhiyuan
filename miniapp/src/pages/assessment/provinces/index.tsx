@@ -148,7 +148,7 @@ export default function ProvincesPage() {
   const handleDeleteClick = (provinceId: number) => {
     Taro.showModal({
       title: '确认删除',
-      content: '确定要从已选择列表中删除此省份吗？此操作无法撤销。',
+      content: '确定要从已选择列表中删除此省份吗？',
       confirmText: '确定删除',
       confirmColor: '#dc2626',
       success: async (res) => {

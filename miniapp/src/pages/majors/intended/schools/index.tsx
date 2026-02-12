@@ -1894,7 +1894,7 @@ export default function IntendedMajorsSchoolsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>确认移除</DialogTitle>
-            <DialogDescription>确定要从志愿中移除此院校专业吗？此操作无法撤销。</DialogDescription>
+            <DialogDescription>确定要从志愿中移除此院校专业吗？</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button

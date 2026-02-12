@@ -2984,10 +2984,10 @@ export default function IntendedMajorsPage() {
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
               {choiceToDelete
-                ? `确定要删除专业"${choiceToDelete?.majorName || ''}"吗？此操作无法撤销。`
+                ? `确定要删除专业"${choiceToDelete?.majorName || ''}"吗？`
                 : groupToDelete 
-                ? `确定要删除"${groupToDelete?.schoolName || ''} - ${groupToDelete?.majorGroupName || ''}"专业组吗？此操作将删除该专业组下的所有志愿项，且无法撤销。`
-                : '确定要删除此志愿项吗？此操作无法撤销。'}
+                ? `确定要删除"${groupToDelete?.schoolName || ''} - ${groupToDelete?.majorGroupName || ''}"专业组吗？此操作将删除该专业组下的所有志愿项。`
+                : '确定要删除此志愿项吗？'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

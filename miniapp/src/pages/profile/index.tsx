@@ -495,7 +495,7 @@ export default function ProfilePage() {
               </TaroButton>
 
               {/* 关于我们 */}
-              <View className="profile-page__card-item" onClick={handleAbout}>
+              {/* <View className="profile-page__card-item" onClick={handleAbout}>
                 <View className="profile-page__card-icon profile-page__card-icon--about">
                   <Text className="profile-page__card-icon-text">ℹ️</Text>
                 </View>
@@ -504,7 +504,7 @@ export default function ProfilePage() {
                   <Text className="profile-page__card-item-desc">了解我们的理念与使命</Text>
                 </View>
                 <Text className="profile-page__card-arrow">›</Text>
-              </View>
+              </View> */}
 
               {/* 分享给朋友 */}
               <View className="profile-page__card-item" onClick={handleShare}>

@@ -1539,7 +1539,7 @@ export default function CareerExplorationPage() {
           <DialogHeader>
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
-              确定要从心动专业列表中删除此专业吗？此操作无法撤销。
+              确定要从心动专业列表中删除此专业吗？
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
