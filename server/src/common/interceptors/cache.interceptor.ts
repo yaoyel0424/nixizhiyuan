@@ -19,20 +19,25 @@ import { User } from '@/entities/user.entity';
 /**
  * 缓存拦截器
  * 使用 Redis 缓存接口响应数据
- * 缓存 key 会包含用户从数据库中的高考相关字段，确保用户修改信息后命中新 key
+ * 缓存 key 会包含用户从数据库中的高考相关字段及省份收藏 id，确保用户修改信息或收藏后命中新 key
  */
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
   private readonly logger = new Logger(CacheInterceptor.name);
 
-  /** 参与缓存 key 的用户字段（与 user.entity 一致，从数据库读取） */
-  private static readonly USER_CACHE_KEY_FIELDS = [
-    'province',
-    'preferredSubjects',
-    'secondarySubjects',
-    'rank',
-    'enrollType',
-  ] as const;
+  /** 一条 SQL 同时查用户高考字段 + 省份收藏 id 列表（string_agg），用于生成缓存 key */
+  private static readonly USER_AND_PF_QUERY = `
+    SELECT
+      u.province AS province,
+      u.preferred_subjects AS "preferredSubjects",
+      u.secondary_subjects AS "secondarySubjects",
+      u.rank AS rank,
+      u.enroll_type AS "enrollType",
+      (SELECT COALESCE(string_agg(pf.province_id::text, '|' ORDER BY pf.id), '')
+       FROM province_favorites pf WHERE pf.user_id = u.id) AS "pfIds"
+    FROM users u
+    WHERE u.id = $1
+  `;
 
   constructor(
     private readonly redisService: RedisService,
@@ -136,18 +141,20 @@ export class CacheInterceptor implements NestInterceptor {
       .map((key) => `${key}:${query[key]}`)
       .join('|');
 
-    // 用户部分：有登录用户时从数据库读取高考相关字段再拼接，确保 key 随数据变化
+    // 用户部分：一条 SQL 查用户高考字段 + 省份收藏 id 列表，拼入 key
     let userPart = '';
     if (requestUser?.id) {
-      const dbUser = await this.userRepository.findOne({
-        where: { id: requestUser.id },
-        select: [...CacheInterceptor.USER_CACHE_KEY_FIELDS],
-      });
-      const province = dbUser?.province ?? '';
-      const preferredSubjects = dbUser?.preferredSubjects ?? '';
-      const secondarySubjects = dbUser?.secondarySubjects ?? '';
-      const rank = dbUser?.rank ?? '';
-      const enrollType = dbUser?.enrollType ?? '';
+      const rows = await this.userRepository.manager.query(
+        CacheInterceptor.USER_AND_PF_QUERY,
+        [requestUser.id],
+      );
+      const row = rows?.[0];
+      const province = row?.province ?? '';
+      const preferredSubjects = row?.preferredSubjects ?? '';
+      const secondarySubjects = row?.secondarySubjects ?? '';
+      const rank = row?.rank ?? '';
+      const enrollType = row?.enrollType ?? '';
+      const pfIds = row?.pfIds ?? '';
       userPart = [
         'user',
         String(requestUser.id),
@@ -156,6 +163,8 @@ export class CacheInterceptor implements NestInterceptor {
         secondarySubjects,
         String(rank),
         enrollType,
+        'pf',
+        pfIds || '-',
       ].join(':');
     }
 
