@@ -292,7 +292,7 @@ export class MajorsController {
    * 使用 Redis 缓存，默认缓存 10 分钟
    */
   @Get('popular-majors/detail/:majorCode')
-  @Cache(10) // 缓存 10 分钟（600秒），可通过环境变量配置
+  @Cache(600) // 缓存 10 分钟（600秒），可通过环境变量配置
   @ApiOperation({ summary: '通过专业代码获取热门专业详细信息' })
   @ApiParam({
     name: 'majorCode',

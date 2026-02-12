@@ -87,7 +87,7 @@ export class EnrollPlanController {
     status: 404,
     description: '用户不存在',
   })
- 
+  @Cache(3600)
   async getUserEnrollmentPlans(
     @CurrentUser() user: any,
     @Query('minScore') minScore?: string,
@@ -139,7 +139,7 @@ export class EnrollPlanController {
    * @returns 招生计划列表（包含学校、学校详情、专业组和分数信息）
    */
   @Get('major/:majorId/scores')
-  @Cache(10)
+  @Cache(3600)
   @ApiOperation({ summary: '根据专业ID查询招生计划和分数信息' })
   @ApiQuery({
     name: 'minScore',
@@ -203,7 +203,7 @@ export class EnrollPlanController {
    * @returns 专业组信息及专业热爱能量
    */
   @Get('major-group/:mgId')
-  @Cache(600)
+  @Cache(3600)
   @ApiOperation({ summary: '通过专业组ID查询专业组信息' })
   @ApiParam({
     name: 'mgId',
@@ -232,7 +232,7 @@ export class EnrollPlanController {
    * year 从省份表根据当前用户 province 获取，其余条件从 users 表当前用户读取
    */
   @Get('level3-major-ids')
- // @Cache(30)
+  @Cache(600)
   @ApiOperation({
     summary: '按当前用户及省份年份查询去重后的 level3_major_id 列表',
     description:

@@ -5,6 +5,8 @@ import {
   CallHandler,
   Logger,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request, Response } from 'express';
@@ -12,19 +14,32 @@ import { ConfigService } from '@nestjs/config';
 import { RedisService } from '@/redis/redis.service';
 import { CACHE_KEY, CACHE_TTL_KEY } from '../decorators/cache.decorator';
 import { Reflector } from '@nestjs/core';
+import { User } from '@/entities/user.entity';
 
 /**
  * 缓存拦截器
  * 使用 Redis 缓存接口响应数据
+ * 缓存 key 会包含用户从数据库中的高考相关字段，确保用户修改信息后命中新 key
  */
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
   private readonly logger = new Logger(CacheInterceptor.name);
 
+  /** 参与缓存 key 的用户字段（与 user.entity 一致，从数据库读取） */
+  private static readonly USER_CACHE_KEY_FIELDS = [
+    'province',
+    'preferredSubjects',
+    'secondarySubjects',
+    'rank',
+    'enrollType',
+  ] as const;
+
   constructor(
     private readonly redisService: RedisService,
     private readonly reflector: Reflector,
     private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async intercept(
@@ -58,8 +73,8 @@ export class CacheInterceptor implements NestInterceptor {
         controller,
       ]) || defaultTtl;
 
-    // 生成缓存 key
-    const cacheKey = this.generateCacheKey(request);
+    // 生成缓存 key（含从数据库读取的用户高考相关字段）
+    const cacheKey = await this.generateCacheKey(request);
 
     try {
       // 尝试从 Redis 获取缓存
@@ -102,11 +117,12 @@ export class CacheInterceptor implements NestInterceptor {
 
   /**
    * 生成缓存 key
-   * 格式: cache:{method}:{path}:{params}:{query}:{userId}
+   * 格式: cache:{method}:{path}:{params}:{query}:{userPart}
+   * userPart 含 userId 及从数据库读取的 province、preferredSubjects、secondarySubjects、rank、enrollType
    */
-  private generateCacheKey(request: Request): string {
+  private async generateCacheKey(request: Request): Promise<string> {
     const { method, path, params, query } = request;
-    const user = (request as any).user;
+    const requestUser = (request as any).user;
 
     // 构建参数部分
     const paramsStr = Object.keys(params)
@@ -120,8 +136,28 @@ export class CacheInterceptor implements NestInterceptor {
       .map((key) => `${key}:${query[key]}`)
       .join('|');
 
-    // 构建用户ID部分（如果有用户信息）
-    const userId = user?.id ? `:user:${user.id}` : '';
+    // 用户部分：有登录用户时从数据库读取高考相关字段再拼接，确保 key 随数据变化
+    let userPart = '';
+    if (requestUser?.id) {
+      const dbUser = await this.userRepository.findOne({
+        where: { id: requestUser.id },
+        select: [...CacheInterceptor.USER_CACHE_KEY_FIELDS],
+      });
+      const province = dbUser?.province ?? '';
+      const preferredSubjects = dbUser?.preferredSubjects ?? '';
+      const secondarySubjects = dbUser?.secondarySubjects ?? '';
+      const rank = dbUser?.rank ?? '';
+      const enrollType = dbUser?.enrollType ?? '';
+      userPart = [
+        'user',
+        String(requestUser.id),
+        province,
+        preferredSubjects,
+        secondarySubjects,
+        String(rank),
+        enrollType,
+      ].join(':');
+    }
 
     // 组合缓存 key
     const keyParts = [
@@ -130,7 +166,7 @@ export class CacheInterceptor implements NestInterceptor {
       path,
       paramsStr || 'no-params',
       queryStr || 'no-query',
-      userId,
+      userPart,
     ]
       .filter(Boolean)
       .join(':');
