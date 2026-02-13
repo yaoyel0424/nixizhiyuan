@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as XLSX from 'xlsx';
+// 使用 xlsx-js-style 以支持单元格边框等样式（API 与 xlsx 兼容）
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const XLSX = require('xlsx-js-style') as typeof import('xlsx');
 import type { GroupedChoiceResponseDto } from './dto/grouped-choice-response.dto';
 
 /** 扁平化后的志愿行（用于 Excel 一行） */
@@ -54,6 +56,14 @@ export class ExcelExportService {
       });
     }
     const ws = XLSX.utils.json_to_sheet(rows);
+    // 合并相同志愿序号（第 0 列）；同一志愿序号下合并相同学校名称（第 1 列）、相同专业组名称（第 2 列）
+    const merges = [
+      ...this.buildVolunteerIndexMerges(rows),
+      ...this.buildSchoolNameMerges(rows),
+      ...this.buildMajorGroupMerges(rows),
+    ];
+    if (merges.length > 0) ws['!merges'] = merges;
+    this.applyBorders(ws, rows.length, 14);
     // 列宽（热爱能量、位次为多行内容，设宽一些便于查看）
     ws['!cols'] = [
       { wch: 8 },
@@ -76,6 +86,118 @@ export class ExcelExportService {
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     this.logger.log('Excel 生成成功，行数:', rows.length);
     return Buffer.from(buf);
+  }
+
+  /** 为工作表数据区域所有单元格添加细边框（表头 + 数据行，共 rowCount+1 行，colCount 列） */
+  private applyBorders(
+    ws: Record<string, unknown>,
+    rowCount: number,
+    colCount: number,
+  ): void {
+    const thin = { style: 'thin', color: { rgb: 'FF000000' } };
+    const border = { top: thin, bottom: thin, left: thin, right: thin };
+    for (let r = 0; r <= rowCount; r++) {
+      for (let c = 0; c < colCount; c++) {
+        const ref = XLSX.utils.encode_cell({ r, c });
+        if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+        (ws[ref] as any).s = { border };
+      }
+    }
+  }
+
+  /**
+   * 按相同志愿序号生成合并单元格范围（仅合并「志愿序号」列，即第 0 列）
+   * 表头占第 0 行，数据从第 1 行开始
+   */
+  private buildVolunteerIndexMerges(
+    rows: ExcelRow[],
+  ): Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> {
+    const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
+    let i = 0;
+    while (i < rows.length) {
+      let j = i;
+      while (j + 1 < rows.length && rows[j + 1].志愿序号 === rows[i].志愿序号) {
+        j += 1;
+      }
+      if (j > i) {
+        merges.push({
+          s: { r: i + 1, c: 0 },
+          e: { r: j + 1, c: 0 },
+        });
+      }
+      i = j + 1;
+    }
+    return merges;
+  }
+
+  /**
+   * 在相同志愿序号下，按相同学校名称合并单元格（学校名称列，即第 1 列）
+   * 表头占第 0 行，数据从第 1 行开始
+   */
+  private buildSchoolNameMerges(
+    rows: ExcelRow[],
+  ): Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> {
+    const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
+    let i = 0;
+    while (i < rows.length) {
+      const volIndex = rows[i].志愿序号;
+      let j = i;
+      while (j + 1 < rows.length && rows[j + 1].志愿序号 === volIndex) {
+        j += 1;
+      }
+      let k = i;
+      while (k <= j) {
+        const schoolName = rows[k].学校名称;
+        let k2 = k;
+        while (k2 + 1 <= j && rows[k2 + 1].学校名称 === schoolName) {
+          k2 += 1;
+        }
+        if (k2 > k) {
+          merges.push({
+            s: { r: k + 1, c: 1 },
+            e: { r: k2 + 1, c: 1 },
+          });
+        }
+        k = k2 + 1;
+      }
+      i = j + 1;
+    }
+    return merges;
+  }
+
+  /**
+   * 在相同志愿序号下，按相同专业组名称合并单元格（专业组名称列，即第 2 列）
+   * 表头占第 0 行，数据从第 1 行开始
+   */
+  private buildMajorGroupMerges(
+    rows: ExcelRow[],
+  ): Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> {
+    const merges: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }> = [];
+    let i = 0;
+    while (i < rows.length) {
+      const volIndex = rows[i].志愿序号;
+      let j = i;
+      while (j + 1 < rows.length && rows[j + 1].志愿序号 === volIndex) {
+        j += 1;
+      }
+      let k = i;
+      while (k <= j) {
+        const mgName = rows[k].专业组名称;
+        let k2 = k;
+        while (k2 + 1 <= j && rows[k2 + 1].专业组名称 === mgName) {
+          k2 += 1;
+        }
+        if (k2 > k) {
+          merges.push({
+            s: { r: k + 1, c: 2 },
+            e: { r: k2 + 1, c: 2 },
+          });
+        }
+        k = k2 + 1;
+      }
+      i = j + 1;
+    }
+    return merges;
   }
 
   /**

@@ -64,13 +64,20 @@ export class HtmlService {
 </html>`;
   }
 
+  /** 七大维度顺序，用于左侧导航 */
+  private readonly DIMENSIONS = ['看', '听', '说', '记', '想', '做', '运动'] as const;
+
   /**
    * 生成量表管理页 HTML（已登录，含 scale 列表与编辑表单）
    */
   buildScalesPage(scales: Scale[], apiPrefix: string): string {
+    const seenDimensions = new Set<string>();
     const list = scales
       .map(
         (scale) => {
+          const isFirstOfDimension = !seenDimensions.has(scale.dimension);
+          if (isFirstOfDimension) seenDimensions.add(scale.dimension);
+          const anchorId = isFirstOfDimension ? ` id="anchor-${escapeHtml(scale.dimension)}"` : '';
           const contentEscaped = escapeHtml(scale.content);
           const optionsHtml = (scale.options || [])
             .map(
@@ -83,7 +90,7 @@ export class HtmlService {
             )
             .join('');
           return `
-    <div class="scale-block" data-scale-id="${scale.id}">
+    <div class="scale-block" data-scale-id="${scale.id}" data-dimension="${escapeHtml(scale.dimension)}"${anchorId}>
       <h2>#${scale.id} ${escapeHtml(scale.element?.name ?? scale.dimension + ' - ' + scale.type)}</h2>
       <div class="scale-content">
         <label>题干</label>
@@ -107,8 +114,12 @@ export class HtmlService {
   <title>量表管理</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; }
-    h1 { font-size: 1.25rem; }
+    body { font-family: sans-serif; margin: 0; padding: 0; display: flex; min-height: 100vh; }
+    .nav-dimensions { flex-shrink: 0; width: 5rem; background: #f5f5f5; border-right: 1px solid #ddd; padding: 1rem 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; position: sticky; top: 0; align-self: flex-start; height: 100vh; }
+    .nav-dimensions a { display: block; text-align: center; padding: 0.5rem; color: #333; text-decoration: none; font-size: 0.95rem; border-radius: 4px; }
+    .nav-dimensions a:hover { background: #e0e0e0; color: #111; }
+    .main-wrap { flex: 1; padding: 1rem; max-width: 900px; }
+    h1 { font-size: 1.25rem; margin-top: 0; }
     .scale-block { border: 1px solid #ccc; margin: 1rem 0; padding: 1rem; }
     .scale-block h2 { font-size: 1rem; margin-top: 0; }
     .options-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; table-layout: fixed; }
@@ -123,13 +134,23 @@ export class HtmlService {
     .msg.ok { color: #080; }
     .msg.err { color: #c00; }
     .logout { margin-bottom: 1rem; }
+    .toast-popup { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #333; color: #fff; padding: 1rem 1.5rem; border-radius: 8px; z-index: 9999; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: toast-in 0.2s ease; }
+    .toast-popup.mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); transform: none; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .toast-popup.mask .toast-inner { background: #333; color: #fff; padding: 1rem 1.5rem; border-radius: 8px; }
+    @keyframes toast-in { from { opacity: 0; } to { opacity: 1; } }
   </style>
 </head>
 <body>
-  <h1>量表管理</h1>
-  <p class="logout"><a href="/${escapeHtml(apiPrefix)}/html/logout">退出登录</a></p>
-  <div id="msg"></div>
-  <div id="list">${list}</div>
+  <nav class="nav-dimensions" aria-label="维度导航">
+    ${this.DIMENSIONS.map((d) => `<a href="#anchor-${escapeHtml(d)}">${escapeHtml(d)}</a>`).join('')}
+  </nav>
+  <div class="main-wrap">
+    <h1>量表管理</h1>
+    <p class="logout"><a href="/${escapeHtml(apiPrefix)}/html/logout">退出登录</a></p>
+    <div id="msg"></div>
+    <div id="toast-container"></div>
+    <div id="list">${list}</div>
+  </div>
   <script src="/${escapeHtml(apiPrefix)}/html/scales.js"></script>
 </body>
 </html>`;
@@ -150,6 +171,18 @@ export class HtmlService {
   function showMsg(text, isErr) {
     var el = document.getElementById('msg');
     if (el) { el.className = 'msg ' + (isErr ? 'err' : 'ok'); el.textContent = text; }
+  }
+
+  function showToast(text) {
+    var container = document.getElementById('toast-container');
+    if (!container) return;
+    var pop = document.createElement('div');
+    pop.className = 'toast-popup mask';
+    pop.innerHTML = '<span class="toast-inner">' + (text.replace(/</g, '&lt;').replace(/>/g, '&gt;')) + '</span>';
+    container.appendChild(pop);
+    setTimeout(function() {
+      if (pop.parentNode) pop.parentNode.removeChild(pop);
+    }, 2000);
   }
 
   function fitTextareaHeight(ta) {
@@ -188,7 +221,7 @@ export class HtmlService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: content })
       }).then(function(r) {
-        if (r.ok) { showMsg('题干已保存'); return; }
+        if (r.ok) { showMsg('题干已保存'); showToast('保存成功'); return; }
         return r.json().then(function(d) { throw new Error(d.message || d.error || '保存失败'); });
       }).catch(function(err) { showMsg(err && err.message ? err.message : '保存失败', true); });
       return;
@@ -212,7 +245,7 @@ export class HtmlService {
           additionalInfo: additionalInfo || null
         })
       }).then(function(r) {
-        if (r.ok) { showMsg('选项已保存'); return; }
+        if (r.ok) { showMsg('选项已保存'); showToast('保存成功'); return; }
         return r.json().then(function(d) { throw new Error(d.message || d.error || '保存失败'); });
       }).catch(function(err) { showMsg(err && err.message ? err.message : '保存失败', true); });
     }

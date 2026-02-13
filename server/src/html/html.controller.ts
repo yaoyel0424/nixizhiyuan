@@ -80,7 +80,7 @@ export class HtmlController {
     @Body('secret') secret: string,
     @Res() res: Response,
   ): Promise<void> {
-    const expected = this.configService.get<string>('ADMIN_HTML_SECRET')??"123456";
+    const expected = this.configService.get<string>('ADMIN_HTML_SECRET')??"[+yG?!{Dsgz3";
     const adminUserId = this.configService.get<number>('ADMIN_HTML_USER_ID') ?? 1;
     if (!expected || secret !== expected) {
       const html = this.htmlService.buildLoginPage(

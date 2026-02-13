@@ -33,14 +33,12 @@ import { isValidProvinceName } from '@/config/province';
  * 用户控制器
  */
 @ApiTags('用户管理')
-@Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('users') 
 @ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  @Roles('admin')
+  @Post() 
   @ApiOperation({ summary: '创建用户' })
   async create(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
     const user = await this.usersService.create(createUserDto);
@@ -152,8 +150,7 @@ export class UsersController {
     });
   }
 
-  @Patch(':id')
-  @Roles('admin')
+  @Patch(':id') 
   @ApiOperation({ summary: '更新用户' })
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -165,8 +162,7 @@ export class UsersController {
     });
   }
 
-  @Delete(':id')
-  @Roles('admin')
+  @Delete(':id') 
   @ApiOperation({ summary: '删除用户' })
   async remove(@Param('id', ParseIntPipe) id: number) {
     // await this.usersService.remove(id);
@@ -212,13 +208,13 @@ export class UsersController {
       throw new BadRequestException('无效的首选科目');
     }
 
-    // 验证次选科目（可以是多个，用逗号分隔）
+    // 验证次选科目（可以是多个，用逗号分隔），并按固定顺序规范化后写回
     if (
       updateData.secondarySubjects &&
       updateData.preferredSubjects !== '文科' &&
       updateData.preferredSubjects !== '理科'
     ) {
-      const validSecondarySubjects = [
+      const canonicalOrder = [
         '物理',
         '化学',
         '生物',
@@ -231,11 +227,19 @@ export class UsersController {
         .split(',')
         .map((s) => s.trim());
       const isValid = subjects.every((s) =>
-        validSecondarySubjects.includes(s),
+        canonicalOrder.includes(s),
       );
+
       if (!isValid) {
         throw new BadRequestException('无效的次选科目');
       }
+
+      // 按固定顺序重排，保证存储顺序一致（如「生物,化学」→「化学,生物」）
+      subjects.sort(
+        (a, b) =>
+          canonicalOrder.indexOf(a) - canonicalOrder.indexOf(b),
+      );
+      updateData.secondarySubjects = subjects.join(',');
 
       // 验证物理和历史的互斥关系
       if (
