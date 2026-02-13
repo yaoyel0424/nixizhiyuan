@@ -390,61 +390,8 @@ export default function IntendedMajorsPage() {
           // 注意：不要在这里手动操作 fetchingEnrollmentPlansRef，避免与 refreshEnrollmentPlans 内部的并发控制冲突
           await refreshEnrollmentPlans()
         } else {
-          // 意向志愿页面：调用API获取用户的志愿选择列表
-          try {
-            const choicesData = await getChoices()
-            // 将 API 返回的分组数据转换为 IntentionMajor[] 格式
-            // convertGroupedChoicesToItems 返回的是扁平化的列表，需要转换为 IntentionMajor 格式
-            const items = convertGroupedChoicesToItems(choicesData)
-            // 将 items 转换为 IntentionMajor[] 格式（按专业分组）
-            const majorMap = new Map<string, IntentionMajor>()
-            items.forEach((item: any) => {
-              const majorKey = item.majorName || item.enrollmentMajor || 'unknown'
-              if (!majorMap.has(majorKey)) {
-                majorMap.set(majorKey, {
-                  major: {
-                    code: item.majorCode || '',
-                    name: item.majorName || item.enrollmentMajor || '',
-                    displayName: item.majorName || item.enrollmentMajor || '',
-                    developmentPotential: '',
-                    score: '',
-                    opportunityScore: '',
-                    academicDevelopmentScore: '',
-                    careerDevelopmentScore: '',
-                    growthPotentialScore: '',
-                    industryProspectsScore: '',
-                    lexueScore: '',
-                    shanxueScore: '',
-                    yanxueDeduction: '',
-                    tiaozhanDeduction: '',
-                    eduLevel: ''
-                  },
-                  schools: []
-                })
-              }
-              const intentionMajor = majorMap.get(majorKey)!
-              intentionMajor.schools.push({
-                schoolName: item.schoolName || '',
-                schoolNature: item.schoolNature || 'public',
-                rankDiffPer: 0,
-                group: 0,
-                historyScores: item.historyScore || [],
-                schoolFeature: item.schoolFeature || '',
-                belong: item.belong || '',
-                provinceName: item.provinceName || '',
-                cityName: item.cityName || '',
-                enrollmentRate: item.enrollmentRate || '0',
-                employmentRate: item.employmentRate || '0',
-                majorGroupName: item.majorGroupName || null,
-                majorGroupId: item.majorGroupId || null
-              })
-            })
-            setData(Array.from(majorMap.values()))
-          } catch (error) {
-            console.error('加载意向志愿数据失败:', error)
-            // 如果加载失败，设置为空数组
-            setData([])
-          }
+          // 意向志愿：数据由 loadChoicesFromAPI -> applyGroupedChoicesToState 统一加载并同步 data，此处不再重复请求 /choices
+          setLoading(false)
         }
         setLoading(false)
       } catch (error) {
@@ -526,6 +473,55 @@ export default function IntendedMajorsPage() {
    * - 刷新后保留当前已展示条数：若用户已加载超过 10 条（如上移/下移/删除前在看第 11+ 条），
    *   不重置为仅前 10 条，避免操作后列表“缩回”导致找不到当前上下文
    */
+  /**
+   * 将 items 转为 IntentionMajor[]（按专业分组），用于头部前 20% 等统计
+   */
+  const itemsToIntentionMajors = (items: any[]): IntentionMajor[] => {
+    const majorMap = new Map<string, IntentionMajor>()
+    items.forEach((item: any) => {
+      const majorKey = item.majorName || item.enrollmentMajor || 'unknown'
+      if (!majorMap.has(majorKey)) {
+        majorMap.set(majorKey, {
+          major: {
+            code: item.majorCode || '',
+            name: item.majorName || item.enrollmentMajor || '',
+            displayName: item.majorName || item.enrollmentMajor || '',
+            developmentPotential: '',
+            score: '',
+            opportunityScore: '',
+            academicDevelopmentScore: '',
+            careerDevelopmentScore: '',
+            growthPotentialScore: '',
+            industryProspectsScore: '',
+            lexueScore: '',
+            shanxueScore: '',
+            yanxueDeduction: '',
+            tiaozhanDeduction: '',
+            eduLevel: ''
+          },
+          schools: []
+        })
+      }
+      const intentionMajor = majorMap.get(majorKey)!
+      intentionMajor.schools.push({
+        schoolName: item.schoolName || '',
+        schoolNature: item.schoolNature || 'public',
+        rankDiffPer: 0,
+        group: 0,
+        historyScores: item.historyScore || [],
+        schoolFeature: item.schoolFeature || '',
+        belong: item.belong || '',
+        provinceName: item.provinceName || '',
+        cityName: item.cityName || '',
+        enrollmentRate: item.enrollmentRate || '0',
+        employmentRate: item.employmentRate || '0',
+        majorGroupName: item.majorGroupName || null,
+        majorGroupId: item.majorGroupId || null
+      })
+    })
+    return Array.from(majorMap.values())
+  }
+
   const applyGroupedChoicesToState = (groupedData: GroupedChoiceResponse | null) => {
     setGroupedChoices(groupedData)
     const newTotal = groupedData?.volunteers?.length ?? 0
@@ -542,6 +538,8 @@ export default function IntendedMajorsPage() {
       }
     })
     setWishlistCounts(counts)
+    // 同步 data（IntentionMajor[]），供头部前 20% 等统计使用
+    setData(groupedData ? itemsToIntentionMajors(items) : [])
   }
 
   /**
