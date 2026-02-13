@@ -11,6 +11,7 @@ import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ChoicesService } from './choices.service';
 import { ChoicesController } from './choices.controller';
 import { PdfExportService } from './pdf-export.service';
+import { ExcelExportService } from './excel-export.service';
 import { ScoresModule } from '@/scores/scores.module';
 
 /**
@@ -23,7 +24,7 @@ import { ScoresModule } from '@/scores/scores.module';
     ScoresModule,
   ],
   controllers: [ChoicesController],
-  providers: [ChoicesService, PdfExportService],
+  providers: [ChoicesService, PdfExportService, ExcelExportService],
   exports: [ChoicesService],
 })
 export class ChoicesModule {}

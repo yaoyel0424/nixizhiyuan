@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Delete,
   Body,
   Param,
@@ -22,9 +23,14 @@ import { CreateScaleAnswerDto } from './dto/create-scale-answer.dto';
 import { ScaleAnswerResponseDto } from './dto/scale-answer-response.dto';
 import {
   ScaleResponseDto,
+  ScaleOptionResponseDto,
   ScaleSnapshotResponseDto,
   ScalesWithAnswersResponseDto,
 } from './dto/scale-response.dto';
+import {
+  UpdateScaleContentDto,
+  UpdateOptionDto,
+} from './dto/update-scale-and-options.dto';
 import { PopularMajorAnswerResponseDto } from '../popular-majors/dto/popular-major-answer-response.dto';
 import { plainToInstance } from 'class-transformer';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
@@ -201,6 +207,46 @@ export class ScalesController {
         excludeExtraneousValues: true,
       }),
     };
+  }
+
+  @Patch(':id/content')
+  @ApiOperation({ summary: '更新量表题干 content' })
+  @ApiParam({ name: 'id', description: '量表ID' })
+  @ApiBody({ type: UpdateScaleContentDto })
+  @ApiResponse({
+    status: 200,
+    description: '更新成功',
+    type: ScaleResponseDto,
+  })
+  @ApiResponse({ status: 404, description: '量表不存在' })
+  async updateScaleContent(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateScaleContentDto,
+  ): Promise<ScaleResponseDto> {
+    const scale = await this.scalesService.updateScaleContent(id, dto.content);
+    return plainToInstance(ScaleResponseDto, scale, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  @Patch('options/:optionId')
+  @ApiOperation({ summary: '通过选项 id 更新 optionName 和/或 additionalInfo' })
+  @ApiParam({ name: 'optionId', description: '选项ID（ScaleOption 主键）' })
+  @ApiBody({ type: UpdateOptionDto })
+  @ApiResponse({
+    status: 200,
+    description: '更新成功',
+    type: ScaleOptionResponseDto,
+  })
+  @ApiResponse({ status: 404, description: '选项不存在' })
+  async updateOption(
+    @Param('optionId', ParseIntPipe) optionId: number,
+    @Body() dto: UpdateOptionDto,
+  ): Promise<ScaleOptionResponseDto> {
+    const option = await this.scalesService.updateOption(optionId, dto);
+    return plainToInstance(ScaleOptionResponseDto, option, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @Post('answers')

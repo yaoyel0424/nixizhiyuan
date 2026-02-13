@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { json, urlencoded } from 'express';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 import { ValidationPipe as CustomValidationPipe } from './common/pipes/validation.pipe';
@@ -23,6 +24,7 @@ async function bootstrap() {
     // DoS 防护：限制请求体大小，拒绝超大 payload
     app.use(json({ limit: BODY_LIMIT }));
     app.use(urlencoded({ extended: true, limit: BODY_LIMIT }));
+    app.use(cookieParser());
 
     const configService = app.get(ConfigService);
     const port = configService.get<number>('app.port') || 3000;

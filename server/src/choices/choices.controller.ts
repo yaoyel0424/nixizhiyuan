@@ -22,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { ChoicesService } from './choices.service';
 import { PdfExportService } from './pdf-export.service';
+import { ExcelExportService } from './excel-export.service';
 import { CreateChoiceDto } from './dto/create-choice.dto';
 import { ChoiceResponseDto } from './dto/choice-response.dto';
 import { GroupedChoiceResponseDto, SchoolGroupDto } from './dto/grouped-choice-response.dto';
@@ -45,6 +46,7 @@ export class ChoicesController {
   constructor(
     private readonly choicesService: ChoicesService,
     private readonly pdfExportService: PdfExportService,
+    private readonly excelExportService: ExcelExportService,
   ) {}
 
   /**
@@ -312,6 +314,59 @@ export class ChoicesController {
   async fixAllIndexes(): Promise<{ fixed: number }> {
     this.logger.log('开始修复所有记录的 mgIndex 和 majorIndex');
     return await this.choicesService.fixAllIndexes();
+  }
+
+  /**
+   * 导出志愿列表 Excel（与 findAll 同数据源）
+   * @param user 当前用户
+   * @param year 可选年份，不传则用配置默认年
+   * @param res Express 响应对象，返回 .xlsx 文件
+   */
+  @Get('export-excel')
+  @ApiOperation({ summary: '导出志愿列表 Excel' })
+  @ApiQuery({ name: 'year', required: false, description: '年份，不传则用配置默认年' })
+  @ApiResponse({
+    status: 200,
+    description: 'Excel 文件',
+    content: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        schema: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  async exportExcel(
+    @CurrentUser() user: any,
+    @Query('year') year: string | undefined,
+    @Res({ passthrough: false }) res: Response,
+  ): Promise<void> {
+    try {
+      const grouped = await this.choicesService.findByUser(user.id, year);
+      const buffer = await this.excelExportService.generateChoiceExcel(grouped);
+      if (!buffer || buffer.length === 0) {
+        res.status(500).json({
+          success: false,
+          message: '导出失败：数据为空',
+        });
+        return;
+      }
+      const filename = `志愿列表_${year || '全部'}_${Date.now()}.xlsx`;
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader('Content-Length', buffer.length.toString());
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${encodeURIComponent(filename)}"`,
+      );
+      res.send(buffer);
+    } catch (error) {
+      this.logger.error('导出 Excel 失败:', error);
+      res.status(500).json({
+        success: false,
+        message: error?.message || '导出 Excel 失败',
+      });
+    }
   }
 
   /**

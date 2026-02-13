@@ -7,6 +7,7 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, In, MoreThan, MoreThanOrEqual } from 'typeorm';
 import { ScaleAnswer } from '@/entities/scale-answer.entity';
 import { Scale } from '@/entities/scale.entity';
+import { ScaleOption } from '@/entities/scale-option.entity';
 import { User } from '@/entities/user.entity';
 import { Snapshot } from '@/entities/snapshot.entity';
 import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
@@ -26,6 +27,8 @@ export class ScalesService {
     private readonly scaleAnswerRepository: Repository<ScaleAnswer>,
     @InjectRepository(Scale)
     private readonly scaleRepository: Repository<Scale>,
+    @InjectRepository(ScaleOption)
+    private readonly scaleOptionRepository: Repository<ScaleOption>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(MajorElementAnalysis)
@@ -91,6 +94,80 @@ export class ScalesService {
       });
       return answerRepo.save(scaleAnswer);
     });
+  }
+
+  /**
+   * 更新量表的 content
+   * @param scaleId 量表 ID
+   * @param content 题干内容
+   * @returns 更新后的量表（含 options）
+   */
+  async updateScaleContent(scaleId: number, content: string): Promise<Scale> {
+    const scale = await this.scaleRepository.findOne({
+      where: { id: scaleId },
+      relations: ['options'],
+    });
+    if (!scale) {
+      throw new NotFoundException({
+        code: ErrorCode.RESOURCE_NOT_FOUND,
+        message: '量表不存在',
+      });
+    }
+    scale.content = content;
+    await this.scaleRepository.save(scale);
+    return this.scaleRepository.findOne({
+      where: { id: scaleId },
+      relations: ['options'],
+    }) as Promise<Scale>;
+  }
+
+  /**
+   * 通过选项 id 更新 optionName 和/或 additionalInfo（合并接口）
+   * @param optionId 选项 ID（ScaleOption 主键）
+   * @param dto 可选 optionName、additionalInfo，传哪个更新哪个
+   * @returns 更新后的 ScaleOption
+   */
+  async updateOption(
+    optionId: number,
+    dto: { optionName?: string; additionalInfo?: string | null },
+  ): Promise<ScaleOption> {
+    const option = await this.scaleOptionRepository.findOne({
+      where: { id: optionId },
+    });
+    if (!option) {
+      throw new NotFoundException({
+        code: ErrorCode.RESOURCE_NOT_FOUND,
+        message: '选项不存在',
+      });
+    }
+    if (dto.optionName !== undefined) option.optionName = dto.optionName;
+    if (dto.additionalInfo !== undefined) option.additionalInfo = dto.additionalInfo;
+    return this.scaleOptionRepository.save(option);
+  }
+
+  /**
+   * 获取所有量表及其选项（用于后台 HTML 管理等）
+   * @param direction 可选，不传则返回全部
+   */
+  async getScalesWithOptions(direction?: '168' | 'positive' | 'negative'): Promise<Scale[]> {
+    const where: any = direction ? { direction } : {};
+    const scales = await this.scaleRepository.find({
+      relations: ['options', 'element'],
+      where,
+      order: { id: 'ASC' },
+    });
+    const dimensionOrder = ['看', '听', '说', '记', '想', '做', '运动'];
+    scales.sort((a, b) => {
+      const indexA = dimensionOrder.indexOf(a.dimension);
+      const indexB = dimensionOrder.indexOf(b.dimension);
+      const ia = indexA === -1 ? dimensionOrder.length : indexA;
+      const ib = indexB === -1 ? dimensionOrder.length : indexB;
+      return ia - ib || a.id - b.id;
+    });
+    scales.forEach((s) => {
+      if (s.options?.length) s.options.sort((a, b) => a.id - b.id);
+    });
+    return scales;
   }
 
   /**
