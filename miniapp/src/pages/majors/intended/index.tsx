@@ -1,6 +1,6 @@
 // 志愿方案页面
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { View, Text, ScrollView, Checkbox, Canvas } from '@tarojs/components'
+import { View, Text, ScrollView, Checkbox } from '@tarojs/components'
 import Taro, { useRouter, useDidShow, useShareAppMessage, useReachBottom } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/Input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { BottomNav } from '@/components/BottomNav'
 import { QuestionnaireRequiredModal } from '@/components/QuestionnaireRequiredModal'
-import { ExportProgressDialog } from '@/components/ExportProgressDialog'
 import { ExportCompleteDialog } from '@/components/ExportCompleteDialog'
 import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
@@ -17,9 +16,8 @@ import { getCurrentUserDetail, getUserRelatedDataCount } from '@/services/user'
 import type { UserEnrollmentPlan, ProvincialControlLine, MajorGroupInfo } from '@/services/enroll-plan'
 import * as enrollPlan from '@/services/enroll-plan'
 import { getBottom20Scores } from '@/services/scores'
-import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, ChoiceResponse, Direction, createChoice, CreateChoiceDto } from '@/services/choices'
+import { getChoices, deleteChoice, removeMultipleChoices, adjustMgIndex, adjustMajorIndex, GroupedChoiceResponse, ChoiceInGroup, ChoiceResponse, Direction, createChoice, CreateChoiceDto, exportChoicesExcel } from '@/services/choices'
 import { RangeSlider } from '@/components/RangeSlider'
-import { exportWishlistToPdf } from '@/utils/exportPdf'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import './index.less'
 
@@ -162,15 +160,10 @@ export default function IntendedMajorsPage() {
   const VOLUNTEER_PAGE_SIZE = 10
   const [visibleVolunteerCount, setVisibleVolunteerCount] = useState(VOLUNTEER_PAGE_SIZE)
 
-  // 导出相关状态
-  const [exportProgress, setExportProgress] = useState(0)
-  const [exportStatus, setExportStatus] = useState('')
-  const [showExportProgress, setShowExportProgress] = useState(false)
+  // 导出相关状态（使用 api/v1/choices/export-excel 导出 Excel，再通过打开/分享发给好友或文件传输助手）
   const [showExportComplete, setShowExportComplete] = useState(false)
   const [exportFilePath, setExportFilePath] = useState('')
   const [isExporting, setIsExporting] = useState(false)
-  const [exportPaused, setExportPaused] = useState(false)
-  const exportCancelRef = useRef(false)
 
   // 志愿列表是否已加载完成（用于避免在请求未完成时显示「暂无志愿数据」）
   const [choicesLoaded, setChoicesLoaded] = useState(false)
@@ -218,10 +211,9 @@ export default function IntendedMajorsPage() {
   }
 
   /**
-   * 处理导出志愿方案
+   * 处理导出志愿方案：调用 api/v1/choices/export-excel 下载 Excel，再通过打开/分享发给好友或文件传输助手
    */
   const handleExportWishlist = async () => {
-    // 防止重复点击
     if (isExporting) {
       Taro.showToast({
         title: '正在导出中，请稍候...',
@@ -231,7 +223,6 @@ export default function IntendedMajorsPage() {
       return
     }
 
-    // 检查是否有志愿数据
     if (!groupedChoices || !groupedChoices.volunteers || groupedChoices.volunteers.length === 0) {
       Taro.showToast({
         title: '暂无志愿数据，无法导出',
@@ -242,98 +233,25 @@ export default function IntendedMajorsPage() {
 
     try {
       setIsExporting(true)
-      setExportProgress(0)
-      setExportStatus('正在初始化...')
-      setExportPaused(false)
-      exportCancelRef.current = false
-      setShowExportProgress(true)
+      Taro.showLoading({ title: '正在导出...' })
 
-      // 创建暂停ref，用于在导出函数中获取最新的暂停状态
-      const pausedRef = { current: exportPaused }
-      
-      // 监听暂停状态变化，实时更新ref
-      const pauseCheckInterval = setInterval(() => {
-        pausedRef.current = exportPaused
-      }, Math.max(50, 1))
+      // 可选：按当前筛选年份导出（若页面有年份可传入）
+      const year = examInfo?.year ? String(examInfo.year) : undefined
+      const filePath = await exportChoicesExcel(year)
 
-      try {
-        // 调用导出函数
-        const filePath = await exportWishlistToPdf(
-          groupedChoices,
-          examInfo,
-          {
-            onProgress: (progress, status) => {
-              if (!exportCancelRef.current) {
-                setExportProgress(progress)
-                setExportStatus(status)
-                // 注意：不在这里关闭进度对话框，等待导出函数返回后再统一处理
-              }
-            },
-            paused: exportPaused,
-            pausedRef: pausedRef,
-          }
-        )
-
-        if (!exportCancelRef.current) {
-          // 导出成功，设置文件路径
-          setExportFilePath(filePath)
-          // 延迟关闭进度对话框，让用户看到100%完成状态
-          setTimeout(() => {
-            if (!exportCancelRef.current) {
-              setShowExportProgress(false)
-              // 显示完成对话框
-              setShowExportComplete(true)
-            }
-          }, 500) // 500ms延迟，确保用户看到完成状态
-        }
-      } finally {
-        clearInterval(pauseCheckInterval)
-      }
-
+      Taro.hideLoading()
+      setExportFilePath(filePath)
+      setShowExportComplete(true)
     } catch (error: any) {
-      console.error('导出失败:', error)
+      Taro.hideLoading()
       Taro.showToast({
         title: error?.message || '导出失败，请重试',
         icon: 'none',
         duration: 2000,
       })
-      setShowExportProgress(false)
     } finally {
       setIsExporting(false)
-      setExportPaused(false)
     }
-  }
-
-  /**
-   * 处理暂停导出
-   */
-  const handlePauseExport = () => {
-    setExportPaused(true)
-    setExportStatus('已暂停')
-  }
-
-  /**
-   * 处理恢复导出
-   */
-  const handleResumeExport = () => {
-    setExportPaused(false)
-    setExportStatus('继续导出中...')
-  }
-
-  /**
-   * 处理取消导出
-   */
-  const handleCancelExport = () => {
-    exportCancelRef.current = true
-    setExportPaused(false)
-    setIsExporting(false)
-    setShowExportProgress(false)
-    setExportProgress(0)
-    setExportStatus('')
-    Taro.showToast({
-      title: '已取消导出',
-      icon: 'none',
-    })
   }
 
   /**
@@ -2927,30 +2845,13 @@ export default function IntendedMajorsPage() {
         onUpdate={loadExamInfo}
       />
 
-      {/* 导出进度对话框 */}
-      <ExportProgressDialog
-        open={showExportProgress}
-        progress={exportProgress}
-        status={exportStatus}
-        paused={exportPaused}
-        onPause={handlePauseExport}
-        onResume={handleResumeExport}
-        onCancel={handleCancelExport}
-      />
-
-      {/* 导出完成对话框 */}
+      {/* 导出完成对话框：打开文件或分享给好友/文件传输助手 */}
       <ExportCompleteDialog
         open={showExportComplete}
         onClose={() => setShowExportComplete(false)}
         filePath={exportFilePath}
-      />
-
-      {/* 导出用的Canvas（隐藏） */}
-      <Canvas
-        id="exportCanvas"
-        type="2d"
-        canvasId="exportCanvas"
-        className="intended-majors-page__export-canvas"
+        fileType="xlsx"
+        fileName="志愿方案.xlsx"
       />
 
       {/* 删除确认对话框 */}

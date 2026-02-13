@@ -12,6 +12,9 @@ import './index.less'
 // 在微信小程序环境中，wx 是全局对象
 declare const wx: any
 
+/** 导出文件类型，用于 openDocument / 分享 */
+export type ExportFileType = 'pdf' | 'xlsx'
+
 export interface ExportCompleteDialogProps {
   /** 是否打开 */
   open: boolean
@@ -19,6 +22,10 @@ export interface ExportCompleteDialogProps {
   onClose: () => void
   /** 导出的文件路径 */
   filePath: string
+  /** 文件类型，默认 pdf（用于打开与分享） */
+  fileType?: ExportFileType
+  /** 分享时的文件名，默认根据 fileType 推断 */
+  fileName?: string
 }
 
 /**
@@ -28,11 +35,14 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
   open,
   onClose,
   filePath,
+  fileType = 'pdf',
+  fileName: fileNameProp,
 }) => {
   const [saving, setSaving] = useState(false)
+  const fileName = fileNameProp ?? (fileType === 'xlsx' ? '志愿方案.xlsx' : '志愿方案.pdf')
 
   /**
-   * 打开/保存PDF到本地
+   * 打开/保存文件到本地（PDF 或 Excel）
    */
   const handleSaveToLocal = async () => {
     try {
@@ -56,30 +66,30 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
         return
       }
 
-      // 使用 openDocument 打开 PDF，用户可以在系统文档查看器中保存
+      // 使用 openDocument 打开文件，用户可保存或通过右上角转发给好友/文件传输助手
       Taro.openDocument({
         filePath: filePath,
-        fileType: 'pdf',
+        fileType: fileType,
         success: () => {
           Taro.showToast({
-            title: 'PDF已打开，请选择保存',
+            title: '文件已打开，可保存或转发给好友',
             icon: 'success',
             duration: 2000,
           })
           onClose()
         },
         fail: (err) => {
-          console.error('打开PDF失败:', err)
+          console.error('打开文件失败:', err)
           Taro.showModal({
             title: '提示',
-            content: `打开PDF失败: ${err.errMsg || '未知错误'}`,
+            content: `打开文件失败: ${err.errMsg || '未知错误'}`,
             showCancel: false,
             confirmText: '知道了',
           })
         },
       })
     } catch (error: any) {
-      console.error('打开PDF失败:', error)
+      console.error('打开文件失败:', error)
       Taro.showToast({
         title: error?.message || '操作失败',
         icon: 'none',
@@ -132,7 +142,7 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
           console.log('找到 shareFileMessage API，开始分享文件')
           wxObj.shareFileMessage({
             filePath: filePath,
-            fileName: '志愿方案.pdf',
+            fileName: fileName,
             success: () => {
               console.log('分享成功')
               Taro.showToast({
@@ -147,26 +157,26 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
               // 分享失败时，提示用户
               Taro.showModal({
                 title: '分享失败',
-                content: err.errMsg || '无法直接分享文件，请先打开PDF后使用右上角分享功能',
+                content: err.errMsg || '无法直接分享文件，请先打开文件后使用右上角分享',
                 showCancel: false,
                 confirmText: '知道了',
                 success: () => {
-                  // 用户确认后，打开PDF让用户手动分享
+                  // 用户确认后，打开文件让用户手动分享
                   Taro.openDocument({
                     filePath: filePath,
-                    fileType: 'pdf',
+                    fileType: fileType,
                     success: () => {
                       Taro.showToast({
-                        title: 'PDF已打开，请使用右上角分享',
+                        title: '文件已打开，请使用右上角分享',
                         icon: 'success',
                         duration: 2000,
                       })
                       onClose()
                     },
                     fail: (openErr) => {
-                      console.error('打开PDF失败:', openErr)
+                      console.error('打开文件失败:', openErr)
                       Taro.showToast({
-                        title: openErr.errMsg || '打开PDF失败',
+                        title: openErr.errMsg || '打开文件失败',
                         icon: 'none',
                       })
                     },
@@ -190,24 +200,24 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
       }
 
       // 如果不支持或调用失败，使用降级方案
-      console.log('使用降级方案：打开PDF让用户手动分享')
+      console.log('使用降级方案：打开文件让用户手动分享')
       if (!isVersionSupported) {
         Taro.showModal({
           title: '提示',
-          content: '您的微信版本较低，无法直接分享文件。请先打开PDF，然后使用右上角分享功能。',
+          content: '您的微信版本较低，无法直接分享文件。请先打开文件，然后使用右上角分享。',
           showCancel: false,
           confirmText: '知道了',
           success: () => {
             Taro.openDocument({
               filePath: filePath,
-              fileType: 'pdf',
+              fileType: fileType,
               success: () => {
                 onClose()
               },
               fail: (err) => {
-                console.error('打开PDF失败:', err)
+                console.error('打开文件失败:', err)
                 Taro.showToast({
-                  title: err.errMsg || '打开PDF失败',
+                  title: err.errMsg || '打开文件失败',
                   icon: 'none',
                 })
               },
@@ -217,19 +227,19 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
       } else {
         Taro.openDocument({
           filePath: filePath,
-          fileType: 'pdf',
+          fileType: fileType,
           success: () => {
             Taro.showToast({
-              title: 'PDF已打开，请使用右上角分享',
+              title: '文件已打开，请使用右上角分享',
               icon: 'success',
               duration: 2000,
             })
             onClose()
           },
           fail: (err) => {
-            console.error('打开PDF失败:', err)
+            console.error('打开文件失败:', err)
             Taro.showToast({
-              title: err.errMsg || '打开PDF失败',
+              title: err.errMsg || '打开文件失败',
               icon: 'none',
             })
           },
@@ -251,7 +261,7 @@ export const ExportCompleteDialog: React.FC<ExportCompleteDialogProps> = ({
         <View className="export-complete-dialog__content">
           <View className="export-complete-dialog__icon">✅</View>
           <Text className="export-complete-dialog__text">
-            PDF文件已生成成功！您可以选择打开文件保存或分享给好友
+            文件已导出成功！可打开保存或分享给好友/文件传输助手
           </Text>
         </View>
 

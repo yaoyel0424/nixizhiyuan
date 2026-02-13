@@ -4,14 +4,17 @@ import { silentLogin } from '@/utils/auth'
 
 // API配置
 const API_CONFIG = {
-  baseURL: process.env.NODE_ENV === 'development' 
-    ? 'https://ziquzixin.com/api/v1' 
+  baseURL: process.env.NODE_ENV === 'development'
+    ? 'https://ziquzixin.com/api/v1'
     : 'https://ziquzixin.com/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
   }
 }
+
+/** 获取 API 根地址（用于下载等需要完整 URL 的场景） */
+export const getApiBaseURL = () => API_CONFIG.baseURL
 
 // 请求拦截器
 const requestInterceptor = (config: any) => {
@@ -220,5 +223,49 @@ export const patch = <T = any>(url: string, data?: any): Promise<BaseResponse<T>
     url,
     method: 'PATCH',
     data
+  })
+}
+
+/**
+ * 下载文件到本地临时路径（带鉴权）
+ * @param relativeUrl 相对路径，如 '/choices/export-excel'
+ * @param params 可选查询参数
+ * @returns 临时文件路径 tempFilePath
+ */
+export const downloadFile = async (
+  relativeUrl: string,
+  params?: Record<string, string>
+): Promise<string> => {
+  let url = API_CONFIG.baseURL + relativeUrl
+  if (params && Object.keys(params).length > 0) {
+    const queryString = Object.keys(params)
+      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .join('&')
+    url += (relativeUrl.includes('?') ? '&' : '?') + queryString
+  }
+  const token = Taro.getStorageSync('token')
+  const header: Record<string, string> = {}
+  if (token) {
+    header.Authorization = `Bearer ${token}`
+  }
+  return new Promise((resolve, reject) => {
+    Taro.downloadFile({
+      url,
+      header,
+      success: (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 300 && res.tempFilePath) {
+          resolve(res.tempFilePath)
+        } else {
+          const errMsg = (res as any).errMsg || `下载失败 (${res.statusCode})`
+          Taro.showToast({ title: errMsg, icon: 'none' })
+          reject(new Error(errMsg))
+        }
+      },
+      fail: (err) => {
+        const errMsg = err?.errMsg || err?.message || '下载失败'
+        Taro.showToast({ title: errMsg, icon: 'none' })
+        reject(new Error(errMsg))
+      },
+    })
   })
 }

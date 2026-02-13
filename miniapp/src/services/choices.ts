@@ -1,4 +1,4 @@
-import { get, post, del, patch } from './api'
+import { get, post, del, patch, downloadFile } from './api'
 
 /**
  * 专业分数项
@@ -351,5 +351,15 @@ export const fixIndexes = async (): Promise<void> => {
     console.error('修复索引失败:', error)
     throw error
   }
+}
+
+/**
+ * 导出志愿列表为 Excel 文件（调用服务端 api/v1/choices/export-excel）
+ * @param year 可选年份，不传则使用服务端默认年
+ * @returns 下载后的临时文件路径，可用于 openDocument / 分享文件
+ */
+export const exportChoicesExcel = async (year?: string): Promise<string> => {
+  const params = year ? { year } : undefined
+  return downloadFile('/choices/export-excel', params)
 }
 
