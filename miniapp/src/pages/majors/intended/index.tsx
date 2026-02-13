@@ -80,8 +80,15 @@ const PROVINCES_3_3_MODE = ['北京', '上海', '浙江', '天津', '山东', '�
 // 高考信息对话框组件已移至 @/components/ExamInfoDialog
 
 export default function IntendedMajorsPage() {
-  // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, majorFavoritesCount } = useQuestionnaireCheck()
+  // 检查问卷完成状态（复用同一份 related-data-count 数据，避免页面再请求一次）
+  const {
+    isCompleted: isQuestionnaireCompleted,
+    isLoading: isCheckingQuestionnaire,
+    answerCount,
+    majorFavoritesCount,
+    provinceFavoritesCount: relatedProvinceFavoritesCount,
+    preferredSubjects: relatedPreferredSubjects,
+  } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const router = useRouter()
@@ -367,6 +374,8 @@ export default function IntendedMajorsPage() {
   const hasDidShowOnceRef = useRef(false)
   // 仅在“高考信息弹窗从打开->关闭”时刷新：避免初始 showExamInfoDialog=false 也触发刷新导致重复请求
   const prevShowExamInfoDialogRef = useRef(showExamInfoDialog)
+  // 是否已用 useQuestionnaireCheck 的 related 数据初始化过 storage/弹窗（只做一次，避免重复）
+  const hasInitializedRelatedStorageRef = useRef(false)
 
   // 加载数据（院校探索页面和意向志愿页面都使用API数据）
   useEffect(() => {
@@ -1071,6 +1080,7 @@ export default function IntendedMajorsPage() {
       // 先从本地存储加载，快速显示
       await loadExamInfoFromStorage()
       // 然后从 API 获取最新数据（静默更新，不阻塞页面显示）
+      // 仅在此处请求 getExamInfo（即 users/{id}），不再在 fetchUserDetail 中重复请求
       try {
         const latestInfo = await getExamInfo()
         if (latestInfo && (latestInfo.province || latestInfo.preferredSubjects || latestInfo.score)) {
@@ -1080,26 +1090,34 @@ export default function IntendedMajorsPage() {
         console.error('从 API 获取高考信息失败:', error)
         // 如果 API 失败，继续使用本地存储的数据
       }
-      
-      // 初始化意向省份/心动专业数量（用于检测变化），并检查是否需弹出高考信息对话框（仅请求一次 related-data-count）
+      // related-data-count 由 useQuestionnaireCheck 统一请求，此处不再重复调用
+    }
+    loadData()
+  }, [])
+
+  // 使用 useQuestionnaireCheck 返回的 related 数据初始化 storage 并决定是否弹出高考信息对话框（只执行一次）
+  useEffect(() => {
+    if (isCheckingQuestionnaire || relatedPreferredSubjects === undefined || hasInitializedRelatedStorageRef.current) {
+      return
+    }
+    hasInitializedRelatedStorageRef.current = true
+    const init = async () => {
       try {
-        const relatedData = await getUserRelatedDataCount()
-        if (relatedData?.provinceFavoritesCount !== undefined) {
-          await setStorage('previousProvinceFavoritesCount', relatedData.provinceFavoritesCount)
+        if (relatedProvinceFavoritesCount !== undefined) {
+          await setStorage('previousProvinceFavoritesCount', relatedProvinceFavoritesCount)
         }
-        if (relatedData?.majorFavoritesCount !== undefined) {
-          await setStorage('previousMajorFavoritesCount', relatedData.majorFavoritesCount)
+        if (majorFavoritesCount !== undefined) {
+          await setStorage('previousMajorFavoritesCount', majorFavoritesCount)
         }
-        if (!relatedData?.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
+        if (!relatedPreferredSubjects || relatedPreferredSubjects === null || relatedPreferredSubjects === '') {
           setShowExamInfoDialog(true)
         }
       } catch (error) {
         console.error('初始化意向省份/心动专业数量失败:', error)
-        // 如果失败，不影响页面正常加载
       }
     }
-    loadData()
-  }, [])
+    init()
+  }, [isCheckingQuestionnaire, relatedPreferredSubjects, relatedProvinceFavoritesCount, majorFavoritesCount])
 
   // 监听高考信息对话框关闭，刷新数据
   // 当对话框关闭时，如果是"专业赛道"页面，重新获取高考信息并刷新招生计划数据
@@ -1340,43 +1358,7 @@ export default function IntendedMajorsPage() {
     }
   }, [examInfo?.province, examInfo?.preferredSubjects])
 
-  // 使用 ref 防止重复调用用户详情接口
-  const fetchingUserDetailRef = useRef(false)
-  // 使用 ref 防止同一次进入页面时重复拉取用户详情
-  const hasFetchedUserDetailOnceRef = useRef(false)
-
-  // 院校探索页面加载时获取用户详情和检查高考信息
-  useEffect(() => {
-    // 使用 activeTab 判断是否为院校探索页面
-    if (activeTab !== '意向志愿' && !fetchingUserDetailRef.current && !hasFetchedUserDetailOnceRef.current) {
-      const fetchUserDetail = async () => {
-        // 如果正在获取中，避免重复调用
-        if (fetchingUserDetailRef.current) {
-          return
-        }
-        
-        try {
-          fetchingUserDetailRef.current = true
-          // 调用 getExamInfo 获取高考信息（内部会调用 getCurrentUserDetail）
-          // 这样可以同时获取用户详情和高考信息，并设置 examInfo
-          const examInfoData = await getExamInfo()
-          if (examInfoData && (examInfoData.province || examInfoData.preferredSubjects || examInfoData.score)) {
-            console.log('从 API 获取高考信息:', examInfoData)
-            setExamInfo(examInfoData)
-          }
-          // 选科/高考信息弹窗已在 loadData 中通过 getUserRelatedDataCount 统一处理，此处不再重复请求
-          // 标记已获取，避免重复请求
-          hasFetchedUserDetailOnceRef.current = true
-        } catch (error) {
-          console.error('获取用户详情失败:', error)
-        } finally {
-          fetchingUserDetailRef.current = false
-        }
-      }
-      fetchUserDetail()
-    }
-  }, [activeTab])
-
+  // 用户详情/高考信息已在 loadData 中通过 getExamInfo（即 users/{id}）统一请求，不再单独 useEffect 重复请求
 
   // 监听 wishlistItems 变化，更新志愿数量
   useEffect(() => {

@@ -22,7 +22,7 @@ function loadAnswersFromStorage(): Record<number, number> {
 
 /**
  * 检查问卷是否完成的 Hook
- * @returns { isCompleted: boolean, isLoading: boolean, answerCount: number, majorFavoritesCount: number }
+ * @returns { isCompleted, isLoading, answerCount, majorFavoritesCount, provinceFavoritesCount, preferredSubjects }
  */
 export function useQuestionnaireCheck() {
   const [isCompleted, setIsCompleted] = useState(false)
@@ -30,6 +30,9 @@ export function useQuestionnaireCheck() {
   const [answerCount, setAnswerCount] = useState(0)
   // 心动专业（专业收藏）数量：用于页面空态提示
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0)
+  // 意向省份数量、选科信息：由同一接口返回，供院校探索等页面复用，避免重复请求 related-data-count
+  const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0)
+  const [preferredSubjects, setPreferredSubjects] = useState<string | null | undefined>(undefined)
 
   const fetchRelatedData = useCallback(async () => {
     try {
@@ -40,6 +43,8 @@ export function useQuestionnaireCheck() {
         setAnswerCount(count)
         setIsCompleted(count >= UNLOCK_THRESHOLD)
         setMajorFavoritesCount(data.majorFavoritesCount || 0)
+        setProvinceFavoritesCount(data.provinceFavoritesCount ?? 0)
+        setPreferredSubjects(data.preferredSubjects ?? null)
       } catch (error) {
         console.error('获取问卷完成状态失败，使用本地数据:', error)
         const storedAnswers = loadAnswersFromStorage()
@@ -47,12 +52,16 @@ export function useQuestionnaireCheck() {
         setAnswerCount(count)
         setIsCompleted(count >= UNLOCK_THRESHOLD)
         setMajorFavoritesCount(0)
+        setProvinceFavoritesCount(0)
+        setPreferredSubjects(null)
       }
     } catch (error) {
       console.error('检查问卷完成状态失败:', error)
       setIsCompleted(false)
       setAnswerCount(0)
       setMajorFavoritesCount(0)
+      setProvinceFavoritesCount(0)
+      setPreferredSubjects(null)
     } finally {
       setIsLoading(false)
     }
@@ -73,5 +82,12 @@ export function useQuestionnaireCheck() {
     fetchRelatedData()
   })
 
-  return { isCompleted, isLoading, answerCount, majorFavoritesCount }
+  return {
+    isCompleted,
+    isLoading: isLoading,
+    answerCount,
+    majorFavoritesCount,
+    provinceFavoritesCount,
+    preferredSubjects,
+  }
 }
