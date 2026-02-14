@@ -965,7 +965,13 @@ export default function MajorsPage() {
                   // 计算全局排名（在所有数据中的位置）
                   const globalIndex = allMajors.findIndex(m => m.majorCode === major.majorCode)
                   const rank = globalIndex >= 0 ? globalIndex + 1 : index + 1
-                  
+                  // 跳转专业详情（专业简介、热爱能量、乐学/善学/厌学/阻学/总分 点击均进入详情，样式不变）
+                  const goToMajorDetail = () => {
+                    Taro.navigateTo({
+                      url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
+                    })
+                  }
+
                   return (
                     <Card key={major.majorCode} className="majors-page__major-card">
                       <View className="majors-page__major-header">
@@ -975,18 +981,17 @@ export default function MajorsPage() {
                         <View className="majors-page__major-info">
                           <View 
                             className="majors-page__major-name majors-page__major-name--clickable"
-                            onClick={() => {
-                              Taro.navigateTo({
-                                url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
-                              })
-                            }}
+                            onClick={goToMajorDetail}
                           >
                             <Text>{major.majorName}</Text>
                           </View>
                           <Text className="majors-page__major-code">专业代码：{major.majorCode}</Text>
                         </View>
                         <View className="majors-page__major-score">
-                          <View className="majors-page__major-score-content">
+                          <View 
+                            className="majors-page__major-score-content"
+                            onClick={goToMajorDetail}
+                          >
                             <Text className="majors-page__major-score-value">{formatScore(major.score)}</Text>
                             <Text className="majors-page__major-score-label">热爱能量</Text>
                           </View>
@@ -1004,7 +1009,7 @@ export default function MajorsPage() {
                       {major.majorBrief && (
                         <View 
                           className="majors-page__major-brief"
-                          onClick={() => toggleBrief(major.majorCode)}
+                          onClick={goToMajorDetail}
                         >
                           <View className="majors-page__major-brief-content">
                             <Text 
@@ -1013,7 +1018,13 @@ export default function MajorsPage() {
                               {major.majorBrief}
                             </Text>
                             {major.majorBrief.length > 30 && (
-                              <Text className="majors-page__major-brief-toggle">
+                              <Text
+                                className="majors-page__major-brief-toggle"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleBrief(major.majorCode)
+                                }}
+                              >
                                 {expandedBriefs.has(major.majorCode) ? '收起' : '展开'}
                               </Text>
                             )}
@@ -1043,7 +1054,10 @@ export default function MajorsPage() {
                               const totalScore = major.score != null && major.score !== '' ? formatScore(typeof major.score === 'string' ? parseFloat(major.score) : major.score) : '—'
                               return (
                                 <React.Fragment key={item.type}>
-                                  <View className="majors-page__element-analysis-item">
+                                  <View
+                                    className="majors-page__element-analysis-item majors-page__major-name--clickable"
+                                    onClick={goToMajorDetail}
+                                  >
                                     <View className="majors-page__element-analysis-info">
                                       <Text className="majors-page__element-analysis-label" style={{ color: config.color }}>
                                         {config.label}
@@ -1061,7 +1075,10 @@ export default function MajorsPage() {
                                   {isLast && (
                                     <>
                                       <Text className="majors-page__element-analysis-operator">=</Text>
-                                      <View className="majors-page__element-analysis-total">
+                                      <View
+                                        className="majors-page__element-analysis-total majors-page__major-name--clickable"
+                                        onClick={goToMajorDetail}
+                                      >
                                         <Text className="majors-page__element-analysis-total-text">
                                           {totalScore}分
                                         </Text>
