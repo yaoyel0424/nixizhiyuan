@@ -1,7 +1,7 @@
 // 个人中心页面
 import React, { useState, useEffect } from 'react'
 import { View, Text, Image, Button as TaroButton } from '@tarojs/components'
-import Taro, { useShareAppMessage } from '@tarojs/taro'
+import Taro, { useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { store } from '@/store'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearUserInfo, updateUserInfo, setUserInfo } from '@/store/slices/userSlice'
@@ -292,14 +292,24 @@ export default function ProfilePage() {
   }
 
   /**
-   * 小程序分享配置
-   * 当用户点击右上角分享或使用 Button 的 openType="share" 时会触发
+   * 小程序分享给朋友
    */
   useShareAppMessage(() => {
     return {
       title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
       path: '/pages/index/index',
       imageUrl: '', // 可选：分享图片 URL
+    }
+  })
+
+  /**
+   * 小程序分享到朋友圈
+   */
+  useShareTimeline(() => {
+    return {
+      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
+      query: '',
+      imageUrl: '',
     }
   })
 
