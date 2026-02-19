@@ -46,21 +46,10 @@ export function BottomNav() {
   const currentTab = currentParams.tab || ''
 
   const handleNavigate = (href: string) => {
-    const [path] = href.split('?')
-    
-    // 只有跳转到首页时才使用 reLaunch（清空页面栈，首页不显示返回箭头）
-    // 其他所有跳转都使用 navigateTo（保留页面栈，显示返回箭头）
-    if (path === '/pages/index/index') {
-      // 跳转到首页时，清空页面栈
-      Taro.reLaunch({
-        url: path,
-      })
-    } else {
-      // 跳转到其他页面时，使用 navigateTo 保留页面栈，显示返回箭头
-      Taro.navigateTo({
-        url: href,
-      })
-    }
+    // 底部导航为 tab 切换：统一使用 reLaunch 避免多次 navigateTo 导致页面栈超限（webview count limit exceed）
+    Taro.reLaunch({
+      url: href,
+    })
   }
 
   // 判断是否为院校探索相关页面
