@@ -1326,8 +1326,8 @@ export default function CareerExplorationPage() {
     loadMajorDetail()
   }, [majorCode, isFromPopularMajors])
 
-  // 处理"该专业不适合我"
-  const handleNotSuitable = () => {
+  // 删除心动专业（从收藏中移除）
+  const handleDeleteFromFavorites = () => {
     setShowDeleteConfirm(true)
   }
 
@@ -1503,14 +1503,14 @@ export default function CareerExplorationPage() {
             </Tabs>
           </View>
 
-          {/* 该专业不适合按钮 - 从热门专业跳转过来的不显示 */}
+          {/* 删除心动专业按钮 - 从热门专业跳转过来的不显示 */}
           {!isFromPopularMajors && (
             <View className="career-exploration-page__action-button">
               <Button
-                onClick={handleNotSuitable}
-                className="career-exploration-page__not-suitable-button"
+                onClick={handleDeleteFromFavorites}
+                className="career-exploration-page__delete-favorite-button"
               >
-                ⚠️ 该专业不适合我
+                🗑️ 删除心动专业
               </Button>
             </View>
           )}
