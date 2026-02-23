@@ -79,14 +79,13 @@ const ELEMENT_ANALYSIS_TYPES = {
   tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },
 } as const
 
-// 元素分析显示组件（简化版，对话框在父组件中管理）
-function ElementAnalysesDisplay({ 
-  analyses, 
-  majorName,
+// 元素分析显示组件（点击乐学/善学/厌学/阻学与专业名称一致，进入详情页）
+function ElementAnalysesDisplay({
+  analyses,
   score,
   isCompleted,
-  onTypeClick
-}: { 
+  onGoToDetail
+}: {
   analyses: MajorElementAnalysis[] | null | undefined
   majorName: string
   score?: {
@@ -97,7 +96,7 @@ function ElementAnalysesDisplay({
     tiaozhanDeduction: number
   } | null
   isCompleted?: boolean
-  onTypeClick: (type: string, analyses: MajorElementAnalysis[], majorName: string) => void
+  onGoToDetail: () => void
 }) {
   // 如果未完成测评，不显示元素分析
   if (!isCompleted || !score || !analyses || analyses.length === 0) {
@@ -121,11 +120,9 @@ function ElementAnalysesDisplay({
     }
   }
 
-  const handleClick = (type: string, e?: any) => {
-    if (e) {
-      e.stopPropagation()
-    }
-    onTypeClick(type, analyses, majorName)
+  const handleClick = (e: any) => {
+    e.stopPropagation()
+    onGoToDetail()
   }
 
   // 获取各类型的分值
@@ -155,7 +152,7 @@ function ElementAnalysesDisplay({
             <React.Fragment key={item.type}>
               <View
                 className="popular-majors-page__element-analysis-item"
-                onClick={(e) => handleClick(item.type, e)}
+                onClick={handleClick}
               >
                 <View className="popular-majors-page__element-analysis-info">
                   <Text className="popular-majors-page__element-analysis-label">
@@ -178,7 +175,10 @@ function ElementAnalysesDisplay({
                   <Text className="popular-majors-page__element-analysis-operator">
                     =
                   </Text>
-                  <View className="popular-majors-page__element-analysis-total">
+                  <View
+                    className="popular-majors-page__element-analysis-total"
+                    onClick={handleClick}
+                  >
                     <Text className="popular-majors-page__element-analysis-total-text">
                       {totalScore}分
                     </Text>
@@ -216,10 +216,6 @@ export default function PopularMajorsPage() {
   // 学科过滤：all-全部, science-理科, liberal-文科
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all')
   // 元素分析对话框状态
-  const [showElementDialog, setShowElementDialog] = useState(false)
-  const [selectedElementType, setSelectedElementType] = useState<string | null>(null)
-  const [selectedElementMajorName, setSelectedElementMajorName] = useState<string>('')
-  const [selectedElementAnalyses, setSelectedElementAnalyses] = useState<MajorElementAnalysis[] | null>(null)
 
   // 测评内容预览弹窗（completedCount 为 0 时点击测评先展示测量内容）
   const [showPreAssessmentIntro, setShowPreAssessmentIntro] = useState(false)
@@ -711,12 +707,7 @@ export default function PopularMajorsPage() {
                         majorName={major.name}
                         score={major.score}
                         isCompleted={isCompleted}
-                        onTypeClick={(type, analyses, majorName) => {
-                          setSelectedElementType(type)
-                          setSelectedElementAnalyses(analyses)
-                          setSelectedElementMajorName(majorName)
-                          setShowElementDialog(true)
-                        }}
+                        onGoToDetail={() => handleMajorCardClick(major)}
                       />
                     </View>
                   )}
@@ -900,90 +891,6 @@ export default function PopularMajorsPage() {
               size="lg"
             >
               开始测评
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 元素分析详情对话框 */}
-      <Dialog open={showElementDialog} onOpenChange={setShowElementDialog}>
-        <DialogContent className="popular-majors-page__element-dialog" showCloseButton={true}>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedElementType && ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.label} - {selectedElementMajorName}
-            </DialogTitle>
-            {selectedElementType && ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES]?.desc && (
-              <DialogDescription className="popular-majors-page__element-dialog-type-desc">
-                {ELEMENT_ANALYSIS_TYPES[selectedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES].desc}
-              </DialogDescription>
-            )}
-          </DialogHeader>
-          <View className="popular-majors-page__element-dialog-content">
-            {(() => {
-              if (!selectedElementType || !selectedElementAnalyses) {
-                return (
-                  <View className="popular-majors-page__element-dialog-empty">
-                    <Text>暂无数据</Text>
-                  </View>
-                )
-              }
-              const analysis = selectedElementAnalyses.find(a => a.type === selectedElementType)
-              const elements = analysis?.elements || []
-              
-              if (elements.length === 0) {
-                return (
-                  <View className="popular-majors-page__element-dialog-empty">
-                    <Text>暂无数据</Text>
-                  </View>
-                )
-              }
-              
-              // 根据分值返回测评结果文本
-              const getScoreResult = (score: number | null): string => {
-                if (score === null) {
-                  return '待测评'
-                }
-                const numScore = Number(score)
-                if (numScore >= 4 && numScore <= 6) {
-                  return '明显'
-                } else if (numScore >= -3 && numScore <= 3) {
-                  return '待发现'
-                } else if (numScore < -3) {
-                  return '不明显'
-                }
-                return '待测评'
-              }
-
-              return (
-                <View className="popular-majors-page__element-dialog-list">
-                  {elements.map((element, index) => {
-                    const scoreResult = getScoreResult(element.score)
-                    return (
-                      <View key={index} className="popular-majors-page__element-dialog-item">
-                        <Text className="popular-majors-page__element-dialog-item-name">
-                          {element.elementName}
-                        </Text>
-                        <View className="popular-majors-page__element-dialog-item-score">
-                          <Text className="popular-majors-page__element-dialog-item-score-label">
-                            测评结果：
-                          </Text>
-                          <Text className="popular-majors-page__element-dialog-item-score-value">
-                            {scoreResult}
-                          </Text>
-                        </View>
-                      </View>
-                    )
-                  })}
-                </View>
-              )
-            })()}
-          </View>
-          <DialogFooter>
-            <Button
-              onClick={() => setShowElementDialog(false)}
-              className="popular-majors-page__element-dialog-button"
-            >
-              关闭
             </Button>
           </DialogFooter>
         </DialogContent>
