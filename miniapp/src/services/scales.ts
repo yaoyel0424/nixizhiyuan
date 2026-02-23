@@ -81,7 +81,7 @@ export const getScalesWithAnswers = async (opts?: { repeat?: boolean }): Promise
 }
 
 /**
- * 删除当前用户在 scale_answers 表中的所有答案（用于重新开始自我测评）
+ * 删除当前用户在 scale_answers 表中的所有答案（用于重新开始自我评估）
  * @returns 删除结果，含 deleted、snapshotted 等
  */
 export const deleteScaleAnswers = async (): Promise<{ deleted?: number; snapshotted?: boolean }> => {

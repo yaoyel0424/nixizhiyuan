@@ -115,7 +115,7 @@ export default function AssessmentPage() {
     fetchUserRelatedData()
   })
 
-  // 根据 scaleAnswersCount 计算测评进度
+  // 根据 scaleAnswersCount 计算评估进度
   const TOTAL_QUESTIONS = 168 // 总题目数
   const TOTAL_DIMENSIONS = 7 // 总维度数
   const QUESTIONS_PER_DIMENSION = TOTAL_QUESTIONS / TOTAL_DIMENSIONS // 每个维度的题目数 = 24
@@ -163,7 +163,7 @@ export default function AssessmentPage() {
         {!isCompleted && (
           <Card className="assessment-page__progress-card">
             <View className="assessment-page__progress-header">
-              <Text className="assessment-page__progress-title">测评进度</Text>
+              <Text className="assessment-page__progress-title">评估进度</Text>
               <Text className="assessment-page__progress-percent">
                 {Math.round(assessmentProgress)}%
               </Text>
@@ -347,7 +347,7 @@ export default function AssessmentPage() {
           <View className="assessment-page__tip-content">
             <Text className="assessment-page__tip-icon">💡</Text>
             <Text className="assessment-page__tip-text">
-              建议按顺序完成所有测评，系统将为您生成更准确的专业和院校推荐。
+              建议按顺序完成所有评估，系统将为您生成更准确的专业和院校推荐。
             </Text>
           </View>
         </Card>

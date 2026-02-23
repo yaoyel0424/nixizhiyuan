@@ -214,7 +214,7 @@ export default function IndexPage() {
       ? '/pages/assessment/all-majors/index?continue=1'
       : '/pages/assessment/all-majors/index';
     Taro.navigateTo({ url });
-  }, '开始测评功能暂时不可用，请稍后重试');
+  }, '开始评估功能暂时不可用，请稍后重试');
 
   // 处理三个功能的点击事件
   const handleMajorExploration = withErrorHandler(() => {
@@ -300,7 +300,7 @@ export default function IndexPage() {
     Taro.navigateTo({
       url: '/pages/assessment/popular-majors/index',
     });
-  }, '快速测评功能暂时不可用，请稍后重试');
+  }, '快速评估功能暂时不可用，请稍后重试');
 
   // 计算顶部间距（系统导航栏高度）
   const statusBarHeight = systemInfo?.statusBarHeight || 0;
@@ -330,7 +330,7 @@ export default function IndexPage() {
 
       {/* 主要内容 */}
       <View className="index-page__content">
-        {/* 快速测评卡片 */}
+        {/* 快速评估卡片 */}
         <View className="index-page__card" onClick={handleQuickAssessment}>
           <Card className="index-page__card-inner">
             <View className="index-page__card-header">
@@ -338,7 +338,7 @@ export default function IndexPage() {
                 <Text className="index-page__card-icon-text">⚡</Text>
               </View>
               <View className="index-page__card-title-section">
-                <Text className="index-page__card-title">热门专业测评</Text>
+                <Text className="index-page__card-title">热门专业评估</Text>
                 <Text className="index-page__card-time">约3分钟</Text>
               </View>
             </View>
@@ -517,7 +517,7 @@ export default function IndexPage() {
                           isStepLocked ? 'index-page__dialog-step-desc--locked' : ''
                         }`}
                       >
-                        完成168题科学测评，解锁你的核心特质报告。
+                        完成168题科学评估，解锁你的核心特质报告。
                       </Text>
                     </View>
                   </View>

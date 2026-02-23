@@ -942,7 +942,7 @@ export default function MajorsPage() {
           ) : allMajors.length === 0 ? (
             <View className="majors-page__empty">
               <Text className="majors-page__empty-text">暂无专业数据</Text>
-              <Text className="majors-page__empty-desc">请先完成专业测评问卷</Text>
+              <Text className="majors-page__empty-desc">请先完成专业评估问卷</Text>
             </View>
           ) : onlyMatchSubject && !level3IdsLoaded ? (
             <View className="majors-page__empty">

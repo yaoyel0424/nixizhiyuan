@@ -26,7 +26,7 @@ export default function ReportPage() {
           <Card className="report-page__card">
             <Text className="report-page__title">天赋洞察报告</Text>
             <Text className="report-page__desc">报告内容正在生成中...</Text>
-            <Text className="report-page__tip">请先完成168题测评以生成完整报告</Text>
+            <Text className="report-page__tip">请先完成168题评估以生成完整报告</Text>
           </Card>
         </View>
       </View>

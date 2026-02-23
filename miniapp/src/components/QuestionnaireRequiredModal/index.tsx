@@ -45,7 +45,7 @@ export function QuestionnaireRequiredModal({
             需要先完成问卷
           </DialogTitle>
           <DialogDescription className="questionnaire-required-modal__description">
-            此功能需要先完成168题专业匹配测评才能使用
+            此功能需要先完成168题专业匹配评估才能使用
           </DialogDescription>
         </DialogHeader>
 

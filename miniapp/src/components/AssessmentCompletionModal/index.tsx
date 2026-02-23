@@ -1,4 +1,4 @@
-// 测评完成模态框组件
+// 评估完成模态框组件
 import React, { useState, useEffect } from 'react'
 import { View, Text } from '@tarojs/components'
 import { Card } from '@/components/ui/Card'
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import './index.less'
 
 /**
- * 测评完成与提交时的反馈模态框
+ * 评估完成与提交时的反馈模态框
  */
 interface AssessmentCompletionModalProps {
   /** 是否显示 */

@@ -170,8 +170,8 @@ const Login: React.FC = () => {
             <View className="login-page__agreement-section">
               <Text className="login-page__agreement-section-title">一、服务说明</Text>
               <Text className="login-page__agreement-section-text">
-                1.1 本小程序是一款提供专业匹配度测评、生涯规划建议、志愿填报参考等功能的工具类产品。{'\n'}
-                1.2 本小程序提供的测评结果仅供参考，不构成任何专业报考、职业选择的法律或事实建议，用户应结合自身情况独立判断。
+                1.1 本小程序是一款提供专业匹配度评估、生涯规划建议、志愿填报参考等功能的工具类产品。{'\n'}
+                1.2 本小程序提供的评估结果仅供参考，不构成任何专业报考、职业选择的法律或事实建议，用户应结合自身情况独立判断。
               </Text>
             </View>
 
@@ -303,7 +303,7 @@ const Login: React.FC = () => {
             <View className="login-page__agreement-section">
               <Text className="login-page__agreement-section-title">一、我们收集的信息</Text>
               <Text className="login-page__agreement-section-text">
-                1.1 您提供的信息：注册时填写的手机号/微信号、昵称、头像、测评答案、志愿倾向等。{'\n'}
+                1.1 您提供的信息：注册时填写的手机号/微信号、昵称、头像、评估答案、志愿倾向等。{'\n'}
                 1.2 系统自动收集的信息：设备信息（如型号、操作系统）、操作日志、IP地址、访问时间等。{'\n'}
                 1.3 第三方信息：如您通过微信登录，我们可能会获取您的公开微信信息（如昵称、头像）。
               </Text>
@@ -313,7 +313,7 @@ const Login: React.FC = () => {
               <Text className="login-page__agreement-section-title">二、我们如何使用信息</Text>
               <Text className="login-page__agreement-section-text">
                 2.1 用于提供、维护和改进本小程序的服务。{'\n'}
-                2.2 用于生成个性化测评报告和推荐内容。{'\n'}
+                2.2 用于生成个性化评估报告和推荐内容。{'\n'}
                 2.3 用于用户身份验证、安全防范和风险控制。{'\n'}
                 2.4 在符合法律的情况下，我们可能对匿名化处理后的数据进行统计分析。
               </Text>

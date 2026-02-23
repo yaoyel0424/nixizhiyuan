@@ -57,7 +57,7 @@ export default function ProfilePage() {
     provinceFavoritesCount === 0 && 
     choicesCount === 0
   
-  // 计算测评状态
+  // 计算评估状态
   const assessmentStatus: AssessmentStatus = 
     allDimensionsEmpty 
       ? "not_started" 
@@ -65,7 +65,7 @@ export default function ProfilePage() {
       ? "completed" 
       : "in_progress"
   
-  // 计算当前题目编号（如果有未完成测评）
+  // 计算当前题目编号（如果有未完成评估）
   const currentQuestion = scaleAnswersCount > 0 ? scaleAnswersCount + 1 : 1
   
   const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
@@ -211,7 +211,7 @@ export default function ProfilePage() {
   }
 
   /**
-   * 重新开始自我测评：仅当已答完 168 题时调用清除接口；repeatCount > 0 且未答完时由「继续完成」处理，不调用删除
+   * 重新开始自我评估：仅当已答完 168 题时调用清除接口；repeatCount > 0 且未答完时由「继续完成」处理，不调用删除
    */
   const handleRestartAssessment = () => {
     if (scaleAnswersCount < TOTAL_QUESTIONS) {
@@ -261,7 +261,7 @@ export default function ProfilePage() {
     // 完成168题就可以查看
     if (scaleAnswersCount < TOTAL_QUESTIONS) {
       Taro.showToast({
-        title: '请先完成168题测评',
+        title: '请先完成168题评估',
         icon: 'none'
       })
       return
@@ -432,7 +432,7 @@ export default function ProfilePage() {
               <Text className="profile-page__card-title">我的探索之旅</Text>
             </View>
             <View className="profile-page__card-body">
-              {/* repeatCount > 0 且未答完：继续完成自我测评（不调删除）；答完 168 题：重新开始（调删除）；否则禁用 */}
+              {/* repeatCount > 0 且未答完：继续完成自我评估（不调删除）；答完 168 题：重新开始（调删除）；否则禁用 */}
               <View
                 className={`profile-page__card-item ${scaleAnswersCount < TOTAL_QUESTIONS && repeatCount === 0 ? 'profile-page__card-item--disabled' : ''}`}
                 onClick={handleRestartAssessment}
@@ -442,7 +442,7 @@ export default function ProfilePage() {
                 </View>
                 <View className="profile-page__card-item-content">
                   <Text className={`profile-page__card-item-title ${scaleAnswersCount < TOTAL_QUESTIONS && repeatCount === 0 ? 'profile-page__card-item-title--disabled' : ''}`}>
-                    {scaleAnswersCount >= TOTAL_QUESTIONS ? '重新开始自我测评' : repeatCount > 0 ? '继续完成自我测评' : '重新开始自我测评'}
+                    {scaleAnswersCount >= TOTAL_QUESTIONS ? '重新开始自我评估' : repeatCount > 0 ? '继续完成自我评估' : '重新开始自我评估'}
                   </Text>
                   <Text className={`profile-page__card-item-desc ${scaleAnswersCount < TOTAL_QUESTIONS && repeatCount === 0 ? 'profile-page__card-item-desc--disabled' : ''}`}>
                     {scaleAnswersCount >= TOTAL_QUESTIONS ? '清除数据后重新答题，请谨慎操作' : repeatCount > 0 ? '定位到未答题，并参考上次答题内容' : '完成168题后可重新开始'}
@@ -470,7 +470,7 @@ export default function ProfilePage() {
                 <Text className={`profile-page__card-arrow ${scaleAnswersCount < TOTAL_QUESTIONS ? 'profile-page__card-arrow--disabled' : ''}`}>›</Text>
               </View>
 
-              {/* 继续未完成测评（仅当有未完成测评时显示） */}
+              {/* 继续未完成评估（仅当有未完成评估时显示） */}
               {/* {assessmentStatus === "in_progress" && (
                 <View className="profile-page__card-item" onClick={handleContinueAssessment}>
                   <View className="profile-page__card-icon profile-page__card-icon--continue">

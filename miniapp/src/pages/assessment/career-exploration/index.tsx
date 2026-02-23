@@ -1030,7 +1030,7 @@ function MajorAnalysisActionCard({
                             </View>
                           </View>
                           {numScore == null && (
-                            <Text className="career-exploration-page__score-bar-placeholder">待测评</Text>
+                            <Text className="career-exploration-page__score-bar-placeholder">待评估</Text>
                           )}
                         </View>
                         {elementId !== null && (
@@ -1049,7 +1049,7 @@ function MajorAnalysisActionCard({
                       </View>
 
                       {(() => {
-                        // 仅在“厌学/阻学”元素下展示转化潜力（放在“测评结果”下面）
+                        // 仅在“厌学/阻学”元素下展示转化潜力（放在“评估结果”下面）
                         const shouldShowConversion = reasonKind === 'yanxue' || reasonKind === 'tiaozhan'
                         if (!shouldShowConversion) return null
                         const { level, text } = getPotentialConversionLabel(element?.potentialConversionValue)

@@ -25,7 +25,7 @@ interface Major {
   salaryavg?: string | null
   fivesalaryavg?: number
   majorBrief?: string | null
-  // 从接口返回的测评进度和分数
+  // 从接口返回的评估进度和分数
   progress?: {
     completedCount: number
     totalCount: number
@@ -98,7 +98,7 @@ function ElementAnalysesDisplay({
   isCompleted?: boolean
   onGoToDetail: () => void
 }) {
-  // 如果未完成测评，不显示元素分析
+  // 如果未完成评估，不显示元素分析
   if (!isCompleted || !score || !analyses || analyses.length === 0) {
     return null
   }
@@ -217,7 +217,7 @@ export default function PopularMajorsPage() {
   const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all')
   // 元素分析对话框状态
 
-  // 测评内容预览弹窗（completedCount 为 0 时点击测评先展示测量内容）
+  // 评估内容预览弹窗（completedCount 为 0 时点击评估先展示测量内容）
   const [showPreAssessmentIntro, setShowPreAssessmentIntro] = useState(false)
   const [preAssessmentMajor, setPreAssessmentMajor] = useState<Major | null>(null)
 
@@ -233,7 +233,7 @@ export default function PopularMajorsPage() {
       salaryavg: apiData.averageSalary || null,
       fivesalaryavg: 0, // API 中暂无此字段
       majorBrief: apiData.majorDetail?.majorBrief || null,
-      // 保留接口返回的测评进度和分数数据
+      // 保留接口返回的评估进度和分数数据
       progress: apiData.progress,
       score: apiData.score,
       // 元素分析数据（在根级别，不在 majorDetail 中）
@@ -319,7 +319,7 @@ export default function PopularMajorsPage() {
       const scalesResponse = await getScalesByPopularMajorId(popularMajorId)
       
       if (!scalesResponse || !scalesResponse.scales || scalesResponse.scales.length === 0) {
-        throw new Error('该专业暂无测评题目')
+        throw new Error('该专业暂无评估题目')
       }
 
       // 将 Scale 转换为 Question 格式
@@ -364,7 +364,7 @@ export default function PopularMajorsPage() {
     } catch (error: any) {
       console.error('加载量表和答案失败:', error)
       Taro.showToast({
-        title: error?.message || '加载测评题目失败',
+        title: error?.message || '加载评估题目失败',
         icon: 'none',
         duration: 2000
       })
@@ -372,7 +372,7 @@ export default function PopularMajorsPage() {
     }
   }
 
-  // 处理开始测评
+  // 处理开始评估
   const handleStartAssessment = async (major: Major) => {
     setSelectedMajor(major)
     setShowQuestionnaire(true)
@@ -389,7 +389,7 @@ export default function PopularMajorsPage() {
     await loadScalesByPopularMajorId(popularMajorId)
   }
 
-  // 点击测评按钮：completedCount 为 0 且有 elementAnalyses 时先展示测评内容，否则直接进入测评
+  // 点击评估按钮：completedCount 为 0 且有 elementAnalyses 时先展示评估内容，否则直接进入评估
   const handleAssessmentButtonClick = (major: Major) => {
     const completedCount = Number(major.progress?.completedCount ?? 0)
     const hasElementAnalyses = major.elementAnalyses && major.elementAnalyses.length > 0
@@ -401,7 +401,7 @@ export default function PopularMajorsPage() {
     }
   }
 
-  // 测评内容预览中点击「开始测评」，关闭预览并进入测评页
+  // 评估内容预览中点击「开始评估」，关闭预览并进入评估页
   const handleConfirmPreAssessment = () => {
     if (preAssessmentMajor) {
       const major = preAssessmentMajor
@@ -481,7 +481,7 @@ export default function PopularMajorsPage() {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1)
     } else {
-      // 完成测评，计算热爱能量
+      // 完成评估，计算热爱能量
       handleComplete()
     }
   }
@@ -493,7 +493,7 @@ export default function PopularMajorsPage() {
     }
   }
 
-  // 完成测评
+  // 完成评估
   const handleComplete = async () => {
     // 计算总分（所有选项值的总和）
     // 选项值范围通常是 -2 到 2，需要映射到 0-1 范围
@@ -524,7 +524,7 @@ export default function PopularMajorsPage() {
     }, 2000)
   }
 
-  // 重新测评
+  // 重新评估
   const handleRetake = async () => {
     if (!selectedMajor) {
       Taro.showToast({
@@ -555,8 +555,8 @@ export default function PopularMajorsPage() {
         {/* 头部横幅 */}
         <View className="popular-majors-page__header">
           <View className="popular-majors-page__header-content">
-            <Text className="popular-majors-page__header-title">热门专业测评</Text>
-            <Text className="popular-majors-page__header-subtitle">进行专业匹配度测评</Text>
+            <Text className="popular-majors-page__header-title">热门专业评估</Text>
+            <Text className="popular-majors-page__header-subtitle">进行专业匹配度评估</Text>
           </View>
         </View>
 
@@ -588,14 +588,14 @@ export default function PopularMajorsPage() {
         ) : (
           <View className="popular-majors-page__majors">
             {filteredMajors.map((major, index) => {
-              // 使用接口返回的数据判断是否完成测评
+              // 使用接口返回的数据判断是否完成评估
               const isCompleted = major.progress?.isCompleted === true
               // 使用接口返回的分数数据
               const score = major.score?.score
               
-              // 判断是否应该显示元素分析：只有测评完成或者有得分（>0）时才显示
+              // 判断是否应该显示元素分析：只有评估完成或者有得分（>0）时才显示
               const shouldShowElementAnalyses = isCompleted || (score !== undefined && score !== null && Number(score) > 0)
-              // 获取测评进度（确保转换为数字类型）
+              // 获取评估进度（确保转换为数字类型）
               const completedCount = major.progress?.completedCount 
                 ? (typeof major.progress.completedCount === 'string' 
                     ? parseInt(major.progress.completedCount, 10) 
@@ -673,10 +673,10 @@ export default function PopularMajorsPage() {
                             handleAssessmentButtonClick(major)
                           }}
                         >
-                          测评
+                          评估
                         </Button>
                       )}
-                      {/* 显示测评进度：未完成且进度不为0才显示 */}
+                      {/* 显示评估进度：未完成且进度不为0才显示 */}
                       {!isCompleted && hasProgress && (
                         <View className="popular-majors-page__major-progress">
                           <View className="popular-majors-page__major-progress-info">
@@ -693,7 +693,7 @@ export default function PopularMajorsPage() {
                       )}
                     </View>
                   </View>
-                  {/* 元素分析显示：只有测评完成的专业才显示 */}
+                  {/* 元素分析显示：只有评估完成的专业才显示 */}
                   {isCompleted && major.elementAnalyses && major.elementAnalyses.length > 0 && (
                     <View 
                       className="popular-majors-page__major-element-analyses-wrapper"
@@ -732,20 +732,20 @@ export default function PopularMajorsPage() {
         )}
       </View>
 
-      {/* 测评对话框 */}
+      {/* 评估对话框 */}
       <Dialog open={showQuestionnaire} onOpenChange={setShowQuestionnaire} className="popular-majors-page__dialog-wrapper">
         <DialogContent className="popular-majors-page__dialog" showCloseButton={true}>
           <DialogHeader>
             <DialogTitle className="popular-majors-page__dialog-title">
-              {selectedMajor?.name} - 专业匹配度测评
+              {selectedMajor?.name} - 专业匹配度评估
             </DialogTitle>
           </DialogHeader>
 
           {isCompleted ? (
-            // 完成状态：显示重新测评按钮
+            // 完成状态：显示重新评估按钮
             <View className="popular-majors-page__dialog-completed">
               <Text className="popular-majors-page__dialog-energy-desc">
-                测评已完成
+                评估已完成
               </Text>
               <View className="popular-majors-page__dialog-actions">
                 <Button
@@ -753,7 +753,7 @@ export default function PopularMajorsPage() {
                   className="popular-majors-page__dialog-button popular-majors-page__dialog-button--primary"
                   size="lg"
                 >
-                  🔄 重新测评
+                  🔄 重新评估
                 </Button>
                 <Button
                   onClick={() => setShowQuestionnaire(false)}
@@ -835,7 +835,7 @@ export default function PopularMajorsPage() {
                   disabled={answers[currentQuestion?.id] === undefined}
                   className="popular-majors-page__dialog-nav-button popular-majors-page__dialog-nav-button--next"
                 >
-                  {currentQuestionIndex < questions.length - 1 ? '下一题' : '完成测评'}
+                  {currentQuestionIndex < questions.length - 1 ? '下一题' : '完成评估'}
                 </Button>
               </View>
             </View>
@@ -843,7 +843,7 @@ export default function PopularMajorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 测评内容预览对话框（completedCount 为 0 时先展示将测量的内容） */}
+      {/* 评估内容预览对话框（completedCount 为 0 时先展示将测量的内容） */}
       <Dialog
         open={showPreAssessmentIntro}
         onOpenChange={(open) => {
@@ -890,7 +890,7 @@ export default function PopularMajorsPage() {
               className="popular-majors-page__dialog-button popular-majors-page__dialog-button--primary"
               size="lg"
             >
-              开始测评
+              开始评估
             </Button>
           </DialogFooter>
         </DialogContent>
