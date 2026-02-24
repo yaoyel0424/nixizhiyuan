@@ -217,6 +217,94 @@ TTL rate_limit:某个IP:某路径
 
 若不确定 Redis 容器名，可执行 `docker ps -a | grep redis` 查看；网络名见 `docker network ls | grep rbridge`。
 
+## PostgreSQL 连接管理
+
+### 报错「too many connections」
+
+表示当前连接数超过 PostgreSQL 的 `max_connections` 限制。常见原因与处理如下。
+
+**可能原因**
+
+- PostgreSQL 的 `max_connections` 较小（默认常为 100）。
+- 应用连接池 × 进程数过大：本项目中 TypeORM 连接池默认每进程最多 15 个连接（见 `src/database/database.module.ts`），多实例或多进程会叠加。
+- 同一台 PostgreSQL 上还有其它应用、迁移、管理工具等占用连接。
+- 连接未正确释放（泄漏），导致池子与数据库连接被占满。
+
+**处理建议**
+
+1. **查看当前限制与占用**（在 `psql` 或任意客户端执行）：
+   ```sql
+   SHOW max_connections;
+   SELECT count(*) FROM pg_stat_activity;
+   ```
+2. **减小应用侧连接池**：在配置中降低每进程池大小（如 `database.pool.max` 设为 5 或更小），避免多进程时总连接数过高。
+3. **控制进程数**：减少 PM2 的 `instances` 或同时运行的 Nest 进程数。
+4. **必要时提高 PostgreSQL 上限**：在 `postgresql.conf` 中增大 `max_connections` 并重启 PostgreSQL（需同时考虑 `shared_buffers` 等）。
+
+### 查询当前所有连接
+
+```sql
+-- 连接总数
+SELECT count(*) FROM pg_stat_activity;
+
+-- 各连接详情（pid、用户、应用名、客户端、状态、当前/上一条 SQL 等）
+SELECT
+  pid,
+  usename,
+  application_name,
+  client_addr,
+  client_port,
+  backend_start,
+  state,
+  query_start,
+  left(query, 80) AS query_preview
+FROM pg_stat_activity
+ORDER BY backend_start;
+
+-- 按数据库统计
+SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname;
+
+-- 按应用与状态统计
+SELECT application_name, state, count(*)
+FROM pg_stat_activity
+WHERE datname = current_database()
+GROUP BY application_name, state;
+```
+
+### 终止空闲（idle）连接
+
+先查看当前库下的空闲连接：
+
+```sql
+SELECT pid, usename, application_name, state, query_start, state_change
+FROM pg_stat_activity
+WHERE state = 'idle'
+  AND datname = current_database();
+```
+
+再终止当前库下所有空闲连接（不杀当前会话）：
+
+```sql
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE state = 'idle'
+  AND datname = current_database()
+  AND pid <> pg_backend_pid();
+```
+
+只终止空闲超过一定时间的连接（例如 10 分钟）：
+
+```sql
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE state = 'idle'
+  AND datname = current_database()
+  AND pid <> pg_backend_pid()
+  AND state_change < now() - interval '10 minutes';
+```
+
+**说明**：`pg_terminate_backend` 需要相应权限；被终止连接上的未提交事务会回滚；应用连接池会重连，若池子或进程数过大，连接数仍可能再次升高，需配合减小池大小或进程数。
+
 ## 开发命令
 
 ```bash

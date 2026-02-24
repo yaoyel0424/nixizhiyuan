@@ -15,7 +15,7 @@ import { ErrorCode } from '../constants/error-code.constant';
 @Injectable()
 export class ValidationPipe implements PipeTransform<any> {
   async transform(value: any, { metatype }: ArgumentMetadata) {
-    if (!metatype || !this.toValidate(metatype)) {
+    if (value == null || !metatype || !this.toValidate(metatype, value)) {
       return value;
     }
 
@@ -27,11 +27,6 @@ export class ValidationPipe implements PipeTransform<any> {
       forbidNonWhitelisted: true, // 禁止未定义的属性
       transform: true, // 自动转换类型
     });
-
-    console.log(errors);
-    console.log(metatype);
-    console.log(value);
-    console.log(object);
 
     if (errors.length > 0) {
       const errorMessages = errors.map((error) => {
@@ -54,10 +49,17 @@ export class ValidationPipe implements PipeTransform<any> {
 
   /**
    * 检查是否需要验证
+   * 不校验基本类型及 User（请求上下文的当前用户，形状可能与实体不一致，避免 @CurrentUser() 触发校验失败）
    */
-  private toValidate(metatype: any): boolean {
+  private toValidate(metatype: any, value?: any): boolean {
     const types: any[] = [String, Boolean, Number, Array, Object];
-    return !types.includes(metatype);
+    if (types.includes(metatype)) return false;
+    if (metatype?.name === 'User') return false;
+    // 当前用户对象：通常带 id 且带 openid/username/email 等，不当作 DTO 校验
+    if (value && typeof value === 'object' && 'id' in value && ('openid' in value || 'username' in value || 'email' in value)) {
+      return false;
+    }
+    return true;
   }
 }
 

@@ -13,6 +13,8 @@ import { User } from '@/entities/user.entity';
 import { SchoolMajor } from '@/entities/school-major.entity';
 import { RedisModule } from '@/redis/redis.module';
 import { ScoresModule } from '@/scores/scores.module';
+import { PayModule } from '@/pay/pay.module';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 import { MajorsController } from './majors.controller';
 import { MajorsService } from './majors.service';
 import { CacheInterceptor } from '@/common/interceptors/cache.interceptor';
@@ -38,10 +40,12 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
     ]),
     RedisModule,
     ScoresModule,
+    PayModule,
   ],
   controllers: [MajorsController],
   providers: [
     MajorsService,
+    EntitlementGuard,
     {
       provide: APP_INTERCEPTOR,
       useClass: CacheInterceptor,

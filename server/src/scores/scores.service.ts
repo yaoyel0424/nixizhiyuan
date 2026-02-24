@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PopularMajor } from '@/entities/popular-major.entity';
+import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
  * 专业分数服务
@@ -468,6 +469,14 @@ export class ScoresService {
 
     // 按得分排序
     results.sort((a, b) => b.score - a.score);
+
+    // 前五的专业增加 sign 标记（用于防伪；有 popularMajorId 时用其编码以便 guard 校验）
+    const top5Count = Math.min(5, results.length);
+    for (let i = 0; i < top5Count; i++) {
+      const idForSign = results[i].popularMajorId ?? results[i].majorId;
+      const sign = IdTransformUtil.encodeTo32Hex(idForSign);
+      if (sign) results[i].sign = sign;
+    }
 
     return results;
   }

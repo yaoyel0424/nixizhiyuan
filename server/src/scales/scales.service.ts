@@ -548,6 +548,17 @@ export class ScalesService {
   }
 
   /**
+   * 根据热门专业 ID 获取专业 code（用于权益校验）
+   */
+  async getPopularMajorCodeById(popularMajorId: number): Promise<string | null> {
+    const pm = await this.popularMajorRepository.findOne({
+      where: { id: popularMajorId },
+      select: ['code'],
+    });
+    return pm?.code ?? null;
+  }
+
+  /**
    * 根据热门专业ID获取对应的量表列表及用户答案
    * @param popularMajorId 热门专业ID
    * @param userId 用户ID

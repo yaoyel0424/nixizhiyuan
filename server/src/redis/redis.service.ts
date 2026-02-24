@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, RedisClientType } from 'redis';
 import { IRedisService } from './redis.interface';
 
+/** node-redis set() 的选项类型（第三个参数） */
+type RedisSetOptions = Parameters<RedisClientType['set']>[2];
+
 /**
  * Redis 服务
  * 基于 node-redis 客户端实现
@@ -96,6 +99,11 @@ export class RedisService implements IRedisService, OnModuleInit, OnModuleDestro
     await this.client.expire(key, seconds);
   }
 
+  async incr(key: string): Promise<number> {
+    return this.client.incr(key);
+  }
+ 
+
   async ttl(key: string): Promise<number> {
     return this.client.ttl(key);
   }
@@ -118,6 +126,20 @@ export class RedisService implements IRedisService, OnModuleInit, OnModuleDestro
 
   async hgetall(key: string): Promise<Record<string, string>> {
     return this.client.hGetAll(key);
+  }
+
+  /**
+   * 仅当 key 不存在时设置（NX），用于幂等；可选过期时间
+   * @returns 是否设置成功（true 表示本次设置成功，false 表示 key 已存在）
+   */
+  async setNX(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
+    if (!this.client || !this.client.isOpen) {
+      throw new Error('Redis 客户端未连接');
+    }
+    const options: RedisSetOptions =
+      ttlSeconds != null && ttlSeconds > 0 ? { NX: true, EX: ttlSeconds } : { NX: true };
+    const result = await this.client.set(key, value, options);
+    return result === 'OK';
   }
 
   /**

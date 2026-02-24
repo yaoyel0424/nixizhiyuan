@@ -28,6 +28,8 @@ import {
 import { MajorGroupInfoResponseDto } from './dto/major-group-info-response.dto';
 import { Cache } from '@/common/decorators/cache.decorator';
 import { IdTransformUtil } from '@/common/utils/id-transform.util';
+import { RequireEntitlement } from '@/common/decorators/require-entitlement.decorator';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 
 /**
  * 招生计划控制器
@@ -170,11 +172,14 @@ export class EnrollPlanController {
     status: 404,
     description: '用户不存在或未找到数据',
   })
+  @UseGuards(EntitlementGuard)
+  @RequireEntitlement({ type: 'popular_major', paramKey: 'popularMajorId' }) 
   async getEnrollmentPlansByMajorId(
     @Param('majorId', ParseIntPipe) majorId: number,
     @CurrentUser() user: any,
     @Query('minScore') minScore?: string,
     @Query('maxScore') maxScore?: string,
+    @Query('popularMajorId') popularMajorId?: string,
   ): Promise<EnrollmentPlansByScoreRangeDto> {
     const year = await this.getYearByUserProvince(user);
 

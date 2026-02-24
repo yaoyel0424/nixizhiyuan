@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -34,6 +35,9 @@ import {
 import { PopularMajorAnswerResponseDto } from '../popular-majors/dto/popular-major-answer-response.dto';
 import { plainToInstance } from 'class-transformer';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { RequireEntitlement } from '@/common/decorators/require-entitlement.decorator';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
+import { User } from '@/entities/user.entity';
 
 /**
  * 量表控制器
@@ -129,6 +133,8 @@ export class ScalesController {
   }
 
   @Get('element/:elementId/popular-major/:popularMajorId')
+  @UseGuards(EntitlementGuard)
+  @RequireEntitlement({ type: 'popular_major', paramKey: 'popularMajorId' })
   @ApiOperation({ summary: '根据元素ID和热门专业ID获取对应的量表列表及用户答案（从 popular_major_answers 表查询）' })
   @ApiParam({ name: 'elementId', description: '元素ID' })
   @ApiParam({ name: 'popularMajorId', description: '热门专业ID' })
@@ -149,16 +155,18 @@ export class ScalesController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: '请先登录' })
+  @ApiResponse({ status: 402, description: '需付费后评估' })
   @ApiResponse({ status: 404, description: '元素不存在或热门专业不存在' })
   async findScalesByElementIdForPopularMajor(
     @Param('elementId', ParseIntPipe) elementId: number,
     @Param('popularMajorId', ParseIntPipe) popularMajorId: number,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any  
   ) {
     const result = await this.scalesService.findScalesByElementIdForPopularMajor(
       elementId,
       popularMajorId,
-      user.id,
+      user!.id,
     );
     return {
       scales: plainToInstance(ScaleResponseDto, result.scales, {
@@ -171,6 +179,8 @@ export class ScalesController {
   }
 
   @Get('popular-major/:popularMajorId')
+  @UseGuards(EntitlementGuard)
+  @RequireEntitlement({ type: 'popular_major', paramKey: 'popularMajorId' })
   @ApiOperation({ summary: '根据热门专业ID获取对应的量表列表及用户答案' })
   @ApiParam({ name: 'popularMajorId', description: '热门专业ID' })
   @ApiResponse({
@@ -190,14 +200,16 @@ export class ScalesController {
       },
     },
   })
+  @ApiResponse({ status: 401, description: '请先登录' })
+  @ApiResponse({ status: 402, description: '需付费后自评' })
   @ApiResponse({ status: 404, description: '热门专业不存在' })
   async findScalesByPopularMajorId(
     @Param('popularMajorId', ParseIntPipe) popularMajorId: number,
-    @CurrentUser() user: any,
+    @CurrentUser() user: User | undefined,
   ) {
     const result = await this.scalesService.findScalesByPopularMajorId(
       popularMajorId,
-      user.id,
+      user!.id,
     );
     return {
       scales: plainToInstance(ScaleResponseDto, result.scales, {

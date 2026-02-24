@@ -44,6 +44,15 @@ export class ScoreResponseDto {
   @ApiProperty({ description: '善学分数' })
   @Expose()
   shanxueScore: number;
+
+  @ApiProperty({
+    description: '前五专业的防伪标识（majorId 的 32 位可逆编码，仅前五有值）',
+    required: false,
+    nullable: true,
+    example: '0000000000003039a3d70a3d70a3d7...',
+  })
+  @Expose()
+  sign?: string | null;
 }
 
 /**

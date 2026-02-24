@@ -14,6 +14,7 @@ import { PopularMajorAnswer } from '@/entities/popular-major-answer.entity';
 import { CreatePopularMajorAnswerDto } from './dto/create-popular-major-answer.dto';
 import { QueryPopularMajorAnswerDto } from './dto/query-popular-major-answer.dto';
 import { ScoresService } from '../scores/scores.service';
+import { EntitlementService } from '../pay/entitlement.service';
 
 /**
  * 热门专业服务
@@ -33,6 +34,7 @@ export class PopularMajorsService {
     @InjectRepository(PopularMajorAnswer)
     private readonly popularMajorAnswerRepository: Repository<PopularMajorAnswer>,
     private readonly scoresService: ScoresService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
   /**
@@ -68,7 +70,9 @@ export class PopularMajorsService {
 
     // 直接调用 addProgressAndScoreByLevel1，在内部一次性查询所有数据
     const result = await this.addProgressAndScoreByLevel1(level1, userId);
-
+    if (userId && result.items.length > 0) {
+      await this.attachEntitlementFlags(result.items, userId);
+    }
     return {
       items: result.items,
       meta: {
@@ -106,7 +110,9 @@ export class PopularMajorsService {
 
     // 如果有 userId，计算进度和分数
     await this.addProgressAndScoreForItems([popularMajor], userId);
-
+    if (userId) {
+      await this.attachEntitlementFlags([popularMajor], userId);
+    }
     return popularMajor;
   }
 
@@ -133,7 +139,9 @@ export class PopularMajorsService {
 
     // 如果有 userId，计算进度和分数
     await this.addProgressAndScoreForItems([popularMajor], userId);
-
+    if (userId) {
+      await this.attachEntitlementFlags([popularMajor], userId);
+    }
     return popularMajor;
   }
 
@@ -161,8 +169,28 @@ export class PopularMajorsService {
 
     // 如果有 userId，计算进度和分数
     await this.addProgressAndScoreForItems(popularMajors, userId);
-
+    if (userId) {
+      await this.attachEntitlementFlags(popularMajors, userId);
+    }
     return popularMajors;
+  }
+
+  /**
+   * 为热门专业列表附加权益标记：是否已交费、是否已使用免费额度（查 user_entitlements / user_free_popular_major_records）
+   */
+  private async attachEntitlementFlags(
+    items: PopularMajor[],
+    userId: number,
+  ): Promise<void> {
+    if (!items?.length) return;
+    const { paidMajorCodes, freeUsedMajorCodes } =
+      await this.entitlementService.getPopularMajorEntitlementSummary(userId);
+    for (const item of items) {
+      (item as PopularMajor & { isPaid?: boolean; isFreeUsed?: boolean }).isPaid =
+        paidMajorCodes.includes(item.code);
+      (item as PopularMajor & { isPaid?: boolean; isFreeUsed?: boolean }).isFreeUsed =
+        freeUsedMajorCodes.includes(item.code);
+    }
   }
 
   /**

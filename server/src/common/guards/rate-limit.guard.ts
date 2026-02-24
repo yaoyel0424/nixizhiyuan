@@ -54,49 +54,49 @@ export class RateLimitGuard implements CanActivate {
     private readonly ipBlockGuard: IpBlockGuard,
   ) {
     // 从环境变量读取默认配置
-    this.defaultMaxRequests =
-      parseInt(this.configService.get<string>('RATE_LIMIT_MAX_REQUESTS', '300'), 10) || 300;
-    this.defaultWindowSeconds =
-      parseInt(this.configService.get<string>('RATE_LIMIT_WINDOW_SECONDS', '60'), 10) || 60;
+    this.defaultMaxRequests =  600;
+    this.defaultWindowSeconds =  60;
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const handler = context.getHandler();
     const controller = context.getClass();
-
+  
     // 检查是否跳过速率限制
     const skipRateLimit = this.reflector.getAllAndOverride<boolean>(
       RATE_LIMIT_SKIP_KEY,
       [handler, controller],
     );
-
+  
     if (skipRateLimit) {
       return true;
     }
-
+  
     // 获取速率限制配置
     const rateLimitConfig = this.reflector.getAllAndOverride<{
       maxRequests: number;
       windowSeconds: number;
     }>(RATE_LIMIT_KEY, [handler, controller]);
-
+  
     const maxRequests = rateLimitConfig?.maxRequests || this.defaultMaxRequests;
     const windowSeconds = rateLimitConfig?.windowSeconds || this.defaultWindowSeconds;
-
+  
     // 获取客户端 IP
     const ip = this.getClientIp(request);
     const key = `rate_limit:${ip}:${request.path}`;
-
+  
     try {
-      // 获取当前请求计数
-      const currentCount = await this.redisService.get(key);
-      const count = currentCount ? parseInt(currentCount, 10) : 0;
-
-      if (count >= maxRequests) {
-        // DoS 防护：超限直接封禁 IP，不返回 429
+      // 核心修复：原子递增 + 仅首次设过期
+      const currentCount = await this.redisService.incr(key);
+      if (currentCount === 1) {
+        await this.redisService.expire(key, windowSeconds);
+      }
+  
+      // 超限判断（> 而非 >=）
+      if (currentCount > maxRequests) {
         this.logger.warn(
-          `DoS 防护: 请求超限，封禁 IP - ${ip}, 路径 ${request.path}, 限制: ${maxRequests}/${windowSeconds}秒`,
+          `DoS 防护: 请求超限，封禁 IP - ${ip}, 路径 ${request.path}, 限制: ${maxRequests}/${windowSeconds}秒, 当前计数: ${currentCount}`,
         );
         await this.ipBlockGuard.blockIp(ip);
         throw new HttpException(
@@ -108,23 +108,12 @@ export class RateLimitGuard implements CanActivate {
           HttpStatus.FORBIDDEN,
         );
       }
-
-      // 增加计数
-      if (count === 0) {
-        // 第一次请求，设置计数和过期时间
-        await this.redisService.set(key, '1', windowSeconds);
-      } else {
-        // 增加计数，保持原有的过期时间
-        const newCount = (count + 1).toString();
-        await this.redisService.set(key, newCount, windowSeconds);
-      }
-
+  
       return true;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      // Redis 连接失败时，允许请求通过（容错处理）
       this.logger.warn(`Redis 连接失败，跳过速率限制: ${error.message}`);
       return true;
     }

@@ -8,6 +8,7 @@ import { PopularMajorAnswer } from '@/entities/popular-major-answer.entity';
 import { PopularMajorsService } from './popular-majors.service';
 import { PopularMajorsController } from './popular-majors.controller';
 import { ScoresModule } from '../scores/scores.module';
+import { PayModule } from '../pay/pay.module';
 
 /**
  * 热门专业模块
@@ -22,6 +23,7 @@ import { ScoresModule } from '../scores/scores.module';
       PopularMajorAnswer,
     ]),
     ScoresModule,
+    PayModule,
   ],
   controllers: [PopularMajorsController],
   providers: [PopularMajorsService],

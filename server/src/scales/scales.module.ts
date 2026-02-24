@@ -8,6 +8,8 @@ import { Snapshot } from '@/entities/snapshot.entity';
 import { MajorElementAnalysis } from '@/entities/major-analysis.entity';
 import { PopularMajor } from '@/entities/popular-major.entity';
 import { PopularMajorAnswer } from '@/entities/popular-major-answer.entity';
+import { PayModule } from '@/pay/pay.module';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 import { ScalesService } from './scales.service';
 import { ScalesController } from './scales.controller';
 
@@ -16,6 +18,7 @@ import { ScalesController } from './scales.controller';
  */
 @Module({
   imports: [
+    PayModule,
     TypeOrmModule.forFeature([
       ScaleAnswer,
       Scale,
@@ -28,7 +31,7 @@ import { ScalesController } from './scales.controller';
     ]),
   ],
   controllers: [ScalesController],
-  providers: [ScalesService],
+  providers: [ScalesService, EntitlementGuard],
   exports: [ScalesService],
 })
 export class ScalesModule {}

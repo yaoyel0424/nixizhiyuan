@@ -13,5 +13,8 @@ export interface IRedisService {
   hset(key: string, field: string, value: string): Promise<void>;
   hdel(key: string, field: string): Promise<void>;
   hgetall(key: string): Promise<Record<string, string>>;
+
+  /** 仅当 key 不存在时设置，用于幂等；返回是否设置成功 */
+  setNX(key: string, value: string, ttlSeconds?: number): Promise<boolean>;
 }
 

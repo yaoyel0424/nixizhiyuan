@@ -5,10 +5,12 @@ import {
   Delete,
   Param,
   Body,
-  Query, 
+  Query,
+  Req,
   HttpCode,
   HttpStatus,
-  Req,
+  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -33,6 +35,8 @@ import { Cache } from '@/common/decorators/cache.decorator';
 import { User } from '@/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
+import { RequireEntitlement } from '@/common/decorators/require-entitlement.decorator';
 
 /**
  * 专业收藏控制器
@@ -287,12 +291,12 @@ export class MajorsController {
   }
 
   /**
-   * 通过专业代码获取热门专业详细信息
-   * 支持可选认证：如果用户已登录，会返回用户对元素的分数（从 popular_major_answers 表查询）
-   * 使用 Redis 缓存，默认缓存 10 分钟
+   * 通过专业代码获取热门专业详细信息（仅展示，不校验权益、不扣减免费额度）
+   * 权益与付费在「点击评估」时校验：GET /api/v1/scales/popular-major/:popularMajorId
    */
   @Get('popular-majors/detail/:majorCode')
-  @Cache(600) // 缓存 10 分钟（600秒），可通过环境变量配置
+  @UseGuards(EntitlementGuard)
+  @RequireEntitlement({ type: 'popular_major', paramKey: 'majorCode' })
   @ApiOperation({ summary: '通过专业代码获取热门专业详细信息' })
   @ApiParam({
     name: 'majorCode',
@@ -304,16 +308,18 @@ export class MajorsController {
     description: '查询成功',
     type: MajorDetailResponseDto,
   })
+  @ApiResponse({ status: 401, description: '请先登录' })
   @ApiResponse({ status: 404, description: '热门专业详情不存在' })
   async getPopularMajorDetail(
     @Param('majorCode') majorCode: string,
-    @Req() req: Request,
+    @CurrentUser() user: any,
   ): Promise<MajorDetailResponseDto> {
-    // 尝试从请求中获取用户信息（如果已认证）
-    const user = req.user as User | undefined;
+    if (!user) {
+      throw new UnauthorizedException('请先登录后再查看热门专业详情');
+    }
     const majorDetail = await this.majorsService.getPopularMajorDetailByCode(
       majorCode,
-      user?.id,
+      user.id,
     );
     return plainToInstance(MajorDetailResponseDto, majorDetail, {
       excludeExtraneousValues: true,

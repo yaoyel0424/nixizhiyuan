@@ -162,5 +162,13 @@ export class PopularMajorResponseDto {
   @Expose()
   @Type(() => GroupedElementAnalysisDto)
   elementAnalyses?: GroupedElementAnalysisDto[];
+
+  @ApiProperty({ description: '是否已交费（在 user_entitlements 中）', required: false })
+  @Expose()
+  isPaid?: boolean;
+
+  @ApiProperty({ description: '是否已使用免费额度（在 user_free_popular_major_records 中）', required: false })
+  @Expose()
+  isFreeUsed?: boolean;
 }
 

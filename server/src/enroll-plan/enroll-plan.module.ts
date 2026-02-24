@@ -11,6 +11,8 @@ import { ProvinceFavorite } from '@/entities/province-favorite.entity';
 import { Province } from '@/entities/province.entity';
 import { ProvinceBatch } from '@/entities/province_batch.entity';
 import { ScoresModule } from '@/scores/scores.module';
+import { PayModule } from '@/pay/pay.module';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 import { EnrollPlanController } from './enroll-plan.controller';
 import { ConfigModule } from '@nestjs/config';
 import { EnrollPlanService } from './enroll-plan.service';
@@ -34,9 +36,10 @@ import { EnrollPlanService } from './enroll-plan.service';
       ProvinceBatch,
     ]),
     ScoresModule,
+    PayModule,
   ],
   controllers: [EnrollPlanController],
-  providers: [EnrollPlanService],
+  providers: [EnrollPlanService, EntitlementGuard],
   exports: [EnrollPlanService],
 })
 export class EnrollPlanModule {}
