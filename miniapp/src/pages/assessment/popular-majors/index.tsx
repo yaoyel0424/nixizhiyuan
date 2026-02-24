@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
-import { getFreeQuota, requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
+import { requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
 import './index.less'
@@ -221,7 +221,7 @@ export default function PopularMajorsPage() {
   // 评估内容预览弹窗（completedCount 为 0 时点击评估先展示测量内容）
   const [showPreAssessmentIntro, setShowPreAssessmentIntro] = useState(false)
   const [preAssessmentMajor, setPreAssessmentMajor] = useState<Major | null>(null)
-  // 免费额度提示与支付：点击评估/报告/院校先弹「免费查看2个，其他收费」，超额则弹支付
+  // 免费提示与支付：点击评估/报告/院校先弹「免费查看2个，其他收费」；是否收费仅由业务接口（如 enroll-plan、scales）返回 PAY_REQUIRED 决定
   const [showFreeQuotaTip, setShowFreeQuotaTip] = useState(false)
   const [showPayRequiredModal, setShowPayRequiredModal] = useState(false)
   const [pendingAction, setPendingAction] = useState<{ type: 'assessment' | 'report' | 'schools'; major: Major } | null>(null)
@@ -481,27 +481,17 @@ export default function PopularMajorsPage() {
     }
   }, [pendingAction])
 
-  /** 点击评估/报告/院校：先弹免费提示，继续后查额度，有额度则执行，无额度则弹支付 */
+  /** 点击评估/报告/院校：先弹免费提示，继续后直接执行；是否收费仅看业务接口（enroll-plan、scales）是否返回 PAY_REQUIRED */
   const checkQuotaAndRun = useCallback((type: 'assessment' | 'report' | 'schools', major: Major) => {
     setPendingAction({ type, major })
     setShowFreeQuotaTip(true)
   }, [])
 
-  /** 免费提示弹框点「继续」：查免费额度，有则执行操作，无则弹支付 */
-  const handleFreeQuotaTipContinue = useCallback(async () => {
+  /** 免费提示弹框点「继续」：直接执行操作；是否收费由业务接口决定，接口返回 PAY_REQUIRED 时再弹支付 */
+  const handleFreeQuotaTipContinue = useCallback(() => {
     const action = pendingAction
     setShowFreeQuotaTip(false)
-    if (!action) return
-    try {
-      const { remaining } = await getFreeQuota()
-      if (remaining > 0) {
-        runPendingAction(action)
-      } else {
-        setShowPayRequiredModal(true)
-      }
-    } catch (_) {
-      setShowPayRequiredModal(true)
-    }
+    if (action) runPendingAction(action)
   }, [pendingAction, runPendingAction])
 
   /** 支付弹框「去支付」：调起支付，成功后执行原操作（transactions_jsapi 需传 majorCode） */
@@ -972,7 +962,7 @@ export default function PopularMajorsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 免费额度提示：点击评估/报告/院校时先提示「免费查看2个，其他收费」 */}
+      {/* 免费提示：仅文案说明；是否需付费完全由业务接口（如 /enroll-plan/major/xx/scores）返回值 PAY_REQUIRED 决定 */}
       <Dialog open={showFreeQuotaTip} onOpenChange={setShowFreeQuotaTip}>
         <DialogContent className="popular-majors-page__dialog" showCloseButton={true}>
           <DialogHeader>

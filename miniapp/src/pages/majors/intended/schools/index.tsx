@@ -22,6 +22,7 @@ import { getBottom20Scores } from '@/services/scores'
 import { createChoice, CreateChoiceDto, getChoices, deleteChoice, GroupedChoiceResponse } from '@/services/choices'
 import { getExamInfo, updateExamInfo, ExamInfo } from '@/services/exam-info'
 import { getUserRelatedDataCount } from '@/services/user'
+import { requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import './index.less'
 
@@ -146,6 +147,8 @@ export default function IntendedMajorsSchoolsPage() {
   const [warningMajorGroupIds, setWarningMajorGroupIds] = useState<Set<number>>(new Set())
   // 后20%数据中的最高分，用于弹框内标记「分数低于此值的项」
   const [bottom20MaxScore, setBottom20MaxScore] = useState<number | null>(null)
+  // 招生计划接口返回 PAY_REQUIRED 时弹支付框（从热门专业进入时）
+  const [showPayRequiredModal, setShowPayRequiredModal] = useState(false)
 
   // 优先使用接口返回的 provinces，如果没有则从数据中提取
   const provinces = React.useMemo(() => {
@@ -463,7 +466,10 @@ export default function IntendedMajorsSchoolsPage() {
         const convertedData = convertApiDataToSchoolList(apiData, majorCode)
         setData(convertedData)
         setLoading(false)
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.code === 'PAY_REQUIRED') {
+          setShowPayRequiredModal(true)
+        }
         console.error('从 API 加载数据失败:', error)
         setData(null)
         setLoading(false)
@@ -2137,6 +2143,45 @@ export default function IntendedMajorsSchoolsPage() {
           }}
         />
       )}
+
+      {/* 招生计划接口返回 PAY_REQUIRED 时弹支付框（从热门专业进入） */}
+      <Dialog open={showPayRequiredModal} onOpenChange={setShowPayRequiredModal}>
+        <DialogContent className="schools-page__dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle className="schools-page__dialog-title">免费额度已用完</DialogTitle>
+            <DialogDescription className="schools-page__dialog-desc">
+              请购买该热门专业或解锁全部。每个热门专业 {POPULAR_MAJOR_PRICE} 元。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="schools-page__dialog-footer">
+            <Button
+              className="schools-page__dialog-button schools-page__dialog-button--primary"
+              size="lg"
+              onClick={async () => {
+                if (!majorCode) {
+                  Taro.showToast({ title: '专业代码不存在', icon: 'none' })
+                  return
+                }
+                const success = await requestPayForPopularMajor(majorCode)
+                if (success) {
+                  setShowPayRequiredModal(false)
+                  setDataRefreshTrigger((prev) => prev + 1)
+                }
+              }}
+            >
+              去支付
+            </Button>
+            <Button
+              className="schools-page__dialog-button"
+              size="lg"
+              variant="outline"
+              onClick={() => setShowPayRequiredModal(false)}
+            >
+              取消
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </View>
   )
 }

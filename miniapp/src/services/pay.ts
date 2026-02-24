@@ -27,12 +27,13 @@ export const getFreeQuota = async (): Promise<FreeQuotaResult> => {
 }
 
 /**
- * 检查是否可查看热门专业
+ * 检查是否可查看热门专业（含已支付、免费额度、解锁全部等）
  * GET /pay/can-view
- * @param popularMajorId 热门专业 ID
+ * @param userId 用户 ID（必填）
+ * @param majorCode 热门专业 code（必填）
  */
-export const getCanView = async (popularMajorId: number): Promise<{ canView: boolean }> => {
-  const response: any = await get<{ canView: boolean }>('/pay/can-view', { popularMajorId })
+export const getCanView = async (userId: number, majorCode: string): Promise<{ canView: boolean }> => {
+  const response: any = await get<{ canView: boolean }>('/pay/can-view', { userId, majorCode })
   const canView = response?.data?.canView ?? response?.canView ?? false
   return { canView }
 }
