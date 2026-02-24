@@ -11,12 +11,18 @@ import {
 /**
  * 通过专业代码获取专业详细信息
  * @param majorCode 专业代码
+ * @param sign 前五条记录的防伪标识（未解锁时从专业探索列表项带入，必传才能访问）
  * @returns 专业详情信息
  */
 export const getMajorDetailByCode = async (
-  majorCode: string
+  majorCode: string,
+  sign?: string | null
 ): Promise<MajorDetailInfo> => {
-  const response: any = await get<MajorDetailInfo>(`/majors/detail/${majorCode}`)
+  const params: Record<string, string> = {}
+  if (sign) params.sign = sign
+  const query = new URLSearchParams(params).toString()
+  const url = `/majors/detail/${majorCode}${query ? `?${query}` : ''}`
+  const response: any = await get<MajorDetailInfo>(url)
   
   // 响应拦截器可能返回原始数据或 BaseResponse 格式
   if (response && typeof response === 'object') {
@@ -77,15 +83,18 @@ export const getPopularMajorDetailByCode = async (
 /**
  * 收藏专业
  * API: POST /api/v1/majors/favorites
- * 请求参数: { "majorCode": "010101" }
+ * 请求参数: { "majorCode": "010101" }，未解锁时需在 URL 上传 sign
  * @param majorCode 专业代码，例如 "010101"
+ * @param sign 前五条记录的防伪标识（未解锁时从专业探索列表项带入）
  * @returns 收藏结果
  */
 export const favoriteMajor = async (
-  majorCode: string
+  majorCode: string,
+  sign?: string | null
 ): Promise<FavoriteMajorResponse> => {
+  const query = sign ? `?sign=${encodeURIComponent(sign)}` : ''
   const response: any = await post<FavoriteMajorResponse>(
-    '/majors/favorites',
+    `/majors/favorites${query}`,
     { majorCode }
   )
   

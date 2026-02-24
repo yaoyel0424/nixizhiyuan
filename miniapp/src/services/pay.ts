@@ -52,11 +52,23 @@ export const getFreeEntitlement = async (popularMajorId: number): Promise<{ hasF
 /**
  * 获取解锁全部应付金额（已付热门专业可抵扣）
  * GET /pay/unlock-all-amount
+ * 服务端返回 amountCents（分）、deductCents、hasUnlockAll
  */
-export const getUnlockAllAmount = async (): Promise<{ amount: number }> => {
-  const response: any = await get<{ amount: number }>('/pay/unlock-all-amount')
-  const amount = response?.data?.amount ?? response?.amount ?? 0
-  return { amount }
+export const getUnlockAllAmount = async (): Promise<{
+  amountCents: number
+  amount: number
+  hasUnlockAll: boolean
+}> => {
+  const response: any = await get<{
+    amountCents?: number
+    amount?: number
+    hasUnlockAll?: boolean
+  }>('/pay/unlock-all-amount')
+  const data = response?.data ?? response ?? {}
+  const amountCents = data.amountCents ?? data.amount ?? 0
+  const amount = typeof amountCents === 'number' ? amountCents / 100 : 0
+  const hasUnlockAll = Boolean(data.hasUnlockAll ?? amountCents <= 0)
+  return { amountCents, amount, hasUnlockAll }
 }
 
 /**
@@ -126,6 +138,52 @@ export const requestPayForPopularMajor = async (majorCode: string): Promise<bool
     Taro.showToast({
       title: e?.message || '支付失败',
       icon: 'none'
+    })
+    return false
+  }
+}
+
+/**
+ * 解锁全部（专业探索/热门专业通用）
+ * GET /pay/transactions_jsapi，productType=unlock_all
+ * @returns 支付是否完成
+ */
+export const requestPayForUnlockAll = async (): Promise<boolean> => {
+  const userId = getCurrentUserId()
+  if (userId == null) {
+    Taro.showToast({ title: '请先登录', icon: 'none' })
+    return false
+  }
+  try {
+    const orderRes: any = await get<JsapiPayParams>('/pay/transactions_jsapi', {
+      userId,
+      productType: 'unlock_all',
+    })
+    const payParams: JsapiPayParams =
+      orderRes?.data?.data ?? orderRes?.data ?? orderRes
+    if (!payParams || (!payParams.package && !payParams.paySign)) {
+      Taro.showToast({
+        title: orderRes?.message || '获取支付信息失败',
+        icon: 'none',
+      })
+      return false
+    }
+    const requestPayload = {
+      timeStamp: String(payParams.timeStamp ?? ''),
+      nonceStr: payParams.nonceStr ?? '',
+      package: payParams.package ?? '',
+      signType: payParams.signType ?? 'RSA',
+      paySign: payParams.paySign ?? '',
+    }
+    await Taro.requestPayment(requestPayload)
+    return true
+  } catch (e: any) {
+    if (e?.errMsg?.includes('cancel') || e?.errMsg?.includes('取消')) {
+      return false
+    }
+    Taro.showToast({
+      title: e?.message || '支付失败',
+      icon: 'none',
     })
     return false
   }

@@ -14,15 +14,16 @@ export const getAllScores = async (
     params.eduLevel = eduLevel
   }
   
-  const response: any = await get<MajorScoreResponse[]>('/scores/all', params)
-  
-  // 响应拦截器可能返回原始数据或 BaseResponse 格式
+  const response: any = await get<MajorScoreResponse[] | { list: MajorScoreResponse[] }>('/scores/all', params)
+
+  // 响应拦截器可能返回原始数据或 BaseResponse 格式；服务端可能返回数组或 { list, limited }
   if (response && typeof response === 'object') {
-    // 如果包含 data 字段，提取 data
+    if (Array.isArray(response.list)) {
+      return response.list
+    }
     if (response.data && Array.isArray(response.data)) {
       return response.data
     }
-    // 如果直接是数组，直接返回
     if (Array.isArray(response)) {
       return response
     }

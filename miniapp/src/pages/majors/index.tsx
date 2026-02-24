@@ -19,6 +19,7 @@ import {
 import { getLevel3MajorIds } from '@/services/enroll-plan'
 import { getExamInfo, ExamInfo } from '@/services/exam-info'
 import { getUserRelatedDataCount } from '@/services/user'
+import { getUnlockAllAmount, requestPayForUnlockAll } from '@/services/pay'
 import { MajorScoreResponse } from '@/types/api'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import { getStorage, setStorage } from '@/utils/storage'
@@ -92,6 +93,9 @@ export default function MajorsPage() {
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [showShareGuide, setShowShareGuide] = useState(false)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+  // 未缴费时仅展示 5 条，显示「解锁全部专业」按钮，点击弹出支付弹窗
+  const [showUnlockPayModal, setShowUnlockPayModal] = useState(false)
+  const [unlockPayAmount, setUnlockPayAmount] = useState<number | null>(null)
 
   // 检查问卷完成状态
   useEffect(() => {
@@ -162,6 +166,10 @@ export default function MajorsPage() {
   )
 
   const hasMore = effectiveList.length > currentPage * PAGE_SIZE
+  // 通过是否仅返回 5 条判断未缴费，未缴费时展示「解锁全部专业」按钮（或前几条带 sign 视为受限）
+  const isUnpaidLimited =
+    allMajors.length === 5 ||
+    (allMajors.length > 0 && allMajors.length <= 5 && allMajors.some((m) => (m as MajorScoreResponse).sign))
 
   // 加载所有专业分数数据（一次性加载，然后缓存）
   const loadAllMajors = useCallback(async (tab: string, useCache: boolean = true) => {
@@ -264,6 +272,26 @@ export default function MajorsPage() {
     loadAllMajors(activeTab)
   }, [activeTab, loadAllMajors])
 
+  // 打开解锁支付弹窗时拉取应付金额
+  useEffect(() => {
+    if (!showUnlockPayModal) {
+      setUnlockPayAmount(null)
+      return
+    }
+    getUnlockAllAmount()
+      .then((res) => {
+        if (res.hasUnlockAll) {
+          setShowUnlockPayModal(false)
+          const cacheKey = eduLevelMap[activeTab] || 'all'
+          delete dataCacheRef.current[cacheKey]
+          loadAllMajors(activeTab, false)
+          return
+        }
+        setUnlockPayAmount(res.amount)
+      })
+      .catch(() => setUnlockPayAmount(0))
+  }, [showUnlockPayModal, activeTab])
+
   // 组件卸载时清理定时器
   useEffect(() => {
     return () => {
@@ -316,11 +344,11 @@ export default function MajorsPage() {
     }, 100)
   }, [loadMore])
 
-  // 切换心动专业
-  const toggleFavorite = useCallback(async (majorCode: string) => {
+  // 切换心动专业（前五条未缴费时需传 sign）
+  const toggleFavorite = useCallback(async (majorCode: string, sign?: string | null) => {
     // 获取当前状态
     const isCurrentlyFavorited = favoriteMajors.has(majorCode)
-    
+
     // 乐观更新：先更新UI状态
     const newFavorites = new Set(favoriteMajors)
     if (isCurrentlyFavorited) {
@@ -329,7 +357,7 @@ export default function MajorsPage() {
       newFavorites.add(majorCode)
     }
     setFavoriteMajors(newFavorites)
-    
+
     try {
       if (isCurrentlyFavorited) {
         // 取消收藏
@@ -340,8 +368,8 @@ export default function MajorsPage() {
           duration: 1500
         })
       } else {
-        // 添加收藏
-        await favoriteMajor(majorCode)
+        // 添加收藏（未缴费前五条需传 sign）
+        await favoriteMajor(majorCode, sign)
         Taro.showToast({
           title: '已添加心动',
           icon: 'success',
@@ -965,11 +993,13 @@ export default function MajorsPage() {
                   // 计算全局排名（在所有数据中的位置）
                   const globalIndex = allMajors.findIndex(m => m.majorCode === major.majorCode)
                   const rank = globalIndex >= 0 ? globalIndex + 1 : index + 1
-                  // 跳转专业详情（专业简介、热爱能量、乐学/善学/厌学/阻学/总分 点击均进入详情，样式不变）
+                  // 跳转专业详情（前五条未缴费时需带 sign）
                   const goToMajorDetail = () => {
-                    Taro.navigateTo({
-                      url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
-                    })
+                    let url = `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
+                    if ((major as MajorScoreResponse).sign) {
+                      url += `&sign=${encodeURIComponent((major as MajorScoreResponse).sign!)}`
+                    }
+                    Taro.navigateTo({ url })
                   }
 
                   return (
@@ -999,7 +1029,7 @@ export default function MajorsPage() {
                             className={`majors-page__favorite-star ${favoriteMajors.has(major.majorCode) ? 'majors-page__favorite-star--active' : ''} ${guideStep === 1 && index === 0 ? 'majors-page__favorite-star--guide' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation()
-                              toggleFavorite(major.majorCode)
+                              toggleFavorite(major.majorCode, (major as MajorScoreResponse).sign)
                             }}
                           >
                             <Text className="majors-page__favorite-star-icon">⭐</Text>
@@ -1110,6 +1140,19 @@ export default function MajorsPage() {
                   <Text className="majors-page__no-more-text">
                     已加载全部 {allMajors.length} 条数据
                   </Text>
+                </View>
+              )}
+
+              {/* 未缴费仅 5 条时展示「解锁全部专业」按钮 */}
+              {isUnpaidLimited && (
+                <View className="majors-page__unlock-bar">
+                  <Button
+                    className="majors-page__unlock-button"
+                    size="lg"
+                    onClick={() => setShowUnlockPayModal(true)}
+                  >
+                    解锁全部专业
+                  </Button>
                 </View>
               )}
             </>
@@ -1281,6 +1324,46 @@ export default function MajorsPage() {
               size="lg"
             >
               我知道了
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 解锁全部专业支付弹窗（与热门专业一致，productType=unlock_all） */}
+      <Dialog open={showUnlockPayModal} onOpenChange={setShowUnlockPayModal}>
+        <DialogContent className="majors-page__dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle className="majors-page__dialog-title">解锁全部专业</DialogTitle>
+            <DialogDescription className="majors-page__dialog-desc">
+              {unlockPayAmount !== null
+                ? `支付 ¥${unlockPayAmount.toFixed(2)} 即可查看全部专业推荐（已购热门专业可抵扣）`
+                : '正在获取支付金额...'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="majors-page__dialog-footer">
+            <Button
+              className="majors-page__dialog-button majors-page__dialog-button--primary"
+              size="lg"
+              disabled={unlockPayAmount === null}
+              onClick={async () => {
+                const success = await requestPayForUnlockAll()
+                if (success) {
+                  setShowUnlockPayModal(false)
+                  const cacheKey = eduLevelMap[activeTab] || 'all'
+                  delete dataCacheRef.current[cacheKey]
+                  loadAllMajors(activeTab, false)
+                }
+              }}
+            >
+              去支付
+            </Button>
+            <Button
+              className="majors-page__dialog-button"
+              size="lg"
+              variant="outline"
+              onClick={() => setShowUnlockPayModal(false)}
+            >
+              取消
             </Button>
           </DialogFooter>
         </DialogContent>

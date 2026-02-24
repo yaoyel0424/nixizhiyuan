@@ -295,6 +295,8 @@ export interface MajorScoreResponse {
   score: number | string
   lexueScore: number | string
   shanxueScore: number | string
+  /** 前五条记录的防伪标识，进入专业详情或加入心动专业时必传（未缴费时服务端返回） */
+  sign?: string | null
 }
 
 // 省份相关类型定义

@@ -1528,6 +1528,8 @@ function DisplayValue({ value, depth = 0, fieldKey }: { value: any; depth?: numb
 export default function SingleMajorPage() {
   const router = useRouter()
   const majorCode = router.params?.code || ''
+  /** 专业探索前五条带入的 sign，未缴费时必传才能访问详情 */
+  const signParam = router.params?.sign || ''
   // 从路由参数获取专业名称，Taro 会自动解码，但如果还是乱码则手动解码
   let majorName = router.params?.name || ''
   try {
@@ -1539,7 +1541,7 @@ export default function SingleMajorPage() {
     // 如果解码失败，使用原始值
     console.warn('解码专业名称失败:', e)
   }
-  
+
   const [loading, setLoading] = useState(true)
   const [majorDetail, setMajorDetail] = useState<MajorDetailInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -1560,7 +1562,7 @@ export default function SingleMajorPage() {
       try {
         setLoading(true)
         setError(null)
-        const detail = await getMajorDetailByCode(majorCode)
+        const detail = await getMajorDetailByCode(majorCode, signParam || undefined)
         // API 返回的字段可能是 analyses，统一转换为 majorElementAnalyses
         if (detail && !detail.majorElementAnalyses && detail.analyses) {
           detail.majorElementAnalyses = detail.analyses
@@ -1587,7 +1589,7 @@ export default function SingleMajorPage() {
     }
 
     loadMajorDetail()
-  }, [majorCode])
+  }, [majorCode, signParam])
 
 
   if (loading) {
