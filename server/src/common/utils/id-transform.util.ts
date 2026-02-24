@@ -60,41 +60,42 @@ export class IdTransformUtil {
   }
 
   /**
-   * 将数字 ID 编码为 32 位十六进制字符串（可逆，带简单防伪校验）
-   * 格式：前 16 位为 id 的 8 字节大端表示，后 16 位为 (id*K1+K2) 的 8 字节校验
-   * @param id 数字 ID（建议 0 ~ 2^53 以内）
-   * @returns 32 位小写十六进制字符串，非法 id 返回 null
+   * 将字符串编码为 32 位十六进制防伪标记（可逆，带简单防伪校验）
+   * 不进行 parseInt，直接按 UTF-8 字节编码。格式：前 16 位为字符串的 8 字节（不足补 0），后 16 位为校验
+   * @param id 原始字符串（UTF-8 长度不超过 8 字节，超出返回 null）
+   * @returns 32 位小写十六进制字符串，非法或过长返回 null
    */
-  static encodeTo32Hex(id: number | null | undefined): string | null {
-    if (id == null || typeof id !== 'number' || !Number.isInteger(id) || id < 0) {
-      return null;
-    }
-    const idBig = BigInt(id);
-    const sig = (idBig * K1 + K2) & 0xffffffffffffffffn;
+  static encodeTo32Hex(id: string | null | undefined): string | null {
+    if (id == null || typeof id !== 'string') return null;
+    const payload = Buffer.from(id, 'utf8');
+    if (payload.length > 8) return null;
     const buf = Buffer.alloc(16);
-    buf.writeBigUInt64BE(idBig, 0);
+    payload.copy(buf, 0);
+    const payloadBig = buf.readBigUInt64BE(0);
+    const sig = (payloadBig * K1 + K2) & 0xffffffffffffffffn;
     buf.writeBigUInt64BE(sig, 8);
     return buf.toString('hex');
   }
 
   /**
-   * 将 32 位十六进制字符串解码为数字 ID（校验防伪，非法或篡改则返回 null）
+   * 将 32 位十六进制防伪标记解码为原字符串（校验防伪，非法或篡改则返回 null）
    * @param str 由 encodeTo32Hex 生成的 32 位十六进制字符串
-   * @returns 解码后的数字 ID，校验失败或格式错误返回 null
+   * @returns 解码后的原字符串，校验失败或格式错误返回 null
    */
-  static decodeFrom32Hex(str: string | null | undefined): number | null {
+  static decodeFrom32Hex(str: string | null | undefined): string | null {
     if (str == null || typeof str !== 'string' || str.length !== 32 || !/^[0-9a-fA-F]+$/.test(str)) {
       return null;
     }
     const buf = Buffer.from(str, 'hex');
     if (buf.length !== 16) return null;
-    const idBig = buf.readBigUInt64BE(0);
+    const payloadBig = buf.readBigUInt64BE(0);
     const sig = buf.readBigUInt64BE(8);
-    const expected = (idBig * K1 + K2) & 0xffffffffffffffffn;
+    const expected = (payloadBig * K1 + K2) & 0xffffffffffffffffn;
     if (sig !== expected) return null;
-    const id = Number(idBig);
-    if (!Number.isSafeInteger(id) || id < 0) return null;
-    return id;
+    const payload = buf.subarray(0, 8);
+    const end = payload.findIndex((b) => b === 0);
+    const len = end === -1 ? 8 : end;
+    return payload.subarray(0, len).toString('utf8');
   }
 }
 

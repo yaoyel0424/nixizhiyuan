@@ -53,6 +53,8 @@ export class MajorsController {
    * 使用 Redis 缓存，默认缓存 10 分钟
    */
   @Get('detail/:majorCode')
+  @UseGuards(EntitlementGuard)
+  @RequireEntitlement({ type: 'require_sign' })
   @Cache(600) // 缓存 10 分钟（600秒），可通过环境变量配置
   @ApiOperation({ summary: '通过专业代码获取专业详细信息' })
   @ApiParam({
@@ -66,9 +68,11 @@ export class MajorsController {
     type: MajorDetailResponseDto,
   })
   @ApiResponse({ status: 404, description: '专业详情不存在' })
+  @ApiQuery({ name: 'sign', required: false, description: '未登录或未解锁时凭有效 sign 访问' })
   async getMajorDetail(
     @Param('majorCode') majorCode: string,
     @Req() req: Request,
+    @Query('sign') sign?: string,
   ): Promise<MajorDetailResponseDto> {
     // 尝试从请求中获取用户信息（如果已认证）
     const user = req.user as User | undefined;
@@ -96,9 +100,12 @@ export class MajorsController {
   @ApiResponse({ status: 400, description: '参数错误' })
   @ApiResponse({ status: 404, description: '专业不存在' })
   @ApiResponse({ status: 409, description: '该专业已收藏' })
+  @UseGuards(EntitlementGuard)
+  @RequireEntitlement({ type: 'require_sign' })
   async createFavorite(
     @CurrentUser() user: any,
     @Body() createDto: CreateMajorFavoriteDto,
+    @Query('sign') sign?: string,
   ): Promise<MajorFavoriteResponseDto> {
     const favorite = await this.majorsService.createFavorite(
       user.id,
@@ -122,6 +129,8 @@ export class MajorsController {
   })
   @ApiResponse({ status: 200, description: '取消收藏成功' })
   @ApiResponse({ status: 404, description: '收藏记录不存在' })
+  @UseGuards(EntitlementGuard)
+  @RequireEntitlement({ type: 'require_sign' })
   async removeFavorite(
     @CurrentUser() user: any,
     @Param('majorCode') majorCode: string,

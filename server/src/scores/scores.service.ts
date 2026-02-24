@@ -473,8 +473,8 @@ export class ScoresService {
     // 前五的专业增加 sign 标记（用于防伪；有 popularMajorId 时用其编码以便 guard 校验）
     const top5Count = Math.min(5, results.length);
     for (let i = 0; i < top5Count; i++) {
-      const idForSign = results[i].popularMajorId ?? results[i].majorId;
-      const sign = IdTransformUtil.encodeTo32Hex(idForSign);
+      const idForSign = results[i].majorCode;
+      const sign = IdTransformUtil.encodeTo32Hex(idForSign != null ? String(idForSign) : undefined);
       if (sign) results[i].sign = sign;
     }
 

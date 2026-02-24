@@ -3,6 +3,9 @@ dist/
 build/
 *.js.map
 pay-key/
+
+src/entities/report/
+src/entities/sql/
 # 依赖
 node_modules/
 

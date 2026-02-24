@@ -44,10 +44,12 @@ export class EntitlementGuard implements CanActivate {
       user?: { id: number };
       params?: Record<string, string>;
       query?: Record<string, string | undefined>;
+      body?: { majorCode?: string };
     }>();
     const userId = request.user?.id;
     const params = request.params ?? {};
     const query = request.query ?? {};
+    const body = request.body ?? {};
 
     if (userId == null) {
       throw new UnauthorizedException('请先登录后再访问');
@@ -57,6 +59,12 @@ export class EntitlementGuard implements CanActivate {
     if (userType === 'adult') {
       return true;
     }
+
+    // 两个顶级条件：满足一条即放行（popular_major / require_sign 等均适用）
+    if (await this.entitlementService.hasUnlockAll(userId)) return true;
+
+    const amountNum = await this.entitlementService.getUnlockAllPayAmount(userId);
+    if (amountNum <= 0) return true;
 
     // 热门专业：仅做权益校验（不涉及 sign）
     if (metadata.type === 'popular_major') {
@@ -121,17 +129,25 @@ export class EntitlementGuard implements CanActivate {
     }
 
     // 所有专业：仅做 sign 校验（未收费时凭 sign 访问；与热门专业权益无关）
+    // majorCode 从两处接口获取：GET detail/:majorCode 用 params，POST favorites 用 body
     if (metadata.type === 'require_sign') {
       const signRaw = request.query?.sign;
+      const majorCode =
+        (typeof params.majorCode === 'string' && params.majorCode.trim()) ||
+        (typeof body.majorCode === 'string' && body.majorCode.trim()) ||
+        (typeof query.majorCode === 'string' && query.majorCode.trim()) ||
+        '';
       const sign = typeof signRaw === 'string' ? signRaw.trim() : '';
       const decodedId = IdTransformUtil.decodeFrom32Hex(sign || undefined);
-      if (decodedId !== null) {
+      console.log('decodedId', decodedId);
+      console.log('majorCode', majorCode);
+      if (decodedId !== null && majorCode !== '' && decodedId === majorCode) {
         return true;
       }
       throw new HttpException(
         {
           code: 'PAY_REQUIRED',
-          message: '请传入有效 sign 后访问',
+          message: '请付费后访问',
         },
         HttpStatus.PAYMENT_REQUIRED,
       );

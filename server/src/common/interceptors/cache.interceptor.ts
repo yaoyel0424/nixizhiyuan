@@ -25,7 +25,7 @@ import { User } from '@/entities/user.entity';
 export class CacheInterceptor implements NestInterceptor {
   private readonly logger = new Logger(CacheInterceptor.name);
 
-  /** 一条 SQL 同时查用户高考字段 + 省份收藏 id 列表（string_agg），用于生成缓存 key */
+  /** 一条 SQL 同时查用户高考字段 + 省份收藏 id 列表 + 是否解锁全部，用于生成缓存 key */
   private static readonly USER_AND_PF_QUERY = `
     SELECT
       u.province AS province,
@@ -34,7 +34,11 @@ export class CacheInterceptor implements NestInterceptor {
       u.rank AS rank,
       u.enroll_type AS "enrollType",
       (SELECT COALESCE(string_agg(pf.province_id::text, '|' ORDER BY pf.id), '')
-       FROM province_favorites pf WHERE pf.user_id = u.id) AS "pfIds"
+       FROM province_favorites pf WHERE pf.user_id = u.id) AS "pfIds",
+      (EXISTS (
+        SELECT 1 FROM user_entitlements ue
+        WHERE ue.user_id = u.id AND ue.product_type = 'unlock_all' AND ue.major_code = ''
+      )) AS "hasUnlockAll"
     FROM users u
     WHERE u.id = $1
   `;
@@ -123,7 +127,7 @@ export class CacheInterceptor implements NestInterceptor {
   /**
    * 生成缓存 key
    * 格式: cache:{method}:{path}:{params}:{query}:{userPart}
-   * userPart 含 userId 及从数据库读取的 province、preferredSubjects、secondarySubjects、rank、enrollType
+   * userPart 含 userId、province、preferredSubjects、secondarySubjects、rank、enrollType、pfIds、hasUnlockAll
    */
   private async generateCacheKey(request: Request): Promise<string> {
     const { method, path, params, query } = request;
@@ -155,6 +159,7 @@ export class CacheInterceptor implements NestInterceptor {
       const rank = row?.rank ?? '';
       const enrollType = row?.enrollType ?? '';
       const pfIds = row?.pfIds ?? '';
+      const hasUnlockAll = row?.hasUnlockAll === true;
       userPart = [
         'user',
         String(requestUser.id),
@@ -165,6 +170,7 @@ export class CacheInterceptor implements NestInterceptor {
         enrollType,
         'pf',
         pfIds || '-',
+        hasUnlockAll ? 'unlockAll' : '-',
       ].join(':');
     }
 

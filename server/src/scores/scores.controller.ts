@@ -20,6 +20,8 @@ import { UsersService } from '@/users/users.service';
 import { plainToInstance } from 'class-transformer';
 import { LoggerService } from '@/logger/logger.service';
 import { Cache } from '@/common/decorators/cache.decorator';
+import { EntitlementService } from '@/pay/entitlement.service';
+
 /**
  * 专业分数控制器
  */
@@ -31,6 +33,7 @@ export class ScoresController {
     private readonly scoresService: ScoresService,
     private readonly logger: LoggerService,
     private readonly usersService: UsersService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
   @Get('major/:majorCode')
@@ -105,7 +108,14 @@ export class ScoresController {
       eduLevel,
     );
 
-    return plainToInstance(ScoreResponseDto, scores, {
+    const userId = user?.id;
+    const hasUnlockAll = userId != null && await this.entitlementService.hasUnlockAll(userId);
+    const amountNum = userId != null ? await this.entitlementService.getUnlockAllPayAmount(userId) : 0;
+    const canSeeAll = hasUnlockAll || amountNum <= 0;
+
+    const list = canSeeAll ? scores : (scores ?? []).slice(0, 5);
+
+    return plainToInstance(ScoreResponseDto, list, {
       excludeExtraneousValues: true,
     });
   }

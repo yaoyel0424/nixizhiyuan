@@ -5,6 +5,7 @@ import { ScoresService } from './scores.service';
 import { ScoresController } from './scores.controller';
 import { LoggerModule } from '@/logger/logger.module';
 import { UsersModule } from '@/users/users.module';
+import { PayModule } from '@/pay/pay.module';
 
 /**
  * 专业分数模块
@@ -15,6 +16,7 @@ import { UsersModule } from '@/users/users.module';
     TypeOrmModule.forFeature([PopularMajor]),
     LoggerModule,
     UsersModule,
+    PayModule,
   ],
   controllers: [ScoresController],
   providers: [ScoresService],

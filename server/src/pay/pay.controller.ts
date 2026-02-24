@@ -88,15 +88,27 @@ export class PayController {
       if (!majorCode || !majorCode.trim()) {
         throw new BadRequestException('购买单个热门专业时 majorCode 必填');
       }
+      const access = await this.entitlementService.checkEntitlement(userId, majorCode.trim());
+      if (access.allowed) {
+        const msg =
+          access.reason === 'unlock_all'
+            ? '您已解锁全部，热门专业已包含在内，无需单独购买'
+            : '您已拥有该专业权益（已购买或已使用免费额度），无需重复购买';
+        throw new BadRequestException(msg);
+      }
       amountNum = this.entitlementService.getPricePopularMajorCents();
       attach = JSON.stringify({
         productType: PRODUCT_TYPE_POPULAR_MAJOR,
         majorCode: majorCode.trim(),
       });
     } else if (productType === PRODUCT_TYPE_UNLOCK_ALL) {
+      const hasUnlockAll = await this.entitlementService.hasUnlockAll(userId);
+      if (hasUnlockAll) {
+        throw new BadRequestException('您已解锁全部，无需重复购买（热门专业已包含在内）');
+      }
       amountNum = await this.entitlementService.getUnlockAllPayAmount(userId);
       if (amountNum <= 0) {
-        throw new BadRequestException('您已解锁全部，无需重复购买');
+        throw new BadRequestException('您已满足解锁全部条件，已为您解锁（热门专业已包含在内）');
       }
       attach = JSON.stringify({ productType: PRODUCT_TYPE_UNLOCK_ALL });
     } else {
