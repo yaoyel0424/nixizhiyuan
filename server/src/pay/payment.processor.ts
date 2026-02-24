@@ -27,6 +27,18 @@ export class PaymentProcessor extends WorkerHost {
   }
 
   async process(job: Job<PaymentJobPayload, any, string>): Promise<any> {
+    try {
+      return await this.processPaymentJob(job);
+    } catch (err: any) {
+      this.logger.error(
+        `[PaymentProcessor] 处理失败 jobId=${job.id} transaction_id=${job.data?.transaction_id}: ${err?.message ?? err}`,
+        err?.stack,
+      );
+      throw err;
+    }
+  }
+
+  private async processPaymentJob(job: Job<PaymentJobPayload, any, string>): Promise<void> {
     if (job.name !== 'payment-success') return;
     const payload = job.data;
     const { transaction_id } = payload;
