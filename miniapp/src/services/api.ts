@@ -41,6 +41,12 @@ const responseInterceptor = (response: any) => {
       // 优先检查 success 字段：true 表示成功，false 表示失败
       if ('success' in data) {
         if (data.success === false) {
+          // 支付相关：不弹全局 toast，由业务层弹框并调起支付
+          if (data.code === 'PAY_REQUIRED') {
+            const err: any = new Error(data.message || '免费额度已用完，请购买该热门专业或解锁全部')
+            err.code = 'PAY_REQUIRED'
+            return Promise.reject(err)
+          }
           // 明确标记为失败
           Taro.showToast({
             title: data.message || '请求失败',
@@ -60,6 +66,12 @@ const responseInterceptor = (response: any) => {
             (typeof code === 'number' && code === 0)) {
           // 成功，直接返回
           return data
+        }
+        // 支付相关：不弹全局 toast，由业务层处理
+        if (code === 'PAY_REQUIRED') {
+          const err: any = new Error(data.message || '免费额度已用完，请购买该热门专业或解锁全部')
+          err.code = 'PAY_REQUIRED'
+          return Promise.reject(err)
         }
         // 其他 code 值认为是错误
         Taro.showToast({

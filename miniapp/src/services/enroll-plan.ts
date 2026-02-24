@@ -142,12 +142,14 @@ export interface EnrollmentPlansByScoreRange {
  * @param majorId 专业ID
  * @param minScore 最低分（可选）
  * @param maxScore 最高分（可选）
+ * @param popularMajorId 热门专业ID（从热门专业评估进入院校列表时必填）
  * @returns 按分数段分组的招生计划列表
  */
 export const getEnrollmentPlansByMajorId = async (
   majorId: number,
   minScore?: number,
   maxScore?: number,
+  popularMajorId?: string | number | null,
 ): Promise<EnrollmentPlansByScoreRange> => {
   try {
     const params: Record<string, any> = {}
@@ -156,6 +158,9 @@ export const getEnrollmentPlansByMajorId = async (
     }
     if (maxScore !== undefined && maxScore !== null) {
       params.maxScore = maxScore
+    }
+    if (popularMajorId !== undefined && popularMajorId !== null && popularMajorId !== '') {
+      params.popularMajorId = String(popularMajorId)
     }
 
     const response: any = await get<EnrollmentPlansByScoreRange>(

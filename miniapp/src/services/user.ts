@@ -6,7 +6,7 @@ import { UserInfo, UpdateUserParams, ChangePasswordParams, UserRelatedDataRespon
  * 获取当前用户ID
  * @returns 用户ID（number类型），如果获取失败返回 null
  */
-function getCurrentUserId(): number | null {
+export function getCurrentUserId(): number | null {
   try {
     // 尝试从 Redux persist 存储中获取用户信息
     const persistRoot = Taro.getStorageSync('persist:root')

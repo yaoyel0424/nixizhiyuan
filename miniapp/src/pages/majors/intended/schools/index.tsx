@@ -92,6 +92,9 @@ export default function IntendedMajorsSchoolsPage() {
   // 判断是否从热门专业页面跳转过来（从热门专业进入不校验 168 题完成）
   const fromPage = router.params?.from || ''
   const isFromPopularMajors = fromPage === 'popular-majors'
+  // 热门专业 ID（从热门专业评估点击院校时携带，供招生计划接口 popularMajorId 参数使用）
+  const popularMajorIdParam = router.params?.popularMajorId ?? ''
+  const popularMajorId = popularMajorIdParam !== '' ? popularMajorIdParam : undefined
 
   const [data, setData] = useState<IntentionMajor | null>(null)
   // 保存接口返回的两组数据
@@ -401,6 +404,7 @@ export default function IntendedMajorsSchoolsPage() {
           majorId,
           Number.isFinite(minScore as number) ? (minScore as number) : undefined,
           Number.isFinite(maxScore as number) ? (maxScore as number) : undefined,
+          popularMajorId,
         )
         const inRangeList = grouped?.inRange || []
         const notInRangeList = grouped?.notInRange || []
@@ -545,7 +549,7 @@ export default function IntendedMajorsSchoolsPage() {
       }
       checkExamInfo()
     }
-  }, [majorCode, majorId, minScoreParam, maxScoreParam, isFromPopularMajors, dataRefreshTrigger])
+  }, [majorCode, majorId, minScoreParam, maxScoreParam, isFromPopularMajors, dataRefreshTrigger, popularMajorId])
 
   // 检测省份列表是否超过一行（使用估算方法，避免 Taro 查询问题）
   useEffect(() => {

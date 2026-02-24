@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
+import { getFreeQuota, requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
 import './index.less'
@@ -220,6 +221,10 @@ export default function PopularMajorsPage() {
   // 评估内容预览弹窗（completedCount 为 0 时点击评估先展示测量内容）
   const [showPreAssessmentIntro, setShowPreAssessmentIntro] = useState(false)
   const [preAssessmentMajor, setPreAssessmentMajor] = useState<Major | null>(null)
+  // 免费额度提示与支付：点击评估/报告/院校先弹「免费查看2个，其他收费」，超额则弹支付
+  const [showFreeQuotaTip, setShowFreeQuotaTip] = useState(false)
+  const [showPayRequiredModal, setShowPayRequiredModal] = useState(false)
+  const [pendingAction, setPendingAction] = useState<{ type: 'assessment' | 'report' | 'schools'; major: Major } | null>(null)
 
   // 将 API 响应数据转换为页面使用的格式
   const transformMajorData = (apiData: PopularMajorResponse): Major => {
@@ -372,21 +377,28 @@ export default function PopularMajorsPage() {
     }
   }
 
-  // 处理开始评估
+  // 处理开始评估（内部用，不包含额度校验；若接口返回 PAY_REQUIRED 则弹支付）
   const handleStartAssessment = async (major: Major) => {
     setSelectedMajor(major)
     setShowQuestionnaire(true)
-    
-    // 通过热门专业ID获取量表和答案
     const popularMajorId = Number(major.id)
     if (isNaN(popularMajorId)) {
-      Taro.showToast({
-        title: '无法获取热门专业ID',
-        icon: 'none'
-      })
+      Taro.showToast({ title: '无法获取热门专业ID', icon: 'none' })
+      setShowQuestionnaire(false)
       return
     }
-    await loadScalesByPopularMajorId(popularMajorId)
+    try {
+      await loadScalesByPopularMajorId(popularMajorId)
+    } catch (err: any) {
+      if (err?.code === 'PAY_REQUIRED') {
+        setShowQuestionnaire(false)
+        setPendingAction({ type: 'assessment', major })
+        setShowPayRequiredModal(true)
+      } else {
+        setShowQuestionnaire(false)
+        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
+      }
+    }
   }
 
   // 点击评估按钮：completedCount 为 0 且有 elementAnalyses 时先展示评估内容，否则直接进入评估
@@ -427,9 +439,8 @@ export default function PopularMajorsPage() {
     })
   }
 
-  // 处理查看院校按钮点击，跳转到院校列表页面
-  const handleViewSchools = (e: any, major: Major) => {
-    e.stopPropagation() // 阻止事件冒泡到卡片
+  // 处理查看院校按钮点击，跳转到院校列表页面（内部用，不包含额度校验）
+  const handleViewSchoolsInner = (major: Major) => {
     if (!major.code) {
       Taro.showToast({
         title: '专业代码不存在',
@@ -442,10 +453,72 @@ export default function PopularMajorsPage() {
     if (major.majorId) {
       url += `&majorId=${major.majorId}`
     }
-    Taro.navigateTo({
-      url
-    })
+    if (major.id != null && major.id !== '') {
+      url += `&popularMajorId=${major.id}`
+    }
+    Taro.navigateTo({ url })
   }
+
+  /** 执行已缓存的操作（评估/报告/院校），在额度通过或支付成功后调用；可传入 action 避免异步后状态丢失 */
+  const runPendingAction = useCallback((action?: { type: 'assessment' | 'report' | 'schools'; major: Major } | null) => {
+    const actionToRun = action ?? pendingAction
+    if (!actionToRun) return
+    const { type, major } = actionToRun
+    setPendingAction(null)
+    if (type === 'assessment') {
+      const completedCount = Number(major.progress?.completedCount ?? 0)
+      const hasElementAnalyses = major.elementAnalyses && major.elementAnalyses.length > 0
+      if (completedCount === 0 && hasElementAnalyses) {
+        setPreAssessmentMajor(major)
+        setShowPreAssessmentIntro(true)
+      } else {
+        handleStartAssessment(major)
+      }
+    } else if (type === 'report') {
+      handleMajorCardClick(major)
+    } else if (type === 'schools') {
+      handleViewSchoolsInner(major)
+    }
+  }, [pendingAction])
+
+  /** 点击评估/报告/院校：先弹免费提示，继续后查额度，有额度则执行，无额度则弹支付 */
+  const checkQuotaAndRun = useCallback((type: 'assessment' | 'report' | 'schools', major: Major) => {
+    setPendingAction({ type, major })
+    setShowFreeQuotaTip(true)
+  }, [])
+
+  /** 免费提示弹框点「继续」：查免费额度，有则执行操作，无则弹支付 */
+  const handleFreeQuotaTipContinue = useCallback(async () => {
+    const action = pendingAction
+    setShowFreeQuotaTip(false)
+    if (!action) return
+    try {
+      const { remaining } = await getFreeQuota()
+      if (remaining > 0) {
+        runPendingAction(action)
+      } else {
+        setShowPayRequiredModal(true)
+      }
+    } catch (_) {
+      setShowPayRequiredModal(true)
+    }
+  }, [pendingAction, runPendingAction])
+
+  /** 支付弹框「去支付」：调起支付，成功后执行原操作（transactions_jsapi 需传 majorCode） */
+  const handlePayConfirm = useCallback(async () => {
+    const action = pendingAction
+    if (!action) return
+    const majorCode = action.major.code
+    if (!majorCode) {
+      Taro.showToast({ title: '专业代码不存在', icon: 'none' })
+      return
+    }
+    const success = await requestPayForPopularMajor(majorCode)
+    if (success) {
+      setShowPayRequiredModal(false)
+      runPendingAction(action)
+    }
+  }, [pendingAction, runPendingAction])
 
   // 处理答题（每答完一题立即同步到数据库）
   const handleAnswer = async (questionId: number, optionValue: number) => {
@@ -614,7 +687,7 @@ export default function PopularMajorsPage() {
                 <Card 
                   key={major.id} 
                   className="popular-majors-page__major-card"
-                  onClick={() => handleMajorCardClick(major)}
+                  onClick={() => checkQuotaAndRun('report', major)}
                 >
                   <View className="popular-majors-page__major-content">
                     <View className="popular-majors-page__major-index">
@@ -628,7 +701,7 @@ export default function PopularMajorsPage() {
                             className="popular-majors-page__major-retake-icon"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleStartAssessment(major)
+                              checkQuotaAndRun('assessment', major)
                             }}
                           >
                             <Text className="popular-majors-page__major-retake-icon-text">🔄</Text>
@@ -650,7 +723,7 @@ export default function PopularMajorsPage() {
                               className="popular-majors-page__major-button popular-majors-page__major-button--view-report popular-majors-page__major-action-item"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                handleMajorCardClick(major)
+                                checkQuotaAndRun('report', major)
                               }}
                             >
                               报告
@@ -658,7 +731,10 @@ export default function PopularMajorsPage() {
                             <Button
                               size="sm"
                               className="popular-majors-page__major-button popular-majors-page__major-button--view-schools popular-majors-page__major-action-item"
-                              onClick={(e) => handleViewSchools(e, major)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                checkQuotaAndRun('schools', major)
+                              }}
                             >
                               院校
                             </Button>
@@ -670,7 +746,7 @@ export default function PopularMajorsPage() {
                           className="popular-majors-page__major-button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleAssessmentButtonClick(major)
+                            checkQuotaAndRun('assessment', major)
                           }}
                         >
                           评估
@@ -707,7 +783,7 @@ export default function PopularMajorsPage() {
                         majorName={major.name}
                         score={major.score}
                         isCompleted={isCompleted}
-                        onGoToDetail={() => handleMajorCardClick(major)}
+                        onGoToDetail={() => checkQuotaAndRun('report', major)}
                       />
                     </View>
                   )}
@@ -891,6 +967,56 @@ export default function PopularMajorsPage() {
               size="lg"
             >
               开始评估
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 免费额度提示：点击评估/报告/院校时先提示「免费查看2个，其他收费」 */}
+      <Dialog open={showFreeQuotaTip} onOpenChange={setShowFreeQuotaTip}>
+        <DialogContent className="popular-majors-page__dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle className="popular-majors-page__dialog-title">温馨提示</DialogTitle>
+            <DialogDescription className="popular-majors-page__pay-tip-desc">
+              免费查看 2 个热门专业，其余专业需付费查看。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="popular-majors-page__dialog-footer">
+            <Button
+              onClick={handleFreeQuotaTipContinue}
+              className="popular-majors-page__dialog-button popular-majors-page__dialog-button--primary"
+              size="lg"
+            >
+              继续
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 超额支付弹框：免费额度已用完，调起支付（每个热门专业 29.9 元） */}
+      <Dialog open={showPayRequiredModal} onOpenChange={setShowPayRequiredModal}>
+        <DialogContent className="popular-majors-page__dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle className="popular-majors-page__dialog-title">免费额度已用完</DialogTitle>
+            <DialogDescription className="popular-majors-page__pay-tip-desc">
+              请购买该热门专业或解锁全部。每个热门专业 {POPULAR_MAJOR_PRICE} 元。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="popular-majors-page__dialog-footer">
+            <Button
+              onClick={handlePayConfirm}
+              className="popular-majors-page__dialog-button popular-majors-page__dialog-button--primary"
+              size="lg"
+            >
+              去支付
+            </Button>
+            <Button
+              onClick={() => setShowPayRequiredModal(false)}
+              className="popular-majors-page__dialog-button"
+              size="lg"
+              variant="outline"
+            >
+              取消
             </Button>
           </DialogFooter>
         </DialogContent>
