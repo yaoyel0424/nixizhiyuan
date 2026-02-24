@@ -199,7 +199,11 @@ export const getEnrollmentPlansByMajorId = async (
       }
     }
     return { inRange: [], notInRange: [] }
-  } catch (error) {
+  } catch (error: any) {
+    // 支付相关错误需抛给调用方弹支付框，不能吞掉
+    if (error?.code === 'PAY_REQUIRED') {
+      throw error
+    }
     console.error('获取专业招生计划失败:', error)
     return { inRange: [], notInRange: [] }
   }

@@ -467,7 +467,10 @@ export default function IntendedMajorsSchoolsPage() {
         setData(convertedData)
         setLoading(false)
       } catch (error: any) {
-        if (error?.code === 'PAY_REQUIRED') {
+        const isPayRequired =
+          error?.code === 'PAY_REQUIRED' ||
+          (typeof error?.message === 'string' && error.message.includes('免费额度已用完'))
+        if (isPayRequired) {
           setShowPayRequiredModal(true)
         }
         console.error('从 API 加载数据失败:', error)
@@ -1197,6 +1200,47 @@ export default function IntendedMajorsSchoolsPage() {
     }
   }
 
+  /** 支付对话框（招生计划返回 PAY_REQUIRED 时显示，需在 loading/空数据分支也渲染否则弹窗不会出现） */
+  const renderPayRequiredDialog = () => (
+    <Dialog open={showPayRequiredModal} onOpenChange={setShowPayRequiredModal}>
+      <DialogContent className="schools-page__dialog" showCloseButton={true}>
+        <DialogHeader>
+          <DialogTitle className="schools-page__dialog-title">免费额度已用完</DialogTitle>
+          <DialogDescription className="schools-page__dialog-desc">
+            请购买该热门专业或解锁全部。每个热门专业 {POPULAR_MAJOR_PRICE} 元。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="schools-page__dialog-footer">
+          <Button
+            className="schools-page__dialog-button schools-page__dialog-button--primary"
+            size="lg"
+            onClick={async () => {
+              if (!majorCode) {
+                Taro.showToast({ title: '专业代码不存在', icon: 'none' })
+                return
+              }
+              const success = await requestPayForPopularMajor(majorCode)
+              if (success) {
+                setShowPayRequiredModal(false)
+                setDataRefreshTrigger((prev) => prev + 1)
+              }
+            }}
+          >
+            去支付
+          </Button>
+          <Button
+            className="schools-page__dialog-button"
+            size="lg"
+            variant="outline"
+            onClick={() => setShowPayRequiredModal(false)}
+          >
+            取消
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
   if (loading) {
     return (
       <View className="schools-page">
@@ -1204,6 +1248,7 @@ export default function IntendedMajorsSchoolsPage() {
           <Text>加载中...</Text>
         </View>
         <BottomNav />
+        {renderPayRequiredDialog()}
       </View>
     )
   }
@@ -1215,6 +1260,7 @@ export default function IntendedMajorsSchoolsPage() {
           <Text>未找到专业信息</Text>
         </View>
         <BottomNav />
+        {renderPayRequiredDialog()}
       </View>
     )
   }
@@ -2144,44 +2190,7 @@ export default function IntendedMajorsSchoolsPage() {
         />
       )}
 
-      {/* 招生计划接口返回 PAY_REQUIRED 时弹支付框（从热门专业进入） */}
-      <Dialog open={showPayRequiredModal} onOpenChange={setShowPayRequiredModal}>
-        <DialogContent className="schools-page__dialog" showCloseButton={true}>
-          <DialogHeader>
-            <DialogTitle className="schools-page__dialog-title">免费额度已用完</DialogTitle>
-            <DialogDescription className="schools-page__dialog-desc">
-              请购买该热门专业或解锁全部。每个热门专业 {POPULAR_MAJOR_PRICE} 元。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="schools-page__dialog-footer">
-            <Button
-              className="schools-page__dialog-button schools-page__dialog-button--primary"
-              size="lg"
-              onClick={async () => {
-                if (!majorCode) {
-                  Taro.showToast({ title: '专业代码不存在', icon: 'none' })
-                  return
-                }
-                const success = await requestPayForPopularMajor(majorCode)
-                if (success) {
-                  setShowPayRequiredModal(false)
-                  setDataRefreshTrigger((prev) => prev + 1)
-                }
-              }}
-            >
-              去支付
-            </Button>
-            <Button
-              className="schools-page__dialog-button"
-              size="lg"
-              variant="outline"
-              onClick={() => setShowPayRequiredModal(false)}
-            >
-              取消
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {renderPayRequiredDialog()}
     </View>
   )
 }

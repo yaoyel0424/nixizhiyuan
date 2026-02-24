@@ -30,10 +30,28 @@ const requestInterceptor = (config: any) => {
   return config
 }
 
+/** 从响应体（对象或 JSON 字符串）中识别 PAY_REQUIRED 并返回统一错误 */
+function rejectPayRequired(body: any): Promise<never> {
+  let obj = body
+  if (typeof body === 'string') {
+    try {
+      obj = JSON.parse(body)
+    } catch {
+      return Promise.reject(new Error(body || '请求失败'))
+    }
+  }
+  if (obj && typeof obj === 'object' && obj.code === 'PAY_REQUIRED') {
+    const err: any = new Error(obj.message || '免费额度已用完，请购买该热门专业或解锁全部')
+    err.code = 'PAY_REQUIRED'
+    return Promise.reject(err)
+  }
+  return Promise.reject(new Error(obj?.message || '请求失败'))
+}
+
 // 响应拦截器
 const responseInterceptor = (response: any) => {
   const { statusCode, data } = response
-  
+
   // 2xx 状态码都认为是 HTTP 请求成功
   if (statusCode >= 200 && statusCode < 300) {
     // 检查业务层面的成功/失败标识
@@ -91,7 +109,10 @@ const responseInterceptor = (response: any) => {
         return Promise.reject(new Error(errorMsg))
       }
     }
-    
+    // data 可能是字符串（部分环境未自动 parse）
+    if (typeof data === 'string' && data.includes('PAY_REQUIRED')) {
+      return rejectPayRequired(data)
+    }
     // 如果没有明确的成功/失败标识，HTTP 2xx 就认为是成功
     return data
   } else if (statusCode === 401) {
@@ -103,6 +124,13 @@ const responseInterceptor = (response: any) => {
       duration: 2500
     })
     return Promise.reject(new Error('未授权'))
+  } else if (statusCode === 402 || (statusCode >= 400 && statusCode < 500 && data?.code === 'PAY_REQUIRED')) {
+    // 402 或业务返回 PAY_REQUIRED：不弹全局 toast，由业务层弹支付框
+    const err: any = new Error(data?.message || '免费额度已用完，请购买该热门专业或解锁全部')
+    err.code = 'PAY_REQUIRED'
+    return Promise.reject(err)
+  } else if (statusCode >= 400 && statusCode < 500 && typeof data === 'string' && data.includes('PAY_REQUIRED')) {
+    return rejectPayRequired(data)
   } else if (statusCode === 403) {
     Taro.showToast({
       title: '权限不足',
@@ -174,8 +202,15 @@ export const request = async <T = any>(config: RequestConfig): Promise<BaseRespo
 
     return responseInterceptor(response)
   } catch (error: any) {
+    // 部分环境下 4xx（如 402）会走 reject，响应体可能在 error.data / error.response
+    const body = error?.data ?? error?.response?.data ?? error?.response
+    if (body && (body.code === 'PAY_REQUIRED' || (typeof body === 'string' && body.includes('PAY_REQUIRED')))) {
+      const obj = typeof body === 'string' ? (() => { try { return JSON.parse(body) } catch { return {} } })() : body
+      const err: any = new Error(obj?.message || '免费额度已用完，请购买该热门专业或解锁全部')
+      err.code = 'PAY_REQUIRED'
+      return Promise.reject(err)
+    }
     console.error('请求失败:', error)
-    // 网络请求失败（如超时、网络不可用等）
     const errorMessage = error?.errMsg || error?.message || '网络请求失败'
     Taro.showToast({
       title: errorMessage.includes('timeout') ? '请求超时，请稍后重试' : '网络连接失败，请检查网络',
