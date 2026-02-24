@@ -368,6 +368,13 @@ export default function PopularMajorsPage() {
       }
     } catch (error: any) {
       console.error('加载量表和答案失败:', error)
+      // PAY_REQUIRED 需抛给调用方弹支付框（兼容 code 或 message 含关键字）
+      const isPayRequired =
+        error?.code === 'PAY_REQUIRED' ||
+        (typeof error?.message === 'string' && error.message.includes('免费额度已用完'))
+      if (isPayRequired) {
+        throw error
+      }
       Taro.showToast({
         title: error?.message || '加载评估题目失败',
         icon: 'none',
@@ -390,10 +397,16 @@ export default function PopularMajorsPage() {
     try {
       await loadScalesByPopularMajorId(popularMajorId)
     } catch (err: any) {
-      if (err?.code === 'PAY_REQUIRED') {
+      const isPayRequired =
+        err?.code === 'PAY_REQUIRED' ||
+        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
+      if (isPayRequired) {
         setShowQuestionnaire(false)
         setPendingAction({ type: 'assessment', major })
-        setShowPayRequiredModal(true)
+        // 延迟一帧再弹支付框，避免与问卷弹框关闭同一帧导致不展示
+        setTimeout(() => {
+          setShowPayRequiredModal(true)
+        }, 100)
       } else {
         setShowQuestionnaire(false)
         Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
@@ -596,8 +609,6 @@ export default function PopularMajorsPage() {
       })
       return
     }
-    
-    // 重新加载量表和答案（不恢复已保存的答案，清空重新开始）
     const popularMajorId = Number(selectedMajor.id)
     if (isNaN(popularMajorId)) {
       Taro.showToast({
@@ -606,7 +617,19 @@ export default function PopularMajorsPage() {
       })
       return
     }
-    await loadScalesByPopularMajorId(popularMajorId, false)
+    try {
+      await loadScalesByPopularMajorId(popularMajorId, false)
+    } catch (err: any) {
+      const isPayRequired =
+        err?.code === 'PAY_REQUIRED' ||
+        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
+      if (isPayRequired) {
+        setPendingAction({ type: 'assessment', major: selectedMajor })
+        setTimeout(() => setShowPayRequiredModal(true), 100)
+      } else {
+        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
+      }
+    }
   }
 
   const currentQuestion = questions[currentQuestionIndex]
