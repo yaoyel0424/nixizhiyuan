@@ -27,13 +27,11 @@ export class PayService implements OnModuleInit {
   onModuleInit() {
     const appid =
       this.configService.get<string>('pay.appid') ||
-      this.configService.get<string>('wechat.appId') ||
-      '';
+      this.configService.get<string>('wechat.appId') ||'';
     const mchid = this.configService.get<string>('pay.mchid') || '';
     this.notifyUrl = this.configService.get<string>('pay.notifyUrl') || '';
     this.v3Key = this.configService.get<string>('pay.v3Key') || '';
-    const certDir =
-      this.configService.get<string>('pay.certDir') || 'pay-key';
+    const certDir = this.configService.get<string>('pay.certDir') || 'pay-key';
     const certPath = path.isAbsolute(certDir)
       ? certDir
       : path.join(process.cwd(), certDir);

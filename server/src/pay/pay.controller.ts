@@ -8,13 +8,15 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  UnauthorizedException,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Public } from '@/common/decorators/public.decorator';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { PayService } from './pay.service';
 import { EntitlementService } from './entitlement.service';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -45,9 +47,8 @@ export class PayController {
    * 兼容旧版：仅传 amount 时按金额下单，不写权益 attach
    */
   @Get('transactions_jsapi')
-  @Public()
+  @ApiBearerAuth()
   @ApiOperation({ summary: '创建 JSAPI 预支付订单' })
-  @ApiQuery({ name: 'userId', required: true, description: '用户 id' })
   @ApiQuery({
     name: 'productType',
     required: false,
@@ -64,12 +65,16 @@ export class PayController {
     description: '金额（分），未传 productType 时必传',
   })
   async getTransactionsJsapi(
-    @Query('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: any,
     @Query('productType') productType: string,
     @Query('majorCode') majorCode: string,
     @Query('amount') amount: string,
     @Req() req: Request,
   ) {
+    if (!user?.id) {
+      throw new UnauthorizedException('请先登录后再发起支付');
+    }
+    const userId = user.id;
     const openid = await this.entitlementService.getOpenidByUserId(userId);
     if (!openid) {
       throw new BadRequestException('未找到对应用户的 openid，无法发起支付');
@@ -118,37 +123,41 @@ export class PayController {
    * 检查用户是否可查看某热门专业（不消耗免费额度）
    */
   @Get('can-view')
-  @Public()
+  @ApiBearerAuth()
   @ApiOperation({ summary: '检查是否可查看热门专业' })
-  @ApiQuery({ name: 'userId', required: true, description: '用户 id' })
   @ApiQuery({ name: 'majorCode', required: true })
   async canView(
-    @Query('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: any,
     @Query('majorCode') majorCode: string,
   ) {
+    if (!user?.id) {
+      throw new UnauthorizedException('请先登录');
+    }
     if (!majorCode) {
       throw new BadRequestException('majorCode 必填');
     }
-    return this.entitlementService.checkEntitlement(userId, majorCode.trim());
+    return this.entitlementService.checkEntitlement(user.id, majorCode.trim());
   }
 
   /**
    * 判断对某热门专业是否拥有免费权益（当前可用免费额度查看，即 reason 为 free_quota）
    */
   @Get('free-entitlement')
-  @Public()
+  @ApiBearerAuth()
   @ApiOperation({ summary: '判断是否拥有免费权益（可用免费额度查看该热门专业）' })
-  @ApiQuery({ name: 'userId', required: true, description: '用户 id' })
   @ApiQuery({ name: 'majorCode', required: true, description: '热门专业代码' })
   async getFreeEntitlement(
-    @Query('userId', ParseIntPipe) userId: number,
+    @CurrentUser() user: any,
     @Query('majorCode') majorCode: string,
   ): Promise<{ hasFreeEntitlement: boolean }> {
+    if (!user?.id) {
+      throw new UnauthorizedException('请先登录');
+    }
     if (!majorCode) {
       throw new BadRequestException('majorCode 必填');
     }
     const access = await this.entitlementService.checkEntitlement(
-      userId,
+      user.id,
       majorCode.trim(),
     );
     const hasFreeEntitlement =
@@ -160,12 +169,14 @@ export class PayController {
    * 获取「解锁全部」应付金额（分）及抵扣说明
    */
   @Get('unlock-all-amount')
-  @Public()
+  @ApiBearerAuth()
   @ApiOperation({ summary: '获取解锁全部应付金额（已付热门专业可抵扣）' })
-  @ApiQuery({ name: 'userId', required: true, description: '用户 id' })
-  async getUnlockAllAmount(@Query('userId', ParseIntPipe) userId: number) {
-    const payAmount = await this.entitlementService.getUnlockAllPayAmount(userId);
-    const deductAmount = await this.entitlementService.getUnlockAllDeductAmount(userId);
+  async getUnlockAllAmount(@CurrentUser() user: any) {
+    if (!user?.id) {
+      throw new UnauthorizedException('请先登录');
+    }
+    const payAmount = await this.entitlementService.getUnlockAllPayAmount(user.id);
+    const deductAmount = await this.entitlementService.getUnlockAllDeductAmount(user.id);
     return {
       amountCents: payAmount,
       deductCents: deductAmount,
@@ -177,12 +188,14 @@ export class PayController {
    * 查询用户免费额度使用情况（验证是否已用完两个免费额度）
    */
   @Get('free-quota')
-  @Public()
+  @ApiBearerAuth()
   @ApiOperation({ summary: '查询免费额度使用情况' })
-  @ApiQuery({ name: 'userId', required: true, description: '用户 id' })
-  async getFreeQuota(@Query('userId', ParseIntPipe) userId: number) {
-    const info = await this.entitlementService.getFreeQuotaInfo(userId);
-    const usedAll = await this.entitlementService.hasUsedAllFreeQuota(userId);
+  async getFreeQuota(@CurrentUser() user: any) {
+    if (!user?.id) {
+      throw new UnauthorizedException('请先登录');
+    }
+    const info = await this.entitlementService.getFreeQuotaInfo(user.id);
+    const usedAll = await this.entitlementService.hasUsedAllFreeQuota(user.id);
     return { ...info, usedAll };
   }
 
@@ -190,13 +203,13 @@ export class PayController {
    * 热门专业权益汇总：用户 2 个免费权益使用的专业 + 已交费测评的专业
    */
   @Get('popular-major-entitlement-summary')
-  @Public()
+  @ApiBearerAuth()
   @ApiOperation({ summary: '热门专业权益汇总（免费使用过的专业 + 已交费测评的专业）' })
-  @ApiQuery({ name: 'userId', required: true, description: '用户 id' })
-  async getPopularMajorEntitlementSummary(
-    @Query('userId', ParseIntPipe) userId: number,
-  ) {
-    return this.entitlementService.getPopularMajorEntitlementSummary(userId);
+  async getPopularMajorEntitlementSummary(@CurrentUser() user: any) {
+    if (!user?.id) {
+      throw new UnauthorizedException('请先登录');
+    }
+    return this.entitlementService.getPopularMajorEntitlementSummary(user.id);
   }
 
   /**
