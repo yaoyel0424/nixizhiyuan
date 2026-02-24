@@ -98,7 +98,9 @@ export const requestPayForPopularMajor = async (majorCode: string): Promise<bool
       productType: 'popular_major',
       majorCode
     })
-    const payParams: JsapiPayParams = orderRes?.data ?? orderRes
+    // 接口返回结构为 data.data 内才是调起支付所需参数（package、paySign、timeStamp 等）
+    const payParams: JsapiPayParams =
+      orderRes?.data?.data ?? orderRes?.data ?? orderRes
     if (!payParams || (!payParams.package && !payParams.paySign)) {
       Taro.showToast({
         title: orderRes?.message || '获取支付信息失败',
@@ -106,7 +108,15 @@ export const requestPayForPopularMajor = async (majorCode: string): Promise<bool
       })
       return false
     }
-    await Taro.requestPayment(payParams as any)
+    // 只传微信要求的 5 个字段，timeStamp 需为字符串
+    const requestPayload = {
+      timeStamp: String(payParams.timeStamp ?? ''),
+      nonceStr: payParams.nonceStr ?? '',
+      package: payParams.package ?? '',
+      signType: payParams.signType ?? 'RSA',
+      paySign: payParams.paySign ?? ''
+    }
+    await Taro.requestPayment(requestPayload)
     return true
   } catch (e: any) {
     if (e?.errMsg?.includes('cancel') || e?.errMsg?.includes('取消')) {
