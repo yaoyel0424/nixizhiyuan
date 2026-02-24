@@ -34,6 +34,10 @@ services:
       - CURRENT_YEAR=${CURRENT_YEAR}
       - SECRET_KEY=${SECRET_KEY}
       - OFFSET=${OFFSET}
+      - WX_PAY_MCHID=${WX_PAY_MCHID}
+      - WX_PAY_NOTIFY_URL=${WX_PAY_NOTIFY_URL}
+      - WX_PAY_V3_KEY=${WX_PAY_V3_KEY}
+      - WX_PAY_CERT_DIR=${WX_PAY_CERT_DIR}
     networks:
       # 连接到已存在的外部网络（主应用的 app-network）
       - rbridge_app-network

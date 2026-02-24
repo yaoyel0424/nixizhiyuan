@@ -35,6 +35,9 @@ RUN npm prune --production
 # 从构建阶段复制构建产物
 COPY --from=builder /app/dist ./dist
 
+# 复制微信支付证书到容器（WX_PAY_CERT_DIR 默认 pay-key）
+COPY pay-key ./pay-key
+
 # 验证构建产物已复制
 RUN test -f /app/dist/src/main.js || (echo "Copy failed: main.js not found" && exit 1)
 
