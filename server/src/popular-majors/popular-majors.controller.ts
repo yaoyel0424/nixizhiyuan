@@ -55,14 +55,17 @@ export class PopularMajorsController {
   @ApiQuery({ name: 'level1', required: false, description: '教育层次筛选（ben: 本科, zhuan: 专科, gao_ben: 高职本科）' })
   @ApiQuery({ name: 'name', required: false, description: '专业名称搜索（模糊匹配）' })
   @ApiQuery({ name: 'code', required: false, description: '专业代码搜索' })
+  @UseGuards(EntitlementGuard)
   async findAll(
     @Query() queryDto: QueryPopularMajorDto,
+    @Req() req: Request,
     @CurrentUser() user?: any,
 
   ) {
     const result = await this.popularMajorsService.findAll(
       queryDto,
       user?.id,
+      (req as any).hasUnlockAll ?? false,
     );
     return {
       items: plainToInstance(PopularMajorResponseDto, result.items, {

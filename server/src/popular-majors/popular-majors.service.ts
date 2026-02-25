@@ -43,7 +43,7 @@ export class PopularMajorsService {
    * @param userId 用户ID（可选，用于计算进度和分数）
    * @returns 分页结果，包含进度和分数信息
    */
-  async findAll(queryDto: QueryPopularMajorDto, userId?: number) {
+  async findAll(queryDto: QueryPopularMajorDto, userId?: number, hasUnlockAll?: boolean) {
     const {
       // 参数保留，暂时不使用
       // page = 1,
@@ -70,7 +70,7 @@ export class PopularMajorsService {
 
     // 直接调用 addProgressAndScoreByLevel1，在内部一次性查询所有数据
     const result = await this.addProgressAndScoreByLevel1(level1, userId);
-    if (userId && result.items.length > 0) {
+    if (userId && !hasUnlockAll && result.items.length > 0) {
       await this.attachEntitlementFlags(result.items, userId);
     }
     return {
