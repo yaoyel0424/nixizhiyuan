@@ -144,13 +144,17 @@ export const getFavoriteMajors = async (): Promise<FavoriteMajorResponse[]> => {
 
 /**
  * 取消收藏专业
+ * API: DELETE /api/v1/majors/favorites/:majorCode，未解锁时需在 URL 上传 sign
  * @param majorCode 专业代码
+ * @param sign 前五条记录的防伪标识（未解锁时从专业探索列表项带入）
  * @returns 取消收藏结果
  */
 export const unfavoriteMajor = async (
-  majorCode: string
+  majorCode: string,
+  sign?: string | null
 ): Promise<void> => {
-  await del(`/majors/favorites/${majorCode}`)
+  const query = sign ? `?sign=${encodeURIComponent(sign)}` : ''
+  await del(`/majors/favorites/${majorCode}${query}`)
 }
 
 /**

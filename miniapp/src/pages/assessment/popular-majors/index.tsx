@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/Progress'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
 import { requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
 import { getScalesByPopularMajorId } from '@/services/scales'
+import { getPopularMajorDetailByCode } from '@/services/majors'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
 import './index.less'
 
@@ -436,7 +437,7 @@ export default function PopularMajorsPage() {
     }
   }
 
-  // 处理专业卡片点击，跳转到深度探索页面
+  // 处理专业卡片点击，跳转到深度探索页面（内部用，不校验权限）
   const handleMajorCardClick = (major: Major) => {
     if (!major.code) {
       Taro.showToast({
@@ -451,6 +452,56 @@ export default function PopularMajorsPage() {
       url
     })
   }
+
+  /** 报告/详情：先请求详情接口，若返回 PAY_REQUIRED 则在本页弹支付框，否则再跳转 */
+  const tryNavigateToReport = useCallback(async (major: Major) => {
+    if (!major.code) {
+      Taro.showToast({ title: '专业代码不存在', icon: 'none' })
+      return
+    }
+    try {
+      await getPopularMajorDetailByCode(major.code)
+      handleMajorCardClick(major)
+    } catch (err: any) {
+      const isPayRequired =
+        err?.code === 'PAY_REQUIRED' ||
+        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
+      if (isPayRequired) {
+        setPendingAction({ type: 'report', major })
+        setTimeout(() => setShowPayRequiredModal(true), 100)
+      } else {
+        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
+      }
+    }
+  }, [])
+
+  /** 院校：先请求招生计划接口，若返回 PAY_REQUIRED 则在本页弹支付框，否则再跳转 */
+  const tryNavigateToSchools = useCallback(async (major: Major) => {
+    if (!major.code) {
+      Taro.showToast({ title: '专业代码不存在', icon: 'none' })
+      return
+    }
+    const majorId = major.majorId
+    if (majorId == null) {
+      Taro.showToast({ title: '缺少专业ID', icon: 'none' })
+      return
+    }
+    try {
+      const { getEnrollmentPlansByMajorId } = await import('@/services/enroll-plan')
+      await getEnrollmentPlansByMajorId(majorId, undefined, undefined, major.id)
+      handleViewSchoolsInner(major)
+    } catch (err: any) {
+      const isPayRequired =
+        err?.code === 'PAY_REQUIRED' ||
+        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
+      if (isPayRequired) {
+        setPendingAction({ type: 'schools', major })
+        setTimeout(() => setShowPayRequiredModal(true), 100)
+      } else {
+        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
+      }
+    }
+  }, [])
 
   // 处理查看院校按钮点击，跳转到院校列表页面（内部用，不包含额度校验）
   const handleViewSchoolsInner = (major: Major) => {
@@ -488,11 +539,11 @@ export default function PopularMajorsPage() {
         handleStartAssessment(major)
       }
     } else if (type === 'report') {
-      handleMajorCardClick(major)
+      tryNavigateToReport(major)
     } else if (type === 'schools') {
-      handleViewSchoolsInner(major)
+      tryNavigateToSchools(major)
     }
-  }, [pendingAction])
+  }, [pendingAction, tryNavigateToReport, tryNavigateToSchools])
 
   /** 点击评估/报告/院校：先弹免费提示，继续后直接执行；是否收费仅看业务接口（enroll-plan、scales）是否返回 PAY_REQUIRED */
   const checkQuotaAndRun = useCallback((type: 'assessment' | 'report' | 'schools', major: Major) => {

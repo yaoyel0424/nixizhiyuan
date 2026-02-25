@@ -360,8 +360,8 @@ export default function MajorsPage() {
 
     try {
       if (isCurrentlyFavorited) {
-        // 取消收藏
-        await unfavoriteMajor(majorCode)
+        // 取消收藏（未缴费前五条需传 sign）
+        await unfavoriteMajor(majorCode, sign)
         Taro.showToast({
           title: '已取消心动',
           icon: 'none',
