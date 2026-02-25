@@ -202,13 +202,15 @@ export class PayController {
   @Get('free-quota')
   @ApiBearerAuth()
   @ApiOperation({ summary: '查询免费额度使用情况' })
-  async getFreeQuota(@CurrentUser() user: any) {
+  async getFreeQuota(@CurrentUser() user: any, @Req() req: Request) {
     if (!user?.id) {
       throw new UnauthorizedException('请先登录');
     }
+    const hasUnlockAll = (req as any).hasUnlockAll ?? false;
+  
     const info = await this.entitlementService.getFreeQuotaInfo(user.id);
     // const usedAll = await this.entitlementService.hasUsedAllFreeQuota(user.id);
-    return { ...info };
+    return { ...info,hasUnlockAll: hasUnlockAll };
   }
 
   /**
