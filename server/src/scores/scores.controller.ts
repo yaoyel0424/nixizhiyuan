@@ -113,7 +113,8 @@ export class ScoresController {
     const amountNum = userId != null ? await this.entitlementService.getUnlockAllPayAmount(userId) : 0;
     const canSeeAll = hasUnlockAll || amountNum <= 0;
 
-    const list = canSeeAll ? scores : (scores ?? []).slice(0, 5);
+    // 未解锁时返回 10 条（前端仅展示前 5 条并显示「解锁全部」按钮）
+    const list = canSeeAll ? scores : (scores ?? []).slice(0, 10);
 
     return plainToInstance(ScoreResponseDto, list, {
       excludeExtraneousValues: true,
