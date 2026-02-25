@@ -116,7 +116,11 @@ export class ScoresController {
     const hasUnlockAll = (req as any).hasUnlockAll ?? false;
 
     const arr = scores ?? [];
-    const list = hasUnlockAll ? arr : [...arr.slice(0, 5), ...arr.slice(-5)];
+    // 先对完整列表从 1 开始打序号，前五后五时沿用该序号不变
+    const arrWithIndex = arr.map((item, i) => ({ ...item, index: i + 1 }));
+    const list = hasUnlockAll
+      ? arrWithIndex
+      : [...arrWithIndex.slice(0, 5), ...arrWithIndex.slice(-5)];
 
     return plainToInstance(ScoreResponseDto, list, {
       excludeExtraneousValues: true,
