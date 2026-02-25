@@ -37,6 +37,7 @@ import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 import { RequireEntitlement } from '@/common/decorators/require-entitlement.decorator';
+import { IdTransformUtil } from '@/common/utils/id-transform.util';
 
 /**
  * 专业收藏控制器
@@ -168,6 +169,7 @@ export class MajorsController {
         id: item.id,
         userId: item.userId,
         majorCode: item.majorCode,
+        sign: IdTransformUtil.encodeTo32Hex(item.majorCode),
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         score: item.score,

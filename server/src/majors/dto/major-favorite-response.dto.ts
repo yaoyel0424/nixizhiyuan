@@ -24,8 +24,12 @@ export class MajorFavoriteResponseDto {
    */
   @ApiProperty({ description: '专业代码', example: '010101' })
   @Expose()
-  majorCode: string;
+  majorCode: string; 
 
+  
+  @ApiProperty({ description: '防伪标识', example: '0000000000003039a3d70a3d70a3d7...', nullable: true })
+  @Expose()
+  sign?: string | null;
   /**
    * 收藏时间
    */
