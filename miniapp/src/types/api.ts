@@ -284,6 +284,8 @@ export interface QueryPopularMajorParams {
  * 注意：API 返回的分数字段可能是字符串类型
  */
 export interface MajorScoreResponse {
+  /** 专业探索列表接口返回的序号，用于列表与分享图展示 */
+  index?: number
   majorId?: number
   level3MajorId?: number
   majorCode: string
