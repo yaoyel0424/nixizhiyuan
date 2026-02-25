@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { Progress } from '@/components/ui/Progress'
 import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
-import { requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
+import { getFreeQuota, requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
 import { getScalesByPopularMajorId } from '@/services/scales'
 import { getPopularMajorDetailByCode } from '@/services/majors'
 import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
@@ -545,11 +545,34 @@ export default function PopularMajorsPage() {
     }
   }, [pendingAction, tryNavigateToReport, tryNavigateToSchools])
 
-  /** 点击评估/报告/院校：先弹免费提示，继续后直接执行；是否收费仅看业务接口（enroll-plan、scales）是否返回 PAY_REQUIRED */
-  const checkQuotaAndRun = useCallback((type: 'assessment' | 'report' | 'schools', major: Major) => {
-    setPendingAction({ type, major })
-    setShowFreeQuotaTip(true)
-  }, [])
+  /**
+   * 点击评估/报告/院校：先请求 free-quota，再决定是否弹温馨提示或直接执行
+   * - hasUnlockAll 为 true：不弹温馨提示，直接执行
+   * - remaining > 0 且当前专业不在 majorCodes：弹温馨提示，继续后执行
+   * - remaining === 0 或专业已在 majorCodes：不弹温馨提示，直接执行；接口返回 402 时弹支付框
+   */
+  const checkQuotaAndRun = useCallback(async (type: 'assessment' | 'report' | 'schools', major: Major) => {
+    const action = { type, major }
+    setPendingAction(action)
+    try {
+      const quota = await getFreeQuota()
+      if (quota.hasUnlockAll) {
+        runPendingAction(action)
+        return
+      }
+      if (quota.remaining > 0) {
+        const majorCodes = quota.majorCodes ?? []
+        const alreadyInFreeList = major.code ? majorCodes.includes(major.code) : false
+        if (!alreadyInFreeList) {
+          setShowFreeQuotaTip(true)
+          return
+        }
+      }
+      runPendingAction(action)
+    } catch (_) {
+      runPendingAction(action)
+    }
+  }, [runPendingAction])
 
   /** 免费提示弹框点「继续」：直接执行操作；是否收费由业务接口决定，接口返回 PAY_REQUIRED 时再弹支付 */
   const handleFreeQuotaTipContinue = useCallback(() => {

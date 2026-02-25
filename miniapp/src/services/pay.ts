@@ -6,24 +6,36 @@ import { getCurrentUserId } from './user'
 export interface FreeQuotaResult {
   /** 剩余免费查看次数 */
   remaining: number
+  /** 用户已用免费额度查看的热门专业 code 列表 */
+  majorCodes?: string[]
+  /** 是否已解锁全部（为 true 时不弹温馨提示） */
+  hasUnlockAll?: boolean
 }
 
 /**
  * 查询免费额度使用情况
  * GET /pay/free-quota
- * @returns 剩余免费次数等信息
+ * @returns 剩余免费次数、已使用的专业 code 列表、是否解锁全部等
  */
 export const getFreeQuota = async (): Promise<FreeQuotaResult> => {
   const response: any = await get<FreeQuotaResult>('/pay/free-quota')
+  const data = response?.data ?? response ?? {}
   if (response && typeof response === 'object') {
-    if (typeof response.remaining === 'number') {
-      return { remaining: response.remaining }
-    }
-    if (response.data && typeof response.data.remaining === 'number') {
-      return { remaining: response.data.remaining }
-    }
+    const remaining =
+      typeof data.remaining === 'number'
+        ? data.remaining
+        : typeof response.remaining === 'number'
+          ? response.remaining
+          : 0
+    const majorCodes = Array.isArray(data.majorCodes)
+      ? data.majorCodes
+      : Array.isArray(response.majorCodes)
+        ? response.majorCodes
+        : []
+    const hasUnlockAll = Boolean(data.hasUnlockAll ?? response.hasUnlockAll)
+    return { remaining, majorCodes, hasUnlockAll }
   }
-  return { remaining: 0 }
+  return { remaining: 0, majorCodes: [], hasUnlockAll: false }
 }
 
 /**
