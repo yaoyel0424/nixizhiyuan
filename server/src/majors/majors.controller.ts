@@ -154,9 +154,10 @@ export class MajorsController {
   async findFavorites(
     @CurrentUser() user: any,
     @Query() queryDto: QueryMajorFavoriteDto,
+    @Req() req: Request,
   ): Promise<UserFavoritesResponseDto> {
     const result = await this.majorsService.findFavorites(user.id, queryDto);
-    
+    const hasUnlockAll = (req as any).hasUnlockAll ?? false;
     // 转换用户信息
     const userInfo = { 
       nickname: result.user.nickname, 
@@ -169,7 +170,7 @@ export class MajorsController {
         id: item.id,
         userId: item.userId,
         majorCode: item.majorCode,
-        sign: IdTransformUtil.encodeTo32Hex(item.majorCode),
+        sign: hasUnlockAll ? null : IdTransformUtil.encodeTo32Hex(item.majorCode),
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         score: item.score,
