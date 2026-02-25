@@ -36,35 +36,44 @@ export class EntitlementGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!metadata) {
-      return true;
-    }
-
     const request = context.switchToHttp().getRequest<{
       user?: { id: number };
       params?: Record<string, string>;
       query?: Record<string, string | undefined>;
       body?: { majorCode?: string };
+      /** 是否已解锁全部（由 EntitlementGuard 设置，控制器可通过 req.hasUnlockAll 读取） */
+      hasUnlockAll?: boolean;
     }>();
     const userId = request.user?.id;
     const params = request.params ?? {};
     const query = request.query ?? {};
     const body = request.body ?? {};
 
+    const setHasUnlockAll = async (uid: number) => {
+      const userType = await this.entitlementService.getUserTypeByUserId(uid);
+      if (userType === 'adult') {
+        request.hasUnlockAll = true;
+        return;
+      }
+      const hasUnlockAllFlag = await this.entitlementService.hasUnlockAll(uid);
+      const amountNum = await this.entitlementService.getUnlockAllPayAmount(uid); 
+      request.hasUnlockAll = hasUnlockAllFlag || amountNum <= 0;
+    };
+
+    if (!metadata) { 
+      if (userId != null) await setHasUnlockAll(userId);
+      return true;
+    }
+
     if (userId == null) {
       throw new UnauthorizedException('请先登录后再访问');
     }
 
-    const userType = await this.entitlementService.getUserTypeByUserId(userId);
-    if (userType === 'adult') {
-      return true;
-    }
+    await setHasUnlockAll(userId);
+    const effectiveUnlockAll = request.hasUnlockAll === true;
 
     // 两个顶级条件：满足一条即放行（popular_major / require_sign 等均适用）
-    if (await this.entitlementService.hasUnlockAll(userId)) return true;
-
-    const amountNum = await this.entitlementService.getUnlockAllPayAmount(userId);
-    if (amountNum <= 0) return true;
+    if (effectiveUnlockAll) return true;
 
     // 热门专业：仅做权益校验（不涉及 sign）
     if (metadata.type === 'popular_major') {

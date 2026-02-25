@@ -64,27 +64,28 @@ export class ProgressDto {
 
 /**
  * 专业分数响应 DTO
+ * 未付费且未使用免费额度时，各分数字段返回 "*" 星号占位
  */
 export class ScoreDto {
-  @ApiProperty({ description: '总分' })
+  @ApiProperty({ description: '总分（未解锁时为 "*"）', oneOf: [{ type: 'number' }, { type: 'string' }] })
   @Expose()
-  score: number;
+  score: number | string;
 
-  @ApiProperty({ description: '乐学分数' })
+  @ApiProperty({ description: '乐学分数（未解锁时为 "*"）', oneOf: [{ type: 'number' }, { type: 'string' }] })
   @Expose()
-  lexueScore: number;
+  lexueScore: number | string;
 
-  @ApiProperty({ description: '善学分数' })
+  @ApiProperty({ description: '善学分数（未解锁时为 "*"）', oneOf: [{ type: 'number' }, { type: 'string' }] })
   @Expose()
-  shanxueScore: number;
+  shanxueScore: number | string;
 
-  @ApiProperty({ description: '厌学扣分' })
+  @ApiProperty({ description: '厌学扣分（未解锁时为 "*"）', oneOf: [{ type: 'number' }, { type: 'string' }] })
   @Expose()
-  yanxueDeduction: number;
+  yanxueDeduction: number | string;
 
-  @ApiProperty({ description: '挑战扣分' })
+  @ApiProperty({ description: '挑战扣分（未解锁时为 "*"）', oneOf: [{ type: 'number' }, { type: 'string' }] })
   @Expose()
-  tiaozhanDeduction: number;
+  tiaozhanDeduction: number | string;
 }
 
 /**

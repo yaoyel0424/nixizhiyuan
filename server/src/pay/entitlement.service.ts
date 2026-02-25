@@ -98,16 +98,32 @@ export class EntitlementService {
   }
 
   /**
-   * 获取免费额度使用情况：已用次数、总额度、剩余次数（基于免费专业记录条数）
+   * 获取免费额度使用情况：已用次数、总额度、剩余次数、已使用的专业代码列表
    */
-  async getFreeQuotaInfo(userId: number | null): Promise<{ used: number; total: number; remaining: number }> {
-    if (userId == null) return { used: 0, total: FREE_POPULAR_MAJOR_COUNT, remaining: FREE_POPULAR_MAJOR_COUNT };
-    const used = await this.freePopularMajorRecordRepository.count({
+  async getFreeQuotaInfo(userId: number | null): Promise<{
+    used: number;
+    total: number;
+    remaining: number;
+    majorCodes: string[];
+  }> {
+    if (userId == null) {
+      return {
+        used: 0,
+        total: FREE_POPULAR_MAJOR_COUNT,
+        remaining: FREE_POPULAR_MAJOR_COUNT,
+        majorCodes: [],
+      };
+    }
+    const list = await this.freePopularMajorRecordRepository.find({
       where: { user_id: userId },
+      order: { created_at: 'ASC' },
+      select: ['major_code'],
     });
+    const used = list.length;
     const total = FREE_POPULAR_MAJOR_COUNT;
     const remaining = Math.max(0, total - used);
-    return { used, total, remaining };
+    const majorCodes = list.map((r) => r.major_code);
+    return { used, total, remaining, majorCodes };
   }
 
   /**

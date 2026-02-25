@@ -151,7 +151,7 @@ export class PopularMajorsService {
    * @param userId 用户ID（可选，用于计算进度和分数）
    * @returns 热门专业列表
    */
-  async findByLevel1(level1: string, userId?: number): Promise<PopularMajor[]> {
+  async findByLevel1(level1: string, userId?: number, hasUnlockAll?: boolean): Promise<PopularMajor[]> {
     const popularMajors = await this.popularMajorRepository.find({
       where: { level1 },
       relations: ['majorDetail', 'majorDetail.major'],
@@ -169,7 +169,7 @@ export class PopularMajorsService {
 
     // 如果有 userId，计算进度和分数
     await this.addProgressAndScoreForItems(popularMajors, userId);
-    if (userId) {
+    if (userId && !hasUnlockAll) {
       await this.attachEntitlementFlags(popularMajors, userId);
     }
     return popularMajors;
@@ -180,16 +180,25 @@ export class PopularMajorsService {
    */
   private async attachEntitlementFlags(
     items: PopularMajor[],
-    userId: number,
+    userId: number, 
   ): Promise<void> {
     if (!items?.length) return;
     const { paidMajorCodes, freeUsedMajorCodes } =
       await this.entitlementService.getPopularMajorEntitlementSummary(userId);
+    const MASK = '*';
     for (const item of items) {
-      (item as PopularMajor & { isPaid?: boolean; isFreeUsed?: boolean }).isPaid =
-        paidMajorCodes.includes(item.code);
-      (item as PopularMajor & { isPaid?: boolean; isFreeUsed?: boolean }).isFreeUsed =
-        freeUsedMajorCodes.includes(item.code);
+      const ext = item as PopularMajor & { isPaid?: boolean; isFreeUsed?: boolean; score?: any };
+      ext.isPaid = paidMajorCodes.includes(item.code);
+      ext.isFreeUsed = freeUsedMajorCodes.includes(item.code);
+      if (!ext.isPaid && !ext.isFreeUsed && ext.score && typeof ext.score === 'object') {
+        ext.score = {
+          score: MASK,
+          lexueScore: MASK,
+          shanxueScore: MASK,
+          yanxueDeduction: MASK,
+          tiaozhanDeduction: MASK,
+        };
+      }
     }
   }
 

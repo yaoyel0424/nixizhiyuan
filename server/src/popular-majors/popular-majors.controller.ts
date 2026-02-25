@@ -6,6 +6,8 @@ import {
   Query,
   Body,
   UnauthorizedException,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,6 +26,7 @@ import { QueryPopularMajorAnswerDto } from './dto/query-popular-major-answer.dto
 import { PopularMajorAnswerResponseDto } from './dto/popular-major-answer-response.dto';
 import { plainToInstance } from 'class-transformer';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 
 /**
  * 热门专业控制器
@@ -55,6 +58,7 @@ export class PopularMajorsController {
   async findAll(
     @Query() queryDto: QueryPopularMajorDto,
     @CurrentUser() user?: any,
+
   ) {
     const result = await this.popularMajorsService.findAll(
       queryDto,
@@ -69,6 +73,7 @@ export class PopularMajorsController {
   }
 
   @Get('level/:level1')
+  @UseGuards(EntitlementGuard)
   @ApiOperation({
     summary: '根据教育层次获取热门专业列表',
     description: '如果用户已登录，将返回每个专业的填写进度和匹配分数',
@@ -82,11 +87,13 @@ export class PopularMajorsController {
   })
   async findByLevel1(
     @Param('level1') level1: string,
+    @Req() req: Request,
     @CurrentUser() user?: any,
   ): Promise<PopularMajorResponseDto[]> {
     const popularMajors = await this.popularMajorsService.findByLevel1(
       level1,
       user?.id,
+      (req as any).hasUnlockAll ?? false,
     );
     return plainToInstance(PopularMajorResponseDto, popularMajors, {
       excludeExtraneousValues: true,

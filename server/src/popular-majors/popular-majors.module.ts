@@ -9,6 +9,7 @@ import { PopularMajorsService } from './popular-majors.service';
 import { PopularMajorsController } from './popular-majors.controller';
 import { ScoresModule } from '../scores/scores.module';
 import { PayModule } from '../pay/pay.module';
+import { EntitlementGuard } from '../common/guards/entitlement.guard';
 
 /**
  * 热门专业模块
@@ -26,7 +27,7 @@ import { PayModule } from '../pay/pay.module';
     PayModule,
   ],
   controllers: [PopularMajorsController],
-  providers: [PopularMajorsService],
+  providers: [PopularMajorsService, EntitlementGuard],
   exports: [PopularMajorsService],
 })
 export class PopularMajorsModule {}

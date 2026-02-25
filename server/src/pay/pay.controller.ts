@@ -207,8 +207,8 @@ export class PayController {
       throw new UnauthorizedException('请先登录');
     }
     const info = await this.entitlementService.getFreeQuotaInfo(user.id);
-    const usedAll = await this.entitlementService.hasUsedAllFreeQuota(user.id);
-    return { ...info, usedAll };
+    // const usedAll = await this.entitlementService.hasUsedAllFreeQuota(user.id);
+    return { ...info };
   }
 
   /**
