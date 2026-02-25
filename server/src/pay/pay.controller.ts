@@ -10,6 +10,7 @@ import {
   BadRequestException,
   UnauthorizedException,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -25,6 +26,8 @@ import { Order } from '@/entities/order.entity';
 import { PayLoggerService } from './pay-logger.service';
 import type { PaymentJobPayload } from './pay.types';
 import { PRODUCT_TYPE_POPULAR_MAJOR, PRODUCT_TYPE_UNLOCK_ALL } from './pay.constants';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
+import { RequireEntitlement } from '@/common/decorators/require-entitlement.decorator';
 
 const PAYMENT_QUEUE = 'payment';
 const PROFITSHARING_EVENT = 'PROFITSHARING';
@@ -202,6 +205,7 @@ export class PayController {
   @Get('free-quota')
   @ApiBearerAuth()
   @ApiOperation({ summary: '查询免费额度使用情况' })
+  @UseGuards(EntitlementGuard) 
   async getFreeQuota(@CurrentUser() user: any, @Req() req: Request) {
     if (!user?.id) {
       throw new UnauthorizedException('请先登录');

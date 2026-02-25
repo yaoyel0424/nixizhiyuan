@@ -4,6 +4,8 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +23,7 @@ import { plainToInstance } from 'class-transformer';
 import { LoggerService } from '@/logger/logger.service';
 import { Cache } from '@/common/decorators/cache.decorator';
 import { EntitlementService } from '@/pay/entitlement.service';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 
 /**
  * 专业分数控制器
@@ -97,8 +100,10 @@ export class ScoresController {
     isArray: true,
   })
 
-  @Cache(300)
+  @Cache(100)
+  @UseGuards(EntitlementGuard)
   async getAllScores(
+    @Req() req: Request,
     @Query('eduLevel') eduLevel?: string,
     @CurrentUser() user?: any,
   ): Promise<ScoreResponseDto[]> {
@@ -107,14 +112,11 @@ export class ScoresController {
       user.id,
       eduLevel,
     );
+ 
+    const hasUnlockAll = (req as any).hasUnlockAll ?? false;
 
-    const userId = user?.id;
-    const hasUnlockAll = userId != null && await this.entitlementService.hasUnlockAll(userId);
-    const amountNum = userId != null ? await this.entitlementService.getUnlockAllPayAmount(userId) : 0;
-    const canSeeAll = hasUnlockAll || amountNum <= 0;
-
-    // 未解锁时返回 10 条（前端仅展示前 5 条并显示「解锁全部」按钮）
-    const list = canSeeAll ? scores : (scores ?? []).slice(0, 10);
+    const arr = scores ?? [];
+    const list = hasUnlockAll ? arr : [...arr.slice(0, 5), ...arr.slice(-5)];
 
     return plainToInstance(ScoreResponseDto, list, {
       excludeExtraneousValues: true,
