@@ -1240,6 +1240,8 @@ export default function CareerExplorationPage() {
   const majorCode = router.params?.code || ''
   const fromPage = router.params?.from || '' // 获取来源页面参数
   const popularMajorId = router.params?.majorId ? Number(router.params.majorId) : null // 获取热门专业ID
+  /** 专业探索/心动专业未缴费时传的 sign，用于详情与取消收藏请求 */
+  const signParam = router.params?.sign || null
   const [majorName, setMajorName] = useState('')
   const [loading, setLoading] = useState(true)
   const [majorDetail, setMajorDetail] = useState<MajorDetailInfo | null>(null)
@@ -1276,7 +1278,7 @@ export default function CareerExplorationPage() {
         // 根据来源页面决定使用哪个接口
         const detail = isFromPopularMajors
           ? await getPopularMajorDetailByCode(majorCode)
-          : await getMajorDetailByCode(majorCode)
+          : await getMajorDetailByCode(majorCode, signParam || undefined)
         // API 返回的字段可能是 analyses，统一转换为 majorElementAnalyses
         if (detail && !detail.majorElementAnalyses && (detail as any).analyses) {
           detail.majorElementAnalyses = (detail as any).analyses
@@ -1324,17 +1326,17 @@ export default function CareerExplorationPage() {
     }
 
     loadMajorDetail()
-  }, [majorCode, isFromPopularMajors])
+  }, [majorCode, isFromPopularMajors, signParam])
 
   // 删除心动专业（从收藏中移除）
   const handleDeleteFromFavorites = () => {
     setShowDeleteConfirm(true)
   }
 
-  // 确认删除
+  // 确认删除（未缴费前五条需传 sign）
   const confirmDeleteFromFavorites = async () => {
     try {
-      await unfavoriteMajor(majorCode)
+      await unfavoriteMajor(majorCode, signParam || undefined)
       Taro.showToast({
         title: '已从心动专业中移除',
         icon: 'success',

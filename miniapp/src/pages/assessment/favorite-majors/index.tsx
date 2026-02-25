@@ -13,10 +13,9 @@ import {
   unfavoriteMajor, 
   getFavoriteMajorsCount
 } from '@/services/majors'
-import { getAllScores } from '@/services/scores'
 import './index.less'
 
-// 合并后的专业数据接口（与 getFavoriteMajors 返回结构对齐，含 major 与分数）
+// 合并后的专业数据接口（与 getFavoriteMajors 返回结构对齐，含 major、分数、未缴费时的 sign）
 interface FavoriteMajorWithScore {
   majorCode: string
   majorName: string
@@ -29,6 +28,8 @@ interface FavoriteMajorWithScore {
   tiaozhanDeduction?: number | string
   favoriteId?: number
   favoriteCreatedAt?: string
+  /** 未缴费时接口返回的 sign，查看详情与取消收藏请求需带上 */
+  sign?: string | null
 }
 
 export default function FavoriteMajorsPage() {
@@ -43,7 +44,6 @@ export default function FavoriteMajorsPage() {
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set())
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [majorToDelete, setMajorToDelete] = useState<string | null>(null)
-  const [allScores, setAllScores] = useState<Array<{ code: string; name: string; score: number }>>([])
   // 浮动按钮位置
   const [floatButtonTop, setFloatButtonTop] = useState<number>(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -64,25 +64,16 @@ export default function FavoriteMajorsPage() {
     })
   }, [])
 
-  // 加载心动专业列表和所有专业分数（用于计算前20%）
+  // 加载心动专业列表（不再请求 scores/all，避免长耗时）
   useEffect(() => {
     const loadFavoriteMajors = async () => {
       try {
         setLoading(true)
 
-        const [favorites, count, scores] = await Promise.all([
+        const [favorites, count] = await Promise.all([
           getFavoriteMajors(),
-          getFavoriteMajorsCount(),
-          getAllScores() // 获取所有专业分数，用于计算前20%
+          getFavoriteMajorsCount()
         ])
-        
-        // 处理分数数据，转换为 { code, name, score } 格式
-        const scoresList = scores.map((item: any) => ({
-          code: item.majorCode || item.code || '',
-          name: item.majorName || item.name || '',
-          score: typeof item.score === 'string' ? parseFloat(item.score) : (item.score || 0)
-        }))
-        setAllScores(scoresList)
 
         const favoritesList = Array.isArray(favorites) ? favorites : []
         const mergedList: FavoriteMajorWithScore[] = favoritesList
@@ -100,7 +91,8 @@ export default function FavoriteMajorsPage() {
               yanxueDeduction: fav.yanxueDeduction ?? 0,
               tiaozhanDeduction: fav.tiaozhanDeduction ?? 0,
               favoriteId: fav.id,
-              favoriteCreatedAt: fav.createdAt
+              favoriteCreatedAt: fav.createdAt,
+              sign: fav.sign ?? null
             }
           })
           .filter((major): major is FavoriteMajorWithScore => major !== null && !!major.majorCode)
@@ -139,8 +131,8 @@ export default function FavoriteMajorsPage() {
     }
 
     try {
-      // 调用 API 删除收藏
-      await unfavoriteMajor(majorToDelete)
+      const major = favoriteMajorsList.find((m) => m.majorCode === majorToDelete)
+      await unfavoriteMajor(majorToDelete, major?.sign ?? undefined)
       
       // 更新本地状态
       setFavoriteMajorsList(prev => prev.filter(major => major.majorCode !== majorToDelete))
@@ -164,10 +156,11 @@ export default function FavoriteMajorsPage() {
     }
   }
 
-  // 处理深度了解 - 跳转到深度探索页面
-  const handleViewDetail = (majorCode: string) => {
+  // 处理深度了解 - 跳转到深度探索页面（未缴费时带 sign 以便详情/删除请求通过）
+  const handleViewDetail = (majorCode: string, sign?: string | null) => {
+    const signQuery = sign ? `&sign=${encodeURIComponent(sign)}` : ''
     Taro.navigateTo({
-      url: `/pages/assessment/career-exploration/index?code=${majorCode}`
+      url: `/pages/assessment/career-exploration/index?code=${majorCode}${signQuery}`
     })
   }
 
@@ -257,33 +250,6 @@ export default function FavoriteMajorsPage() {
       return major.majorName.toLowerCase().includes(query) || major.majorCode.toLowerCase().includes(query)
     })
   }, [favoriteMajorsList, searchQuery])
-
-  // 计算热爱能量前20%的专业
-  const top20PercentCount = useMemo(() => {
-    try {
-      if (allScores.length === 0) {
-        return 0
-      }
-      
-      const allMajorsWithScores = allScores
-        .filter((major) => major.score > 0)
-      
-      const sortedAllMajors = [...allMajorsWithScores].sort((a, b) => b.score - a.score)
-      const top20PercentThresholdIndex = sortedAllMajors.length > 0 
-        ? Math.ceil(sortedAllMajors.length * 0.2) 
-        : 0
-      const top20PercentMajorCodes = new Set(
-        sortedAllMajors.slice(0, top20PercentThresholdIndex).map((m) => m.code)
-      )
-      const top20PercentInFavorites = filteredMajors.filter((major) => {
-        return top20PercentMajorCodes.has(major.majorCode)
-      })
-      return top20PercentInFavorites.length
-    } catch (error) {
-      console.error('计算前20%专业失败:', error)
-      return 0
-    }
-  }, [filteredMajors, allScores])
 
   if (loading) {
     return (
@@ -393,7 +359,7 @@ export default function FavoriteMajorsPage() {
                       🗑️ 删除
                     </Button>
                     <Button
-                      onClick={() => handleViewDetail(major.majorCode)}
+                      onClick={() => handleViewDetail(major.majorCode, major.sign)}
                       className="favorite-majors-page__item-view-button"
                       size="sm"
                       variant="outline"
@@ -407,14 +373,6 @@ export default function FavoriteMajorsPage() {
           </View>
         )}
 
-        {/* 提示信息 */}
-        {top20PercentCount > 0 && (
-          <Card className="favorite-majors-page__tip">
-            <Text className="favorite-majors-page__tip-text">
-              💡 您的心动专业中有 {top20PercentCount} 个属于热爱能量前20%的专业
-            </Text>
-          </Card>
-        )}
       </View>
 
       {/* 浮动按钮：跳转到所有专业列表 */}

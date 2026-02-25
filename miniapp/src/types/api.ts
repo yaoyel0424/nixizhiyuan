@@ -383,6 +383,8 @@ export interface FavoriteMajorResponse {
   majorName?: string
   createdAt?: string
   updatedAt?: string
+  /** 未缴费时不为 null，查看详情与取消收藏请求需带上 */
+  sign?: string | null
 }
 
 /**
