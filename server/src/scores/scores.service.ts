@@ -470,13 +470,16 @@ export class ScoresService {
     // 按得分排序
     results.sort((a, b) => b.score - a.score);
 
-    // 前五的专业增加 sign 标记（用于防伪；有 popularMajorId 时用其编码以便 guard 校验）
-    const top5Count = Math.min(5, results.length);
-    for (let i = 0; i < top5Count; i++) {
-      const idForSign = results[i].majorCode;
+    // 前五与后五的专业增加 sign 标记（用于防伪；用 majorCode 编码以便 guard 校验）
+    const addSign = (index: number) => {
+      const idForSign = results[index].majorCode;
       const sign = IdTransformUtil.encodeTo32Hex(idForSign != null ? String(idForSign) : undefined);
-      if (sign) results[i].sign = sign;
-    }
+      if (sign) results[index].sign = sign;
+    };
+    const top5Count = Math.min(5, results.length);
+    for (let i = 0; i < top5Count; i++) addSign(i);
+    const startLast5 = Math.max(0, results.length - 5);
+    for (let i = startLast5; i < results.length; i++) addSign(i);
 
     return results;
   }
