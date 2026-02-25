@@ -1142,23 +1142,25 @@ export default function MajorsPage() {
                   </Text>
                 </View>
               )}
-
-              {/* 未缴费仅 5 条时展示「解锁全部专业」按钮 */}
-              {isUnpaidLimited && (
-                <View className="majors-page__unlock-bar">
-                  <Button
-                    className="majors-page__unlock-button"
-                    size="lg"
-                    onClick={() => setShowUnlockPayModal(true)}
-                  >
-                    解锁全部专业
-                  </Button>
-                </View>
-              )}
+              {/* 未缴费时底部占位，避免列表被固定按钮遮挡 */}
+              {isUnpaidLimited && <View className="majors-page__unlock-fixed-spacer" />}
             </>
           )}
         </View>
       </ScrollView>
+
+      {/* 未缴费时固定悬浮在底部导航上方，一眼可见需解锁才能看全部 */}
+      {isUnpaidLimited && (
+        <View className="majors-page__unlock-fixed">
+          <Button
+            className="majors-page__unlock-fixed-btn"
+            size="lg"
+            onClick={() => setShowUnlockPayModal(true)}
+          >
+            解锁全部专业
+          </Button>
+        </View>
+      )}
 
       {/* 浮动按钮：显示已选中心动专业数量 */}
       {favoriteMajors.size > 0 && (

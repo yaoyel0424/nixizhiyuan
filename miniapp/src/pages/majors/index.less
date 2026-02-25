@@ -584,16 +584,36 @@
   color: #999;
 }
 
-.majors-page__unlock-bar {
+/* 未缴费时固定悬浮在底部导航上方（导航 min-height: 128rpx） */
+.majors-page__unlock-fixed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 128rpx;
+  z-index: 998;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  min-height: 88rpx;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(8rpx);
+  box-shadow: 0 -4rpx 24rpx rgba(26, 64, 153, 0.08);
   display: flex;
   justify-content: center;
-  padding: 24rpx 32rpx 48rpx;
-  /* 底部留足空间，滚动到底时按钮不被底部导航/浮动按钮遮挡 */
-  padding-bottom: 220rpx;
+  align-items: center;
 }
 
-.majors-page__unlock-button {
-  min-width: 280rpx;
+.majors-page__unlock-fixed-btn {
+  width: 100%;
+  max-width: 686rpx;
+  flex-shrink: 0;
+  min-height: 72rpx;
+}
+
+/* 滚动内容底部占位：留足空间，滚动到最底时最后一条专业能完整露在固定条上方 */
+.majors-page__unlock-fixed-spacer {
+  height: 560rpx;
 }
 
 .majors-page__dialog-title,
