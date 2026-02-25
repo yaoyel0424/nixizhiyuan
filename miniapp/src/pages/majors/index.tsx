@@ -159,17 +159,25 @@ export default function MajorsPage() {
     return list
   }, [allMajors, onlyMatchSubject, matchSubjectLevel3Ids, level3IdsLoaded, scoreSortOrder])
 
-  // 当前页显示的专业（由 effectiveList 与 currentPage 推导）
-  const displayedMajors = useMemo(
-    () => effectiveList.slice(0, currentPage * PAGE_SIZE),
-    [effectiveList, currentPage],
-  )
-
-  const hasMore = effectiveList.length > currentPage * PAGE_SIZE
-  // 通过是否仅返回 5 条判断未缴费，未缴费时展示「解锁全部专业」按钮（或前几条带 sign 视为受限）
+  // 通过是否返回 10 条判断未缴费，未缴费时展示「解锁全部专业」按钮（兼容旧版返回 5 条或带 sign）
   const isUnpaidLimited =
+    allMajors.length === 10 ||
     allMajors.length === 5 ||
     (allMajors.length > 0 && allMajors.length <= 5 && allMajors.some((m) => (m as MajorScoreResponse).sign))
+
+  // 未缴费时仅展示前 5 条，已缴费展示全部
+  const effectiveListForDisplay = useMemo(
+    () => (isUnpaidLimited ? effectiveList.slice(0, 5) : effectiveList),
+    [effectiveList, isUnpaidLimited],
+  )
+
+  // 当前页显示的专业（由 effectiveListForDisplay 与 currentPage 推导）
+  const displayedMajors = useMemo(
+    () => effectiveListForDisplay.slice(0, currentPage * PAGE_SIZE),
+    [effectiveListForDisplay, currentPage],
+  )
+
+  const hasMore = !isUnpaidLimited && effectiveList.length > currentPage * PAGE_SIZE
 
   // 加载所有专业分数数据（一次性加载，然后缓存）
   const loadAllMajors = useCallback(async (tab: string, useCache: boolean = true) => {
@@ -1138,7 +1146,7 @@ export default function MajorsPage() {
               {!hasMore && displayedMajors.length > 0 && !searchQuery.trim() && (
                 <View className="majors-page__no-more">
                   <Text className="majors-page__no-more-text">
-                    已加载全部 {allMajors.length} 条数据
+                    已加载全部 {effectiveListForDisplay.length} 条数据
                   </Text>
                 </View>
               )}
