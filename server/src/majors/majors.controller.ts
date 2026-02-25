@@ -151,6 +151,7 @@ export class MajorsController {
     description: '查询成功',
     type: UserFavoritesResponseDto,
   })
+  @UseGuards(EntitlementGuard)
   async findFavorites(
     @CurrentUser() user: any,
     @Query() queryDto: QueryMajorFavoriteDto,
