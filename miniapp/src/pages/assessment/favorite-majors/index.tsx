@@ -316,8 +316,9 @@ export default function FavoriteMajorsPage() {
                       <Text 
                         className="favorite-majors-page__item-name favorite-majors-page__item-name--clickable"
                         onClick={() => {
+                          const signQuery = major.sign ? `&sign=${encodeURIComponent(major.sign)}` : ''
                           Taro.navigateTo({
-                            url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
+                            url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}${signQuery}`
                           })
                         }}
                       >

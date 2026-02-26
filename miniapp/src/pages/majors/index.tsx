@@ -50,8 +50,8 @@ export default function MajorsPage() {
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const [activeTab, setActiveTab] = useState<string>("本科")
-  // 分数排序：默认倒序（高分在前），点击切换为顺序（低分在前）
-  const [scoreSortOrder, setScoreSortOrder] = useState<'desc' | 'asc'>('desc')
+  // 分数排序：默认正序（未付费时显示前 5 条），点击切换为倒序
+  const [scoreSortOrder, setScoreSortOrder] = useState<'desc' | 'asc'>('asc')
   // 存储所有数据（缓存）
   const [allMajors, setAllMajors] = useState<MajorScoreResponse[]>([])
   const [loading, setLoading] = useState(true)
@@ -165,11 +165,18 @@ export default function MajorsPage() {
     allMajors.length === 5 ||
     (allMajors.length > 0 && allMajors.length <= 5 && allMajors.some((m) => (m as MajorScoreResponse).sign))
 
-  // 未缴费时仅展示前 5 条，已缴费展示全部
-  const effectiveListForDisplay = useMemo(
-    () => (isUnpaidLimited ? effectiveList.slice(0, 5) : effectiveList),
-    [effectiveList, isUnpaidLimited],
-  )
+  // 未缴费且 API 返回 10 条：前/后 5 条按接口 index 划分（保证正序=index 小的前 5 条，倒序=index 大的后 5 条倒排），已缴费展示全部
+  const effectiveListForDisplay = useMemo(() => {
+    if (!isUnpaidLimited) return effectiveList
+    const list = effectiveList
+    if (list.length >= 10) {
+      // 按 API 的 index 升序排，得到与接口一致的顺序（1,2,3,4,5,836,...,840）
+      const byIndex = [...list].sort((a, b) => ((a as MajorScoreResponse).index ?? 0) - ((b as MajorScoreResponse).index ?? 0))
+      return scoreSortOrder === 'asc' ? byIndex.slice(0, 5) : byIndex.slice(5, 10).reverse()
+    }
+    const first5 = list.slice(0, 5)
+    return scoreSortOrder === 'asc' ? first5 : [...first5].reverse()
+  }, [effectiveList, isUnpaidLimited, scoreSortOrder])
 
   // 当前页显示的专业（由 effectiveListForDisplay 与 currentPage 推导）
   const displayedMajors = useMemo(
@@ -320,7 +327,7 @@ export default function MajorsPage() {
   // 处理标签切换
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-    setScoreSortOrder('desc') // 切换标签后统一为倒序（高分在前）展示
+    setScoreSortOrder('asc') // 切换标签后默认正序展示
   }
 
   // 加载更多数据（前端分页）
@@ -675,12 +682,13 @@ export default function MajorsPage() {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
             ctx.fillRect(cardPadding, currentY, canvasWidthPx - cardPadding * 2, cardHeight)
 
-            // 绘制排名
+            // 绘制排名（使用接口返回的 index，无则用当前循环序号）
+            const displayRank = major.index != null ? major.index : index + 1
             ctx.fillStyle = '#FF7F50'
             ctx.font = `bold ${28 * dpr}px sans-serif`
             ctx.textAlign = 'left'
             ctx.textBaseline = 'top'
-            ctx.fillText(`${index + 1}`, cardPadding + 16 * dpr, currentY + 16 * dpr)
+            ctx.fillText(`${displayRank}`, cardPadding + 16 * dpr, currentY + 16 * dpr)
 
             // 绘制专业名称
             ctx.fillStyle = '#FFFFFF'
@@ -998,9 +1006,9 @@ export default function MajorsPage() {
             <>
               <View className="majors-page__majors-list">
                 {filteredMajors.map((major, index) => {
-                  // 计算全局排名（在所有数据中的位置）
+                  // 序号优先使用接口返回的 index，否则用数组位置
                   const globalIndex = allMajors.findIndex(m => m.majorCode === major.majorCode)
-                  const rank = globalIndex >= 0 ? globalIndex + 1 : index + 1
+                  const rank = (major as MajorScoreResponse).index ?? (globalIndex >= 0 ? globalIndex + 1 : index + 1)
                   // 跳转专业详情（前五条未缴费时需带 sign）
                   const goToMajorDetail = () => {
                     let url = `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
@@ -1146,7 +1154,9 @@ export default function MajorsPage() {
               {!hasMore && displayedMajors.length > 0 && !searchQuery.trim() && (
                 <View className="majors-page__no-more">
                   <Text className="majors-page__no-more-text">
-                    已加载全部 {effectiveListForDisplay.length} 条数据
+                    {isUnpaidLimited
+                      ? `当前展示 ${effectiveListForDisplay.length} 条，解锁后可查看全部专业`
+                      : `已加载全部 ${effectiveListForDisplay.length} 条数据`}
                   </Text>
                 </View>
               )}
@@ -1346,7 +1356,7 @@ export default function MajorsPage() {
             <DialogTitle className="majors-page__dialog-title">解锁全部专业</DialogTitle>
             <DialogDescription className="majors-page__dialog-desc">
               {unlockPayAmount !== null
-                ? `支付 ¥${unlockPayAmount.toFixed(2)} 即可查看全部专业推荐（已购热门专业可抵扣）`
+                ? `支付 ¥${unlockPayAmount.toFixed(2)} 即可查看全部专业推荐（已购热门专业已抵扣）`
                 : '正在获取支付金额...'}
             </DialogDescription>
           </DialogHeader>

@@ -475,32 +475,17 @@ export default function PopularMajorsPage() {
     }
   }, [])
 
-  /** 院校：先请求招生计划接口，若返回 PAY_REQUIRED 则在本页弹支付框，否则再跳转 */
-  const tryNavigateToSchools = useCallback(async (major: Major) => {
+  /** 院校：直接跳转院校列表页，由该页请求招生计划并处理 PAY_REQUIRED（避免重复请求同一接口） */
+  const tryNavigateToSchools = useCallback((major: Major) => {
     if (!major.code) {
       Taro.showToast({ title: '专业代码不存在', icon: 'none' })
       return
     }
-    const majorId = major.majorId
-    if (majorId == null) {
+    if (major.majorId == null) {
       Taro.showToast({ title: '缺少专业ID', icon: 'none' })
       return
     }
-    try {
-      const { getEnrollmentPlansByMajorId } = await import('@/services/enroll-plan')
-      await getEnrollmentPlansByMajorId(majorId, undefined, undefined, major.id)
-      handleViewSchoolsInner(major)
-    } catch (err: any) {
-      const isPayRequired =
-        err?.code === 'PAY_REQUIRED' ||
-        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
-      if (isPayRequired) {
-        setPendingAction({ type: 'schools', major })
-        setTimeout(() => setShowPayRequiredModal(true), 100)
-      } else {
-        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
-      }
-    }
+    handleViewSchoolsInner(major)
   }, [])
 
   // 处理查看院校按钮点击，跳转到院校列表页面（内部用，不包含额度校验）
