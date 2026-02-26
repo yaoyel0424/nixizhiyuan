@@ -26,6 +26,9 @@ import { requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
 import { ExamInfoDialog } from '@/components/ExamInfoDialog'
 import './index.less'
 
+// 模块级：当前正在请求的 loadKey，防止同一 key 被请求两次（Strict Mode / 双实例等）
+let enrollPlanInFlightKey: string | null = null
+
 interface HistoryScore {
   year: number
   historyScore: Array<{ [key: string]: string }>
@@ -76,8 +79,8 @@ export default function IntendedMajorsSchoolsPage() {
     return `${value}%`
   }
 
-  // 检查问卷完成状态
-  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount } = useQuestionnaireCheck()
+  // 检查问卷完成状态（从热门专业进入时复用 preferredSubjects，不再单独请求 related-data-count）
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire, answerCount, preferredSubjects } = useQuestionnaireCheck()
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const router = useRouter()
@@ -391,15 +394,18 @@ export default function IntendedMajorsSchoolsPage() {
       setMajorName(decodeURIComponent(majorNameParam))
     }
 
-    const loadData = async () => {
-      try {
-        // 必须有 majorId 和 majorCode 才能加载数据
-        if (!majorId || !majorCode) {
-          console.error('缺少必要参数: majorId 或 majorCode')
-          setLoading(false)
-          return
-        }
+    const loadKey = `${majorId}-${majorCode}-${popularMajorId ?? ''}-${dataRefreshTrigger}`
 
+    const loadData = async () => {
+      if (!majorId || !majorCode) {
+        console.error('缺少必要参数: majorId 或 majorCode')
+        setLoading(false)
+        return
+      }
+      // 在发起请求前再次检查，同一 key 只允许一次请求（防止 effect 双跑、Strict Mode、模块重载等）
+      if (enrollPlanInFlightKey === loadKey) return
+      enrollPlanInFlightKey = loadKey
+      try {
         // 页面加载时同时请求分数后20%专业（与招生计划接口并行）
         const bottom20Promise = getBottom20Scores()
 
@@ -477,6 +483,7 @@ export default function IntendedMajorsSchoolsPage() {
         setData(null)
         setLoading(false)
       }
+      // 不在此处清空 enrollPlanInFlightKey，避免重挂载或双实例时同一 key 再次请求
     }
     
     if (majorCode && majorId) {
@@ -485,7 +492,7 @@ export default function IntendedMajorsSchoolsPage() {
       setLoading(false)
     }
 
-    // 加载已加入的志愿列表（从API）
+    // 从热门专业进入时不请求志愿列表（choices），加快首屏
     const loadChoicesFromAPI = async () => {
       try {
         const choicesData = await getChoices()
@@ -537,28 +544,33 @@ export default function IntendedMajorsSchoolsPage() {
       }
     }
     
-    loadChoicesFromAPI()
+    if (!isFromPopularMajors) {
+      loadChoicesFromAPI()
+    }
     loadPlanWishlist()
-    
-    // 如果从热门专业页面跳转过来，检查高考信息
-    if (isFromPopularMajors) {
-      const checkExamInfo = async () => {
-        try {
-          const relatedData = await getUserRelatedDataCount()
-          // 如果 preferredSubjects 为空或 null，自动打开高考信息对话框
-          if (!relatedData.preferredSubjects || relatedData.preferredSubjects === null || relatedData.preferredSubjects === '') {
-            // 先获取高考信息
-            const examInfoData = await getExamInfo()
-            setExamInfo(examInfoData)
-            setShowExamInfoDialog(true)
-          }
-        } catch (error) {
-          console.error('检查高考信息失败:', error)
-        }
-      }
-      checkExamInfo()
+
+    // 离开页面时清空防重 key，下次进入（含从热门专业再次进入）可正常请求
+    return () => {
+      enrollPlanInFlightKey = null
     }
   }, [majorCode, majorId, minScoreParam, maxScoreParam, isFromPopularMajors, dataRefreshTrigger, popularMajorId])
+
+  // 从热门专业进入时，复用 useQuestionnaireCheck 的 preferredSubjects 决定是否弹高考信息弹窗（不重复请求 related-data-count）
+  useEffect(() => {
+    if (!isFromPopularMajors || isCheckingQuestionnaire) return
+    if (preferredSubjects !== null && preferredSubjects !== '') return
+    const showExamDialogIfNeeded = async () => {
+      try {
+        const examInfoData = await getExamInfo()
+        setExamInfo(examInfoData)
+        setShowExamInfoDialog(true)
+      } catch (error) {
+        console.error('获取高考信息失败:', error)
+      }
+    }
+    const t = setTimeout(showExamDialogIfNeeded, 0)
+    return () => clearTimeout(t)
+  }, [isFromPopularMajors, isCheckingQuestionnaire, preferredSubjects])
 
   // 检测省份列表是否超过一行（使用估算方法，避免 Taro 查询问题）
   useEffect(() => {
