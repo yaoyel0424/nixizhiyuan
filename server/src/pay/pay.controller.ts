@@ -263,10 +263,75 @@ export class PayController {
     };
     await this.paymentQueue.add('payment-success', payload, {
       jobId: result.transaction_id,
-      removeOnComplete: { count: 1000 },
+      removeOnComplete: false,
     });
     this.logger.log('支付回调已入队: ' + result.transaction_id);
     return { code: 'SUCCESS', message: '成功' };
+  }
+
+  /**
+   * 查看 payment 队列中已成功执行的 job 列表（分页，0-based start/end）
+   */
+  @Get('queue/completed')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '查看支付队列已成功执行的数据' })
+  @ApiQuery({ name: 'start', required: false, description: '起始下标（从 0 开始）', example: 0 })
+  @ApiQuery({ name: 'end', required: false, description: '结束下标（不包含），默认 99', example: 99 })
+  async getQueueCompleted(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+  ) {
+    const startNum = start !== undefined ? parseInt(start, 10) : 0;
+    const endNum = end !== undefined ? parseInt(end, 10) : 99;
+    const [jobs, total] = await Promise.all([
+      this.paymentQueue.getCompleted(
+        Number.isNaN(startNum) ? 0 : startNum,
+        Number.isNaN(endNum) ? 99 : endNum,
+      ),
+      this.paymentQueue.getCompletedCount(),
+    ]);
+    const items = jobs.map((job) => ({
+      id: job.id,
+      name: job.name,
+      data: job.data,
+      timestamp: job.timestamp,
+      finishedOn: job.finishedOn,
+      processedOn: job.processedOn,
+    }));
+    return { total, start: startNum, end: endNum, items };
+  }
+
+  /**
+   * 查看 payment 队列中执行失败的 job 列表（分页，0-based start/end）
+   */
+  @Get('queue/failed')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '查看支付队列执行失败的数据' })
+  @ApiQuery({ name: 'start', required: false, description: '起始下标（从 0 开始）', example: 0 })
+  @ApiQuery({ name: 'end', required: false, description: '结束下标（不包含），默认 99', example: 99 })
+  async getQueueFailed(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+  ) {
+    const startNum = start !== undefined ? parseInt(start, 10) : 0;
+    const endNum = end !== undefined ? parseInt(end, 10) : 99;
+    const [jobs, total] = await Promise.all([
+      this.paymentQueue.getFailed(
+        Number.isNaN(startNum) ? 0 : startNum,
+        Number.isNaN(endNum) ? 99 : endNum,
+      ),
+      this.paymentQueue.getFailedCount(),
+    ]);
+    const items = jobs.map((job) => ({
+      id: job.id,
+      name: job.name,
+      data: job.data,
+      timestamp: job.timestamp,
+      failedReason: job.failedReason,
+      attemptsMade: job.attemptsMade,
+      finishedOn: job.finishedOn,
+    }));
+    return { total, start: startNum, end: endNum, items };
   }
 
   /**
