@@ -7,6 +7,9 @@ import {
   HttpCode,
   HttpStatus,
   StreamableFile,
+  UseGuards,
+  Req,
+  HttpException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
@@ -14,6 +17,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { AgentService } from './agent.service';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { AgentResponseDto } from './dto/agent-response.dto';
+import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 
 /**
  * 代理商控制器
@@ -38,11 +42,23 @@ export class AgentController {
   })
   @ApiResponse({ status: 400, description: '参数错误' })
   @ApiResponse({ status: 401, description: '未登录' })
+  @UseGuards(EntitlementGuard)
   async create(
     @CurrentUser() user: { id: number },
     @Body() dto: CreateAgentDto,
+    @Req() req: Request,
   ): Promise<AgentResponseDto> {
+    if(!(req as any).hasUnlockAll) {
+      throw new HttpException(
+        {
+          code: 'FORBIDDEN',
+          message: '只有会员才可以进程此操作',
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
     const agent = await this.agentService.createOrGet(dto, user.id);
+    
     return plainToInstance(AgentResponseDto, agent, {
       excludeExtraneousValues: true,
     });
@@ -68,14 +84,25 @@ export class AgentController {
   @ApiResponse({ status: 200, description: 'PNG 图片或 base64 JSON', content: { 'image/png': {}, 'application/json': {} } })
   @ApiResponse({ status: 401, description: '未登录' })
   @ApiResponse({ status: 404, description: '当前用户未关联代理商' })
+  @UseGuards(EntitlementGuard)
   async getQrcode(
     @CurrentUser() user: { id: number },
+    @Req() req: Request,
     @Query('page') page?: string,
-    @Query('format') format?: string,
+    @Query('format') format?: string, 
   ): Promise<StreamableFile | { image: string }> {
+    if(!(req as any).hasUnlockAll) {
+      throw new HttpException(
+        {
+          code: 'FORBIDDEN',
+          message: '只有会员才可以进程此操作',
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
     const buffer = await this.agentService.getMiniProgramQrcodeBufferByUserId(
       user.id,
-      page || 'pages/index/index',
+      page || 'pages/index/index?uuid=${agent.uuid}',
     );
     if (format === 'base64') {
       const base64 = buffer.toString('base64');

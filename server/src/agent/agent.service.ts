@@ -97,11 +97,11 @@ export class AgentService {
     userId: number,
     page: string = 'pages/index/index',
   ): Promise<Buffer> {
-    const agent = await this.findByUserId(userId);
+    const agent = await this.findByCreatorId(userId);
     if (!agent) {
-      throw new NotFoundException('当前用户未关联代理商，请先创建代理商');
+       throw new NotFoundException('当前用户未关联代理商，请先创建代理商');  
     }
-    page=`${page}?uuid=${agent.uuid}`;
+    // page=`${page}?uuid=${agent.uuid}`;
     return this.getMiniProgramQrcodeBuffer(page, agent.uuid);
   }
 

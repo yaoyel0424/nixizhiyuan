@@ -74,6 +74,7 @@ export default function ProfilePage() {
   const [promoteModalOpen, setPromoteModalOpen] = useState(false) // 推广二维码弹窗
   const [promoteQrcodeImage, setPromoteQrcodeImage] = useState<string>('') // 推广码 base64
   const [promoteLoading, setPromoteLoading] = useState(false) // 生成推广码中
+  const [promoteSaving, setPromoteSaving] = useState(false) // 保存二维码到相册中
 
   // 昵称编辑弹窗
   const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false)
@@ -321,6 +322,33 @@ export default function ProfilePage() {
       })
     } finally {
       setPromoteLoading(false)
+    }
+  }
+
+  /**
+   * 将推广二维码保存到相册（下载）
+   */
+  const handlePromoteDownload = async () => {
+    if (!promoteQrcodeImage) return
+    setPromoteSaving(true)
+    try {
+      const base64Data = promoteQrcodeImage.replace(/^data:image\/\w+;base64,/, '')
+      const fs = Taro.getFileSystemManager()
+      const tempPath = `${Taro.env?.USER_DATA_PATH || ''}/promote-qrcode-${Date.now()}.png`
+      fs.writeFileSync(tempPath, base64Data, 'base64')
+      await Taro.saveImageToPhotosAlbum({
+        filePath: tempPath,
+      })
+      Taro.showToast({ title: '已保存到相册', icon: 'success' })
+    } catch (err: any) {
+      console.error('保存推广码失败:', err)
+      Taro.showToast({
+        title: err?.errMsg || err?.message || '保存失败，请检查相册权限',
+        icon: 'none',
+        duration: 2000,
+      })
+    } finally {
+      setPromoteSaving(false)
     }
   }
 
@@ -619,9 +647,12 @@ export default function ProfilePage() {
       {/* 推广二维码弹窗 */}
       <Dialog
         open={promoteModalOpen}
-        onOpenChange={setPromoteModalOpen}
+        onOpenChange={(open) => {
+          setPromoteModalOpen(open)
+          if (!open) setPromoteSaving(false)
+        }}
       >
-        <DialogContent className="profile-page__promote-dialog" showCloseButton>
+        <DialogContent className="profile-page__promote-dialog" showCloseButton={!promoteSaving}>
           <DialogHeader>
             <DialogTitle>推广二维码</DialogTitle>
           </DialogHeader>
@@ -635,6 +666,14 @@ export default function ProfilePage() {
             ) : null}
           </View>
           <Text className="profile-page__promote-tip">扫码进入小程序</Text>
+          <View className="profile-page__promote-actions">
+            <Button
+              disabled={promoteSaving}
+              onClick={handlePromoteDownload}
+            >
+              {promoteSaving ? '保存中…' : '保存到相册'}
+            </Button>
+          </View>
         </DialogContent>
       </Dialog>
 

@@ -137,16 +137,20 @@
   margin-top: 28rpx;
 }
 
-/* 推广二维码弹窗 */
+/* 推广二维码弹窗：大图展示，保存到相册在二维码下方 */
 .profile-page__promote-dialog {
   width: 100%;
+  padding: 32rpx 40rpx 24rpx;
+}
+
+.profile-page__promote-dialog .ui-dialog-header {
+  margin-bottom: 16rpx;
 }
 
 .profile-page__promote-qrcode-wrap {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 24rpx;
   padding: 24rpx;
   background: #f9fafb;
   border-radius: 16rpx;
@@ -163,6 +167,17 @@
   margin-top: 16rpx;
   font-size: 26rpx;
   color: #6b7280;
+}
+
+.profile-page__promote-actions {
+  margin-top: 24rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.profile-page__promote-actions .ui-button {
+  min-width: 280rpx;
+  min-height: 80rpx;
 }
 
 .profile-page__status {
