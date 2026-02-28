@@ -50,8 +50,8 @@ export default function MajorsPage() {
   const [showQuestionnaireModal, setShowQuestionnaireModal] = useState(false)
   
   const [activeTab, setActiveTab] = useState<string>("本科")
-  // 分数排序：默认正序（未付费时显示前 5 条），点击切换为倒序
-  const [scoreSortOrder, setScoreSortOrder] = useState<'desc' | 'asc'>('asc')
+  // 排序：default=API 顺序，desc=API 数据倒序（仅两种，一次点击切换）
+  const [scoreSortOrder, setScoreSortOrder] = useState<'default' | 'desc'>('default')
   // 存储所有数据（缓存）
   const [allMajors, setAllMajors] = useState<MajorScoreResponse[]>([])
   const [loading, setLoading] = useState(true)
@@ -137,7 +137,7 @@ export default function MajorsPage() {
     return () => { cancelled = true }
   }, [onlyMatchSubject, activeTab])
 
-  // 符合选科时的有效列表：用 allMajors 中的 majorId 与接口返回值匹配；再按 scoreSortOrder 排序（默认倒序）
+  // 符合选科时的有效列表：default=API 顺序，desc=API 数据整体倒序
   const effectiveList = useMemo(() => {
     let list: MajorScoreResponse[]
     if (!onlyMatchSubject) {
@@ -148,15 +148,7 @@ export default function MajorsPage() {
     } else {
       list = allMajors.filter((m) => (m as any).majorId != null && matchSubjectLevel3Ids.has((m as any).majorId))
     }
-    if (scoreSortOrder === 'asc') {
-      return [...list].sort((a, b) => {
-        const scoreA = typeof a.score === 'string' ? parseFloat(a.score) : (a.score as number) ?? 0
-        const scoreB = typeof b.score === 'string' ? parseFloat(b.score) : (b.score as number) ?? 0
-        return scoreA - scoreB
-      })
-    }
-    // desc：allMajors 已是降序，直接返回
-    return list
+    return scoreSortOrder === 'desc' ? [...list].reverse() : list
   }, [allMajors, onlyMatchSubject, matchSubjectLevel3Ids, level3IdsLoaded, scoreSortOrder])
 
   // 通过是否返回 10 条判断未缴费，未缴费时展示「解锁全部专业」按钮（兼容旧版返回 5 条或带 sign）
@@ -165,17 +157,16 @@ export default function MajorsPage() {
     allMajors.length === 5 ||
     (allMajors.length > 0 && allMajors.length <= 5 && allMajors.some((m) => (m as MajorScoreResponse).sign))
 
-  // 未缴费且 API 返回 10 条：前/后 5 条按接口 index 划分（保证正序=index 小的前 5 条，倒序=index 大的后 5 条倒排），已缴费展示全部
+  // 未缴费且 API 返回 10 条：default 显示前 5 条，desc 显示后 5 条倒序；已缴费展示全部
   const effectiveListForDisplay = useMemo(() => {
     if (!isUnpaidLimited) return effectiveList
     const list = effectiveList
     if (list.length >= 10) {
-      // 按 API 的 index 升序排，得到与接口一致的顺序（1,2,3,4,5,836,...,840）
       const byIndex = [...list].sort((a, b) => ((a as MajorScoreResponse).index ?? 0) - ((b as MajorScoreResponse).index ?? 0))
-      return scoreSortOrder === 'asc' ? byIndex.slice(0, 5) : byIndex.slice(5, 10).reverse()
+      return scoreSortOrder === 'desc' ? byIndex.slice(5, 10).reverse() : byIndex.slice(0, 5)
     }
     const first5 = list.slice(0, 5)
-    return scoreSortOrder === 'asc' ? first5 : [...first5].reverse()
+    return scoreSortOrder === 'desc' ? [...first5].reverse() : first5
   }, [effectiveList, isUnpaidLimited, scoreSortOrder])
 
   // 当前页显示的专业（由 effectiveListForDisplay 与 currentPage 推导）
@@ -327,7 +318,7 @@ export default function MajorsPage() {
   // 处理标签切换
   const handleTabChange = (tab: string) => {
     setActiveTab(tab)
-    setScoreSortOrder('asc') // 切换标签后默认正序展示
+    setScoreSortOrder('default') // 切换标签后默认 API 顺序
   }
 
   // 加载更多数据（前端分页）
@@ -958,10 +949,10 @@ export default function MajorsPage() {
               </View>
             ))}
             <Text
-              className={`majors-page__sort-btn ${scoreSortOrder === 'asc' ? 'majors-page__sort-btn--asc' : ''}`}
-              onClick={() => setScoreSortOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+              className={`majors-page__sort-btn ${scoreSortOrder === 'desc' ? 'majors-page__sort-btn--desc' : ''}`}
+              onClick={() => setScoreSortOrder((o) => (o === 'default' ? 'desc' : 'default'))}
             >
-              {scoreSortOrder === 'desc' ? '▲' : '▼'}
+              {scoreSortOrder === 'default' ? '▼' : '▲'}
             </Text>
           </View>
         </View>
