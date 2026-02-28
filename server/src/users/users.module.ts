@@ -13,6 +13,7 @@ import { Alternative } from '@/entities/alternative.entity';
 import { Choice } from '@/entities/choices.entity';
 import { UsersRepository } from './repositories/users.repository';
 import { ContentSecurityService } from '@/common/services/content-security.service';
+import { AgentModule } from '@/agent/agent.module';
 
 /**
  * 用户模块
@@ -30,6 +31,7 @@ import { ContentSecurityService } from '@/common/services/content-security.servi
       Choice,
     ]),
     ConfigModule,
+    AgentModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, UsersRepository, ContentSecurityService],

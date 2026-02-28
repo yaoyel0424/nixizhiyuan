@@ -16,6 +16,11 @@ import {
 } from '@/components/ui/Dialog';
 import { getStorage } from '@/utils/storage';
 import { getUserRelatedDataCount } from '@/services/user';
+import {
+  sceneToAgentUuid,
+  STORAGE_KEY_LAUNCH_AGENT_UUID,
+  bindAgentByUuid,
+} from '@/services/agent';
 import { withErrorHandler, withAsyncErrorHandler } from '@/utils/errorHandler';
 import './index.less';
 
@@ -112,6 +117,23 @@ export default function IndexPage() {
 
     // 使用推荐 API 获取窗口信息（含 statusBarHeight），兼容同步/异步返回值
     Promise.resolve(Taro.getWindowInfo()).then(setSystemInfo);
+
+    // 若通过推广小程序码进入，从启动参数中读取 scene（agentUuid 无横线），还原并存储，已登录时自动绑定
+    try {
+      const options = Taro.getLaunchOptionsSync?.() || (Taro as any).getEnterOptionsSync?.() || {};
+      const query = options.query || {};
+      const scene = query.scene;
+      if (scene && typeof scene === 'string') {
+        const uuid = sceneToAgentUuid(scene);
+        if (uuid) {
+          Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, uuid);
+          const token = Taro.getStorageSync('token');
+          if (token) {
+            bindAgentByUuid(uuid).catch(() => {});
+          }
+        }
+      }
+    } catch (_) {}
   }, []);
 
   // 当探索之旅弹框打开时，同步本地答案并刷新进度数据（含 repeatCount），确保「重新答题进度」等展示正确

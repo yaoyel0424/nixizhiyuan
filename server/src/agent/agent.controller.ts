@@ -29,6 +29,28 @@ export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
   /**
+   * 获取当前用户的代理商信息：若自己是代理商则返回自己创建的；否则返回自己归属的代理商家（user.agent_id）
+   */
+  @Get('me')
+  @ApiOperation({ summary: '获取当前用户的代理商信息' })
+  @ApiResponse({ status: 200, description: '自己创建的代理商或归属的代理商家，均无时返回空对象', type: AgentResponseDto })
+  @ApiResponse({ status: 401, description: '未登录' })
+  async getMyAgent(
+    @CurrentUser() user: { id: number },
+  ): Promise<AgentResponseDto | Record<string, never>> {
+    let agent = await this.agentService.findByCreatorId(user.id);
+    if (!agent) {
+      agent = await this.agentService.findByUserId(user.id);
+    }
+    if (!agent) {
+      return {};
+    }
+    return plainToInstance(AgentResponseDto, agent, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  /**
    * 创建代理商（优先按当前用户 user_id 命中已有则跳过）
    * userId 从当前登录用户获取，先确认该用户是否已有代理商，有则直接返回；无则新建。不需要传 openId；分账比例默认 30%。
    */
@@ -102,7 +124,7 @@ export class AgentController {
     }
     const buffer = await this.agentService.getMiniProgramQrcodeBufferByUserId(
       user.id,
-      page || 'pages/index/index?uuid=${agent.uuid}',
+      page || 'pages/index/index',
     );
     if (format === 'base64') {
       const base64 = buffer.toString('base64');

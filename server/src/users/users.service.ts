@@ -28,6 +28,7 @@ import {
   ProvinceBatchItemDto,
 } from './dto/province-batches-response.dto';
 import { ContentSecurityService } from '@/common/services/content-security.service';
+import { AgentService } from '@/agent/agent.service';
 
 /**
  * 用户服务
@@ -57,7 +58,30 @@ export class UsersService {
     private readonly usersRepository: UsersRepository,
     private readonly configService: ConfigService,
     private readonly contentSecurityService: ContentSecurityService,
+    private readonly agentService: AgentService,
   ) {}
+
+  /**
+   * 通过代理商 uuid 查询代理商并更新当前用户的 agent_id
+   * 若用户已有关联代理商则跳过；若 uuid 对应代理商不存在则仅记录日志不报错。
+   * @param userId 当前用户 ID
+   * @param agentUuid 代理商 UUID
+   * @returns 更新后的用户（或未变更的用户）
+   */
+  async bindAgentByUuid(userId: number, agentUuid: string): Promise<User> {
+    const user = await this.findOne(userId);
+    if (user.agentId != null) {
+      this.logger.log(`用户 userId=${userId} 已关联代理商 agentId=${user.agentId}，跳过绑定`);
+      return user;
+    }
+    const agent = await this.agentService.findByUuid(agentUuid);
+    if (!agent) {
+      this.logger.warn(`未找到 UUID 对应的代理商: uuid=${agentUuid}，跳过绑定`);
+      return user;
+    }
+    user.agentId = agent.id;
+    return this.userRepository.save(user);
+  }
 
   /**
    * 创建用户

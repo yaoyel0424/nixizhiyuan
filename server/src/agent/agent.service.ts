@@ -107,7 +107,8 @@ export class AgentService {
 
   /**
    * 根据小程序页路径与代理商 uuid 生成进入小程序的小程序码（PNG 图片 Buffer）
-   * 使用微信 getwxacodeunlimit 接口，scene 传 agent 的 uuid（去掉横线以符合 32 字符限制），用于识别用户的 agent
+   * 使用微信 getwxacodeunlimit 接口，scene 传 agent 的 uuid（去掉横线以符合 32 字符限制）。
+   * 用户扫码进入后，小程序可在启动参数 query.scene 中读取该字符串，还原为 UUID（补回横线）后用于绑定等逻辑。
    * @param page 小程序页面路径，不填则进入首页
    * @param agentUuid 代理商 UUID（用于识别 agent）
    * @returns PNG 图片 Buffer
@@ -121,6 +122,7 @@ export class AgentService {
       throw new NotFoundException(`未找到 uuid=${agentUuid} 的代理商`);
     }
     const accessToken = await this.getWechatAccessToken();
+    /** 将 agentUuid 放入二维码：去掉横线以符合 scene 最大 32 字符，前端从 query.scene 读取后还原为 UUID */
     const scene = agentUuid.replace(/-/g, '').slice(0, SCENE_MAX_LEN);
     const url = `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`;
     const body = JSON.stringify({ scene, page });
@@ -146,7 +148,7 @@ export class AgentService {
   /**
    * 创建代理商（优先返回已存在的）
    * 按当前用户作为创建者查找是否已有代理商（agent.user_id），有则返回；无则新建。不修改 user.agent_id（归属关系独立）。
-   * 不设置 openId；分账比例固定为 30%
+   * openid 从 users 表当前用户记录中获取；分账比例固定为 30%
    * @param dto 创建参数（type、name、phone、merchantId）
    * @param userId 当前用户 ID（作为创建者，从 CurrentUser 获取）
    * @returns 已有或新创建的代理商实体
@@ -157,13 +159,15 @@ export class AgentService {
       this.logger.log(`创建者 userId=${userId} 已有代理商，跳过创建 id=${existing.id}`);
       return existing;
     }
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const openid = user?.openid ?? null;
     const agent = this.agentRepository.create({
       type: dto.type,
       name: dto.name ?? '',
       phone: dto.phone ?? null,
       userId,
       merchantId: dto.merchantId ?? null,
-      openid: null,
+      openid,
       splitRatio: DEFAULT_SPLIT_RATIO,
       status: 'active',
     });

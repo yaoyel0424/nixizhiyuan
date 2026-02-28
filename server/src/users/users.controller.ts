@@ -18,6 +18,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateNicknameDto } from './dto/update-nickname.dto';
+import { BindAgentDto } from './dto/bind-agent.dto';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRelatedDataResponseDto } from './dto/user-related-data-response.dto';
@@ -134,6 +135,24 @@ export class UsersController {
     }
 
     const updatedUser = await this.usersService.updateNickname(user.id, nickname);
+    return plainToInstance(UserResponseDto, updatedUser, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  /**
+   * 通过代理商 uuid 查询代理商信息，并将当前用户的 agent_id 更新为该代理商
+   */
+  @Patch('/agent')
+  @ApiOperation({ summary: '通过 uuid 绑定当前用户到代理商' })
+  @ApiResponse({ status: 200, description: '绑定成功', type: UserResponseDto })
+  @ApiResponse({ status: 401, description: '未登录' })
+  @ApiResponse({ status: 404, description: '用户不存在或未找到该 UUID 对应的代理商' })
+  async bindAgent(
+    @CurrentUser() user: any,
+    @Body() dto: BindAgentDto,
+  ): Promise<UserResponseDto> {
+    const updatedUser = await this.usersService.bindAgentByUuid(user.id, dto.uuid);
     return plainToInstance(UserResponseDto, updatedUser, {
       excludeExtraneousValues: true,
     });

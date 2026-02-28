@@ -20,11 +20,8 @@ export class AgentResponseDto {
 
   @ApiPropertyOptional({ description: '联系电话' })
   @Expose()
-  phone: string | null;
-
-  @ApiPropertyOptional({ description: '个人代理的微信 openid' })
-  @Expose()
-  openid: string | null;
+  phone: string | null; 
+ 
 
   @ApiPropertyOptional({ description: '商铺代理的微信商户号' })
   @Expose()
@@ -38,11 +35,8 @@ export class AgentResponseDto {
   @Expose()
   status: string;
 
-  @ApiProperty({ description: '创建时间' })
+  @ApiProperty({ description: '代理商 UUID' })
   @Expose()
-  createdAt: Date;
-
-  @ApiProperty({ description: '更新时间' })
-  @Expose()
-  updatedAt: Date;
+  uuid: string;
+ 
 }

@@ -148,27 +148,27 @@ export class PortraitsService {
       };
     }
 
-    // 前 20%：分数阈值，同分全部保留
-    const likeSortedDesc = [...likeElements].sort((a, b) => b.score - a.score);
-    const likeTop20Count = Math.max(1, Math.ceil(likeSortedDesc.length * 0.2));
-    const likeTop20Threshold = likeSortedDesc[likeTop20Count - 1]?.score ?? -Infinity;
-    const likeTop20 = likeSortedDesc.filter((item) => item.score >= likeTop20Threshold);
+    // 前 20%：分数去重后降序排列，取位置靠前的 20% 个分数，阈值取该段最低分，同分全部保留
+    const likeScoresUniqueDesc = [...new Set(likeScores)].sort((a, b) => b - a);
+    const likeTop20UniqueCount = Math.max(1, Math.ceil(likeScoresUniqueDesc.length * 0.2));
+    const likeTop20Threshold = likeScoresUniqueDesc[likeTop20UniqueCount - 1] ?? -Infinity;
+    const likeTop20 = likeElements.filter((item) => item.score >= likeTop20Threshold);
 
-    const talentSortedDesc = [...talentElements].sort((a, b) => b.score - a.score);
-    const talentTop20Count = Math.max(1, Math.ceil(talentSortedDesc.length * 0.2));
-    const talentTop20Threshold = talentSortedDesc[talentTop20Count - 1]?.score ?? -Infinity;
-    const talentTop20 = talentSortedDesc.filter((item) => item.score >= talentTop20Threshold);
+    const talentScoresUniqueDesc = [...new Set(talentScores)].sort((a, b) => b - a);
+    const talentTop20UniqueCount = Math.max(1, Math.ceil(talentScoresUniqueDesc.length * 0.2));
+    const talentTop20Threshold = talentScoresUniqueDesc[talentTop20UniqueCount - 1] ?? -Infinity;
+    const talentTop20 = talentElements.filter((item) => item.score >= talentTop20Threshold);
 
-    // 后 20%：分数阈值，同分全部保留
-    const likeSortedAsc = [...likeElements].sort((a, b) => a.score - b.score);
-    const likeBottom20Count = Math.max(1, Math.ceil(likeSortedAsc.length * 0.2));
-    const likeBottom20Threshold = likeSortedAsc[likeBottom20Count - 1]?.score ?? Infinity;
-    const likeBottom20 = likeSortedAsc.filter((item) => item.score <= likeBottom20Threshold);
+    // 后 20%：分数去重后升序排列，取位置靠前的 20% 个分数，阈值取该段最高分，同分全部保留
+    const likeScoresUniqueAsc = [...new Set(likeScores)].sort((a, b) => a - b);
+    const likeBottom20UniqueCount = Math.max(1, Math.ceil(likeScoresUniqueAsc.length * 0.2));
+    const likeBottom20Threshold = likeScoresUniqueAsc[likeBottom20UniqueCount - 1] ?? Infinity;
+    const likeBottom20 = likeElements.filter((item) => item.score <= likeBottom20Threshold);
 
-    const talentSortedAsc = [...talentElements].sort((a, b) => a.score - b.score);
-    const talentBottom20Count = Math.max(1, Math.ceil(talentSortedAsc.length * 0.2));
-    const talentBottom20Threshold = talentSortedAsc[talentBottom20Count - 1]?.score ?? Infinity;
-    const talentBottom20 = talentSortedAsc.filter((item) => item.score <= talentBottom20Threshold);
+    const talentScoresUniqueAsc = [...new Set(talentScores)].sort((a, b) => a - b);
+    const talentBottom20UniqueCount = Math.max(1, Math.ceil(talentScoresUniqueAsc.length * 0.2));
+    const talentBottom20Threshold = talentScoresUniqueAsc[talentBottom20UniqueCount - 1] ?? Infinity;
+    const talentBottom20 = talentElements.filter((item) => item.score <= talentBottom20Threshold);
 
     const talentTop20IdSet = new Set(talentTop20.map((t) => t.elementId));
     const talentBottom20IdSet = new Set(talentBottom20.map((t) => t.elementId));
