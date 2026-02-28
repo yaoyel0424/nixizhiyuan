@@ -302,10 +302,12 @@ export class PopularMajorsService {
       popularMajorIds,
     );
 
-    // 按分数倒序排序（无分数的排在最后）
+    // 按分数倒序排序（无分数或掩码 "*" 的排在最后；仅数字参与比较）
+    const scoreNum = (v: any) =>
+      typeof v === 'number' && !Number.isNaN(v) ? v : -Infinity;
     items.sort((a, b) => {
-      const scoreA = (a as any).score?.score ?? -Infinity;
-      const scoreB = (b as any).score?.score ?? -Infinity;
+      const scoreA = scoreNum((a as any).score?.score);
+      const scoreB = scoreNum((b as any).score?.score);
       return scoreB - scoreA;
     });
   }
@@ -582,6 +584,15 @@ export class PopularMajorsService {
           }),
         );
       }
+    });
+
+    // 按分数倒序排序（无分数或掩码 "*" 的排在最后）
+    const scoreNum = (v: any) =>
+      typeof v === 'number' && !Number.isNaN(v) ? v : -Infinity;
+    items.sort((a, b) => {
+      const scoreA = scoreNum((a as any).score?.score);
+      const scoreB = scoreNum((b as any).score?.score);
+      return scoreB - scoreA;
     });
 
     return { items, total: items.length };

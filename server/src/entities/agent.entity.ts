@@ -6,7 +6,12 @@ import {
   UpdateDateColumn,
   Index,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
+  BeforeInsert,
 } from 'typeorm';
+import { randomUUID } from 'crypto';
+import { User } from './user.entity';
 import { UserAgentBind } from './user-agent-bind.entity';
 import { AgentStore } from './agent-store.entity';
 import { AgentSettlement } from './agent-settlement.entity';
@@ -18,9 +23,28 @@ import { AgentSettlement } from './agent-settlement.entity';
 @Entity('agents')
 @Index(['type'])
 @Index(['status'])
+@Index(['userId'])
+@Index(['uuid'], { unique: true })
 export class Agent {
   @PrimaryGeneratedColumn({ comment: '代理商主键' })
   id: number;
+
+  /** 创建者用户 ID（与 user.agent_id 无直接关系：此为谁创建的 agent，彼为用户归属的 agent） */
+  @Column({ name: 'user_id', type: 'int', nullable: true, comment: '创建者用户ID' })
+  userId: number | null;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'user_id' })
+  creator: User | null;
+
+  /** UUID 标识符（唯一，创建时自动生成） */
+  @Column({
+    type: 'varchar',
+    length: 36,
+    unique: true,
+    comment: 'UUID 标识符',
+  })
+  uuid: string;
 
   /** 类型：personal 个人 / store 商铺 */
   @Column({
@@ -83,6 +107,18 @@ export class Agent {
 
   @UpdateDateColumn({ name: 'updated_at', comment: '更新时间' })
   updatedAt: Date;
+
+  /** 插入前自动生成 UUID */
+  @BeforeInsert()
+  generateUuid(): void {
+    if (!this.uuid) {
+      this.uuid = randomUUID();
+    }
+  }
+
+  /** 关联该代理商的用户列表（一对多：一个代理商对应多名用户） */
+  @OneToMany(() => User, (user) => user.agent)
+  users: User[];
 
   @OneToMany(() => UserAgentBind, (bind) => bind.agent)
   userBinds: UserAgentBind[];

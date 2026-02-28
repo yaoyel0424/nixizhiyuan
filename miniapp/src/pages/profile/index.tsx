@@ -9,6 +9,7 @@ import { logout, checkToken } from '@/services/auth'
 import { silentLogin, getUserInfoFromStorage } from '@/utils/auth'
 import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
 import { deleteScaleAnswers } from '@/services/scales'
+import { createAgent, getAgentQrcodeBase64 } from '@/services/agent'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -70,6 +71,9 @@ export default function ProfilePage() {
   
   const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
   const [shareModalOpen, setShareModalOpen] = useState(false) // 分享弹窗显示状态
+  const [promoteModalOpen, setPromoteModalOpen] = useState(false) // 推广二维码弹窗
+  const [promoteQrcodeImage, setPromoteQrcodeImage] = useState<string>('') // 推广码 base64
+  const [promoteLoading, setPromoteLoading] = useState(false) // 生成推广码中
 
   // 昵称编辑弹窗
   const [nicknameDialogOpen, setNicknameDialogOpen] = useState(false)
@@ -289,6 +293,35 @@ export default function ProfilePage() {
    */
   const handleShare = () => {
     setShareModalOpen(true)
+  }
+
+  /**
+   * 我要推广：先创建 agent（有则跳过），再拉取推广二维码并弹窗展示
+   */
+  const handlePromote = async () => {
+    if (!isLoggedIn) {
+      Taro.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    setPromoteLoading(true)
+    try {
+      await createAgent({
+        type: 'personal',
+        name: userInfo?.nickname ?? userInfo?.username ?? undefined,
+      })
+      const image = await getAgentQrcodeBase64()
+      setPromoteQrcodeImage(image)
+      setPromoteModalOpen(true)
+    } catch (err: any) {
+      console.error('获取推广二维码失败:', err)
+      Taro.showToast({
+        title: err?.message || '获取推广码失败，请重试',
+        icon: 'none',
+        duration: 2000,
+      })
+    } finally {
+      setPromoteLoading(false)
+    }
   }
 
   /**
@@ -527,6 +560,23 @@ export default function ProfilePage() {
                 </View>
                 <Text className="profile-page__card-arrow">›</Text>
               </View>
+
+              {/* 我要推广：先创建 agent，再显示推广二维码 */}
+              <View
+                className="profile-page__card-item"
+                onClick={promoteLoading ? undefined : handlePromote}
+              >
+                <View className="profile-page__card-icon profile-page__card-icon--share">
+                  <Text className="profile-page__card-icon-text">📢</Text>
+                </View>
+                <View className="profile-page__card-item-content">
+                  <Text className="profile-page__card-item-title">我要推广</Text>
+                  <Text className="profile-page__card-item-desc">
+                    {promoteLoading ? '生成中…' : '点击弹出推广二维码'}
+                  </Text>
+                </View>
+                <Text className="profile-page__card-arrow">›</Text>
+              </View>
             </View>
           </Card>
 
@@ -565,6 +615,28 @@ export default function ProfilePage() {
         open={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
       />
+
+      {/* 推广二维码弹窗 */}
+      <Dialog
+        open={promoteModalOpen}
+        onOpenChange={setPromoteModalOpen}
+      >
+        <DialogContent className="profile-page__promote-dialog" showCloseButton>
+          <DialogHeader>
+            <DialogTitle>推广二维码</DialogTitle>
+          </DialogHeader>
+          <View className="profile-page__promote-qrcode-wrap">
+            {promoteQrcodeImage ? (
+              <Image
+                className="profile-page__promote-qrcode-img"
+                src={promoteQrcodeImage}
+                mode="widthFix"
+              />
+            ) : null}
+          </View>
+          <Text className="profile-page__promote-tip">扫码进入小程序</Text>
+        </DialogContent>
+      </Dialog>
 
       {/* 修改昵称弹窗 */}
       <Dialog

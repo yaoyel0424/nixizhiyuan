@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Generated } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, ManyToOne, JoinColumn, Generated } from "typeorm";
 import { Order } from './order.entity';
 import { ScaleAnswer } from './scale-answer.entity';
 import { Intention } from './intention.entity';
@@ -7,6 +7,7 @@ import { MajorFavorite } from './major-favorite.entity';
 import { ProvinceFavorite } from './province-favorite.entity';
 import { PopularMajorAnswer } from './popular-major-answer.entity';
 import { Choice } from './choices.entity';
+import { Agent } from './agent.entity';
 
 @Entity("users")
 export class User {
@@ -58,6 +59,10 @@ export class User {
     @Column({ nullable: true, name: 'gender' })
     gender: string;
 
+    /** 关联的代理商 ID（一个用户对应一个代理商） */
+    @Column({ name: 'agent_id', type: 'int', nullable: true, comment: '关联代理商ID' })
+    agentId: number | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 
@@ -104,4 +109,12 @@ export class User {
      */
     @OneToMany(() => Choice, choice => choice.user)
     choices: Choice[];
+
+    /**
+     * 用户关联的代理商（多对一：多名用户可属同一代理商，业务上常为一用户一代理商）
+     */
+    @ManyToOne(() => Agent, (agent) => agent.users, { onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'agent_id' })
+    agent: Agent | null;
 }
+

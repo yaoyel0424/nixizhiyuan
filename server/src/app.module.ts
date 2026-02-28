@@ -18,6 +18,7 @@ import { EnrollPlanModule } from './enroll-plan/enroll-plan.module';
 import { ChoicesModule } from './choices/choices.module';
 import { HtmlModule } from './html/html.module';
 import { PayModule } from './pay/pay.module';
+import { AgentModule } from './agent/agent.module';
 import { SecurityModule } from './security/security.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { SecurityMiddleware } from './common/middleware/security.middleware';
@@ -57,6 +58,7 @@ const compression = require('compression');
     ChoicesModule,
     HtmlModule,
     PayModule,
+    AgentModule,
   ],
   providers: [
     // 全局异常过滤器
