@@ -11,32 +11,48 @@ if (typeof _setInterval === 'function') {
 }
 
 import React, { PropsWithChildren, useEffect, useRef } from 'react'
-import { useLaunch } from '@tarojs/taro'
+import Taro, { useLaunch } from '@tarojs/taro'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { store, persistor } from './store'
 import { silentLogin } from './utils/auth'
+import { getLaunchAgentUuid, bindAgentByUuid, STORAGE_KEY_LAUNCH_AGENT_UUID } from './services/agent'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './app.less'
 
 /**
  * 在 redux-persist 完成 rehydration 后再执行静默登录，避免 iOS 上 rehydration 覆盖登录态
+ * 若启动时有 uuid（分享链接或扫码），登录成功后调用 /api/v1/users/agent 绑定代理商
  */
 function AuthInit({ children }: PropsWithChildren<any>) {
   const didRun = useRef(false)
   useEffect(() => {
     if (didRun.current) return
     didRun.current = true
-    silentLogin().catch(error => {
-      console.error('静默登录失败:', error)
-    })
+    silentLogin()
+      .then((ok) => {
+        if (ok) {
+          const uuid = getLaunchAgentUuid()
+          if (uuid) bindAgentByUuid(uuid).catch(() => {})
+        }
+      })
+      .catch(error => {
+        console.error('静默登录失败:', error)
+      })
   }, [])
   return <>{children}</>
 }
 
 function App({ children }: PropsWithChildren<any>) {
-  useLaunch(() => {
+  useLaunch((options) => {
     console.log('App launched.')
+    // 若启动参数带 uuid（分享链接），先写入 storage，供 AuthInit 登录后绑定
+    const query = options?.query || {}
+    if (query.uuid && typeof query.uuid === 'string' && query.uuid.trim()) {
+      try {
+        Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, query.uuid.trim())
+      } catch (_) {}
+    }
   })
 
   return (

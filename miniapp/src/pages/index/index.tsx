@@ -118,19 +118,24 @@ export default function IndexPage() {
     // 使用推荐 API 获取窗口信息（含 statusBarHeight），兼容同步/异步返回值
     Promise.resolve(Taro.getWindowInfo()).then(setSystemInfo);
 
-    // 若通过推广小程序码进入，从启动参数中读取 scene（agentUuid 无横线），还原并存储，已登录时自动绑定
+    // 若通过推广链接或小程序码进入：query.uuid 或 scene 还原为 agentUuid，存储并调用 /api/v1/users/agent 绑定
     try {
       const options = Taro.getLaunchOptionsSync?.() || (Taro as any).getEnterOptionsSync?.() || {};
       const query = options.query || {};
-      const scene = query.scene;
-      if (scene && typeof scene === 'string') {
-        const uuid = sceneToAgentUuid(scene);
-        if (uuid) {
-          Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, uuid);
-          const token = Taro.getStorageSync('token');
-          if (token) {
-            bindAgentByUuid(uuid).catch(() => {});
-          }
+      let uuid: string | null = null;
+      if (query.uuid && typeof query.uuid === 'string') {
+        uuid = query.uuid.trim() || null;
+      } else {
+        const scene = query.scene;
+        if (scene && typeof scene === 'string') {
+          uuid = sceneToAgentUuid(scene);
+        }
+      }
+      if (uuid) {
+        Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, uuid);
+        const token = Taro.getStorageSync('token');
+        if (token) {
+          bindAgentByUuid(uuid).catch(() => {});
         }
       }
     } catch (_) {}

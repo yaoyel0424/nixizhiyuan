@@ -34,6 +34,26 @@ export function getLaunchAgentUuid(): string | null {
 }
 
 /**
+ * 获取当前用户的代理商信息：自己是代理商返回自己，否则返回自己归属的代理商，都没有则返回空对象
+ */
+export interface AgentMeResponse {
+  id?: number
+  uuid?: string
+  type?: string
+  name?: string
+  phone?: string | null
+  merchantId?: string | null
+  splitRatio?: number
+  status?: string
+}
+
+export async function getAgentMe(): Promise<AgentMeResponse> {
+  const res = await get<AgentMeResponse>('/agent/me')
+  const data = (res as any)?.data ?? res
+  return (data && typeof data === 'object' && !Array.isArray(data) ? data : {}) as AgentMeResponse
+}
+
+/**
  * 通过代理商 UUID 将当前用户绑定到该代理商（PATCH /users/agent）
  */
 export function bindAgentByUuid(uuid: string) {

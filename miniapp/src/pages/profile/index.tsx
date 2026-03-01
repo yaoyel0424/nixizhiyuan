@@ -1,5 +1,5 @@
 // 个人中心页面
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, Image, Button as TaroButton } from '@tarojs/components'
 import Taro, { useShareAppMessage, useShareTimeline } from '@tarojs/taro'
 import { store } from '@/store'
@@ -9,7 +9,7 @@ import { logout, checkToken } from '@/services/auth'
 import { silentLogin, getUserInfoFromStorage } from '@/utils/auth'
 import { getUserRelatedDataCount, updateCurrentUserNickname } from '@/services/user'
 import { deleteScaleAnswers } from '@/services/scales'
-import { createAgent, getAgentQrcodeBase64 } from '@/services/agent'
+import { createAgent, getAgentQrcodeBase64, getAgentMe } from '@/services/agent'
 import { PageContainer } from '@/components/PageContainer'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -71,6 +71,7 @@ export default function ProfilePage() {
   
   const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
   const [shareModalOpen, setShareModalOpen] = useState(false) // 分享弹窗显示状态
+  const shareUuidRef = useRef<string | null>(null) // 分享链接携带的代理商 uuid（来自 /agent/me）
   const [promoteModalOpen, setPromoteModalOpen] = useState(false) // 推广二维码弹窗
   const [promoteQrcodeImage, setPromoteQrcodeImage] = useState<string>('') // 推广码 base64
   const [promoteLoading, setPromoteLoading] = useState(false) // 生成推广码中
@@ -290,11 +291,23 @@ export default function ProfilePage() {
   }
 
   /**
-   * 处理分享功能
+   * 处理分享功能：打开弹窗前拉取 /agent/me，将 uuid 写入 ref 供分享链接使用
    */
   const handleShare = () => {
     setShareModalOpen(true)
   }
+
+  // 打开分享弹窗时拉取当前用户代理商信息（自己或归属的），用于分享链接带 uuid
+  useEffect(() => {
+    if (!shareModalOpen || !isLoggedIn) return
+    getAgentMe()
+      .then((agent) => {
+        shareUuidRef.current = agent?.uuid ?? null
+      })
+      .catch(() => {
+        shareUuidRef.current = null
+      })
+  }, [shareModalOpen, isLoggedIn])
 
   /**
    * 我要推广：先创建 agent（有则跳过），再拉取推广二维码并弹窗展示
@@ -353,13 +366,17 @@ export default function ProfilePage() {
   }
 
   /**
-   * 小程序分享给朋友
+   * 小程序分享给朋友：带 uuid 参数便于好友通过链接绑定；文案体现推广赚钱
    */
   useShareAppMessage(() => {
+    const uuid = shareUuidRef.current
+    const path = uuid
+      ? `/pages/index/index?uuid=${encodeURIComponent(uuid)}`
+      : '/pages/index/index'
     return {
-      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
-      path: '/pages/index/index',
-      imageUrl: '', // 可选：分享图片 URL
+      title: '逆袭智愿 - 找喜欢与天赋，还能推广赚奖励，邀好友一起用',
+      path,
+      imageUrl: '',
     }
   })
 
@@ -367,9 +384,11 @@ export default function ProfilePage() {
    * 小程序分享到朋友圈
    */
   useShareTimeline(() => {
+    const uuid = shareUuidRef.current
+    const query = uuid ? `uuid=${encodeURIComponent(uuid)}` : ''
     return {
-      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
-      query: '',
+      title: '逆袭智愿 - 找喜欢与天赋，邀好友一起用，推广有奖',
+      query,
       imageUrl: '',
     }
   })
@@ -584,13 +603,13 @@ export default function ProfilePage() {
                 </View>
                 <View className="profile-page__card-item-content">
                   <Text className="profile-page__card-item-title">分享给朋友</Text>
-                  <Text className="profile-page__card-item-desc">帮更多同学找到方向</Text>
+                  <Text className="profile-page__card-item-desc">邀请好友使用，推广有奖，一起赚</Text>
                 </View>
                 <Text className="profile-page__card-arrow">›</Text>
               </View>
 
               {/* 我要推广：先创建 agent，再显示推广二维码 */}
-              <View
+              {/* <View
                 className="profile-page__card-item"
                 onClick={promoteLoading ? undefined : handlePromote}
               >
@@ -604,7 +623,7 @@ export default function ProfilePage() {
                   </Text>
                 </View>
                 <Text className="profile-page__card-arrow">›</Text>
-              </View>
+              </View> */}
             </View>
           </Card>
 
