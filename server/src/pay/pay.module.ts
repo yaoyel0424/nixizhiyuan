@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
@@ -13,6 +13,7 @@ import { EntitlementService } from './entitlement.service';
 import { PayController } from './pay.controller';
 import { PaymentProcessor } from './payment.processor';
 import { SplitProcessor } from './split.processor';
+import { UsersModule } from '@/users/users.module';
 
 const PAYMENT_QUEUE = 'payment';
 const SPLIT_QUEUE = 'split';
@@ -43,6 +44,7 @@ const SPLIT_QUEUE = 'split';
       { name: PAYMENT_QUEUE },
       { name: SPLIT_QUEUE },
     ),
+    forwardRef(() => UsersModule),
   ],
   controllers: [PayController],
   providers: [PayLoggerService, PayService, EntitlementService, PaymentProcessor, SplitProcessor],

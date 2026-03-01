@@ -136,6 +136,23 @@ export class UsersService {
   }
 
   /**
+   * 根据 ID 查找用户并携带关联的 agent（用于支付 attach 中写入 agentOpenid）
+   */
+  async findOneWithAgent(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['agent'],
+    });
+    if (!user) {
+      throw new NotFoundException({
+        code: ErrorCode.USER_NOT_FOUND,
+        message: '用户不存在',
+      });
+    }
+    return user;
+  }
+
+  /**
    * 更新用户
    */
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {

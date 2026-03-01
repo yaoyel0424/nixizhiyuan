@@ -28,6 +28,7 @@ import type { PaymentJobPayload } from './pay.types';
 import { PRODUCT_TYPE_POPULAR_MAJOR, PRODUCT_TYPE_UNLOCK_ALL } from './pay.constants';
 import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 import { RequireEntitlement } from '@/common/decorators/require-entitlement.decorator';
+import { UsersService } from '@/users/users.service';
 
 const PAYMENT_QUEUE = 'payment';
 const PROFITSHARING_EVENT = 'PROFITSHARING';
@@ -39,6 +40,7 @@ export class PayController {
   constructor(
     private readonly payService: PayService,
     private readonly entitlementService: EntitlementService,
+    private readonly usersService: UsersService,
     @InjectQueue(PAYMENT_QUEUE) private readonly paymentQueue: Queue,
     @InjectRepository(Order) private readonly orderRepository: Repository<Order>,
     private readonly logger: PayLoggerService,
@@ -78,10 +80,12 @@ export class PayController {
       throw new UnauthorizedException('请先登录后再发起支付');
     }
     const userId = user.id;
-    const openid = await this.entitlementService.getOpenidByUserId(userId);
-    if (!openid) {
+    const userInfo = await this.usersService.findOneWithAgent(userId);
+    if (!userInfo.openid) {
       throw new BadRequestException('未找到对应用户的 openid，无法发起支付');
     }
+    const agentOpenid = userInfo.agent?.openid ?? undefined;
+
     const clientIp = (req as any).ip || req.socket?.remoteAddress || '';
 
     let amountNum: number;
@@ -103,6 +107,8 @@ export class PayController {
       attach = JSON.stringify({
         productType: PRODUCT_TYPE_POPULAR_MAJOR,
         majorCode: majorCode.trim(),
+        ...(userInfo.agentId != null && { agentId: userInfo.agentId }),
+        ...(agentOpenid && { agentOpenid }),
       });
     } else if (productType === PRODUCT_TYPE_UNLOCK_ALL) {
       const hasUnlockAll = await this.entitlementService.hasUnlockAll(userId);
@@ -113,7 +119,14 @@ export class PayController {
       if (amountNum <= 0) {
         throw new BadRequestException('您已满足解锁全部条件，已为您解锁（热门专业已包含在内）');
       }
-      attach = JSON.stringify({ productType: PRODUCT_TYPE_UNLOCK_ALL });
+      const hasAgent = userInfo.agentId != null || agentOpenid;
+      const agentAmount = hasAgent ? Math.round(amountNum * 0.3) : undefined;
+      attach = JSON.stringify({
+        productType: PRODUCT_TYPE_UNLOCK_ALL,
+        ...(userInfo.agentId != null && { agentId: userInfo.agentId }),
+        ...(agentOpenid && { agentOpenid }),
+        ...(agentAmount != null && { agentAmount }),
+      });
     } else {
       if (!amount) {
         throw new BadRequestException('请传 productType+majorCode 或 amount');
@@ -122,10 +135,16 @@ export class PayController {
       if (Number.isNaN(amountNum) || amountNum <= 0) {
         throw new BadRequestException('amount 必须为正整数（分）');
       }
+      if (userInfo.agentId != null || agentOpenid) {
+        attach = JSON.stringify({
+          ...(userInfo.agentId != null && { agentId: userInfo.agentId }),
+          ...(agentOpenid && { agentOpenid }),
+        });
+      }
     }
 
     const result = await this.payService.createJsapiPrepay(
-      openid,
+      userInfo.openid,
       amountNum,
       clientIp,
       '逆袭智愿',
