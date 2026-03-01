@@ -49,5 +49,8 @@ export class UserResponseDto {
 
   @Exclude()
   unionid?: string;
+  
+  @Expose()
+  agentId?: string;
 }
 
