@@ -16,7 +16,7 @@ import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { store, persistor } from './store'
 import { silentLogin } from './utils/auth'
-import { getLaunchAgentUuid, bindAgentByUuid, STORAGE_KEY_LAUNCH_AGENT_UUID } from './services/agent'
+import { getLaunchAgentUuid, bindAgentByUuid, sceneToAgentUuid, STORAGE_KEY_LAUNCH_AGENT_UUID } from './services/agent'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './app.less'
 
@@ -46,13 +46,16 @@ function AuthInit({ children }: PropsWithChildren<any>) {
 function App({ children }: PropsWithChildren<any>) {
   useLaunch((options) => {
     console.log('App launched.')
-    // 若启动参数带 uuid（分享链接），先写入 storage，供 AuthInit 登录后绑定
+    // 若启动参数带 uuid（分享链接）或 scene（扫码进入小程序码），写入 storage，供 AuthInit 登录后绑定
     const query = options?.query || {}
-    if (query.uuid && typeof query.uuid === 'string' && query.uuid.trim()) {
-      try {
+    try {
+      if (query.uuid && typeof query.uuid === 'string' && query.uuid.trim()) {
         Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, query.uuid.trim())
-      } catch (_) {}
-    }
+      } else if (query.scene && typeof query.scene === 'string') {
+        const uuid = sceneToAgentUuid(query.scene)
+        if (uuid) Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, uuid)
+      }
+    } catch (_) {}
   })
 
   return (

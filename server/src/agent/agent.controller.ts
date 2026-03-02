@@ -18,6 +18,7 @@ import { AgentService } from './agent.service';
 import { CreateAgentDto } from './dto/create-agent.dto';
 import { AgentResponseDto } from './dto/agent-response.dto';
 import { EntitlementGuard } from '@/common/guards/entitlement.guard';
+import { UsersService } from '@/users/users.service';
 
 /**
  * 代理商控制器
@@ -26,21 +27,28 @@ import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 @Controller('agent')
 @ApiBearerAuth()
 export class AgentController {
-  constructor(private readonly agentService: AgentService) {}
+  constructor(
+    private readonly agentService: AgentService,
+    private readonly usersService: UsersService,
+  ) {}
 
   /**
    * 获取当前用户的代理商信息：若自己是代理商则返回自己创建的；否则返回自己归属的代理商家（user.agent_id）
    */
-  @Get('me')
+  @Get('me') 
   @ApiOperation({ summary: '获取当前用户的代理商信息' })
   @ApiResponse({ status: 200, description: '自己创建的代理商或归属的代理商家，均无时返回空对象', type: AgentResponseDto })
-  @ApiResponse({ status: 401, description: '未登录' })
+  @ApiResponse({ status: 401, description: '未登录' }) 
   async getMyAgent(
-    @CurrentUser() user: { id: number },
-  ): Promise<AgentResponseDto | Record<string, never>> {
+    @CurrentUser() user: { id: number },  
+  ): Promise<AgentResponseDto | Record<string, never>> {   
+  
     let agent = await this.agentService.findByCreatorId(user.id);
-    if (!agent) {
-      agent = await this.agentService.findByUserId(user.id);
+    if (!agent && user.id) {
+      const userInfo = await this.usersService.findOne(user.id);
+      if (userInfo.agentId != null) {
+        agent = await this.agentService.findById(userInfo.agentId);
+      }
     }
     if (!agent) {
       return {};

@@ -65,6 +65,15 @@ export class AgentService {
   }
 
   /**
+   * 按主键 ID 查询代理商
+   * @param id 代理商主键 ID
+   * @returns 代理商实体或 null
+   */
+  async findById(id: number): Promise<Agent | null> {
+    return this.agentRepository.findOne({ where: { id } });
+  }
+
+  /**
    * 获取微信 access_token（优先从 Redis 读取）
    */
   private async getWechatAccessToken(): Promise<string> {
