@@ -152,7 +152,7 @@ export class UsersController {
     @CurrentUser() user: any,
     @Body() dto: BindAgentDto,
   ): Promise<UserResponseDto> {
-    const updatedUser = await this.usersService.bindAgentByUuid(user.id, dto.uuid);
+    const updatedUser = await this.usersService.bindAgentByUuid(user.id, dto.uuid, dto.from);
     return plainToInstance(UserResponseDto, updatedUser, {
       excludeExtraneousValues: true,
     });

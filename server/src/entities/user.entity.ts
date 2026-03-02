@@ -63,6 +63,10 @@ export class User {
     @Column({ name: 'agent_id', type: 'int', nullable: true, comment: '关联代理商ID' })
     agentId: number | null;
 
+    /** 绑定代理商时的来源：scan=扫码进入，share_link=分享链接进入，默认为空 */
+    @Column({ name: 'agent_from', type: 'varchar', length: 32, nullable: true, comment: '绑定代理商来源' })
+    agentFrom: string | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

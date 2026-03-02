@@ -62,13 +62,14 @@ export class UsersService {
   ) {}
 
   /**
-   * 通过代理商 uuid 查询代理商并更新当前用户的 agent_id
+   * 通过代理商 uuid 查询代理商并更新当前用户的 agent_id 与 agent_from
    * 若用户已有关联代理商则跳过；若 uuid 对应代理商不存在则仅记录日志不报错。
    * @param userId 当前用户 ID
    * @param agentUuid 代理商 UUID
+   * @param from 可选，绑定来源：scan=扫码进入，share_link=分享链接进入
    * @returns 更新后的用户（或未变更的用户）
    */
-  async bindAgentByUuid(userId: number, agentUuid: string): Promise<User> {
+  async bindAgentByUuid(userId: number, agentUuid: string, from?: 'scan' | 'share_link'): Promise<User> {
     const user = await this.findOne(userId);
     if (user.agentId != null) {
       this.logger.log(`用户 userId=${userId} 已关联代理商 agentId=${user.agentId}，跳过绑定`);
@@ -80,6 +81,9 @@ export class UsersService {
       return user;
     }
     user.agentId = agent.id;
+    if (from === 'scan' || from === 'share_link') {
+      user.agentFrom = from;
+    }
     return this.userRepository.save(user);
   }
 

@@ -7,7 +7,7 @@ if (typeof _setInterval === 'function') {
   globalThis.setInterval = function (fn: TimerHandler, delay?: number, ...args: any[]) {
     const safeDelay = typeof delay === 'number' && delay >= 0 ? Math.max(1, delay) : (delay ?? 1)
     return _setInterval(fn, safeDelay, ...args)
-  }
+  } as typeof globalThis.setInterval
 }
 
 import React, { PropsWithChildren, useEffect, useRef } from 'react'
@@ -16,7 +16,7 @@ import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { store, persistor } from './store'
 import { silentLogin } from './utils/auth'
-import { getLaunchAgentUuid, bindAgentByUuid, sceneToAgentUuid, STORAGE_KEY_LAUNCH_AGENT_UUID } from './services/agent'
+import { getLaunchAgentUuid, getLaunchAgentFrom, bindAgentByUuid, sceneToAgentUuid, STORAGE_KEY_LAUNCH_AGENT_UUID, STORAGE_KEY_LAUNCH_AGENT_FROM } from './services/agent'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './app.less'
 
@@ -33,7 +33,8 @@ function AuthInit({ children }: PropsWithChildren<any>) {
       .then((ok) => {
         if (ok) {
           const uuid = getLaunchAgentUuid()
-          if (uuid) bindAgentByUuid(uuid).catch(() => {})
+          const from = getLaunchAgentFrom()
+          if (uuid) bindAgentByUuid(uuid, from ?? undefined).catch(() => {})
         }
       })
       .catch(error => {
@@ -51,9 +52,13 @@ function App({ children }: PropsWithChildren<any>) {
     try {
       if (query.uuid && typeof query.uuid === 'string' && query.uuid.trim()) {
         Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, query.uuid.trim())
+        Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_FROM, 'share_link')
       } else if (query.scene && typeof query.scene === 'string') {
         const uuid = sceneToAgentUuid(query.scene)
-        if (uuid) Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, uuid)
+        if (uuid) {
+          Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, uuid)
+          Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_FROM, 'scan')
+        }
       }
     } catch (_) {}
   })

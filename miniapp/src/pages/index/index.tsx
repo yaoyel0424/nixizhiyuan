@@ -19,6 +19,7 @@ import { getUserRelatedDataCount } from '@/services/user';
 import {
   sceneToAgentUuid,
   STORAGE_KEY_LAUNCH_AGENT_UUID,
+  STORAGE_KEY_LAUNCH_AGENT_FROM,
   bindAgentByUuid,
 } from '@/services/agent';
 import { withErrorHandler, withAsyncErrorHandler } from '@/utils/errorHandler';
@@ -123,19 +124,23 @@ export default function IndexPage() {
       const options = Taro.getLaunchOptionsSync?.() || (Taro as any).getEnterOptionsSync?.() || {};
       const query = options.query || {};
       let uuid: string | null = null;
+      let from: 'scan' | 'share_link' | undefined;
       if (query.uuid && typeof query.uuid === 'string') {
         uuid = query.uuid.trim() || null;
+        from = 'share_link';
       } else {
         const scene = query.scene;
         if (scene && typeof scene === 'string') {
           uuid = sceneToAgentUuid(scene);
+          from = 'scan';
         }
       }
       if (uuid) {
         Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_UUID, uuid);
+        if (from) Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_FROM, from);
         const token = Taro.getStorageSync('token');
         if (token) {
-          bindAgentByUuid(uuid).catch(() => {});
+          bindAgentByUuid(uuid, from).catch(() => {});
         }
       }
     } catch (_) {}
