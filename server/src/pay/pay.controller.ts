@@ -12,7 +12,7 @@ import {
   ParseIntPipe,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -31,6 +31,7 @@ import { RequireEntitlement } from '@/common/decorators/require-entitlement.deco
 import { UsersService } from '@/users/users.service';
 
 const PAYMENT_QUEUE = 'payment';
+const SPLIT_QUEUE = 'split';
 const PROFITSHARING_EVENT = 'PROFITSHARING';
 const PROFITSHARING_RETURN_EVENT = 'PROFITSHARING_RETURN';
 
@@ -42,6 +43,7 @@ export class PayController {
     private readonly entitlementService: EntitlementService,
     private readonly usersService: UsersService,
     @InjectQueue(PAYMENT_QUEUE) private readonly paymentQueue: Queue,
+    @InjectQueue(SPLIT_QUEUE) private readonly splitQueue: Queue,
     @InjectRepository(Order) private readonly orderRepository: Repository<Order>,
     private readonly logger: PayLoggerService,
   ) {}
@@ -351,6 +353,123 @@ export class PayController {
       finishedOn: job.finishedOn,
     }));
     return { total, start: startNum, end: endNum, items };
+  }
+
+  /**
+   * 查看分账队列中已成功执行的 job 列表（Redis 分账成功数据，分页）
+   */
+  @Get('split/queue/completed')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '查看分账队列已成功执行的数据' })
+  @ApiQuery({ name: 'start', required: false, description: '起始下标（从 0 开始）', example: 0 })
+  @ApiQuery({ name: 'end', required: false, description: '结束下标（不包含），默认 99', example: 99 })
+  async getSplitQueueCompleted(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+  ) {
+    const startNum = start !== undefined ? parseInt(start, 10) : 0;
+    const endNum = end !== undefined ? parseInt(end, 10) : 99;
+    const [jobs, total] = await Promise.all([
+      this.splitQueue.getCompleted(
+        Number.isNaN(startNum) ? 0 : startNum,
+        Number.isNaN(endNum) ? 99 : endNum,
+      ),
+      this.splitQueue.getCompletedCount(),
+    ]);
+    const items = jobs.map((job) => ({
+      id: job.id,
+      name: job.name,
+      data: job.data,
+      timestamp: job.timestamp,
+      finishedOn: job.finishedOn,
+      processedOn: job.processedOn,
+    }));
+    return { total, start: startNum, end: endNum, items };
+  }
+
+  /**
+   * 查看分账队列中执行失败的 job 列表（Redis 分账失败数据，分页）
+   */
+  @Get('split/queue/failed')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '查看分账队列执行失败的数据' })
+  @ApiQuery({ name: 'start', required: false, description: '起始下标（从 0 开始）', example: 0 })
+  @ApiQuery({ name: 'end', required: false, description: '结束下标（不包含），默认 99', example: 99 })
+  async getSplitQueueFailed(
+    @Query('start') start?: string,
+    @Query('end') end?: string,
+  ) {
+    const startNum = start !== undefined ? parseInt(start, 10) : 0;
+    const endNum = end !== undefined ? parseInt(end, 10) : 99;
+    const [jobs, total] = await Promise.all([
+      this.splitQueue.getFailed(
+        Number.isNaN(startNum) ? 0 : startNum,
+        Number.isNaN(endNum) ? 99 : endNum,
+      ),
+      this.splitQueue.getFailedCount(),
+    ]);
+    const items = jobs.map((job) => ({
+      id: job.id,
+      name: job.name,
+      data: job.data,
+      timestamp: job.timestamp,
+      failedReason: job.failedReason,
+      attemptsMade: job.attemptsMade,
+      finishedOn: job.finishedOn,
+    }));
+    return { total, start: startNum, end: endNum, items };
+  }
+
+  /**
+   * 将失败的分账任务重新入队（从 split 队列的 failed 列表取出，按原 payload 重新加入 waiting）
+   * 不传 body 时重入队当前失败列表（最多 100 条）；传 transaction_id 时仅重入队该笔
+   */
+  @Post('split/requeue')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '失败分账重新入队' })
+  @ApiBody({
+    required: false,
+    schema: {
+      type: 'object',
+      properties: { transaction_id: { type: 'string', description: '微信支付订单号，不传则重入队所有失败任务（最多 100）' } },
+    },
+  })
+  async requeueSplitFailed(@Body() body?: { transaction_id?: string }) {
+    const transactionId = body?.transaction_id?.trim();
+    const addOpts = {
+      removeOnComplete: { count: 500 },
+      attempts: 3,
+      backoff: { type: 'exponential' as const, delay: 5000 },
+    };
+    const requeuedIds: string[] = [];
+
+    if (transactionId) {
+      const job = await this.splitQueue.getJob(transactionId);
+      if (!job) {
+        throw new BadRequestException(`未找到 job: ${transactionId}`);
+      }
+      const state = await job.getState();
+      if (state !== 'failed') {
+        throw new BadRequestException(`job ${transactionId} 状态为 ${state}，仅支持重入队 failed 任务`);
+      }
+      const data = job.data as { transaction_id: string; order_id: number; out_trade_no: string; receivers: any[] };
+      await job.remove();
+      await this.splitQueue.add('request-split', data, { jobId: data.transaction_id, ...addOpts });
+      requeuedIds.push(data.transaction_id);
+      this.logger.log(`[分账] 已重入队 transaction_id=${data.transaction_id}`);
+      return { requeued: 1, ids: requeuedIds };
+    }
+
+    const jobs = await this.splitQueue.getFailed(0, 99);
+    for (const job of jobs) {
+      const data = job.data as { transaction_id: string; order_id: number; out_trade_no: string; receivers: any[] };
+      if (!data?.transaction_id || !data?.receivers?.length) continue;
+      await job.remove();
+      await this.splitQueue.add('request-split', data, { jobId: data.transaction_id, ...addOpts });
+      requeuedIds.push(data.transaction_id);
+    }
+    this.logger.log(`[分账] 已重入队 ${requeuedIds.length} 个失败任务`);
+    return { requeued: requeuedIds.length, ids: requeuedIds };
   }
 
   /**

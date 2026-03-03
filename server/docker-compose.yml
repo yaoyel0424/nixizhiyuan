@@ -38,6 +38,7 @@ services:
       - WX_PAY_NOTIFY_URL=${WX_PAY_NOTIFY_URL}
       - WX_PAY_V3_KEY=${WX_PAY_V3_KEY}
       - WX_PAY_CERT_DIR=${WX_PAY_CERT_DIR}
+      - WX_PAY_PUB_KEY_ID=${WX_PAY_PUB_KEY_ID}
     networks:
       # 连接到已存在的外部网络（主应用的 app-network）
       - rbridge_app-network

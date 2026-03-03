@@ -118,26 +118,44 @@ export class PaymentProcessor extends WorkerHost {
     }
 
     // 若有代理分账金额，则加入分账队列
+    this.logger.log(
+      `[分账] 判断 orderId=${order.id} transaction_id=${order.transaction_id} agent_id=${order.agent_id ?? 'null'} agent_amount=${order.agent_amount ?? 'null'}`,
+    );
     if (order.agent_id != null && (order.agent_amount ?? 0) > 0) {
       const receivers = this.buildReceivers(order, payload.attach);
+      this.logger.log(
+        `[分账] 构建接收方 orderId=${order.id} receivers.length=${receivers.length} receivers=${JSON.stringify(receivers.map((r) => ({ type: r.type, amount: r.amount })))}`,
+      );
       if (receivers.length > 0) {
-        await this.splitQueue.add(
-          'request-split',
-          {
-            transaction_id: order.transaction_id,
-            order_id: order.id,
-            out_trade_no: order.out_trade_no,
-            receivers,
-          },
-          {
-            jobId: order.transaction_id,
-            removeOnComplete: { count: 500 },
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 5000 },
-          },
-        );
+        try {
+          this.logger.log(`[分账] 即将入队 split transaction_id=${order.transaction_id} order_id=${order.id}`);
+          await this.splitQueue.add(
+            'request-split',
+            {
+              transaction_id: order.transaction_id,
+              order_id: order.id,
+              out_trade_no: order.out_trade_no,
+              receivers,
+            },
+            {
+              jobId: order.transaction_id,
+              removeOnComplete: { count: 500 },
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 5000 },
+            },
+          );
+          this.logger.log(`[分账] 分账任务已入队 transaction_id=${order.transaction_id}`);
+          const counts = await this.splitQueue.getJobCounts();
+          this.logger.log(`[分账] 入队后 split 队列 counts: waiting=${counts.waiting} active=${counts.active} completed=${counts.completed} failed=${counts.failed}`);
+        } catch (e) {
+          this.logger.error(`[分账] 入队异常 transaction_id=${order.transaction_id}`, e);
+          throw e;
+        }
+      } else {
+        this.logger.warn(`[分账] 接收方为空未入队 orderId=${order.id} transaction_id=${order.transaction_id}`);
       }
-      this.logger.log('分账任务已入队: ' + order.transaction_id);
+    } else {
+      this.logger.log(`[分账] 跳过分账入队 orderId=${order.id} 条件不满足(需 agent_id 且 agent_amount>0)`);
     }
   }
 
