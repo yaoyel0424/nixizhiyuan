@@ -106,7 +106,10 @@ export class PayController {
         throw new BadRequestException(msg);
       }
       
-      amountNum = await this.entitlementService.getPricePopularMajorCentsForUser(userId);
+      amountNum = await this.entitlementService.getPricePopularMajorCentsForUser(
+        userId,
+        userInfo.agentId,
+      );
       attach = JSON.stringify({
         productType: PRODUCT_TYPE_POPULAR_MAJOR,
         majorCode: majorCode.trim(),
@@ -118,7 +121,11 @@ export class PayController {
       if (hasUnlockAll) {
         throw new BadRequestException('您已解锁全部，无需重复购买（热门专业已包含在内）');
       }
-      amountNum = await this.entitlementService.getUnlockAllPayAmount(userId);
+      // 应付金额（含 agent 用户九折），与用户已付热门专业金额对比后得出；≤0 表示已满足解锁条件
+      amountNum = await this.entitlementService.getUnlockAllPayAmount(
+        userId,
+        userInfo.agentId,
+      );
       if (amountNum <= 0) {
         throw new BadRequestException('您已满足解锁全部条件，已为您解锁（热门专业已包含在内）');
       }

@@ -251,21 +251,30 @@ export class EntitlementService {
   } 
   /**
    * 计算「解锁全部」实付金额（分）
-   * 原价 299 元，减去已付热门专业总金额，最低 0；若用户 agent_id 不为空则九折
+   * 非 agent：原价 299 元 − 已付热门专业总金额，最低 0
+   * agent 用户：先对原价九折得 269.1 元（26910 分），再减已付金额，即 max(0, 26910 − 已付)
+   * @param agentId 可选，若调用方已持有（如 controller 已查 userInfo）可传入，避免重复查 user
    */
-  async getUnlockAllPayAmount(userId: number | null): Promise<number> {
+  async getUnlockAllPayAmount(
+    userId: number | null,
+    agentId?: number | null,
+  ): Promise<number> {
     const deduct = await this.getUnlockAllDeductAmount(userId);
-    let amount = Math.max(0, PRICE_UNLOCK_ALL_CENTS - deduct);
-    if (userId != null) {
-      const user = await this.userRepository.findOne({
-        where: { id: userId },
-        select: ['agentId'],
-      });
-      if (user?.agentId != null) {
-        amount = Math.round(amount * 0.9);
-      }
+    if (userId == null) {
+      return Math.max(0, PRICE_UNLOCK_ALL_CENTS - deduct);
     }
-    return amount;
+    const hasAgent =
+      agentId !== undefined
+        ? agentId != null
+        : (await this.userRepository.findOne({
+            where: { id: userId },
+            select: ['agentId'],
+          }))?.agentId != null;
+    if (hasAgent) {
+      const priceAfterDiscount = Math.round(PRICE_UNLOCK_ALL_CENTS * 0.9);
+      return Math.max(0, priceAfterDiscount - deduct);
+    }
+    return Math.max(0, PRICE_UNLOCK_ALL_CENTS - deduct);
   }
 
   /** 创建权益记录（支付回调时由 PaymentProcessor 调用）；仅存 user_id */
@@ -297,13 +306,20 @@ export class EntitlementService {
 
   /**
    * 单个热门专业价格（分），若用户 agent_id 不为空则九折
+   * @param agentId 可选，若调用方已持有可传入，避免重复查 user
    */
-  async getPricePopularMajorCentsForUser(userId: number): Promise<number> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: ['agentId'],
-    });
-    if (user?.agentId != null) {
+  async getPricePopularMajorCentsForUser(
+    userId: number,
+    agentId?: number | null,
+  ): Promise<number> {
+    const hasAgent =
+      agentId !== undefined
+        ? agentId != null
+        : (await this.userRepository.findOne({
+            where: { id: userId },
+            select: ['agentId'],
+          }))?.agentId != null;
+    if (hasAgent) {
       return Math.round(PRICE_POPULAR_MAJOR_CENTS * 0.9);
     }
     return PRICE_POPULAR_MAJOR_CENTS;
