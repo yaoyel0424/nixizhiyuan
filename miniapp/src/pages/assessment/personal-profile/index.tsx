@@ -76,8 +76,6 @@ const QUADRANT_COLORS: Record<number, string> = {
   3: '#1a56db', // 第三象限：蓝
   4: '#FF7F50', // 第四象限：橘红
 };
-// 展示顺序：1 -> 4 -> 2 -> 3
-const QUADRANT_ORDER = [1, 4, 2, 3];
 
 /**
  * 解析核心特质文本为列表
@@ -208,7 +206,7 @@ function WordCloudCSS({
   const flipDuration = 400;
   const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 准备卡片数据：按 quadrant 区分颜色（柔和色），按 1、4、2、3 顺序展示
+  // 准备卡片数据：按 quadrant 区分颜色（柔和色），按接口返回顺序展示，不排序
   const cardItems = useMemo(() => {
     if (portraits.length === 0) {
       return [];
@@ -240,18 +238,6 @@ function WordCloudCSS({
         maxStatusLines,
         quadrant,
       };
-    });
-
-    // 按象限顺序 1 -> 4 -> 2 -> 3 排序，同象限内按 id 排序
-    const orderIndex = (q: number) => {
-      const i = QUADRANT_ORDER.indexOf(q);
-      return i === -1 ? QUADRANT_ORDER.length : i;
-    };
-    items.sort((a, b) => {
-      const orderA = orderIndex(a.quadrant);
-      const orderB = orderIndex(b.quadrant);
-      if (orderA !== orderB) return orderA - orderB;
-      return a.id - b.id;
     });
 
     return items;
@@ -725,13 +711,11 @@ function WordCloudCanvas({
       const centerX = canvasWidth / 2;
       const centerY = canvasHeight / 2;
 
-      // 按权重排序（id 越小，权重越高，放在中心）
-      const sortedItems = [...items].sort((a, b) => a.id - b.id);
-
+      // 按接口返回顺序展示，不重新排序
       // 椭圆布局算法
       const placedItems: WordCloudItem[] = [];
 
-      sortedItems.forEach((item, index) => {
+      items.forEach((item, index) => {
         // 固定旋转角度（-15° 到 +15°），基于索引确保一致性
         const rotationSeed = item.id * 0.1;
         const rotation = (Math.sin(rotationSeed) * 15) * (Math.PI / 180);
@@ -745,7 +729,7 @@ function WordCloudCanvas({
         const maxRadiusX = canvasWidth * 0.48; // 接近边缘
         const maxRadiusY = (canvasHeight - topMargin) * 0.42; // 减去顶部边距
         const maxRadius = Math.max(maxRadiusX, maxRadiusY);
-        const radius = maxRadius * Math.sqrt(index / Math.max(sortedItems.length - 1, 1));
+        const radius = maxRadius * Math.sqrt(index / Math.max(items.length - 1, 1));
         
         // 椭圆拉伸：水平方向更宽，充分利用左右空间
         // 垂直方向向下偏移，避开顶部提示文字区域
@@ -1020,17 +1004,15 @@ function WordCloudCanvas({
     }
 
     const prepareWordCloudItems = async () => {
-      // 解析所有特质名称并按 id 排序（id 越小可能越重要）
-      const sortedPortraits = [...portraits].sort((a, b) => a.id - b.id);
-      
+      // 按接口返回顺序展示，不重新排序
       // 使用精确测量准备所有项目
-      const itemsPromises = sortedPortraits.map(async (portrait, index) => {
+      const itemsPromises = portraits.map(async (portrait, index) => {
         const { prefix, core } = parseTraitName(portrait.name);
         const icon = '●';
         
         // 计算权重：前几个特质权重更高
         // 使用指数衰减，让前几个更突出
-        const total = sortedPortraits.length;
+        const total = portraits.length;
         const weight = Math.pow(1 - index / total, 0.7); // 0.7 的指数让权重分布更平滑
         
         // 检查象限是否为1，如果是则增大字体并突出显示

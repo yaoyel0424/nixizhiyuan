@@ -23,6 +23,8 @@ export class PayService implements OnModuleInit {
   private wxPay: any;
   private v3Key: string = '';
   private notifyUrl: string = '';
+  /** 商户 appid，添加 PERSONAL_OPENID 分账接收方时必填 */
+  private appid: string = '';
   /** 自建拉取证书用：商户号、商户私钥 PEM、商户证书序列号（hex 大写） */
   private certMchid: string = '';
   private certPrivateKeyPem: string = '';
@@ -70,6 +72,7 @@ export class PayService implements OnModuleInit {
       const publicKeyPem = fs.readFileSync(publicKeyPath, 'utf8');
       this.certPrivateKeyPem = fs.readFileSync(privateKeyPath, 'utf8');
       this.certMchid = mchid;
+      this.appid = appid;
       // 商户证书序列号（hex 大写），用于自建 GET /v3/certificates 的 Authorization
       const x509 = new crypto.X509Certificate(publicKeyPem);
       this.certMerchantSerialNo = x509.serialNumber.toUpperCase().replace(/:/g, '');
@@ -113,6 +116,8 @@ export class PayService implements OnModuleInit {
       amount: { total: amountTotal },
       payer: { openid },
       scene_info: { payer_client_ip: clientIp },
+      // 分账订单需传 settle_info.profit_sharing，不能传 body 顶层 profit_sharing（会报「未在API文档中定义的参数」）
+      settle_info: { profit_sharing: true },
     };
     if (attach != null && attach !== '') {
       params.attach = attach;
@@ -284,7 +289,109 @@ export class PayService implements OnModuleInit {
   }
 
   /**
+   * 查询分账结果（普通商户 GET /v3/profitsharing/orders）
+   * @returns status: ACCEPTED | PROCESSING | FINISHED | CLOSED，以及 order_id、receivers 等
+   */
+  async queryProfitsharingOrder(
+    transactionId: string,
+    outOrderNo: string,
+  ): Promise<{ status: string; order_id?: string; receivers?: any[]; [k: string]: any } | null> {
+    if (!this.certPrivateKeyPem || !this.certMerchantSerialNo) {
+      this.logger.warn('微信支付证书未初始化，无法查询分账结果');
+      return null;
+    }
+    // 参数顺序与微信文档示例一致：transaction_id 先，out_order_no 后
+    const query = new URLSearchParams({ transaction_id: transactionId, out_order_no: outOrderNo }).toString();
+    const urlPath = `/v3/profitsharing/orders?${query}`;
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const signStr = `GET\n${urlPath}\n${timestamp}\n${nonce}\n\n`;
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(signStr);
+    const signature = sign.sign(this.certPrivateKeyPem, 'base64');
+    const authorization =
+      `WECHATPAY2-SHA256-RSA2048 mchid="${this.certMchid}",serial_no="${this.certMerchantSerialNo}",nonce_str="${nonce}",timestamp="${timestamp}",signature="${signature}"`;
+
+    const host = 'api.mch.weixin.qq.com';
+    this.logger.log(`[queryProfitsharingOrder] 请求 GET https://${host}${urlPath}`);
+    const { status, body: bodyText } = await this.httpsGet(host, urlPath, {
+      Accept: 'application/json',
+      'User-Agent': 'Nixizhiyuan-Pay/1.0',
+      Authorization: authorization,
+    });
+    if (status !== 200) {
+      this.logger.warn(
+        `查询分账结果失败 status=${status} transaction_id=${transactionId} bodyLen=${bodyText.length} body=${bodyText.slice(0, 500)}`,
+      );
+      return null;
+    }
+    try {
+      return JSON.parse(bodyText) as { status: string; order_id?: string; receivers?: any[]; [k: string]: any };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 添加分账接收方（请求分账前需先添加，PERSONAL_OPENID 时必填 appid）
+   * 若接收方已存在（RECEIVER_EXIST）则视为成功，不抛错
+   * @param type 接收方类型，如 PERSONAL_OPENID、MERCHANT_ID
+   * @param account 接收方账号（openid 或商户号）
+   * @param relationType 关系类型，默认 SERVICE_PROVIDER；可选 CUSTOM 时需传 customRelation
+   * @param customRelation relation_type 为 CUSTOM 时的自定义关系说明
+   */
+  async addProfitsharingReceiver(
+    type: string,
+    account: string,
+    relationType: string = 'SERVICE_PROVIDER',
+    customRelation?: string,
+  ): Promise<void> {
+    if (!this.wxPay) {
+      throw new Error('微信支付未初始化，无法添加分账接收方');
+    }
+    const relation_type =
+      this.configService.get<string>('pay.profitsharingRelationType') || relationType;
+    const custom_relation =
+      this.configService.get<string>('pay.profitsharingCustomRelation') || customRelation;
+    const body: Record<string, any> = {
+      appid: this.appid,
+      type,
+      account,
+      relation_type,
+    };
+    if (relation_type === 'CUSTOM' && custom_relation) {
+      body.custom_relation = custom_relation;
+    }
+    const res = await this.wxPay.profitsharing_receivers_add(body);
+    const status = res?.status ?? res?.errRaw?.response?.status;
+    if (typeof status === 'number' && status >= 400) {
+      let code = '';
+      let message = res?.error;
+      if (typeof message === 'string') {
+        try {
+          const parsed = JSON.parse(message) as { code?: string; message?: string };
+          code = parsed.code ?? '';
+          message = parsed.message ?? message;
+        } catch {
+          // 保持原始
+        }
+      }
+      // 接收方已存在时视为成功，幂等
+      if (code === 'RECEIVER_EXIST' || (typeof message === 'string' && message.includes('已存在'))) {
+        this.logger.log(`[addProfitsharingReceiver] 接收方已存在 type=${type} account=${account}`);
+        return;
+      }
+      this.logger.warn(
+        `[addProfitsharingReceiver] 添加失败 status=${status} type=${type} account=${account} error=${message}`,
+      );
+      throw new Error(message ?? `添加分账接收方失败 status=${status}`);
+    }
+    this.logger.log(`[addProfitsharingReceiver] 添加成功 type=${type} account=${account}`);
+  }
+
+  /**
    * 请求微信分账（wechatpay-node-v3 create_profitsharing_orders）
+   * 对 PERSONAL_OPENID 接收方会先调用添加分账接收方再发起分账
    * @param transactionId 微信支付订单号
    * @param outOrderNo 商户分账单号（需唯一）
    * @param receivers 分账接收方，与 SplitJobPayload.receivers 结构一致
@@ -300,6 +407,12 @@ export class PayService implements OnModuleInit {
     if (!receivers || receivers.length === 0) {
       throw new Error('分账接收方不能为空');
     }
+    // 先添加分账接收方（PERSONAL_OPENID 必须先添加关系，否则分账会报 PARAM_ERROR）
+    for (const r of receivers) {
+      if (r.type === 'PERSONAL_OPENID' && r.openid) {
+        await this.addProfitsharingReceiver('PERSONAL_OPENID', r.openid);
+      }
+    }
     const certificate = await this.getPlatformCertificate();
     const wxReceivers = receivers.map((r) => {
       const base: Record<string, any> = {
@@ -307,8 +420,9 @@ export class PayService implements OnModuleInit {
         amount: r.amount,
         description: r.description,
       };
+      // 文档要求：接收方统一用 account。PERSONAL_OPENID 时 account 填 openid 值，MERCHANT_ID 时填商户号
       if (r.type === 'PERSONAL_OPENID' && r.openid) {
-        base.openid = r.openid;
+        base.account = r.openid;
       } else if ((r.type === 'MERCHANT_ID' || r.type === 'MERCHANT') && r.account) {
         base.account = r.account;
       }
@@ -321,6 +435,30 @@ export class PayService implements OnModuleInit {
       unfreeze_unsplit: true,
       wx_serial_no: certificate.serial_no,
     });
+
+    // wechatpay-node-v3 在 HTTP 4xx/5xx 时不抛错，返回 { status, error }，需主动判断并抛错
+    const status = res?.status ?? (res?.errRaw?.response?.status);
+    if (typeof status === 'number' && status >= 400) {
+      let msg = res?.error;
+      if (typeof msg === 'string') {
+        try {
+          const parsed = JSON.parse(msg) as { code?: string; message?: string };
+          msg = parsed.message ? `${parsed.code ?? ''}: ${parsed.message}` : msg;
+        } catch {
+          // 保持原始 error 字符串
+        }
+      }
+      this.logger.warn(
+        `[createProfitsharingOrders] 请求失败 status=${status} transaction_id=${transactionId} out_order_no=${outOrderNo} error=${msg ?? res?.error}`,
+      );
+      throw new Error(msg ?? `分账请求失败 status=${status}`);
+    }
+
+    const orderId = res?.order_id ?? (res as any)?.orderId ?? '';
+    const state = res?.state ?? (res as any)?.order_state ?? '';
+    this.logger.log(
+      `[createProfitsharingOrders] 请求成功 transaction_id=${transactionId} out_order_no=${outOrderNo} order_id=${orderId} state=${state}`,
+    );
     return res;
   }
 }

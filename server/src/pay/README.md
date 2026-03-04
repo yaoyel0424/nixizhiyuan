@@ -47,6 +47,9 @@
 - **POST** `/api/v1/pay/notify/split`  
   **分账动账通知**（微信服务器调用）。需在商户平台配置分账回调 URL。解密后根据 `out_order_no`（本系统为 `S{order_id}`）更新订单 `split_status`、`split_at`。应答需返回 `{ code: 'SUCCESS', message: '成功' }`，否则微信会按策略重试（约 24 小时内）。
 
+- **POST** `/api/v1/pay/split/receiver`  
+  **手工添加分账接收方**（需登录态）。请求体：`type`（PERSONAL_OPENID / MERCHANT_ID）、`account`（openid 或商户号）、可选 `relationType`（默认 SERVICE_PROVIDER）、`customRelation`（relationType 为 CUSTOM 时）。接收方已存在时视为成功。详见 `分账问题与排查.md`。
+
 ## 异步流程
 
 1. **支付回调** → 解密成功 → 投递到 `payment` 队列 → 返回 200。

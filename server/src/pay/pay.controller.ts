@@ -421,6 +421,95 @@ export class PayController {
   }
 
   /**
+   * 分账账单查询：调微信「查询分账结果」接口，返回分账状态及接收方明细
+   * 传 order_id 或 (transaction_id + out_order_no) 二选一
+   */
+  @Get('split/order')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '分账账单查询' })
+  @ApiQuery({ name: 'order_id', required: false, description: '订单 ID，传入则用该订单的 transaction_id 与分账单号 S{order_id} 查询' })
+  @ApiQuery({ name: 'transaction_id', required: false, description: '微信支付订单号，与 out_order_no 同时传入' })
+  @ApiQuery({ name: 'out_order_no', required: false, description: '商户分账单号（如 S86），与 transaction_id 同时传入' })
+  async getSplitOrder(
+    @Query('order_id') orderIdStr?: string,
+    @Query('transaction_id') transactionId?: string,
+    @Query('out_order_no') outOrderNo?: string,
+  ) {
+    let transaction_id: string;
+    let out_order_no: string;
+
+    if (orderIdStr != null && orderIdStr !== '') {
+      const orderId = parseInt(orderIdStr, 10);
+      if (Number.isNaN(orderId) || orderId < 1) {
+        throw new BadRequestException('order_id 无效');
+      }
+      const order = await this.orderRepository.findOne({ where: { id: orderId } });
+      if (!order) {
+        throw new BadRequestException(`订单不存在: ${orderId}`);
+      }
+      if (!order.transaction_id) {
+        throw new BadRequestException(`订单 ${orderId} 无微信支付订单号，无法查询分账`);
+      }
+      transaction_id = order.transaction_id;
+      out_order_no = `S${orderId}`;
+    } else if (transactionId?.trim() && outOrderNo?.trim()) {
+      transaction_id = transactionId.trim();
+      out_order_no = outOrderNo.trim();
+    } else {
+      throw new BadRequestException('请传 order_id 或同时传 transaction_id 与 out_order_no');
+    }
+
+    const result = await this.payService.queryProfitsharingOrder(transaction_id, out_order_no);
+    if (result == null) {
+      return { ok: false, message: '查询分账结果失败或未返回数据', data: null };
+    }
+    return { ok: true, data: result };
+  }
+
+  /**
+   * 手工添加分账接收方（请求分账前需先建立接收方关系，PERSONAL_OPENID 时 account 为 openid）
+   * 接收方已存在时视为成功（幂等）
+   */
+  @Post('split/receiver')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '手工添加分账接收方' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['type', 'account'],
+      properties: {
+        type: { type: 'string', description: '接收方类型：PERSONAL_OPENID（个人 openid）、MERCHANT_ID（商户号）' },
+        account: { type: 'string', description: '接收方账号：PERSONAL_OPENID 时填用户 openid，MERCHANT_ID 时填商户号' },
+        relationType: { type: 'string', description: '关系类型，默认 SERVICE_PROVIDER；可选 CUSTOM 时需传 customRelation' },
+        customRelation: { type: 'string', description: 'relationType 为 CUSTOM 时的自定义关系说明' },
+      },
+    },
+  })
+  async addSplitReceiver(
+    @Body() body: { type: string; account: string; relationType?: string; customRelation?: string },
+  ) {
+    const { type, account } = body ?? {};
+    if (!type?.trim() || !account?.trim()) {
+      throw new BadRequestException('请传 type 与 account');
+    }
+    if (type !== 'PERSONAL_OPENID' && type !== 'MERCHANT_ID') {
+      throw new BadRequestException('type 仅支持 PERSONAL_OPENID 或 MERCHANT_ID');
+    }
+    try {
+      await this.payService.addProfitsharingReceiver(
+        type.trim(),
+        account.trim(),
+        body.relationType?.trim() || 'SERVICE_PROVIDER',
+        body.customRelation?.trim(),
+      );
+      return { ok: true, message: '添加成功（若接收方已存在则视为成功）' };
+    } catch (e: any) {
+      const msg = e?.message ?? String(e);
+      throw new BadRequestException(msg || '添加分账接收方失败');
+    }
+  }
+
+  /**
    * 将失败的分账任务重新入队（从 split 队列的 failed 列表取出，按原 payload 重新加入 waiting）
    * 不传 body 时重入队当前失败列表（最多 100 条）；传 transaction_id 时仅重入队该笔
    */
