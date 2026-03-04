@@ -342,10 +342,33 @@ export default function ProfilePage() {
   }
 
   /**
+   * 确保有相册写入权限，无权限时先请求或引导去设置开启
+   * @returns 有权限可保存时 true，否则 false
+   */
+  const ensurePhotosPermission = async (): Promise<boolean> => {
+    const setting = await Taro.getSetting()
+    if (setting.authSetting['scope.writePhotosAlbum']) return true
+    try {
+      await Taro.authorize({ scope: 'scope.writePhotosAlbum' })
+      return true
+    } catch {
+      const { confirm } = await Taro.showModal({
+        title: '需要相册权限',
+        content: '保存推广二维码需要您允许保存到相册，请在设置中开启。',
+        confirmText: '去设置',
+      })
+      if (confirm) await Taro.openSetting()
+      return false
+    }
+  }
+
+  /**
    * 将推广二维码保存到相册（下载）
    */
   const handlePromoteDownload = async () => {
     if (!promoteQrcodeImage) return
+    const hasPermission = await ensurePhotosPermission()
+    if (!hasPermission) return
     setPromoteSaving(true)
     try {
       const base64Data = promoteQrcodeImage.replace(/^data:image\/\w+;base64,/, '')

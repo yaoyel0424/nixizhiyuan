@@ -179,7 +179,7 @@ export class PaymentProcessor extends WorkerHost {
         type: 'PERSONAL_OPENID',
         openid: agentOpenid,
         amount: order.agent_amount!,
-        description: '代理分账',
+        description: '逆袭志愿代理分账',
       });
     }
     if ((order.platform_amount ?? 0) > 0) {
@@ -187,7 +187,7 @@ export class PaymentProcessor extends WorkerHost {
         type: 'MERCHANT_ID',
         account: order.mchid,
         amount: order.platform_amount!,
-        description: '平台留成',
+        description: '逆袭志愿代理分账',
       });
     }
     return list;
