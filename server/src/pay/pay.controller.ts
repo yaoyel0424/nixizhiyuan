@@ -105,7 +105,8 @@ export class PayController {
             : '您已拥有该专业权益（已购买或已使用免费额度），无需重复购买';
         throw new BadRequestException(msg);
       }
-      amountNum = this.entitlementService.getPricePopularMajorCents();
+      
+      amountNum = await this.entitlementService.getPricePopularMajorCentsForUser(userId);
       attach = JSON.stringify({
         productType: PRODUCT_TYPE_POPULAR_MAJOR,
         majorCode: majorCode.trim(),
@@ -136,6 +137,9 @@ export class PayController {
       amountNum = Number.parseInt(amount, 10);
       if (Number.isNaN(amountNum) || amountNum <= 0) {
         throw new BadRequestException('amount 必须为正整数（分）');
+      }
+      if (userInfo.agentId != null) {
+        amountNum = Math.round(amountNum * 0.9);
       }
       if (userInfo.agentId != null || agentOpenid) {
         attach = JSON.stringify({

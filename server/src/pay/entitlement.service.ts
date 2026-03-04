@@ -251,11 +251,21 @@ export class EntitlementService {
   } 
   /**
    * 计算「解锁全部」实付金额（分）
-   * 原价 299 元，减去已付热门专业总金额，最低 0
+   * 原价 299 元，减去已付热门专业总金额，最低 0；若用户 agent_id 不为空则九折
    */
   async getUnlockAllPayAmount(userId: number | null): Promise<number> {
     const deduct = await this.getUnlockAllDeductAmount(userId);
-    return Math.max(0, PRICE_UNLOCK_ALL_CENTS - deduct);
+    let amount = Math.max(0, PRICE_UNLOCK_ALL_CENTS - deduct);
+    if (userId != null) {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        select: ['agentId'],
+      });
+      if (user?.agentId != null) {
+        amount = Math.round(amount * 0.9);
+      }
+    }
+    return amount;
   }
 
   /** 创建权益记录（支付回调时由 PaymentProcessor 调用）；仅存 user_id */
@@ -283,5 +293,19 @@ export class EntitlementService {
   }
   getPriceUnlockAllCents(): number {
     return PRICE_UNLOCK_ALL_CENTS;
+  }
+
+  /**
+   * 单个热门专业价格（分），若用户 agent_id 不为空则九折
+   */
+  async getPricePopularMajorCentsForUser(userId: number): Promise<number> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['agentId'],
+    });
+    if (user?.agentId != null) {
+      return Math.round(PRICE_POPULAR_MAJOR_CENTS * 0.9);
+    }
+    return PRICE_POPULAR_MAJOR_CENTS;
   }
 }
