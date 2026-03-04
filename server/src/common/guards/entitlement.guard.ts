@@ -51,7 +51,7 @@ export class EntitlementGuard implements CanActivate {
 
     const setHasUnlockAll = async (uid: number) => {
       const userType = await this.entitlementService.getUserTypeByUserId(uid);
-      if (userType === 'adult') {
+      if (userType === 'admin' || userType === 'promoter' || userType === 'test') {
         request.hasUnlockAll = true;
         return;
       }

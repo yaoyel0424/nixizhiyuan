@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const [choicesCount, setChoicesCount] = useState(0) // 备选方案数量
   const [repeatCount, setRepeatCount] = useState(0) // 二次答题标识，>0 表示已完成过一轮
   const [dataLoaded, setDataLoaded] = useState(false) // 数据是否已加载
+  const [relatedDataUserType, setRelatedDataUserType] = useState<string | undefined>(undefined) // 来自 related-data-count 的 userType，用于控制推广二维码等展示
   
   // 判断各个维度是否完成（大于0）
   const hasScaleAnswers = scaleAnswersCount > 0
@@ -166,6 +167,7 @@ export default function ProfilePage() {
           setProvinceFavoritesCount(data.provinceFavoritesCount || 0)
           setChoicesCount(data.choicesCount || 0)
           setRepeatCount(data.repeatCount ?? 0)
+          setRelatedDataUserType(data.userType ?? undefined)
           setDataLoaded(true)
         })
         .catch((error) => {
@@ -180,6 +182,7 @@ export default function ProfilePage() {
       setProvinceFavoritesCount(0)
       setChoicesCount(0)
       setRepeatCount(0)
+      setRelatedDataUserType(undefined)
       setDataLoaded(false)
     }
   }, [isLogin, userInfo])
@@ -603,27 +606,29 @@ export default function ProfilePage() {
                 </View>
                 <View className="profile-page__card-item-content">
                   <Text className="profile-page__card-item-title">分享给朋友</Text>
-                  <Text className="profile-page__card-item-desc">邀请好友使用，推广有奖，一起赚</Text>
+                  <Text className="profile-page__card-item-desc">邀请好友使用</Text>
                 </View>
                 <Text className="profile-page__card-arrow">›</Text>
               </View>
 
-              {/* 我要推广：先创建 agent，再显示推广二维码 */}
-              {/* <View
-                className="profile-page__card-item"
-                onClick={promoteLoading ? undefined : handlePromote}
-              >
-                <View className="profile-page__card-icon profile-page__card-icon--share">
-                  <Text className="profile-page__card-icon-text">📢</Text>
+              {/* 我要推广：仅 admin / promoter / test 显示 */}
+              {(relatedDataUserType === 'admin' || relatedDataUserType === 'promoter' || relatedDataUserType === 'test') && (
+                <View
+                  className="profile-page__card-item"
+                  onClick={promoteLoading ? undefined : handlePromote}
+                >
+                  <View className="profile-page__card-icon profile-page__card-icon--share">
+                    <Text className="profile-page__card-icon-text">📢</Text>
+                  </View>
+                  <View className="profile-page__card-item-content">
+                    <Text className="profile-page__card-item-title">推广二维码</Text>
+                    <Text className="profile-page__card-item-desc">
+                      {promoteLoading ? '生成中…' : '点击弹出推广二维码'}
+                    </Text>
+                  </View>
+                  <Text className="profile-page__card-arrow">›</Text>
                 </View>
-                <View className="profile-page__card-item-content">
-                  <Text className="profile-page__card-item-title">我要推广</Text>
-                  <Text className="profile-page__card-item-desc">
-                    {promoteLoading ? '生成中…' : '点击弹出推广二维码'}
-                  </Text>
-                </View>
-                <Text className="profile-page__card-arrow">›</Text>
-              </View> */}
+              )}
             </View>
           </Card>
 

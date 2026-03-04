@@ -33,7 +33,7 @@ export class UserResponseDto {
   enrollType?: string;
 
   @Expose()
-  userType: 'child' | 'adult';
+  userType: 'child' | 'adult' | 'promoter' | 'admin' | 'test';
 
   @Expose()
   age?: number;

@@ -422,4 +422,6 @@ export interface UserRelatedDataResponse {
   /** 大于 0 表示可判断为二次答题（已完成过一轮） */
   repeatCount?: number
   preferredSubjects?: string | null
+  /** 用户类型：admin / promoter / test 时显示推广二维码等能力 */
+  userType?: 'child' | 'adult' | 'promoter' | 'admin' | 'test' | null
 }

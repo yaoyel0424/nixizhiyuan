@@ -342,7 +342,7 @@ export class UsersService {
     // 1. 只查询用户基本信息（不需要关联数据，只选择需要的字段）
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'province', 'preferredSubjects', 'secondarySubjects', 'enrollType'],
+      select: ['id', 'province', 'preferredSubjects', 'secondarySubjects', 'enrollType','userType'],
     });
 
     if (!user) {
@@ -499,6 +499,7 @@ export class UsersService {
         provinceFavorites: provinceFavoritesList,
         province: user.province || null,
         enrollType: user.enrollType || null,
+        userType: user.userType || null,
       },
       {
         excludeExtraneousValues: true,

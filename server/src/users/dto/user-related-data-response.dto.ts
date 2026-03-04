@@ -32,5 +32,8 @@ export class UserRelatedDataResponseDto {
 
   @Expose()
   enrollType?: string;
+
+  @Expose()
+  userType?: "child" | "adult" | "promoter" | "admin" | "test";
 }
 

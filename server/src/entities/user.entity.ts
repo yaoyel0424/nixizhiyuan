@@ -47,11 +47,11 @@ export class User {
 
     @Column({ 
         type: "enum", 
-        enum: ["child", "adult"], 
+        enum: ["child", "adult", "promoter", "admin", "test"], 
         default: "child",
         name: 'user_type'
     })
-    userType: "child" | "adult";
+    userType: "child" | "adult" | "promoter" | "admin" | "test";
 
     @Column({ nullable: true, name: 'age' })
     age: number;

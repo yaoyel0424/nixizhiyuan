@@ -197,7 +197,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         <DialogContent className="share-modal__content" showCloseButton={true} onClose={onClose}>
           <DialogHeader className="share-modal__header">
             <DialogTitle className="share-modal__title">分享给朋友</DialogTitle>
-            <Text className="share-modal__subtitle">邀请好友使用，推广有奖励，多邀多赚</Text>
+            <Text className="share-modal__subtitle">邀请好友使用</Text>
           </DialogHeader>
 
           <View className="share-modal__body">
