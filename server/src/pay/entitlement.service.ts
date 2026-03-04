@@ -6,6 +6,7 @@ import { UserEntitlement } from '@/entities/user-entitlement.entity';
 import { UserFreePopularMajorRecord } from '@/entities/user-free-popular-major-record.entity';
 import { PopularMajor } from '@/entities/popular-major.entity';
 import {
+  AGENT_DISCOUNT_RATE,
   FREE_POPULAR_MAJOR_COUNT,
   PRICE_POPULAR_MAJOR_CENTS,
   PRICE_UNLOCK_ALL_CENTS,
@@ -271,7 +272,7 @@ export class EntitlementService {
             select: ['agentId'],
           }))?.agentId != null;
     if (hasAgent) {
-      const priceAfterDiscount = Math.round(PRICE_UNLOCK_ALL_CENTS * 0.9);
+      const priceAfterDiscount = Math.round(PRICE_UNLOCK_ALL_CENTS * AGENT_DISCOUNT_RATE);
       return Math.max(0, priceAfterDiscount - deduct);
     }
     return Math.max(0, PRICE_UNLOCK_ALL_CENTS - deduct);
@@ -320,7 +321,7 @@ export class EntitlementService {
             select: ['agentId'],
           }))?.agentId != null;
     if (hasAgent) {
-      return Math.round(PRICE_POPULAR_MAJOR_CENTS * 0.9);
+      return Math.round(PRICE_POPULAR_MAJOR_CENTS * AGENT_DISCOUNT_RATE);
     }
     return PRICE_POPULAR_MAJOR_CENTS;
   }

@@ -25,7 +25,12 @@ import { Queue } from 'bullmq';
 import { Order } from '@/entities/order.entity';
 import { PayLoggerService } from './pay-logger.service';
 import type { PaymentJobPayload } from './pay.types';
-import { PRODUCT_TYPE_POPULAR_MAJOR, PRODUCT_TYPE_UNLOCK_ALL } from './pay.constants';
+import {
+  AGENT_DISCOUNT_RATE,
+  AGENT_SPLIT_RATIO,
+  PRODUCT_TYPE_POPULAR_MAJOR,
+  PRODUCT_TYPE_UNLOCK_ALL,
+} from './pay.constants';
 import { EntitlementGuard } from '@/common/guards/entitlement.guard';
 import { RequireEntitlement } from '@/common/decorators/require-entitlement.decorator';
 import { UsersService } from '@/users/users.service';
@@ -130,7 +135,7 @@ export class PayController {
         throw new BadRequestException('您已满足解锁全部条件，已为您解锁（热门专业已包含在内）');
       }
       const hasAgent = userInfo.agentId != null || agentOpenid;
-      const agentAmount = hasAgent ? Math.round(amountNum * 0.29) : undefined;
+      const agentAmount = hasAgent ? Math.round(amountNum * AGENT_SPLIT_RATIO) : undefined;
       attach = JSON.stringify({
         productType: PRODUCT_TYPE_UNLOCK_ALL,
         ...(userInfo.agentId != null && { agentId: userInfo.agentId }),
@@ -146,7 +151,7 @@ export class PayController {
         throw new BadRequestException('amount 必须为正整数（分）');
       }
       if (userInfo.agentId != null) {
-        amountNum = Math.round(amountNum * 0.9);
+        amountNum = Math.round(amountNum * AGENT_DISCOUNT_RATE);
       }
       if (userInfo.agentId != null || agentOpenid) {
         attach = JSON.stringify({
