@@ -611,8 +611,8 @@ export default function ProfilePage() {
                 <Text className="profile-page__card-arrow">›</Text>
               </View>
 
-              {/* 我要推广：仅 admin / promoter / test 显示 */}
-              {(relatedDataUserType === 'admin' || relatedDataUserType === 'promoter' || relatedDataUserType === 'test') && (
+              {/* 我要推广：仅当已拉取到 related-data 且 userType 为 admin / promoter / test 时显示，child / adult 不显示 */}
+              {dataLoaded && (relatedDataUserType === 'admin' || relatedDataUserType === 'promoter' || relatedDataUserType === 'test') && (
                 <View
                   className="profile-page__card-item"
                   onClick={promoteLoading ? undefined : handlePromote}
