@@ -115,11 +115,14 @@ export class PayController {
         userId,
         userInfo.agentId,
       );
+      const hasAgentPopular = userInfo.agentId != null || agentOpenid;
+      const agentAmountPopular = hasAgentPopular ? Math.round(amountNum * AGENT_SPLIT_RATIO) : undefined;
       attach = JSON.stringify({
         productType: PRODUCT_TYPE_POPULAR_MAJOR,
         majorCode: majorCode.trim(),
         ...(userInfo.agentId != null && { agentId: userInfo.agentId }),
         ...(agentOpenid && { agentOpenid }),
+        ...(agentAmountPopular != null && { agentAmount: agentAmountPopular }),
       });
     } else if (productType === PRODUCT_TYPE_UNLOCK_ALL) {
       const hasUnlockAll = await this.entitlementService.hasUnlockAll(userId);

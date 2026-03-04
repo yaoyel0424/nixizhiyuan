@@ -289,8 +289,10 @@ export class PayService implements OnModuleInit {
   }
 
   /**
-   * 查询分账结果（普通商户 GET /v3/profitsharing/orders）
-   * @returns status: ACCEPTED | PROCESSING | FINISHED | CLOSED，以及 order_id、receivers 等
+   * 查询分账结果（普通商户，符合官方文档）
+   * 请求：GET /v3/profitsharing/orders/{out_order_no}?transaction_id=xxx
+   * 文档：https://pay.weixin.qq.com/doc/v3/merchant/4012525210
+   * @returns 统一带 status 字段（来自接口 state），便于下游判断：PROCESSING | FINISHED | CLOSED 等
    */
   async queryProfitsharingOrder(
     transactionId: string,
@@ -300,9 +302,9 @@ export class PayService implements OnModuleInit {
       this.logger.warn('微信支付证书未初始化，无法查询分账结果');
       return null;
     }
-    // 参数顺序与微信文档示例一致：transaction_id 先，out_order_no 后
-    const query = new URLSearchParams({ transaction_id: transactionId, out_order_no: outOrderNo }).toString();
-    const urlPath = `/v3/profitsharing/orders?${query}`;
+    // 官方文档：out_order_no 为路径参数，transaction_id 为 query 参数
+    const pathSegment = encodeURIComponent(outOrderNo);
+    const urlPath = `/v3/profitsharing/orders/${pathSegment}?transaction_id=${encodeURIComponent(transactionId)}`;
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = crypto.randomBytes(16).toString('hex');
     const signStr = `GET\n${urlPath}\n${timestamp}\n${nonce}\n\n`;
@@ -326,7 +328,16 @@ export class PayService implements OnModuleInit {
       return null;
     }
     try {
-      return JSON.parse(bodyText) as { status: string; order_id?: string; receivers?: any[]; [k: string]: any };
+      const data = JSON.parse(bodyText) as {
+        state?: string;
+        status?: string;
+        order_id?: string;
+        receivers?: any[];
+        [k: string]: any;
+      };
+      // 官方返回字段为 state（PROCESSING/FINISHED），下游统一用 status
+      const status = data.status ?? data.state ?? '';
+      return { ...data, status };
     } catch {
       return null;
     }
