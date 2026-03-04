@@ -123,7 +123,7 @@ export class PayController {
         throw new BadRequestException('您已满足解锁全部条件，已为您解锁（热门专业已包含在内）');
       }
       const hasAgent = userInfo.agentId != null || agentOpenid;
-      const agentAmount = hasAgent ? Math.round(amountNum * 0.3) : undefined;
+      const agentAmount = hasAgent ? Math.round(amountNum * 0.29) : undefined;
       attach = JSON.stringify({
         productType: PRODUCT_TYPE_UNLOCK_ALL,
         ...(userInfo.agentId != null && { agentId: userInfo.agentId }),
