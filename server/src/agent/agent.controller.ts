@@ -33,19 +33,24 @@ export class AgentController {
   ) {}
 
   /**
-   * 获取当前用户的代理商信息：若自己是代理商则返回自己创建的；否则返回自己归属的代理商家（user.agent_id）
+   * 获取当前用户的代理商信息：若自己的 userType 为代理商（promoter）则返回自己创建的 agent；
+   * 否则返回自己归属的代理商（user.agent_id）；都没有则返回空。
    */
-  @Get('me') 
+  @Get('me')
   @ApiOperation({ summary: '获取当前用户的代理商信息' })
   @ApiResponse({ status: 200, description: '自己创建的代理商或归属的代理商家，均无时返回空对象', type: AgentResponseDto })
-  @ApiResponse({ status: 401, description: '未登录' }) 
+  @ApiResponse({ status: 401, description: '未登录' })
   async getMyAgent(
-    @CurrentUser() user: { id: number },  
-  ): Promise<AgentResponseDto | Record<string, never>> {   
-  
-    let agent = await this.agentService.findByCreatorId(user.id);
-    if (!agent && user.id) {
-      const userInfo = await this.usersService.findOne(user.id);
+    @CurrentUser() user: { id: number },
+  ): Promise<AgentResponseDto | Record<string, never>> {
+    if (!user?.id) {
+      return {};
+    }
+    const userInfo = await this.usersService.findOne(user.id);
+    let agent = null;
+    if (userInfo.userType === 'promoter') {
+      agent = await this.agentService.findByCreatorId(user.id);
+    } else {
       if (userInfo.agentId != null) {
         agent = await this.agentService.findById(userInfo.agentId);
       }
