@@ -73,6 +73,9 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState(false) // 头像加载失败标志
   const [shareModalOpen, setShareModalOpen] = useState(false) // 分享弹窗显示状态
   const shareUuidRef = useRef<string | null>(null) // 分享链接携带的代理商 uuid（来自 /agent/me）
+  /** 弹窗生成的宣传图本地路径，优先用于分享卡片；无则用 logo 兜底 */
+  const shareImagePathRef = useRef<string>('')
+  const SHARE_IMAGE_URL = require('@/assets/images/logo.png') // 兜底：仅 logo
   const [promoteModalOpen, setPromoteModalOpen] = useState(false) // 推广二维码弹窗
   const [promoteQrcodeImage, setPromoteQrcodeImage] = useState<string>('') // 推广码 base64
   const [promoteLoading, setPromoteLoading] = useState(false) // 生成推广码中
@@ -392,7 +395,7 @@ export default function ProfilePage() {
   }
 
   /**
-   * 小程序分享给朋友：带 uuid 参数便于好友通过链接绑定；文案体现推广赚钱
+   * 小程序分享给朋友：分享主页面，优先用弹窗生成的宣传图（蓝底+文案），否则用 logo
    */
   useShareAppMessage(() => {
     const uuid = shareUuidRef.current
@@ -402,12 +405,12 @@ export default function ProfilePage() {
     return {
       title: '逆袭智愿 - 找喜欢与天赋，还能推广赚奖励，邀好友一起用',
       path,
-      imageUrl: '',
+      imageUrl: shareImagePathRef.current || SHARE_IMAGE_URL,
     }
   })
 
   /**
-   * 小程序分享到朋友圈
+   * 小程序分享到朋友圈：同上，优先宣传图
    */
   useShareTimeline(() => {
     const uuid = shareUuidRef.current
@@ -415,7 +418,7 @@ export default function ProfilePage() {
     return {
       title: '逆袭智愿 - 找喜欢与天赋，邀好友一起用，推广有奖',
       query,
-      imageUrl: '',
+      imageUrl: shareImagePathRef.current || SHARE_IMAGE_URL,
     }
   })
 
@@ -685,10 +688,13 @@ export default function ProfilePage() {
       </View>
       <BottomNav />
       
-      {/* 分享弹窗 */}
+      {/* 分享弹窗：生成宣传图后回传本地路径，用作分享卡片，不暴露昵称 */}
       <ShareModal
         open={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
+        onShareImageReady={(localPath) => {
+          shareImagePathRef.current = localPath
+        }}
       />
 
       {/* 推广二维码弹窗 */}

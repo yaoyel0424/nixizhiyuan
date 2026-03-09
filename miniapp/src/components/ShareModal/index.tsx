@@ -10,6 +10,8 @@ export interface ShareModalProps {
   open: boolean
   /** 关闭弹窗回调 */
   onClose: () => void
+  /** 生成宣传图后回调本地临时路径，供分享卡片 imageUrl 使用（不依赖上传） */
+  onShareImageReady?: (localPath: string) => void
 }
 
 /**
@@ -19,9 +21,14 @@ export interface ShareModalProps {
 export const ShareModal: React.FC<ShareModalProps> = ({
   open,
   onClose,
+  onShareImageReady,
 }) => {
   const [saving, setSaving] = useState(false)
+  /** 宣传图已生成（本地路径已就绪），可展示「分享给朋友」按钮 */
+  const [shareImageReady, setShareImageReady] = useState(false)
   const canvasRef = useRef<any>(null)
+  const openRef = useRef(open)
+  openRef.current = open
 
   /**
    * 保存分享图片到相册
@@ -71,88 +78,79 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           canvas.width = canvasWidthPx
           canvas.height = canvasHeightPx
 
-          // 设置 Canvas 显示尺寸
-          if (canvas) {
-            // 绘制背景（渐变蓝色）
+          // 绘制背景（渐变蓝色）
             const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeightPx)
             gradient.addColorStop(0, '#1A4099')
             gradient.addColorStop(1, '#2563eb')
             ctx.fillStyle = gradient
             ctx.fillRect(0, 0, canvasWidthPx, canvasHeightPx)
 
-            // 绘制文字内容和导出图片
-            function drawText() {
-              // 尝试绘制Logo（如果可能）
-              const logoSize = 120 * dpr
-              const logoX = (canvasWidthPx - logoSize) / 2
-              const logoY = 100 * dpr
-              
-              // 先绘制文字，Logo在UI中显示即可
-              // 绘制标题 "逆袭智愿"
-              ctx.fillStyle = '#FFFFFF'
-              ctx.font = `bold ${72 * dpr}px sans-serif`
-              ctx.textAlign = 'center'
-              ctx.textBaseline = 'middle'
-              ctx.fillText('逆袭智愿', canvasWidthPx / 2, 280 * dpr)
+            // 装饰：右上、左下半透明圆形
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'
+            ctx.beginPath()
+            ctx.arc(canvasWidthPx * 0.85, canvasHeightPx * 0.15, canvasWidthPx * 0.25, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
+            ctx.beginPath()
+            ctx.arc(canvasWidthPx * 0.12, canvasHeightPx * 0.78, canvasWidthPx * 0.2, 0, Math.PI * 2)
+            ctx.fill()
 
-              // 绘制问题文案
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-              ctx.font = `${32 * dpr}px sans-serif`
-              ctx.fillText('你是否在想:', canvasWidthPx / 2, 360 * dpr)
-              ctx.font = `${30 * dpr}px sans-serif`
-              ctx.fillText('我的喜欢是什么?天赋在哪里?', canvasWidthPx / 2, 420 * dpr)
-              ctx.fillText('怎样的专业,能让我闪闪发光?', canvasWidthPx / 2, 470 * dpr)
-              ctx.fillText('如何用分数,创造出最理想的志愿?', canvasWidthPx / 2, 520 * dpr)
+            // 宣传文案：textBaseline 为 middle，中心距需 > 两行字高之和才有可见空隙
+            const scale = Math.min(1, canvasWidthPx / 750)
+            const fTitle = 68 * scale
+            const fMid = fTitle
+            const fLast = 56 * scale
+            const lineGap = 96 * scale
+            const extraGap = 32 * scale   // 希望看到的空白像素
+            const titleGap = (fTitle + fMid) / 2 + extraGap  // 逆袭智愿与中间文字：留出明显间距
+            const lastGap = (fMid + fLast) / 2 + extraGap    // 最后一句与中间文字：留出明显间距
+            const y0 = 140 * scale
+            const midY0 = y0 + titleGap
+            ctx.fillStyle = '#FFFFFF'
+            ctx.font = `bold ${fTitle}px sans-serif`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText('逆袭智愿', canvasWidthPx / 2, y0)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+            ctx.font = `${fMid}px sans-serif`
+            ctx.fillText('你是否在想:', canvasWidthPx / 2, midY0)
+            ctx.fillText('我的喜欢是什么?天赋在哪里?', canvasWidthPx / 2, midY0 + lineGap)
+            ctx.fillText('怎样的专业,能让我闪闪发光?', canvasWidthPx / 2, midY0 + lineGap * 2)
+            ctx.fillText('如何用分数,创造出最理想的志愿?', canvasWidthPx / 2, midY0 + lineGap * 3)
+            ctx.fillStyle = '#FFFFFF'
+            ctx.font = `bold ${fLast}px sans-serif`
+            ctx.fillText('让「喜欢」和「天赋」,带你找到答案', canvasWidthPx / 2, midY0 + lineGap * 3 + lastGap)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+            ctx.font = `${fMid}px sans-serif`
+            ctx.fillText('逆袭智愿体验版', canvasWidthPx / 2, canvasHeightPx - 80 * scale)
 
-              // 绘制底部文案
-              ctx.fillStyle = '#FFFFFF'
-              ctx.font = `bold ${36 * dpr}px sans-serif`
-              ctx.textAlign = 'center'
-              ctx.textBaseline = 'middle'
-              ctx.fillText('让「喜欢」和「天赋」,带你找到答案', canvasWidthPx / 2, 600 * dpr)
-
-              // 绘制底部提示文字
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-              ctx.font = `${28 * dpr}px sans-serif`
-              ctx.fillText('逆袭智愿体验版', canvasWidthPx / 2, canvasHeightPx - 100 * dpr)
-
-              // 导出图片 - 使用 setTimeout 确保绘制完成
-              setTimeout(() => {
-                Taro.canvasToTempFilePath({
-                  canvas: canvas,
-                  success: (exportRes) => {
-                    // 保存图片到相册
-                    Taro.saveImageToPhotosAlbum({
-                      filePath: exportRes.tempFilePath,
-                      success: () => {
-                        Taro.showToast({
-                          title: '保存成功',
-                          icon: 'success',
-                        })
-                        setSaving(false)
-                      },
-                      fail: (err) => {
-                        console.error('保存图片失败:', err)
-                        Taro.showToast({
-                          title: err.errMsg || '保存失败，请检查相册权限',
-                          icon: 'none',
-                        })
-                        setSaving(false)
-                      },
-                    })
-                  },
-                  fail: (err) => {
-                    console.error('导出图片失败:', err)
-                    Taro.showToast({
-                      title: err.errMsg || '生成图片失败',
-                      icon: 'none',
-                    })
-                    setSaving(false)
-                  },
-                })
-              }, 500)
-            }
-          }
+            setTimeout(() => {
+              Taro.canvasToTempFilePath({
+                canvas,
+                success: (exportRes) => {
+                  Taro.saveImageToPhotosAlbum({
+                    filePath: exportRes.tempFilePath,
+                    success: () => {
+                      Taro.showToast({ title: '保存成功', icon: 'success' })
+                      setSaving(false)
+                    },
+                    fail: (err) => {
+                      console.error('保存图片失败:', err)
+                      Taro.showToast({
+                        title: err.errMsg || '保存失败，请检查相册权限',
+                        icon: 'none',
+                      })
+                      setSaving(false)
+                    },
+                  })
+                },
+                fail: (err) => {
+                  console.error('导出图片失败:', err)
+                  Taro.showToast({ title: err.errMsg || '生成图片失败', icon: 'none' })
+                  setSaving(false)
+                },
+              })
+            }, 500)
         })
     } catch (error) {
       console.error('保存分享图片失败:', error)
@@ -174,21 +172,101 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   }
 
   /**
-   * 分享成功回调
+   * 弹窗打开时生成宣传图（蓝底+装饰圆+文案），导出为本地临时文件并回传路径，供分享卡片使用（不依赖上传）
    */
-  const onShareAppMessage = () => {
-    return {
-      title: '逆袭智愿 - 让「喜欢」和「天赋」，带你找到答案',
-      path: '/pages/index/index',
-      imageUrl: '', // 可选：分享图片
-    }
-  }
-
-  // 在页面中注册分享函数（如果需要在 profile 页面处理）
   useEffect(() => {
-    if (open) {
-      // 可以在这里设置页面分享配置
+    if (!open || !onShareImageReady) return
+    setShareImageReady(false)
+    const fallback = setTimeout(() => {
+      if (openRef.current) setShareImageReady(true)
+    }, 6000)
+    const timer = setTimeout(() => {
+      Promise.resolve(Taro.getWindowInfo()).then((windowInfo) => {
+        const windowWidth = windowInfo.windowWidth
+        const canvasWidth = 750
+        const canvasHeight = 1334
+        const dpr = windowInfo.pixelRatio || 2
+        const canvasWidthPx = (canvasWidth / 750) * windowWidth * dpr
+        const canvasHeightPx = (canvasHeight / 750) * windowWidth * dpr
+
+        const query = Taro.createSelectorQuery()
+        query.select('#shareCanvas').fields({ node: true, size: true }).exec((res) => {
+          if (!res?.[0]?.node) {
+            clearTimeout(fallback)
+            if (openRef.current) setShareImageReady(true)
+            return
+          }
+          const canvas = res[0].node
+          const ctx = canvas.getContext('2d')
+          canvas.width = canvasWidthPx
+          canvas.height = canvasHeightPx
+
+          const gradient = ctx.createLinearGradient(0, 0, 0, canvasHeightPx)
+          gradient.addColorStop(0, '#1A4099')
+          gradient.addColorStop(1, '#2563eb')
+          ctx.fillStyle = gradient
+          ctx.fillRect(0, 0, canvasWidthPx, canvasHeightPx)
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'
+          ctx.beginPath()
+          ctx.arc(canvasWidthPx * 0.85, canvasHeightPx * 0.15, canvasWidthPx * 0.25, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
+          ctx.beginPath()
+          ctx.arc(canvasWidthPx * 0.12, canvasHeightPx * 0.78, canvasWidthPx * 0.2, 0, Math.PI * 2)
+          ctx.fill()
+
+          const scale = Math.min(1, canvasWidthPx / 750)
+          const fTitle = 68 * scale
+          const fMid = fTitle
+          const fLast = 56 * scale
+          const lineGap = 96 * scale
+          const extraGap = 32 * scale
+          const titleGap = (fTitle + fMid) / 2 + extraGap
+          const lastGap = (fMid + fLast) / 2 + extraGap
+          const y0 = 140 * scale
+          const midY0 = y0 + titleGap
+          ctx.fillStyle = '#FFFFFF'
+          ctx.font = `bold ${fTitle}px sans-serif`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText('逆袭智愿', canvasWidthPx / 2, y0)
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+          ctx.font = `${fMid}px sans-serif`
+          ctx.fillText('你是否在想:', canvasWidthPx / 2, midY0)
+          ctx.fillText('我的喜欢是什么?天赋在哪里?', canvasWidthPx / 2, midY0 + lineGap)
+          ctx.fillText('怎样的专业,能让我闪闪发光?', canvasWidthPx / 2, midY0 + lineGap * 2)
+          ctx.fillText('如何用分数,创造出最理想的志愿?', canvasWidthPx / 2, midY0 + lineGap * 3)
+          ctx.fillStyle = '#FFFFFF'
+          ctx.font = `bold ${fLast}px sans-serif`
+          ctx.fillText('让「喜欢」和「天赋」,带你找到答案', canvasWidthPx / 2, midY0 + lineGap * 3 + lastGap)
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+          ctx.font = `${fMid}px sans-serif`
+          ctx.fillText('逆袭智愿体验版', canvasWidthPx / 2, canvasHeightPx - 80 * scale)
+
+          setTimeout(() => {
+              Taro.canvasToTempFilePath({
+                canvas,
+              success: (exportRes) => {
+                if (openRef.current && exportRes.tempFilePath) {
+                  clearTimeout(fallback)
+                  onShareImageReady(exportRes.tempFilePath)
+                  setShareImageReady(true)
+                }
+              },
+            })
+          }, 500)
+        })
+      })
+    }, 500)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(fallback)
     }
+  }, [open, onShareImageReady])
+
+  useEffect(() => {
+    if (!open) setShareImageReady(false)
   }, [open])
 
   return (
@@ -232,9 +310,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               <Button
                 className="share-modal__btn share-modal__btn--primary"
                 openType="share"
+                disabled={onShareImageReady != null && !shareImageReady}
                 onClick={handleShareApp}
               >
-                <Text className="share-modal__btn-text">📤 分享给朋友</Text>
+                <Text className="share-modal__btn-text">
+                  {onShareImageReady != null && !shareImageReady
+                    ? '生成分享图中…'
+                    : '📤 分享给朋友'}
+                </Text>
               </Button>
               <View className="share-modal__btn share-modal__btn--secondary" onClick={handleSaveImage}>
                 <Text className="share-modal__btn-text">
