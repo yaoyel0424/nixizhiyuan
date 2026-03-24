@@ -498,6 +498,92 @@ export class PortraitsService {
   }
 
   /**
+   * 获取用户在第一/第三象限的元素集合（不依赖画像兜底顺序）
+   * 用于按象限筛选学习步骤内容：
+   * - 第一象限：like 前20% + talent 前20% 且成对
+   * - 第三象限：like 后20% + talent 后20% 且成对
+   */
+  async getUserQuadrantElementBuckets(userId: number) {
+    const elementScores = await this.calculateUserElementScores(userId);
+    const likeElements = elementScores.filter((item) => item.elementType === 'like');
+    const talentElements = elementScores.filter((item) => item.elementType === 'talent');
+
+    const likeScores = likeElements.map((e) => e.score);
+    const talentScores = talentElements.map((e) => e.score);
+    const likeRange =
+      likeScores.length > 0 ? Math.max(...likeScores) - Math.min(...likeScores) : 0;
+    const talentRange =
+      talentScores.length > 0 ? Math.max(...talentScores) - Math.min(...talentScores) : 0;
+    if (likeRange < 3 || talentRange < 3) {
+      return {
+        firstQuadrant: { likeElements: [], talentElements: [] },
+        thirdQuadrant: { likeElements: [], talentElements: [] },
+      };
+    }
+
+    const likeSortedDesc = [...likeElements].sort((a, b) => b.score - a.score);
+    const likeTop20Count = Math.max(1, Math.ceil(likeSortedDesc.length * 0.2));
+    const likeTop20Threshold = likeSortedDesc[likeTop20Count - 1]?.score ?? -Infinity;
+    const likeTop20 = likeSortedDesc.filter((item) => item.score >= likeTop20Threshold);
+
+    const talentSortedDesc = [...talentElements].sort((a, b) => b.score - a.score);
+    const talentTop20Count = Math.max(1, Math.ceil(talentSortedDesc.length * 0.2));
+    const talentTop20Threshold = talentSortedDesc[talentTop20Count - 1]?.score ?? -Infinity;
+    const talentTop20 = talentSortedDesc.filter((item) => item.score >= talentTop20Threshold);
+
+    const likeSortedAsc = [...likeElements].sort((a, b) => a.score - b.score);
+    const likeBottom20Count = Math.max(1, Math.ceil(likeSortedAsc.length * 0.2));
+    const likeBottom20Threshold = likeSortedAsc[likeBottom20Count - 1]?.score ?? Infinity;
+    const likeBottom20 = likeSortedAsc.filter((item) => item.score <= likeBottom20Threshold);
+
+    const talentSortedAsc = [...talentElements].sort((a, b) => a.score - b.score);
+    const talentBottom20Count = Math.max(1, Math.ceil(talentSortedAsc.length * 0.2));
+    const talentBottom20Threshold = talentSortedAsc[talentBottom20Count - 1]?.score ?? Infinity;
+    const talentBottom20 = talentSortedAsc.filter(
+      (item) => item.score <= talentBottom20Threshold,
+    );
+
+    const talentTop20IdSet = new Set(talentTop20.map((t) => t.elementId));
+    const talentBottom20IdSet = new Set(talentBottom20.map((t) => t.elementId));
+
+    const q1Likes = likeTop20.filter(
+      (like) =>
+        like.correspondingElementId != null &&
+        talentTop20IdSet.has(like.correspondingElementId),
+    );
+    const q1TalentIds = new Set(q1Likes.map((l) => l.correspondingElementId!));
+    const q1Talents = talentTop20.filter((t) => q1TalentIds.has(t.elementId));
+
+    const q3Likes = likeBottom20.filter(
+      (like) =>
+        like.correspondingElementId != null &&
+        talentBottom20IdSet.has(like.correspondingElementId),
+    );
+    const q3TalentIds = new Set(q3Likes.map((l) => l.correspondingElementId!));
+    const q3Talents = talentBottom20.filter((t) => q3TalentIds.has(t.elementId));
+
+    const formatItem = (item: ElementScoreInfo) => ({
+      elementId: item.elementId,
+      elementName: item.elementName,
+      elementType: item.elementType,
+      score: item.score,
+      dimension: item.dimension,
+      correspondingElementId: item.correspondingElementId,
+    });
+
+    return {
+      firstQuadrant: {
+        likeElements: q1Likes.map(formatItem),
+        talentElements: q1Talents.map(formatItem),
+      },
+      thirdQuadrant: {
+        likeElements: q3Likes.map(formatItem),
+        talentElements: q3Talents.map(formatItem),
+      },
+    };
+  }
+
+  /**
    * 创建或更新画像反馈：同一用户对同一画像仅保留一条，存在则更新选项
    * @param userId 用户ID
    * @param option 反馈选项

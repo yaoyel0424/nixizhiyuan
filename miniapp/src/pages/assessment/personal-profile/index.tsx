@@ -367,7 +367,7 @@ function WordCloudCSS({
               }}
               onClick={() => {
                 if (isCurrent) {
-                  handleItemClick(item.portrait);
+                handleItemClick(item.portrait);
                 } else {
                   setSafeIndex(i);
                 }
@@ -382,7 +382,7 @@ function WordCloudCSS({
                 {item.portrait.status && (
                   <Text className="word-cloud-css__card-status" numberOfLines={2}>
                     {item.portrait.status}
-                  </Text>
+              </Text>
                 )}
                 {/* 重点二：元素名称 — 喜欢元素、天赋元素，标签+名称突出 */}
                 <View className="word-cloud-css__card-elements">
@@ -433,7 +433,7 @@ function WordCloudCSS({
                 {(item.portrait.partOneMainTitle || item.portrait.partOneSubTitle || item.portrait.partOneDescription || item.portrait.status) && (() => {
                   const conflictTraits = parseTraits(item.portrait.partOneDescription || item.portrait.status || '');
                   const hasConflictContent = !!item.portrait.partOneSubTitle || conflictTraits.length > 0;
-                  return (
+                    return (
                     <View className="word-cloud-css__card-section word-cloud-css__card-section--secondary">
                       {item.portrait.partOneMainTitle && (
                         <Text className="word-cloud-css__card-subtitle">{item.portrait.partOneMainTitle}</Text>
@@ -444,9 +444,9 @@ function WordCloudCSS({
                             <View className="word-cloud-css__card-tags">
                               <Text className="word-cloud-css__card-tag word-cloud-css__card-tag--green">
                                 {item.portrait.partOneSubTitle}
-                              </Text>
-                            </View>
-                          )}
+                            </Text>
+                          </View>
+                        )}
                           {conflictTraits.length > 0 && (
                             <View className="word-cloud-css__card-traits">
                               {conflictTraits.map((trait, index) => (
@@ -454,13 +454,13 @@ function WordCloudCSS({
                                    <Text className="word-cloud-css__card-trait-text">{trait}</Text>
                                 </View>
                               ))}
-                            </View>
-                          )}
-                        </>
+                          </View>
+                        )}
+                      </>
                       )}
                     </View>
-                  );
-                })()}
+                    );
+                  })()}
                 {/* 三大挑战 — 放在核心矛盾（主副标题+特质）下面，标题后跟查看详情链接 */}
                 {item.portrait.quadrant1Challenges && item.portrait.quadrant1Challenges.length > 0 && (
                   <View className="word-cloud-css__card-section">
@@ -483,14 +483,14 @@ function WordCloudCSS({
                         </Text>
                       ))}
                     </View>
-                  </View>
-                )}
+                </View>
+              )}
                 {/* 核心生态位 — 放在三大挑战下面，查看详情跳转到详情页核心生态位 */}
                 {item.portrait.quadrant1Niches && item.portrait.quadrant1Niches.length > 0 && (
                   <View className="word-cloud-css__card-section">
                     <View className="word-cloud-css__card-section-title-row">
                       <Text className="word-cloud-css__card-section-title">独特价值生态位</Text>
-                      <Text
+                <Text 
                         className="word-cloud-css__card-detail-link"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -498,7 +498,7 @@ function WordCloudCSS({
                         }}
                       >
                         查看详情
-                      </Text>
+                </Text>
                     </View>
                     <View className="word-cloud-css__card-tags">
                       {item.portrait.quadrant1Niches.map((n) => (
@@ -1752,9 +1752,9 @@ export default function PersonalProfilePage() {
                   onClick={() => handleFeedbackOption(opt)}
                 >
                   <Text className="personal-profile-page__feedback-option-text">{opt}</Text>
-                </View>
+        </View>
               ))}
-            </View>
+          </View>
           </View>
         )}
       </View>
@@ -1776,7 +1776,7 @@ export default function PersonalProfilePage() {
           <Text className="personal-profile-page__float-button-text">总览报告</Text>
         </View>
       </View>
-      
+
       <BottomNav />
 
       {/* 问卷完成提示弹窗 */}

@@ -16,6 +16,7 @@ export default {
     'pages/assessment/popular-majors/index',
     'pages/assessment/report/index',
     'pages/assessment/provinces/index',
+    'pages/assessment/learning-step/index',
     'pages/assessment/career-exploration/index'
   ],
   window: {

@@ -13,7 +13,7 @@ const SPLIT_QUEUE = 'split';
 /** 发起分账后等待多久再查询结果（毫秒） */
 const QUERY_DELAY_MS = 2000;
 /** 若首次查询为处理中，再等多久重试一次（毫秒） */
-const QUERY_RETRY_DELAY_MS = 3000;
+const QUERY_RETRY_DELAY_MS = 2000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

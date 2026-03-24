@@ -224,6 +224,30 @@ export default function AssessmentPage() {
               </View>
             </Card>
 
+            {/* 学习方法探索 */}
+            <Card
+              className="assessment-page__result-card"
+              onClick={() => {
+                Taro.navigateTo({
+                  url: '/pages/assessment/learning-step/index'
+                })
+              }}
+            >
+              <View className="assessment-page__result-card-content">
+                <View className="assessment-page__result-card-icon assessment-page__result-card-icon--orange">
+                  <Text>📚</Text>
+                </View>
+                <View className="assessment-page__result-card-info">
+                  <Text className="assessment-page__result-card-title assessment-page__result-card-title--orange">
+                    学习方法探索
+                  </Text>
+                  <Text className="assessment-page__result-card-desc">
+                    根据喜欢与天赋，探索更适合你的学习策略与提分路径
+                  </Text>
+                </View>
+              </View>
+            </Card>
+
             {/* 心动专业 */}
             <Card 
               className="assessment-page__result-card"
