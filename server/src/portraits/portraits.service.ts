@@ -562,6 +562,43 @@ export class PortraitsService {
     const q3TalentIds = new Set(q3Likes.map((l) => l.correspondingElementId!));
     const q3Talents = talentBottom20.filter((t) => q3TalentIds.has(t.elementId));
 
+    /**
+     * 同一象限内排序：
+     * 1) 喜欢+天赋合计分倒序
+     * 2) 合计分相等时，喜欢得分倒序
+     * 3) 再用天赋得分与 elementId 保证稳定排序
+     */
+    const sortQuadrantByCombinedScore = (
+      likes: ElementScoreInfo[],
+      talents: ElementScoreInfo[],
+    ) => {
+      const talentById = new Map(talents.map((t) => [t.elementId, t]));
+      const sortedLikes = [...likes].sort((a, b) => {
+        const aTalent = a.correspondingElementId != null ? talentById.get(a.correspondingElementId) : undefined;
+        const bTalent = b.correspondingElementId != null ? talentById.get(b.correspondingElementId) : undefined;
+        const aCombined = a.score + (aTalent?.score ?? -Infinity);
+        const bCombined = b.score + (bTalent?.score ?? -Infinity);
+        if (bCombined !== aCombined) return bCombined - aCombined;
+        if (b.score !== a.score) return b.score - a.score;
+        if ((bTalent?.score ?? -Infinity) !== (aTalent?.score ?? -Infinity)) {
+          return (bTalent?.score ?? -Infinity) - (aTalent?.score ?? -Infinity);
+        }
+        return a.elementId - b.elementId;
+      });
+
+      const sortedTalentIdOrder = sortedLikes
+        .map((l) => l.correspondingElementId)
+        .filter((id): id is number => id != null);
+      const sortedTalents = sortedTalentIdOrder
+        .map((id) => talentById.get(id))
+        .filter((t): t is ElementScoreInfo => !!t);
+
+      return { likes: sortedLikes, talents: sortedTalents };
+    };
+
+    const sortedQ1 = sortQuadrantByCombinedScore(q1Likes, q1Talents);
+    const sortedQ3 = sortQuadrantByCombinedScore(q3Likes, q3Talents);
+
     const formatItem = (item: ElementScoreInfo) => ({
       elementId: item.elementId,
       elementName: item.elementName,
@@ -573,12 +610,12 @@ export class PortraitsService {
 
     return {
       firstQuadrant: {
-        likeElements: q1Likes.map(formatItem),
-        talentElements: q1Talents.map(formatItem),
+        likeElements: sortedQ1.likes.map(formatItem),
+        talentElements: sortedQ1.talents.map(formatItem),
       },
       thirdQuadrant: {
-        likeElements: q3Likes.map(formatItem),
-        talentElements: q3Talents.map(formatItem),
+        likeElements: sortedQ3.likes.map(formatItem),
+        talentElements: sortedQ3.talents.map(formatItem),
       },
     };
   }

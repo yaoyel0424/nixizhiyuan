@@ -28,7 +28,6 @@ export class LearningStepController {
    * 根据用户喜欢和天赋，获取步骤中的个性化内容
    */
   @Get('user-content')
-  @Cache()
   @ApiOperation({ summary: '按用户喜欢和天赋获取学习步骤内容' })
   @ApiResponse({ status: 200, description: '获取成功' })
   async getUserLearningSteps(
