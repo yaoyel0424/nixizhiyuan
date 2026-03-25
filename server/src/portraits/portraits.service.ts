@@ -600,12 +600,12 @@ export class PortraitsService {
     const sortedQ3 = sortQuadrantByCombinedScore(q3Likes, q3Talents);
 
     const formatItem = (item: ElementScoreInfo) => ({
-      elementId: item.elementId,
-      elementName: item.elementName,
-      elementType: item.elementType,
-      score: item.score,
-      dimension: item.dimension,
-      correspondingElementId: item.correspondingElementId,
+        elementId: item.elementId,
+        elementName: item.elementName,
+        elementType: item.elementType,
+        score: item.score,
+        dimension: item.dimension,
+        correspondingElementId: item.correspondingElementId,
     });
 
     return {

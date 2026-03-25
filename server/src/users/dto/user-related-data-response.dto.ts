@@ -35,5 +35,8 @@ export class UserRelatedDataResponseDto {
 
   @Expose()
   userType?: "child" | "adult" | "promoter" | "admin" | "test";
+
+  @Expose()
+  province?: string;
 }
 

@@ -10,6 +10,7 @@ import {
   LearningStepItem,
   mergeLearningStepsByStep,
 } from '@/services/learning-step'
+import { getUserRelatedDataCount } from '@/services/user'
 import './index.less'
 
 function getItemTitle(item: LearningStepItem): string {
@@ -135,6 +136,227 @@ function interpolateThirdStepText(
 }
 
 /**
+ * 第三步固定长文：按“标题/编号/标签/正文”分行渲染，提升可读性。
+ * 约定：后端数据通过 `\n` 分段，这里按行判断类型。
+ */
+function renderStructuredBottomLines(text: string): Array<React.ReactNode> {
+  const lines = text.split('\n')
+  const nodes: Array<React.ReactNode> = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i]
+    const line = raw.trim()
+    if (!line) continue
+
+    const isNum = /^\d、/.test(line) || /^\d\./.test(line)
+    const isHeading = line.includes('为什么选它') || line.endsWith('？') || line.endsWith('：')
+    const isTag =
+      line.startsWith('极简') ||
+      line.startsWith('必考') ||
+      line.startsWith('秒懂') ||
+      line.includes('死命令') ||
+      line.includes('死命令：')
+
+    if (isNum) {
+      nodes.push(
+        <Text key={`b-${i}`} className='learning-step-page__bottom-line learning-step-page__bottom-line--num'>
+          {raw}
+        </Text>,
+      )
+      continue
+    }
+
+    if (isTag && !isHeading) {
+      nodes.push(
+        <Text key={`b-${i}`} className='learning-step-page__bottom-line learning-step-page__bottom-line--tag'>
+          {raw}
+        </Text>,
+      )
+      continue
+    }
+
+    if (isHeading) {
+      nodes.push(
+        <Text key={`b-${i}`} className='learning-step-page__bottom-line learning-step-page__bottom-line--heading'>
+          {raw}
+        </Text>,
+      )
+      continue
+    }
+
+    nodes.push(
+      <Text key={`b-${i}`} className='learning-step-page__bottom-line'>
+        {raw}
+      </Text>,
+    )
+  }
+
+  return nodes
+}
+
+/**
+ * `learning-step-page__item-text` 固定模板结构化排版：
+ * 识别 “轻松搞懂 + Step 1/2/3” 的文案，按卡片样式展示，提升美观与可读性。
+ */
+function renderLearningMethodProcessTemplate(text?: string | null): React.ReactNode {
+  const raw = (text ?? '').trim()
+  if (!raw) return null
+
+  const normalized = raw.replace(/\r\n/g, '\n')
+  const lines = normalized
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+
+  const heroIdx = lines.findIndex((l) => l.includes('轻松搞懂'))
+  const showHero = heroIdx >= 0
+  const stepLines = showHero ? lines.slice(heroIdx + 1) : lines
+
+  const stepTitleReg = /^Step\s*([123])\s*[：:]\s*(.+)$/
+  const steps: Array<{ num: number; title: string; content: string[] }> = []
+  let current: { num: number; title: string; content: string[] } | null = null
+
+  for (const l of stepLines) {
+    const m = l.match(stepTitleReg)
+    if (m) {
+      current = { num: Number(m[1]), title: m[2] || '', content: [] }
+      steps.push(current)
+      continue
+    }
+    if (current) current.content.push(l)
+  }
+
+  // 模板不匹配则回退为原样文本
+  if (!showHero || steps.length !== 3) {
+    return <Text className='learning-step-page__item-text'>{raw}</Text>
+  }
+
+  const leadLines = heroIdx > 0 ? lines.slice(0, heroIdx) : []
+  const themeByStep: Record<
+    number,
+    { accent: string; pillBg: string; pillBorder: string; cardBorder: string }
+  > = {
+    1: {
+      accent: '#1a4099',
+      pillBg: '#eef4ff',
+      pillBorder: '#d7e6ff',
+      cardBorder: '#dbe7ff',
+    },
+    2: {
+      accent: '#0f766e',
+      pillBg: '#ecfdf5',
+      pillBorder: '#a7f3d0',
+      cardBorder: '#d1fae5',
+    },
+    3: {
+      accent: '#7c3aed',
+      pillBg: '#f5f3ff',
+      pillBorder: '#ddd6fe',
+      cardBorder: '#e9d5ff',
+    },
+  }
+
+  return (
+    <View
+      className='learning-step-page__item-text'
+      style={{
+        textAlign: 'left',
+        paddingTop: '10rpx',
+        paddingBottom: '10rpx',
+      }}
+    >
+      {leadLines.length > 0 && (
+        <View>
+          {leadLines.map((l, idx) => (
+            <Text
+              key={`lead-${idx}`}
+              style={{ display: 'block', fontSize: '24rpx', color: '#374151', lineHeight: 1.7 }}
+            >
+              {l}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      <Text
+        style={{
+          display: 'block',
+          margin: '8rpx 0 12rpx',
+          padding: '8rpx 12rpx',
+          fontSize: '26rpx',
+          fontWeight: 800,
+          color: '#1a4099',
+          textAlign: 'center',
+          background: '#eef4ff',
+          border: '1rpx solid #d7e6ff',
+          borderRadius: '999rpx',
+          lineHeight: 1.3,
+          whiteSpace: 'pre-wrap',
+        }}
+      >
+        轻松搞懂
+      </Text>
+
+      {steps.map((s) => (
+        <View
+          key={`step-${s.num}`}
+          style={{
+            marginTop: '12rpx',
+            padding: '10rpx 12rpx',
+            background: '#ffffff',
+            border: `1rpx solid ${themeByStep[s.num]?.cardBorder ?? themeByStep[1].cardBorder}`,
+            borderRadius: '12rpx',
+          }}
+        >
+          <View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+            <Text
+              style={{
+                display: 'inline-block',
+                padding: '4rpx 10rpx',
+                borderRadius: '999rpx',
+                background: themeByStep[s.num]?.pillBg ?? themeByStep[1].pillBg,
+                border: `1rpx solid ${themeByStep[s.num]?.pillBorder ?? themeByStep[1].pillBorder}`,
+                color: themeByStep[s.num]?.accent ?? themeByStep[1].accent,
+                fontSize: '22rpx',
+                fontWeight: 800,
+                marginRight: '10rpx',
+                lineHeight: 1.2,
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {`Step ${s.num}`}
+            </Text>
+            <Text style={{ fontSize: '24rpx', fontWeight: 800, color: '#111827' }}>
+              {s.title}
+            </Text>
+          </View>
+
+          {s.content.length > 0 && (
+            <View style={{ marginTop: '8rpx' }}>
+              {s.content.map((l, idx) => (
+                <Text
+                  key={`s-${s.num}-${idx}`}
+                  style={{
+                    display: 'block',
+                    fontSize: '22rpx',
+                    color: '#374151',
+                    lineHeight: 1.65,
+                    marginTop: idx === 0 ? 0 : '6rpx',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {l}
+                </Text>
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  )
+}
+
+/**
  * 第二步：是否存在至少一个 phase 且其 items 非空
  */
 function secondStepHasAnyPhaseItems(step: LearningStepDetail): boolean {
@@ -209,6 +431,7 @@ export default function LearningStepPage() {
   const [loading, setLoading] = useState(true)
   const [steps, setSteps] = useState<LearningStepDetail[]>([])
   const [selectedProvince, setSelectedProvince] = useState('北京')
+  const [provinceReady, setProvinceReady] = useState(false)
   const [provinceMenuOpen, setProvinceMenuOpen] = useState(false)
   const [beijingGaokaoStats, setBeijingGaokaoStats] = useState<GaokaoMathModuleStat[]>([])
   const [beijingGaokaoLoading, setBeijingGaokaoLoading] = useState(false)
@@ -264,11 +487,32 @@ export default function LearningStepPage() {
   }, [activeSubject])
 
   /**
+   * 省份初始化：页面加载时先获取用户相关数据省份，用于决定 gaokao API 的 province 参数。
+   * 如果 province 为 null/空，则默认北京。
+   */
+  useEffect(() => {
+    const fetchProvince = async () => {
+      try {
+        const data = await getUserRelatedDataCount()
+        const p = typeof data?.province === 'string' ? data.province.trim() : ''
+        setSelectedProvince(p || '北京')
+      } catch (error) {
+        console.error('获取用户省份失败，默认使用北京:', error)
+        setSelectedProvince('北京')
+      } finally {
+        setProvinceReady(true)
+      }
+    }
+
+    fetchProvince()
+  }, [])
+
+  /**
    * 省份数据加载：仅刷新第三步统计，不影响主列表 loading 与滚动位置
    */
   useEffect(() => {
     const fetchGaokaoStats = async () => {
-      if (activeSubject !== 'math') return
+      if (activeSubject !== 'math' || !provinceReady) return
       try {
         setBeijingGaokaoLoading(true)
         const gaokaoStats = await getGaokaoMathStatsByProvince(selectedProvince)
@@ -278,7 +522,7 @@ export default function LearningStepPage() {
       }
     }
     fetchGaokaoStats()
-  }, [activeSubject, selectedProvince])
+  }, [activeSubject, selectedProvince, provinceReady])
 
   return (
     <View className='learning-step-page'>
@@ -350,7 +594,9 @@ export default function LearningStepPage() {
                     <Text className='learning-step-page__bottom-title'>{step.bottomTitle}</Text>
                   )}
                   {!!step.bottom && (
-                    <Text className='learning-step-page__bottom'>{step.bottom}</Text>
+                    <View className='learning-step-page__bottom'>
+                      {renderStructuredBottomLines(step.bottom)}
+                    </View>
                   )}
                 </View>
               ) : (
@@ -422,16 +668,28 @@ export default function LearningStepPage() {
                           </Text>
                         ) : (
                           <View className='learning-step-page__gaokao-list'>
+                            <View className='learning-step-page__gaokao-table-header'>
+                              <Text className='learning-step-page__gaokao-cell learning-step-page__gaokao-cell--module'>
+                                模块
+                              </Text>
+                              <Text className='learning-step-page__gaokao-cell'>2023</Text>
+                              <Text className='learning-step-page__gaokao-cell'>2024</Text>
+                              <Text className='learning-step-page__gaokao-cell'>2025</Text>
+                              <Text className='learning-step-page__gaokao-cell'>均值</Text>
+                              <Text className='learning-step-page__gaokao-cell'>占比</Text>
+                            </View>
                             {beijingGaokaoStats
                               .filter((row) => !row.isTotalRow && row.moduleName !== '合计')
                               .map((row) => (
                                 <View key={row.id} className='learning-step-page__gaokao-row'>
-                                  <Text className='learning-step-page__gaokao-module'>
+                                  <Text className='learning-step-page__gaokao-cell learning-step-page__gaokao-cell--module'>
                                     {row.moduleName}
                                   </Text>
-                                  <Text className='learning-step-page__gaokao-meta'>
-                                    {`2023:${row.scoreRange2023 || '-'}  2024:${row.scoreRange2024 || '-'}  2025:${row.scoreRange2025 || '-'}  三年均值:${row.threeYearMean ?? '-'}  占比:${row.proportionRange || '-'}`}
-                                  </Text>
+                                  <Text className='learning-step-page__gaokao-cell'>{row.scoreRange2023 || '-'}</Text>
+                                  <Text className='learning-step-page__gaokao-cell'>{row.scoreRange2024 || '-'}</Text>
+                                  <Text className='learning-step-page__gaokao-cell'>{row.scoreRange2025 || '-'}</Text>
+                                  <Text className='learning-step-page__gaokao-cell'>{row.threeYearMean ?? '-'}</Text>
+                                  <Text className='learning-step-page__gaokao-cell'>{row.proportionRange || '-'}</Text>
                                 </View>
                               ))}
                           </View>
@@ -531,13 +789,15 @@ export default function LearningStepPage() {
                     })()}
 
                     {!!subStep.bottom && (
-                      <Text className='learning-step-page__bottom'>
-                        {interpolateThirdStepText(
-                          subStep.bottom,
-                          selectedProvince,
-                          functionProportion
+                      <View className='learning-step-page__bottom'>
+                        {renderStructuredBottomLines(
+                          interpolateThirdStepText(
+                            subStep.bottom,
+                            selectedProvince,
+                            functionProportion
+                          )
                         )}
-                      </Text>
+                      </View>
                     )}
 
                     {idx < thirdStepSubSteps.length - 1 && (
@@ -703,9 +963,8 @@ export default function LearningStepPage() {
                       ) : (
                         <>
                           <Text className='learning-step-page__item-title'>{getItemTitle(item)}</Text>
-                          {!!getItemDesc(item) && (
-                            <Text className='learning-step-page__item-text'>{getItemDesc(item)}</Text>
-                          )}
+                          {!!getItemDesc(item) &&
+                            renderLearningMethodProcessTemplate(getItemDesc(item))}
                         </>
                       )}
                     </View>
@@ -748,7 +1007,9 @@ export default function LearningStepPage() {
                         </View>
                       ))}
                     </View>
-                    <Text className='learning-step-page__bottom'>{step.bottom}</Text>
+                    <View className='learning-step-page__bottom'>
+                      {renderStructuredBottomLines(step.bottom)}
+                    </View>
                   </>
                 )}
               </View>
