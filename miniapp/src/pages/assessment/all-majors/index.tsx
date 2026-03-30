@@ -1,6 +1,6 @@
 // 所有专业评估页面
-import React, { useState, useEffect, useMemo } from 'react'
-import { View, Text } from '@tarojs/components'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { View, Text, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -14,6 +14,48 @@ import { useAppSelector } from '@/store/hooks'
 import './index.less'
 
 const DIMENSION_ORDER = ['看', '听', '说', '记', '想', '做', '运动']
+
+/** 各维度进入该维度第一题时的引导文案（过渡 + 探索） */
+const DIMENSION_INTRO_COPY: Record<
+  string,
+  { tagline: string; transition: string; explore: string }
+> = {
+  看: {
+    tagline: '世界的取景框',
+    transition: '眼睛带回来的，往往是你内心深处最在意的风景。',
+    explore: '你习惯在人群中寻找趣味，还是在万物中发现规律？',
+  },
+  听: {
+    tagline: '认知的共鸣箱',
+    transition: '听见是本能，听懂是天赋，这是你与世界的“私聊”。',
+    explore: '你更容易被具体的逻辑吸引，还是被抽象的旋律打动？',
+  },
+  说: {
+    tagline: '能量的共振',
+    transition: '语言是思维的边界，更是你向世界递出的能量名片。',
+    explore: '哪一种表达，最能让你感受到“被理解”或“有力量”？',
+  },
+  记: {
+    tagline: '灵魂的筛选器',
+    transition: '记忆不是录像，而是你对生命的“二次创作”。',
+    explore: '你的大脑偏爱逻辑的“有用”，还是情感的“有意义”？',
+  },
+  想: {
+    tagline: '意识的实验室',
+    transition: '思考是隐形的导航，决定了你是在梦游还是在远航。',
+    explore: '你的思维更习惯解决眼前的路，还是构筑未来的桥？',
+  },
+  做: {
+    tagline: '现实的回响',
+    transition: '行动不是任务，而是你与世界最直接的一场对话。',
+    explore: '是一人的专注让你入迷，还是众人的共创让你沸腾？',
+  },
+  运动: {
+    tagline: '身体的本能智慧',
+    transition: '身体比头脑更诚实，它藏着你对外界最原始的适应力。',
+    explore: '你的生命力，是在极致的稳定中积蓄，还是在快速的变动中绽放？',
+  },
+}
 
 // 保存上一次答案到本地存储
 const PREVIOUS_ANSWERS_STORAGE_KEY = 'previous_questionnaire_answers'
@@ -111,6 +153,11 @@ export default function AllMajorsPage() {
   const [showUnansweredDialog, setShowUnansweredDialog] = useState(false)
   const [submittingQuestionId, setSubmittingQuestionId] = useState<number | null>(null) // 正在提交的题目ID
   const [showUnansweredBlink, setShowUnansweredBlink] = useState(false)
+  /** 维度探索引导弹层：进入该维度第一题时展示一次（本会话内） */
+  const [dimensionIntroOpen, setDimensionIntroOpen] = useState(false)
+  const [dimensionIntroKey, setDimensionIntroKey] = useState<string>('')
+  /** 本会话已展示过引导的维度，避免重复弹出 */
+  const shownDimensionIntrosRef = useRef<Set<string>>(new Set())
 
   // 从 API 加载数据
   useEffect(() => {
@@ -223,6 +270,29 @@ export default function AllMajorsPage() {
   const answeredInCurrentDimension = questionsInCurrentDimension.filter((q) => q.id in answers).length
   const totalInCurrentDimension = questionsInCurrentDimension.length
 
+  /**
+   * 进入某维度「第一题」位置时弹出该维度引导（点击维度条跳转、或答完上一维度进入下一维度）
+   */
+  useEffect(() => {
+    if (!isInitialized || isLoading || sortedQuestions.length === 0 || !currentQuestion) return
+    const dim = currentDimension
+    if (!dim || shownDimensionIntrosRef.current.has(dim)) return
+    const firstIdx = sortedQuestions.findIndex((q) => q.dimension === dim)
+    if (firstIdx !== currentIndex) return
+    const copy = DIMENSION_INTRO_COPY[dim]
+    if (!copy) return
+    shownDimensionIntrosRef.current.add(dim)
+    setDimensionIntroKey(dim)
+    setDimensionIntroOpen(true)
+  }, [
+    currentIndex,
+    currentDimension,
+    isInitialized,
+    isLoading,
+    sortedQuestions,
+    currentQuestion,
+  ])
+
   const answeredCount = Object.keys(answers).length
   const completedDimensions = DIMENSION_ORDER.filter((dim) => {
     const dimQuestions = sortedQuestions.filter((q) => q.dimension === dim)
@@ -252,6 +322,7 @@ export default function AllMajorsPage() {
       setAnswers(emptyAnswers)
       // 回到第一题
       setCurrentIndex(0)
+      shownDimensionIntrosRef.current.clear()
       // 关闭确认对话框
       setShowRestartConfirm(false)
       // 显示提示
@@ -392,7 +463,7 @@ export default function AllMajorsPage() {
         Taro.showToast({
           title: `🎉 维度解锁：${dimensionName}！`,
           icon: 'none',
-          duration: 3000
+          duration: 1000
         })
       }
       
@@ -469,6 +540,28 @@ export default function AllMajorsPage() {
     setCurrentIndex(startIndex)
   }
 
+  /**
+   * 跨维度时展示过渡页（上一题/下一题触发时也展示）
+   * 说明：不依赖“只展示一次”的 ref，保证切换维度时体验一致。
+   */
+  const goToIndexWithDimensionIntro = (targetIndex: number) => {
+    const targetQuestion = sortedQuestions[targetIndex]
+    const targetDim = targetQuestion?.dimension || ''
+    const currentDim = currentQuestion?.dimension || ''
+
+    if (targetDim && currentDim && targetDim !== currentDim) {
+      const copy = DIMENSION_INTRO_COPY[targetDim]
+      if (copy) {
+        setDimensionIntroKey(targetDim)
+        setDimensionIntroOpen(true)
+        // 避免随后落在该维度第一题时再弹一次
+        shownDimensionIntrosRef.current.add(targetDim)
+      }
+    }
+
+    setCurrentIndex(targetIndex)
+  }
+
   // 检查当前题目是否已回答
   const isCurrentQuestionAnswered = currentQuestion ? currentQuestion.id in answers : false
 
@@ -497,7 +590,7 @@ export default function AllMajorsPage() {
     setShowUnansweredBlink(false)
 
     if (currentIndex < totalQuestions - 1) {
-      setCurrentIndex((prev) => prev + 1)
+      goToIndexWithDimensionIntro(currentIndex + 1)
     }
   }
 
@@ -604,6 +697,9 @@ export default function AllMajorsPage() {
 
   const progress = ((currentIndex + 1) / totalQuestions) * 100
   const sortedOptions = [...(currentQuestion.options || [])].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+  const dimensionIntroCopy = dimensionIntroKey ? DIMENSION_INTRO_COPY[dimensionIntroKey] : null
+  // 所有维度保持同一种“开始探索 + 维度名”的突出样式
+  const dimensionAccent = 'default'
 
   return (
     <ErrorBoundary
@@ -683,7 +779,7 @@ export default function AllMajorsPage() {
               当前：{currentDimension} 维度 {answeredInCurrentDimension}/{totalInCurrentDimension}
             </Text>
             {/* 只有当已经有部分题目答过，且还有未答题的题目时，才显示未答题按钮 */}
-            {answeredCount > 0 && unansweredIndices.length > 0 && (
+            {answeredCount > 0 && unansweredIndices.length > 0 && false && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -759,7 +855,8 @@ export default function AllMajorsPage() {
           <Button
             onClick={() => {
               setShowUnansweredBlink(false)
-              setCurrentIndex((prev) => Math.max(0, prev - 1))
+              if (currentIndex === 0) return
+              goToIndexWithDimensionIntro(Math.max(0, currentIndex - 1))
             }}
             disabled={currentIndex === 0}
             variant="outline"
@@ -772,7 +869,8 @@ export default function AllMajorsPage() {
             onClick={() => {
               if (isUnlocked) {
                 setShowUnansweredBlink(false)
-                setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))
+                if (currentIndex === totalQuestions - 1) return
+                goToIndexWithDimensionIntro(Math.min(totalQuestions - 1, currentIndex + 1))
                 return
               }
               handleNextQuestion()
@@ -797,6 +895,47 @@ export default function AllMajorsPage() {
           )}
         </View>
       </View>
+
+      {/* 各维度进入第一题时的全屏过渡说明（与启动页一致的暖色风格） */}
+      {dimensionIntroOpen && dimensionIntroCopy && (
+        <View className="all-majors-page__dimension-intro-screen">
+          <View className="all-majors-page__dimension-intro-screen-inner">
+            <View className="all-majors-page__dimension-intro-screen-card">
+              <Text
+                className={`all-majors-page__dimension-intro-screen-num all-majors-page__dimension-intro-screen-num--${dimensionAccent}`}
+              >
+                {dimensionIntroKey}
+              </Text>
+              <Text className="all-majors-page__dimension-intro-screen-num-desc">
+                {dimensionIntroCopy.tagline}
+              </Text>
+              <View className="all-majors-page__dimension-intro-screen-sep" />
+              <Text className="all-majors-page__dimension-intro-screen-verse">
+                {dimensionIntroCopy.transition}
+              </Text>
+              <Text className="all-majors-page__dimension-intro-screen-verse">
+                {dimensionIntroCopy.explore}
+              </Text>
+            </View>
+          </View>
+          <View className="all-majors-page__dimension-intro-screen-footer">
+            <Button
+              size="lg"
+              className="all-majors-page__dimension-intro-screen-cta"
+              onClick={() => setDimensionIntroOpen(false)}
+            >
+              <View className="all-majors-page__dimension-intro-screen-cta-content">
+                <Text className="all-majors-page__dimension-intro-screen-cta-prefix">开始探索</Text>
+                <Text
+                  className={`all-majors-page__dimension-intro-screen-cta-dimension all-majors-page__dimension-intro-screen-cta-dimension--${dimensionAccent}`}
+                >
+                  {dimensionIntroKey}
+                </Text>
+              </View>
+            </Button>
+          </View>
+        </View>
+      )}
 
       {/* 重新探索确认对话框 */}
       <ErrorBoundary

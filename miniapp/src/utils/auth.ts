@@ -6,6 +6,27 @@ import { store } from '@/store';
 import { setUserInfo, setLoginLoading } from '@/store/slices/userSlice';
 import { wechatLogin } from '@/services';
 
+const WX_LOGIN_TIMEOUT_MS = 15000;
+const WECHAT_LOGIN_API_TIMEOUT_MS = 12000;
+
+/**
+ * Promise 超时包装，避免 wx.login / 请求在开发者工具中挂死触发 runtime timeout
+ */
+function promiseWithTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}超时`)), ms);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 /** 从本地 storage 解析出的 userInfo 格式（用于 setUserInfo） */
 interface FormattedUserInfo {
   id: string;
@@ -104,8 +125,12 @@ export const silentLogin = async (): Promise<boolean> => {
     // 设置登录加载状态
     store.dispatch(setLoginLoading(true));
 
-    // 1. 获取微信登录凭证
-    const loginRes = await Taro.login();
+    // 1. 获取微信登录凭证（限时，避免工具/网络异常无限等待）
+    const loginRes = await promiseWithTimeout(
+      Taro.login(),
+      WX_LOGIN_TIMEOUT_MS,
+      '获取微信登录凭证'
+    );
     const loginCode = loginRes.code;
 
     if (!loginCode) {
@@ -115,7 +140,11 @@ export const silentLogin = async (): Promise<boolean> => {
     }
 
     // 2. 调用后端接口进行微信登录
-    const response = await wechatLogin(loginCode, undefined, undefined);
+    const response = await promiseWithTimeout(
+      wechatLogin(loginCode, undefined, undefined),
+      WECHAT_LOGIN_API_TIMEOUT_MS,
+      '微信登录接口'
+    );
 
     // 3. 处理响应数据
     const responseUserInfo = response.user || response.userInfo || response;

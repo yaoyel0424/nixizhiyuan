@@ -1,19 +1,11 @@
 // 首页
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image } from '@tarojs/components';
-import Taro, { useShareAppMessage, useShareTimeline, useDidShow } from '@tarojs/taro';
+import Taro, { useShareAppMessage, useShareTimeline, useDidShow, useReady } from '@tarojs/taro';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { BottomNav } from '@/components/BottomNav';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/Dialog';
 import { getStorage } from '@/utils/storage';
 import { getUserRelatedDataCount } from '@/services/user';
 import {
@@ -59,6 +51,12 @@ function SystemNavBar() {
 
 const STORAGE_KEY = 'questionnaire_answers';
 
+/**
+ * 微信 Windows 开发者工具在首帧立即 wx.request 时易出现
+ * routeDone / webviewId not found 与 timeout，略推迟再拉接口
+ */
+const MP_ROUTE_STABLE_DELAY_MS = 56;
+
 function loadAnswersFromStorage(): Record<number, number> {
   // Taro 小程序环境，使用同步方式
   try {
@@ -70,21 +68,18 @@ function loadAnswersFromStorage(): Record<number, number> {
 }
 
 export default function IndexPage() {
-  const [isGuideDialogOpen, setIsGuideDialogOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [isClient, setIsClient] = useState(false);
   const [systemInfo, setSystemInfo] = useState<any>(null);
   // API 返回的数据统计
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0);
   const [majorFavoritesCount, setMajorFavoritesCount] = useState(0);
-  const [provinceFavoritesCount, setProvinceFavoritesCount] = useState(0);
   const [choicesCount, setChoicesCount] = useState(0);
   const [repeatCount, setRepeatCount] = useState(0); // 大于 0 表示二次答题，与个人中心一致
   // 标记是否成功获取了 API 数据
   const [apiDataLoaded, setApiDataLoaded] = useState(false);
   // 降级使用的本地数据（API 失败时使用）
   const [intendedMajorsCount, setIntendedMajorsCount] = useState(0);
-  const [selectedProvincesCount, setSelectedProvincesCount] = useState(0);
   const [hasVisitedMajors, setHasVisitedMajors] = useState(false);
   // 是否已首次展示过（用于 useDidShow 中避免与首次加载重复请求）
   const isFirstShow = useRef(true);
@@ -140,22 +135,13 @@ export default function IndexPage() {
         if (from) Taro.setStorageSync(STORAGE_KEY_LAUNCH_AGENT_FROM, from);
         const token = Taro.getStorageSync('token');
         if (token) {
-          bindAgentByUuid(uuid, from).catch(() => {});
+          setTimeout(() => bindAgentByUuid(uuid, from).catch(() => {}), MP_ROUTE_STABLE_DELAY_MS);
         }
       }
     } catch (_) {}
   }, []);
 
-  // 当探索之旅弹框打开时，同步本地答案并刷新进度数据（含 repeatCount），确保「重新答题进度」等展示正确
-  useEffect(() => {
-    if (isGuideDialogOpen && isClient) {
-      const storedAnswers = loadAnswersFromStorage();
-      setAnswers(storedAnswers);
-      fetchUserProgress();
-    }
-  }, [isGuideDialogOpen, isClient]);
-
-  // 页面加载时拉取用户进度数据，用于卡片步骤展示（与弹框逻辑一致）
+  // 页面加载时拉取用户进度数据，用于卡片步骤展示
   const fetchUserProgress = () => {
     const storedAnswers = loadAnswersFromStorage();
     setAnswers(storedAnswers);
@@ -163,7 +149,6 @@ export default function IndexPage() {
       .then(data => {
         setScaleAnswersCount(data.scaleAnswersCount || 0);
         setMajorFavoritesCount(data.majorFavoritesCount || 0);
-        setProvinceFavoritesCount(data.provinceFavoritesCount || 0);
         setChoicesCount(data.choicesCount || 0);
         setRepeatCount(data.repeatCount ?? 0);
         setApiDataLoaded(true);
@@ -172,27 +157,25 @@ export default function IndexPage() {
         setApiDataLoaded(false);
         setScaleAnswersCount(Object.keys(storedAnswers).length);
         getStorage<string[]>('intendedMajors').then(v => setIntendedMajorsCount(Array.isArray(v) ? v.length : 0)).catch(() => {});
-        getStorage<string[]>('selectedProvinces').then(v => setSelectedProvincesCount(Array.isArray(v) ? v.length : 0)).catch(() => {});
         getStorage<any[]>('wishlist-items').then(v => setHasVisitedMajors(Array.isArray(v) && v.length > 0)).catch(() => getStorage<string[]>('intendedMajors').then(m => setHasVisitedMajors(Array.isArray(m) && m.length > 0)).catch(() => {}));
       });
   };
 
-  useEffect(() => {
-    if (!isClient) return;
-    fetchUserProgress();
-  }, [isClient]);
+  /** 首次数据请求放到页面 onReady 之后，避免与路由完成时序冲突（尤其 Windows 模拟器） */
+  useReady(() => {
+    setTimeout(() => fetchUserProgress(), MP_ROUTE_STABLE_DELAY_MS);
+  });
 
-  // 从选专业/选省份等页返回时重新拉取进度，使步骤状态及时刷新
+  // 从其它页面返回时重新拉取进度，使步骤状态及时刷新
   useDidShow(() => {
     if (!isClient) return;
     if (isFirstShow.current) {
       isFirstShow.current = false;
-      return; // 首次展示由 useEffect 已拉取，避免重复请求
+      return; // 首次由 useReady 已调度拉取
     }
-    fetchUserProgress();
+    setTimeout(() => fetchUserProgress(), MP_ROUTE_STABLE_DELAY_MS);
   });
 
-  const totalQuestions = 168; // 总题目数固定为 168
   const answeredCount = Object.keys(answers).length;
 
   // 完成168个题目后解锁三个功能
@@ -214,21 +197,16 @@ export default function IndexPage() {
   const step2Completed =
     isUnlocked && (useApiData ? majorFavoritesCount > 0 || choicesCount > 0 : hasVisitedMajors);
 
-  // 步骤3：圈定理想城市 - 有选择的省份
-  // 使用 API 的 provinceFavoritesCount 或本地 selectedProvincesCount
-  const step3Completed = useApiData ? provinceFavoritesCount > 0 : selectedProvincesCount > 0;
-
-  // 步骤4：锁定目标院校 - 有选择的专业
+  // 步骤3：锁定目标院校 - 有选择的专业
   // 使用 API 的 majorFavoritesCount 或本地 intendedMajorsCount
-  const step4Completed = useApiData ? majorFavoritesCount > 0 : intendedMajorsCount > 0;
+  const step3Completed = useApiData ? majorFavoritesCount > 0 : intendedMajorsCount > 0;
 
   // 确定当前步骤（显示"您探索到此处"的步骤）
   const getCurrentStep = (): number => {
     if (!step1Completed) return 1;
     if (!step2Completed) return 2;
     if (!step3Completed) return 3;
-    if (!step4Completed) return 4;
-    return 4; // 所有步骤都完成时，显示在最后一步
+    return 3; // 所有步骤都完成时，显示在最后一步
   };
 
   const currentStep = getCurrentStep();
@@ -240,13 +218,16 @@ export default function IndexPage() {
     return 'locked';
   };
 
-  const handleConfirmStart = withErrorHandler(() => {
-    setIsGuideDialogOpen(false);
-    const url = repeatCount > 0
-      ? '/pages/assessment/all-majors/index?continue=1'
-      : '/pages/assessment/all-majors/index';
-    Taro.navigateTo({ url });
-  }, '开始评估功能暂时不可用，请稍后重试');
+  /**
+   * 进入 168 题启动页（insight-intro），再由此页进入答题
+   */
+  const goTo168InsightIntro = withErrorHandler(() => {
+    const introUrl =
+      repeatCount > 0
+        ? '/pages/assessment/insight-intro/index?continue=1'
+        : '/pages/assessment/insight-intro/index';
+    Taro.navigateTo({ url: introUrl });
+  }, '打开评估引导失败，请稍后重试');
 
   // 处理三个功能的点击事件
   const handleMajorExploration = withErrorHandler(() => {
@@ -262,22 +243,7 @@ export default function IndexPage() {
     Taro.navigateTo({
       url: '/pages/majors/index',
     });
-    setIsGuideDialogOpen(false);
   }, '专业探索功能暂时不可用，请稍后重试');
-
-  const handleCityExploration = withErrorHandler(() => {
-    if (!isUnlocked) {
-      Taro.showToast({
-        title: `完成${UNLOCK_THRESHOLD}个题目后即可解锁此功能`,
-        icon: 'none',
-      });
-      return;
-    }
-    setIsGuideDialogOpen(false);
-    Taro.navigateTo({
-      url: '/pages/assessment/provinces/index',
-    });
-  }, '城市探索功能暂时不可用，请稍后重试');
 
   const handleSchoolExploration = withErrorHandler(() => {
     if (!isUnlocked) {
@@ -287,7 +253,6 @@ export default function IndexPage() {
       });
       return;
     }
-    setIsGuideDialogOpen(false);
     Taro.navigateTo({
       url: '/pages/majors/intended/index?tab=专业赛道',
     });
@@ -295,22 +260,8 @@ export default function IndexPage() {
 
   // 处理深度自我洞察点击事件（repeatCount > 0 时带 continue=1，all-majors 会请求 repeat=true 并标记上次答题）
   const handleSelfInsight = withErrorHandler(() => {
-    setIsGuideDialogOpen(false);
-    const url = repeatCount > 0
-      ? '/pages/assessment/all-majors/index?continue=1'
-      : '/pages/assessment/all-majors/index';
-    Taro.navigateTo({ url });
+    goTo168InsightIntro();
   }, '深度自我洞察功能暂时不可用，请稍后重试');
-
-  // 处理重新探索点击事件
-  const handleReExplore = withErrorHandler((e: any) => {
-    e.stopPropagation(); // 阻止事件冒泡，避免触发步骤点击
-    setIsGuideDialogOpen(false);
-    // 跳转到评估页面重新开始，传递 restart=true 参数
-    Taro.navigateTo({
-      url: '/pages/assessment/all-majors/index?restart=true',
-    });
-  }, '重新探索功能暂时不可用，请稍后重试');
 
   // 处理步骤点击（带锁定检查）
   const handleStepClick = withErrorHandler((stepNumber: number, handler: () => void) => {
@@ -385,7 +336,7 @@ export default function IndexPage() {
         </View>
 
         {/* 全面评估卡片 */}
-        <View className="index-page__card" onClick={() => setIsGuideDialogOpen(true)}>
+        <View className="index-page__card" onClick={goTo168InsightIntro}>
           <Card className="index-page__card-inner index-page__card-inner--full">
             <View className="index-page__card-header">
               <View className="index-page__card-icon index-page__card-icon--full">
@@ -419,17 +370,9 @@ export default function IndexPage() {
               <Text className="index-page__card-step-sep">—</Text>
               <View
                 className={`index-page__card-step ${getStepStatus(3) === 'completed' ? 'index-page__card-step--completed' : ''}`}
-                onClick={() => handleStepClick(3, handleCityExploration)}
+                onClick={() => handleStepClick(3, handleSchoolExploration)}
               >
                 <View className={`index-page__card-step-num ${getStepStatus(3) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>3</Text></View>
-                <Text>选省份</Text>
-              </View>
-              <Text className="index-page__card-step-sep">—</Text>
-              <View
-                className={`index-page__card-step ${getStepStatus(4) === 'completed' ? 'index-page__card-step--completed' : ''}`}
-                onClick={() => handleStepClick(4, handleSchoolExploration)}
-              >
-                <View className={`index-page__card-step-num ${getStepStatus(4) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>4</Text></View>
                 <Text>定志愿</Text>
               </View>
             </View>
@@ -448,352 +391,6 @@ export default function IndexPage() {
           <Text className="index-page__trust-text">本系统的信息仅供参考，数据请以学校官网或考试院公布为准。</Text>
         </View>
       </View>
-
-      {/* 探索之旅说明模态框 */}
-      <Dialog open={isGuideDialogOpen} onOpenChange={setIsGuideDialogOpen}>
-        <DialogContent className="index-page__dialog">
-          <DialogHeader>
-            <DialogTitle className="index-page__dialog-title">【探索之旅说明】</DialogTitle>
-            <DialogDescription>
-              <Text className="index-page__dialog-desc">
-                欢迎开启你的深度探索！请按以下步骤随心而行，自在发现。
-              </Text>
-            </DialogDescription>
-          </DialogHeader>
-
-          <View className="index-page__dialog-steps">
-            {/* 第一步 */}
-            {(() => {
-              const status = getStepStatus(1);
-              const isStepCompleted = status === 'completed';
-              const isStepCurrent = status === 'current';
-              const isStepLocked = status === 'locked';
-              return (
-                <View
-                  className={`index-page__dialog-step ${
-                    !isStepLocked
-                      ? 'index-page__dialog-step--unlocked'
-                      : 'index-page__dialog-step--locked'
-                  }`}
-                  onClick={() => handleStepClick(1, handleSelfInsight)}
-                >
-                  <View
-                    className={`index-page__dialog-step-icon ${
-                      isStepCompleted
-                        ? 'index-page__dialog-step-icon--completed'
-                        : isStepCurrent
-                        ? 'index-page__dialog-step-icon--current'
-                        : 'index-page__dialog-step-icon--locked'
-                    }`}
-                  >
-                    {isStepCompleted ? (
-                      <View className="index-page__dialog-step-icon-checkmark" />
-                    ) : isStepCurrent ? (
-                      <View className="index-page__dialog-step-icon-dot" />
-                    ) : (
-                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
-                    )}
-                  </View>
-                  <View className="index-page__dialog-step-right">
-                    <View className="index-page__dialog-step-badge-wrapper">
-                      <Text
-                        className={`index-page__dialog-step-badge ${
-                          isStepCompleted
-                            ? 'index-page__dialog-step-badge--completed'
-                            : isStepCurrent
-                            ? 'index-page__dialog-step-badge--current'
-                            : 'index-page__dialog-step-badge--locked'
-                        }`}
-                      >
-                        {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                      </Text>
-                      {isStepCompleted && isClient && (
-                        <Text className="index-page__dialog-step-count">
-                          {' '}已探索 {step1AnswerCount} 题
-                        </Text>
-                      )}
-                    </View>
-                    <View className="index-page__dialog-step-content">
-                      <View className="index-page__dialog-step-header">
-                        <Text
-                          className={`index-page__dialog-step-title ${
-                            isStepLocked ? 'index-page__dialog-step-title--locked' : ''
-                          }`}
-                        >
-                          深度自我洞察
-                        </Text>
-                        {isClient && (
-                          <View className="index-page__dialog-step-progress-row">
-                            {/* repeatCount > 0 为二次答题；或有进度未完成 168 题时也显示，便于用户识别可继续答题 */}
-                            {(repeatCount > 0 || (step1AnswerCount > 0 && step1AnswerCount < totalQuestions)) && !isStepLocked && (
-                              <Text className="index-page__dialog-step-repeat-tag">重新答题进度</Text>
-                            )}
-                            <Text className="index-page__dialog-step-progress">
-                              ({step1AnswerCount}/{totalQuestions})
-                            </Text>
-                          </View>
-                        )}
-                        {isStepCompleted && (
-                          <View
-                            className="index-page__dialog-step-re-explore"
-                            onClick={handleReExplore}
-                          >
-                            <Text className="index-page__dialog-step-re-explore-text">
-                              重新探索
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text
-                        className={`index-page__dialog-step-desc ${
-                          isStepLocked ? 'index-page__dialog-step-desc--locked' : ''
-                        }`}
-                      >
-                        完成168题科学评估，解锁你的核心特质报告。
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })()}
-
-            {/* 第二步 */}
-            {(() => {
-              const status = getStepStatus(2);
-              const isStepCompleted = status === 'completed';
-              const isStepCurrent = status === 'current';
-              const isStepLocked = status === 'locked';
-              return (
-                <View
-                  className={`index-page__dialog-step ${
-                    !isStepLocked
-                      ? 'index-page__dialog-step--unlocked'
-                      : 'index-page__dialog-step--locked'
-                  }`}
-                  onClick={() => handleStepClick(2, handleMajorExploration)}
-                >
-                  <View
-                    className={`index-page__dialog-step-icon ${
-                      isStepCompleted
-                        ? 'index-page__dialog-step-icon--completed'
-                        : isStepCurrent
-                        ? 'index-page__dialog-step-icon--current'
-                        : 'index-page__dialog-step-icon--locked'
-                    }`}
-                  >
-                    {isStepCompleted ? (
-                      <View className="index-page__dialog-step-icon-checkmark" />
-                    ) : isStepCurrent ? (
-                      <View className="index-page__dialog-step-icon-dot" />
-                    ) : (
-                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
-                    )}
-                  </View>
-                  <View className="index-page__dialog-step-right">
-                    <View className="index-page__dialog-step-badge-wrapper">
-                      <Text
-                        className={`index-page__dialog-step-badge ${
-                          isStepCompleted
-                            ? 'index-page__dialog-step-badge--completed'
-                            : isStepCurrent
-                            ? 'index-page__dialog-step-badge--current'
-                            : 'index-page__dialog-step-badge--locked'
-                        }`}
-                      >
-                        {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                      </Text>
-                      {isStepCompleted && isClient && (
-                        <Text className="index-page__dialog-step-count">
-                          {' '}已标记 {useApiData ? (majorFavoritesCount || choicesCount || 0) : (hasVisitedMajors ? '多个' : 0)} 个心动专业
-                        </Text>
-                      )}
-                    </View>
-                    <View className="index-page__dialog-step-content">
-                      <View className="index-page__dialog-step-header">
-                        <Text
-                          className={`index-page__dialog-step-title ${
-                            isStepLocked ? 'index-page__dialog-step-title--locked' : ''
-                          }`}
-                        >
-                          发现契合专业
-                        </Text>
-                      </View>
-                      <Text
-                        className={`index-page__dialog-step-desc ${
-                          isStepLocked ? 'index-page__dialog-step-desc--locked' : ''
-                        }`}
-                      >
-                        基于你的特质报告，匹配最适合的专业方向。
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })()}
-
-            {/* 第三步 */}
-            {(() => {
-              const status = getStepStatus(3);
-              const isStepCompleted = status === 'completed';
-              const isStepCurrent = status === 'current';
-              const isStepLocked = status === 'locked';
-              return (
-                <View
-                  className={`index-page__dialog-step ${
-                    !isStepLocked
-                      ? 'index-page__dialog-step--unlocked'
-                      : 'index-page__dialog-step--locked'
-                  }`}
-                  onClick={() => handleStepClick(3, handleCityExploration)}
-                >
-                  <View
-                    className={`index-page__dialog-step-icon ${
-                      isStepCompleted
-                        ? 'index-page__dialog-step-icon--completed'
-                        : isStepCurrent
-                        ? 'index-page__dialog-step-icon--current'
-                        : 'index-page__dialog-step-icon--locked'
-                    }`}
-                  >
-                    {isStepCompleted ? (
-                      <View className="index-page__dialog-step-icon-checkmark" />
-                    ) : isStepCurrent ? (
-                      <View className="index-page__dialog-step-icon-dot" />
-                    ) : (
-                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
-                    )}
-                  </View>
-                  <View className="index-page__dialog-step-right">
-                    <View className="index-page__dialog-step-badge-wrapper">
-                      <Text
-                        className={`index-page__dialog-step-badge ${
-                          isStepCompleted
-                            ? 'index-page__dialog-step-badge--completed'
-                            : isStepCurrent
-                            ? 'index-page__dialog-step-badge--current'
-                            : 'index-page__dialog-step-badge--locked'
-                        }`}
-                      >
-                        {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                      </Text>
-                      {isStepCompleted && isClient && (
-                        <Text className="index-page__dialog-step-count">
-                          {' '}已圈定 {useApiData ? provinceFavoritesCount : selectedProvincesCount} 个理想省份
-                        </Text>
-                      )}
-                    </View>
-                    <View className="index-page__dialog-step-content">
-                      <View className="index-page__dialog-step-header">
-                        <Text
-                          className={`index-page__dialog-step-title ${
-                            isStepLocked ? 'index-page__dialog-step-title--locked' : ''
-                          }`}
-                        >
-                          圈定理想城市
-                        </Text>
-                      </View>
-                      <Text
-                        className={`index-page__dialog-step-desc ${
-                          isStepLocked ? 'index-page__dialog-step-desc--locked' : ''
-                        }`}
-                      >
-                        结合你的偏好，找到理想的城市圈。
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })()}
-
-            {/* 第四步 */}
-            {(() => {
-              const status = getStepStatus(4);
-              const isStepCompleted = status === 'completed';
-              const isStepCurrent = status === 'current';
-              const isStepLocked = status === 'locked';
-              return (
-                <View
-                  className={`index-page__dialog-step ${
-                    !isStepLocked
-                      ? 'index-page__dialog-step--unlocked'
-                      : 'index-page__dialog-step--locked'
-                  }`}
-                  onClick={() => handleStepClick(4, handleSchoolExploration)}
-                >
-                  <View
-                    className={`index-page__dialog-step-icon ${
-                      isStepCompleted
-                        ? 'index-page__dialog-step-icon--completed'
-                        : isStepCurrent
-                        ? 'index-page__dialog-step-icon--current'
-                        : 'index-page__dialog-step-icon--locked'
-                    }`}
-                  >
-                    {isStepCompleted ? (
-                      <View className="index-page__dialog-step-icon-checkmark" />
-                    ) : isStepCurrent ? (
-                      <View className="index-page__dialog-step-icon-dot" />
-                    ) : (
-                      <Text className="index-page__dialog-step-icon-lock">🔒</Text>
-                    )}
-                  </View>
-                  <View className="index-page__dialog-step-right">
-                    <View className="index-page__dialog-step-badge-wrapper">
-                      <Text
-                        className={`index-page__dialog-step-badge ${
-                          isStepCompleted
-                            ? 'index-page__dialog-step-badge--completed'
-                            : isStepCurrent
-                            ? 'index-page__dialog-step-badge--current'
-                            : 'index-page__dialog-step-badge--locked'
-                        }`}
-                      >
-                        {isStepCompleted ? '已完成' : isStepCurrent ? '您探索到此处' : '完成后解锁'}
-                      </Text>
-                      {isStepCompleted && isClient && (
-                        <Text className="index-page__dialog-step-count">
-                          {' '}已选择 {useApiData ? majorFavoritesCount : intendedMajorsCount} 个专业
-                        </Text>
-                      )}
-                    </View>
-                    <View className="index-page__dialog-step-content">
-                      <View className="index-page__dialog-step-header">
-                        <Text
-                          className={`index-page__dialog-step-title ${
-                            isStepLocked ? 'index-page__dialog-step-title--locked' : ''
-                          }`}
-                        >
-                          锁定目标院校
-                        </Text>
-                      </View>
-                      <Text
-                        className={`index-page__dialog-step-desc ${
-                          isStepLocked ? 'index-page__dialog-step-desc--locked' : ''
-                        }`}
-                      >
-                        综合所有信息，生成你的个性化院校清单。
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })()}
-
-            {/* 行动按钮 */}
-            {!isUnlocked && (
-              <View className="index-page__dialog-footer">
-                <Button
-                  onClick={handleConfirmStart}
-                  size="lg"
-                  className="index-page__dialog-button"
-                >
-                  我明白了，立即开始答题 →
-                </Button>
-              </View>
-            )}
-          </View>
-        </DialogContent>
-      </Dialog>
 
         <ErrorBoundary
           fallbackTitle="底部导航出错"

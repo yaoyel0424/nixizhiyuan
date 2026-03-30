@@ -618,13 +618,31 @@ export default function LearningStepPage() {
                 {thirdStepSubSteps.map((subStep, idx) => (
                   <View key={subStep.id} className='learning-step-page__third-block'>
                     {!!subStep.content && (
-                      <Text className='learning-step-page__item-text'>
-                        {interpolateThirdStepText(
+                      (() => {
+                        const text = interpolateThirdStepText(
                           subStep.content,
                           selectedProvince,
                           functionProportion
-                        )}
-                      </Text>
+                        )
+
+                        // subStep=1 会在表格区块单独显示「首先，了解全局」标题，这里去掉重复行
+                        const lines = text
+                          .split('\n')
+                          .map((l) => l.trim())
+                          .filter((l) => l.length > 0)
+                          .filter((l) => {
+                            if (subStep.subStep !== 1) return true
+                            return l !== '首先，了解全局' && l !== '首先，了解全局。'
+                          })
+
+                        if (lines.length === 0) return null
+
+                        return (
+                          <Text className='learning-step-page__item-text'>
+                            {lines.join('\n')}
+                          </Text>
+                        )
+                      })()
                     )}
 
                     {subStep.subStep === 1 && (

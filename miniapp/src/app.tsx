@@ -11,6 +11,7 @@ if (typeof _setInterval === 'function') {
 }
 
 import React, { PropsWithChildren, useEffect, useRef } from 'react'
+import { View, Text } from '@tarojs/components'
 import Taro, { useLaunch } from '@tarojs/taro'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
@@ -24,22 +25,39 @@ import './app.less'
  * 在 redux-persist 完成 rehydration 后再执行静默登录，避免 iOS 上 rehydration 覆盖登录态
  * 若启动时有 uuid（分享链接或扫码），登录成功后调用 /api/v1/users/agent 绑定代理商
  */
+/** 与首页首屏请求一致：避免与首路由 webview 注册竞态（Windows 开发者工具 routeDone/webviewId） */
+const MP_AUTH_DEFER_MS = 56
+
+/**
+ * redux-persist 恢复期间的占位，避免 loading=null 时页面尚未注册引发路由异常
+ */
+function PersistLoadingShell() {
+  return (
+    <View className='app-persist-loading'>
+      <Text className='app-persist-loading__text'>正在加载...</Text>
+    </View>
+  )
+}
+
 function AuthInit({ children }: PropsWithChildren<any>) {
   const didRun = useRef(false)
   useEffect(() => {
     if (didRun.current) return
     didRun.current = true
-    silentLogin()
-      .then((ok) => {
-        if (ok) {
-          const uuid = getLaunchAgentUuid()
-          const from = getLaunchAgentFrom()
-          if (uuid) bindAgentByUuid(uuid, from ?? undefined).catch(() => {})
-        }
-      })
-      .catch(error => {
-        console.error('静默登录失败:', error)
-      })
+    const timer = setTimeout(() => {
+      silentLogin()
+        .then((ok) => {
+          if (ok) {
+            const uuid = getLaunchAgentUuid()
+            const from = getLaunchAgentFrom()
+            if (uuid) bindAgentByUuid(uuid, from ?? undefined).catch(() => {})
+          }
+        })
+        .catch(error => {
+          console.error('静默登录失败:', error)
+        })
+    }, MP_AUTH_DEFER_MS)
+    return () => clearTimeout(timer)
   }, [])
   return <>{children}</>
 }
@@ -65,7 +83,7 @@ function App({ children }: PropsWithChildren<any>) {
 
   return (
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
+      <PersistGate loading={<PersistLoadingShell />} persistor={persistor}>
         <AuthInit>
           <ErrorBoundary>
             {children || null}

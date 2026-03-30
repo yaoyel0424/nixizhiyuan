@@ -929,7 +929,7 @@ function MajorAnalysisActionCard({
                       <Text className="single-major-page__element-inline-title-desc">
                         （{desc}）
                       </Text>
-                      {' - '}{expandedElementMajorName}
+                   
                     </>
                   )
                 })()}
@@ -1248,6 +1248,12 @@ export default function CareerExplorationPage() {
   const [activeTab, setActiveTab] = useState('passion')
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  // 学习内容字段兼容：不同接口可能在顶层或 major 内返回
+  const studyContentValue =
+    (majorDetail as any)?.studyContent ??
+    (majorDetail as any)?.major?.studyContent ??
+    (majorDetail as any)?.study_content ??
+    null
   
   // 判断是否从热门专业页面跳转过来（从热门专业进入不校验 168 题完成）
   const isFromPopularMajors = fromPage === 'popular-majors'
@@ -1310,7 +1316,7 @@ export default function CareerExplorationPage() {
         // 设置页面标题
         if (detail.name || detail.code) {
           Taro.setNavigationBarTitle({
-            title: `深度探索 ${detail.name || detail.code}`
+            title: `${detail.name || detail.code}`
           })
         }
       } catch (err: any) {
@@ -1505,8 +1511,21 @@ export default function CareerExplorationPage() {
             </Tabs>
           </View>
 
-          {/* 删除心动专业按钮 - 从热门专业跳转过来的不显示 */}
-          {!isFromPopularMajors && (
+          {/* 学习内容（放在原有内容最下方） */}
+          {studyContentValue && (
+            <Card className="single-major-page__detail-card">
+              <View className="single-major-page__detail-header">
+                <Text className="single-major-page__detail-icon">📚</Text>
+                <Text className="single-major-page__detail-title">学习内容</Text>
+              </View>
+              <View className="single-major-page__detail-content">
+                <StudyContentDisplay value={studyContentValue} />
+              </View>
+            </Card>
+          )}
+
+          {/* 删除心动专业按钮 - 仅从心动专业页跳转过来时显示 */}
+          {fromPage === 'favorite-majors' && (
             <View className="career-exploration-page__action-button">
               <Button
                 onClick={handleDeleteFromFavorites}

@@ -26,7 +26,6 @@ function loadAnswersFromStorage(): Record<number, number> {
 export default function AssessmentPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [intendedMajorsCount, setIntendedMajorsCount] = useState(0)
-  const [selectedProvincesCount, setSelectedProvincesCount] = useState(0)
   const [scaleAnswersCount, setScaleAnswersCount] = useState(0) // 量表答案数量
   const [loading, setLoading] = useState(false)
   const fetchingRef = useRef(false) // 使用 ref 来防止重复调用
@@ -66,7 +65,6 @@ export default function AssessmentPage() {
       const data = await getUserRelatedDataCount()
       // 使用接口返回的数据
       setIntendedMajorsCount(data.majorFavoritesCount || 0)
-      setSelectedProvincesCount(data.provinceFavoritesCount || 0)
       setScaleAnswersCount(data.scaleAnswersCount || 0)
     } catch (error) {
       console.error('获取用户统计数据失败:', error)
@@ -75,10 +73,6 @@ export default function AssessmentPage() {
         const storedMajors = await getStorage<string[]>('intendedMajors')
         if (storedMajors) {
           setIntendedMajorsCount(Array.isArray(storedMajors) ? storedMajors.length : 0)
-        }
-        const storedProvinces = await getStorage<string[]>('selectedProvinces')
-        if (storedProvinces) {
-          setSelectedProvincesCount(Array.isArray(storedProvinces) ? storedProvinces.length : 0)
         }
         // 降级时无法获取 scaleAnswersCount，使用本地答案数量
         const storedAnswers = loadAnswersFromStorage()
@@ -111,7 +105,7 @@ export default function AssessmentPage() {
     const storedAnswers = loadAnswersFromStorage()
     setAnswers(storedAnswers)
     
-    // 重新获取统计数据（心动专业、意向省份、量表答案数量）
+    // 重新获取统计数据（心动专业、量表答案数量）
     fetchUserRelatedData()
   })
 
@@ -139,11 +133,10 @@ export default function AssessmentPage() {
   const totalCount = TOTAL_DIMENSIONS
 
   // 判断院校探索是否解锁
-  // 解锁条件：问卷完成（scaleAnswersCount >= 168）且心动专业数量 > 0 且意向省份数量 > 0
+  // 解锁条件：问卷完成（scaleAnswersCount >= 168）且心动专业数量 > 0
   const isSchoolExplorationUnlocked = 
     scaleAnswersCount >= TOTAL_QUESTIONS && 
-    intendedMajorsCount > 0 && 
-    selectedProvincesCount > 0
+    intendedMajorsCount > 0
 
   return (
     <View className="assessment-page">
@@ -279,37 +272,6 @@ export default function AssessmentPage() {
               </View>
             </Card>
 
-            {/* 意向省份 */}
-            <Card 
-              className="assessment-page__result-card"
-              onClick={() => {
-                Taro.navigateTo({
-                  url: '/pages/assessment/provinces/index'
-                })
-              }}
-            >
-              <View className="assessment-page__result-card-content">
-                <View className="assessment-page__result-card-icon assessment-page__result-card-icon--blue">
-                  <Text>📍</Text>
-                </View>
-                <View className="assessment-page__result-card-info">
-                  <View className="assessment-page__result-card-header">
-                    <Text className="assessment-page__result-card-title assessment-page__result-card-title--blue">
-                      意向省份
-                    </Text>
-                    {selectedProvincesCount > 0 && (
-                      <View className="assessment-page__result-card-badge assessment-page__result-card-badge--blue">
-                        <Text>{selectedProvincesCount}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text className="assessment-page__result-card-desc">
-                    选择心仪省份，筛选适配专业的院校
-                  </Text>
-                </View>
-              </View>
-            </Card>
-
             {/* 院校探索 */}
             <Card 
               className="assessment-page__result-card"
@@ -323,9 +285,6 @@ export default function AssessmentPage() {
                   }
                   if (intendedMajorsCount === 0) {
                     conditions.push('添加心动专业')
-                  }
-                  if (selectedProvincesCount === 0) {
-                    conditions.push('设置意向省份')
                   }
                   message += `请先${conditions.join('、')}`
                   
@@ -358,7 +317,7 @@ export default function AssessmentPage() {
                     )}
                   </View>
                   <Text className="assessment-page__result-card-desc">
-                    汇总特质、专业、省份信息，生成专属高考志愿
+                    汇总特质与专业信息，生成专属高考志愿
                   </Text>
                 </View>
               </View>

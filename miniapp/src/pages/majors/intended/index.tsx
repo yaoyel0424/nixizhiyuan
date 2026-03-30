@@ -2734,18 +2734,28 @@ export default function IntendedMajorsPage() {
               {enrollmentPlans.map((plan) => {
                 const major = plan.majorFavorite.major
                 const majorCode = plan.majorFavorite.majorCode
+                // 点击专业名称或专业项其它区域，进入深入探索页
+                const goToMajorDeepExplore = () => {
+                  const sign = (plan.majorFavorite as any)?.sign
+                  const signQuery = sign ? `&sign=${encodeURIComponent(sign)}` : ''
+                  Taro.navigateTo({
+                    url: `/pages/assessment/career-exploration/index?code=${majorCode}${signQuery}`
+                  })
+                }
                 return (
-                  <Card key={majorCode} className="intended-majors-page__major-item">
+                  <Card
+                    key={majorCode}
+                    className="intended-majors-page__major-item"
+                    onClick={goToMajorDeepExplore}
+                  >
                     <View className="intended-majors-page__major-item-content">
                       <View className="intended-majors-page__major-item-header">
                         <View>
                           <Text 
                             className="intended-majors-page__major-item-name"
-                            onClick={() => {
-                              // 跳转到专业详情页面
-                              Taro.navigateTo({
-                                url: `/pages/assessment/single-major/index?code=${majorCode}&name=${encodeURIComponent(major.name || '')}`
-                              })
+                            onClick={(e) => {
+                              e?.stopPropagation?.()
+                              goToMajorDeepExplore()
                             }}
                           >
                             {major.name}
@@ -2758,7 +2768,8 @@ export default function IntendedMajorsPage() {
                           )}
                         </View>
                         <Button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e?.stopPropagation?.()
                             // 传递 majorId、majorCode 和 majorName，院校列表页面可以根据 majorId 调用 API
                             const majorNameParam = encodeURIComponent(major.name || '')
                             // 如果启用了分数区间筛选，才传递 minScore 和 maxScore

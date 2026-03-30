@@ -1002,7 +1002,7 @@ export default function MajorsPage() {
                   const rank = (major as MajorScoreResponse).index ?? (globalIndex >= 0 ? globalIndex + 1 : index + 1)
                   // 跳转专业详情（前五条未缴费时需带 sign）
                   const goToMajorDetail = () => {
-                    let url = `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}`
+                    let url = `/pages/assessment/career-exploration/index?code=${major.majorCode}`
                     if ((major as MajorScoreResponse).sign) {
                       url += `&sign=${encodeURIComponent((major as MajorScoreResponse).sign!)}`
                     }
@@ -1010,7 +1010,11 @@ export default function MajorsPage() {
                   }
 
                   return (
-                    <Card key={major.majorCode} className="majors-page__major-card">
+                    <Card
+                      key={major.majorCode}
+                      className="majors-page__major-card"
+                      onClick={goToMajorDetail}
+                    >
                       <View className="majors-page__major-header">
                         <View className="majors-page__major-rank">
                           <Text className="majors-page__major-rank-text">{rank}</Text>
@@ -1070,7 +1074,10 @@ export default function MajorsPage() {
                       )}
                       <View 
                         className="majors-page__major-scores-toggle"
-                        onClick={() => toggleScores(major.majorCode)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleScores(major.majorCode)
+                        }}
                       >
                         <Text className="majors-page__major-scores-toggle-text">
                           {expandedScores.has(major.majorCode) ? '收起分数详情' : '展开分数详情'}

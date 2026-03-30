@@ -2,6 +2,7 @@ export default {
   pages: [
     'pages/index/index',
     'pages/assessment/index',
+    'pages/assessment/insight-intro/index',
     'pages/assessment/all-majors/index',
     'pages/assessment/personal-profile/index',
     'pages/assessment/portrait-detail/index',

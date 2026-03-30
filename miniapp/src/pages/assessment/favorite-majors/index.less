@@ -103,6 +103,7 @@
 .favorite-majors-page__item {
   padding: 32rpx;
   background: #fff;
+  cursor: pointer;
 }
 
 .favorite-majors-page__item-content {
@@ -116,6 +117,25 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16rpx;
+}
+
+.favorite-majors-page__item-delete-icon {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  border: 1rpx solid #fecaca;
+  background: #fff5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.favorite-majors-page__item-delete-icon-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ef4444;
+  line-height: 1;
 }
 
 .favorite-majors-page__item-title-section {
@@ -183,34 +203,6 @@
   height: auto;
   font-size: 24rpx;
   color: #1A4099;
-}
-
-.favorite-majors-page__item-actions {
-  display: flex;
-  gap: 16rpx;
-  padding-top: 16rpx;
-  border-top: 1rpx solid #e5e7eb;
-}
-
-.favorite-majors-page__item-delete-button {
-  flex: 1;
-  color: #ef4444;
-  border-color: #fca5a5;
-  
-  &:hover {
-    background: #fee2e2;
-    border-color: #ef4444;
-  }
-}
-
-.favorite-majors-page__item-view-button {
-  flex: 1;
-  color: #1A4099;
-  border-color: #1A4099;
-  
-  &:hover {
-    background: rgba(26, 64, 153, 0.1);
-  }
 }
 
 .favorite-majors-page__tip {

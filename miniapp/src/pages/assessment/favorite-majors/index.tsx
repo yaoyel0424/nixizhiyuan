@@ -160,7 +160,7 @@ export default function FavoriteMajorsPage() {
   const handleViewDetail = (majorCode: string, sign?: string | null) => {
     const signQuery = sign ? `&sign=${encodeURIComponent(sign)}` : ''
     Taro.navigateTo({
-      url: `/pages/assessment/career-exploration/index?code=${majorCode}${signQuery}`
+      url: `/pages/assessment/career-exploration/index?code=${majorCode}${signQuery}&from=favorite-majors`
     })
   }
 
@@ -309,17 +309,19 @@ export default function FavoriteMajorsPage() {
         ) : (
           <View className="favorite-majors-page__list">
             {filteredMajors.map((major) => (
-              <Card key={major.majorCode} className="favorite-majors-page__item">
+              <Card
+                key={major.majorCode}
+                className="favorite-majors-page__item"
+                onClick={() => handleViewDetail(major.majorCode, major.sign)}
+              >
                 <View className="favorite-majors-page__item-content">
                   <View className="favorite-majors-page__item-header">
                     <View className="favorite-majors-page__item-title-section">
                       <Text 
                         className="favorite-majors-page__item-name favorite-majors-page__item-name--clickable"
-                        onClick={() => {
-                          const signQuery = major.sign ? `&sign=${encodeURIComponent(major.sign)}` : ''
-                          Taro.navigateTo({
-                            url: `/pages/assessment/single-major/index?code=${major.majorCode}&name=${encodeURIComponent(major.majorName || '')}${signQuery}`
-                          })
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleViewDetail(major.majorCode, major.sign)
                         }}
                       >
                         {major.majorName}
@@ -328,6 +330,15 @@ export default function FavoriteMajorsPage() {
                       <View className="favorite-majors-page__item-score-badge">
                         <Text>热爱能量: {typeof major.score === 'string' ? parseFloat(major.score).toFixed(2) : major.score.toFixed(2)}</Text>
                       </View>
+                    </View>
+                    <View
+                      className="favorite-majors-page__item-delete-icon"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteClick(major.majorCode)
+                      }}
+                    >
+                      <Text className="favorite-majors-page__item-delete-icon-text">🗑️</Text>
                     </View>
                   </View>
 
@@ -339,7 +350,10 @@ export default function FavoriteMajorsPage() {
                         {major.majorBrief}
                       </Text>
                     <Button
-                      onClick={() => toggleBrief(major.majorCode)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleBrief(major.majorCode)
+                      }}
                       className="favorite-majors-page__item-brief-toggle"
                       size="sm"
                       variant="ghost"
@@ -349,25 +363,6 @@ export default function FavoriteMajorsPage() {
                     </View>
                   )}
 
-                  {/* 操作按钮区域 */}
-                  <View className="favorite-majors-page__item-actions">
-                    <Button
-                      onClick={() => handleDeleteClick(major.majorCode)}
-                      className="favorite-majors-page__item-delete-button"
-                      size="sm"
-                      variant="outline"
-                    >
-                      🗑️ 删除
-                    </Button>
-                    <Button
-                      onClick={() => handleViewDetail(major.majorCode, major.sign)}
-                      className="favorite-majors-page__item-view-button"
-                      size="sm"
-                      variant="outline"
-                    >
-                      👁️ 深度了解
-                    </Button>
-                  </View>
                 </View>
               </Card>
             ))}

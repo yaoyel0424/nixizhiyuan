@@ -99,3 +99,17 @@ page {
 .pr-md { padding-right: @spacing-md; }
 .pr-lg { padding-right: @spacing-lg; }
 .pr-xl { padding-right: @spacing-xl; }
+
+// 应用启动时持久化恢复占位，避免页面未注册导致路由报错
+.app-persist-loading {
+  min-height: 100vh;
+  background: @bg-color;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-persist-loading__text {
+  font-size: @font-size-base;
+  color: @text-color-secondary;
+}
