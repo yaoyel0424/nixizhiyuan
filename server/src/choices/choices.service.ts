@@ -360,13 +360,40 @@ export class ChoicesService {
       .leftJoin(
         MajorScore,
         'majorScore',
-        'enrollmentPlan.schoolCode = majorScore.schoolCode ' +
-        'AND enrollmentPlan.province = majorScore.province ' +
-        'AND enrollmentPlan.batch = majorScore.batch ' +
-        'AND enrollmentPlan.subjectSelectionMode = majorScore.subjectSelectionMode ' +
-        'AND enrollmentPlan.enrollmentMajor = majorScore.enrollmentMajor ' +
-        'AND (enrollmentPlan.keyWords IS NOT DISTINCT FROM majorScore.keyWords) ' +
-        'AND enrollmentPlan.enrollmentType = majorScore.enrollmentType '  
+        'majorScore.schoolCode = enrollmentPlan.schoolCode ' +
+        'AND majorScore.province = enrollmentPlan.province ' +
+        'AND (majorScore.batch = enrollmentPlan.batch ' +
+        'OR (CAST(:aliasBatch AS varchar) IS NOT NULL ' +
+        'AND majorScore.batch = CAST(:aliasBatch AS varchar))) ' +
+        'AND (majorScore.subjectSelectionMode = enrollmentPlan.subjectSelectionMode ' +
+        "OR (enrollmentPlan.province IN ('云南','陕西','青海','宁夏','四川','山西','内蒙古','河南','吉林','黑龙江','安徽','江西','广西','贵州','甘肃') " +
+        "AND ((enrollmentPlan.subjectSelectionMode = '物理类' AND majorScore.subjectSelectionMode = '理科') " +
+        "OR (enrollmentPlan.subjectSelectionMode = '历史类' AND majorScore.subjectSelectionMode = '文科')))) " +
+        'AND majorScore.enrollmentMajor = enrollmentPlan.enrollmentMajor ' +
+        'AND (majorScore.keyWords IS NOT DISTINCT FROM enrollmentPlan.keyWords) ' +
+        'AND majorScore.enrollmentType = enrollmentPlan.enrollmentType ',
+        {
+          aliasBatch:
+            ({
+              云南: { 本科批B段: '本科一批' },
+              陕西: { 本科批: '本科一批' },
+              青海: { 本科批: '本科一段' },
+              宁夏: { 本科批B段: '本科一批' },
+              四川: { 本科批B段: '本科一批' },
+              山西: { 本科批: '本科一批A段' },
+              内蒙古: { 本科批: '本科一批' },
+              河南: { 本科批: '本科一批' },
+              吉林: { 本科批: '本科一批' },
+              黑龙江: { 本科批: '本科一批A段' },
+              安徽: { 本科批: '本科一批' },
+              江西: { 本科批: '本科一批' },
+              广西: { 本科批: '本科一批' },
+              贵州: { 本科批: '本科一批' },
+              甘肃: { 本科批C段: '本科一批I段' },
+            } as Record<string, Record<string, string>>)[user.province]?.[
+              user.enrollType || ''
+            ] ?? null,
+        }
       )
       .addSelect('choice.id', 'choice_id')
       .addSelect('majorScore.schoolCode', 'major_score_school_code')

@@ -375,13 +375,15 @@ export class PortraitsService {
         const portraitIds = portraitList.map((p) => p.id);
         const [challenges1, niches1] = await Promise.all([
           this.quadrant1ChallengeRepository.find({ where: { portraitId: In(portraitIds) } }),
-          this.quadrant1NicheRepository.find({ where: { portraitId: In(portraitIds) } }),
+          // this.quadrant1NicheRepository.find({ where: { portraitId: In(portraitIds) } }),
+          [],
         ]);
         const portraits = portraitList.map((p) =>
           formatPortrait(p, {
             ...emptyExtra(),
             quadrant1Challenges: challenges1.filter((c) => c.portraitId === p.id),
-            quadrant1Niches: niches1.filter((n) => n.portraitId === p.id),
+            // quadrant1Niches: niches1.filter((n) => n.portraitId === p.id),
+            quadrant1Niches: niches1,
           }),
         );
         return {
