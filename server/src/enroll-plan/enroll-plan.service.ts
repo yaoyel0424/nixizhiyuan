@@ -880,8 +880,17 @@ export class EnrollPlanService {
             }
           : null;
 
-        // 简化的 majorScores
-        const majorScoresSimple: MajorScoreSimpleDto[] = ep.majorScores.map(
+        // 简化的 majorScores（按 year 倒序）
+        const majorScoresSimple: MajorScoreSimpleDto[] = [...ep.majorScores]
+          .sort((a, b) => {
+            const aYear = Number(a.year ?? -Infinity);
+            const bYear = Number(b.year ?? -Infinity);
+            if (Number.isFinite(aYear) && Number.isFinite(bYear)) {
+              return bYear - aYear;
+            }
+            return String(b.year ?? '').localeCompare(String(a.year ?? ''));
+          })
+          .map(
           (ms) => ({
             schoolCode: ms.schoolCode,
             province: ms.province,
