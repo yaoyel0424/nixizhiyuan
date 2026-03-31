@@ -237,6 +237,12 @@
   color: #1A4099;
 }
 
+.index-page__card-steps--large {
+  margin-top: 8rpx;
+  margin-bottom: 18rpx;
+  font-size: 28rpx;
+}
+
 // 扩大点击区域：padding 增加可点范围，负 margin 保持视觉尺寸不变
 .index-page__card-step {
   display: flex;
@@ -253,6 +259,18 @@
   &--completed {
     color: #E85D04;
   }
+}
+
+.index-page__card-steps--large .index-page__card-step {
+  gap: 12rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  padding: 28rpx;
+  margin: -28rpx;
+}
+
+.index-page__card-steps--large .index-page__card-step--current {
+  animation: index-step-breathe 1.8s ease-in-out infinite;
 }
 
 // 步骤数字圆圈（浅色背景，略小以减小行高）
@@ -275,10 +293,37 @@
   }
 }
 
+.index-page__card-steps--large .index-page__card-step-num {
+  width: 44rpx;
+  height: 44rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.index-page__card-steps--large .index-page__card-step-num--current {
+  background: rgba(26, 64, 153, 0.24);
+}
+
 .index-page__card-step-sep {
   margin: 0 8rpx;
   font-size: 20rpx;
   color: rgba(26, 64, 153, 0.6);
+}
+
+.index-page__card-steps--large .index-page__card-step-sep {
+  margin: 0 14rpx;
+  font-size: 28rpx;
+}
+
+@keyframes index-step-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.9;
+  }
 }
 
 .index-page__card-button {

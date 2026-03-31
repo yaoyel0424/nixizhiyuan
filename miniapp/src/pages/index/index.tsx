@@ -348,41 +348,38 @@ export default function IndexPage() {
                   <Text className="index-page__card-tag">📊 168题</Text>
                   <Text className="index-page__card-tag">📈 全面数据</Text>
                 </View>
-                <Text className="index-page__card-time">🕒 需时约40分钟</Text>
-              </View>
-            </View>
-            <View className="index-page__card-steps" onClick={(e) => e.stopPropagation()}>
-              <View
-                className={`index-page__card-step ${getStepStatus(1) === 'completed' ? 'index-page__card-step--completed' : ''}`}
-                onClick={() => handleStepClick(1, handleSelfInsight)}
-              >
-                <View className={`index-page__card-step-num ${getStepStatus(1) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>1</Text></View>
-                <Text>填问卷</Text>
-              </View>
-              <Text className="index-page__card-step-sep">—</Text>
-              <View
-                className={`index-page__card-step ${getStepStatus(2) === 'completed' ? 'index-page__card-step--completed' : ''}`}
-                onClick={() => handleStepClick(2, handleMajorExploration)}
-              >
-                <View className={`index-page__card-step-num ${getStepStatus(2) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>2</Text></View>
-                <Text>选专业</Text>
-              </View>
-              <Text className="index-page__card-step-sep">—</Text>
-              <View
-                className={`index-page__card-step ${getStepStatus(3) === 'completed' ? 'index-page__card-step--completed' : ''}`}
-                onClick={() => handleStepClick(3, handleSchoolExploration)}
-              >
-                <View className={`index-page__card-step-num ${getStepStatus(3) === 'completed' ? 'index-page__card-step-num--completed' : ''}`}><Text>3</Text></View>
-                <Text>定志愿</Text>
+               
               </View>
             </View>
             <Text className="index-page__card-desc">
               解锁全部专业，定制
               <Text className="index-page__card-desc-highlight">专属志愿规划</Text>
             </Text>
-            <Button className="index-page__card-button index-page__card-button--orange" size="lg">
-              🎯 开启探索
-            </Button>
+            <View className="index-page__card-steps index-page__card-steps--large" onClick={(e) => e.stopPropagation()}>
+              <View
+                className={`index-page__card-step ${getStepStatus(1) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(1) === 'current' ? 'index-page__card-step--current' : ''}`}
+                onClick={() => handleStepClick(1, handleSelfInsight)}
+              >
+                <View className={`index-page__card-step-num ${getStepStatus(1) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(1) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>1</Text></View>
+                <Text>填问卷</Text>
+              </View>
+              <Text className="index-page__card-step-sep">—</Text>
+              <View
+                className={`index-page__card-step ${getStepStatus(2) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(2) === 'current' ? 'index-page__card-step--current' : ''}`}
+                onClick={() => handleStepClick(2, handleMajorExploration)}
+              >
+                <View className={`index-page__card-step-num ${getStepStatus(2) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(2) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>2</Text></View>
+                <Text>选专业</Text>
+              </View>
+              <Text className="index-page__card-step-sep">—</Text>
+              <View
+                className={`index-page__card-step ${getStepStatus(3) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(3) === 'current' ? 'index-page__card-step--current' : ''}`}
+                onClick={() => handleStepClick(3, handleSchoolExploration)}
+              >
+                <View className={`index-page__card-step-num ${getStepStatus(3) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(3) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>3</Text></View>
+                <Text>定志愿</Text>
+              </View>
+            </View>
           </Card>
         </View>
 

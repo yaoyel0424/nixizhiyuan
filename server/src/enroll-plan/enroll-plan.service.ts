@@ -194,8 +194,34 @@ export class EnrollPlanService {
       });
 
     // 批次条件（从用户的 enrollType 获取）
+    // 特定省份下，部分批次需要兼容映射到另一种批次名称，一并查询
     if (user.enrollType) {
-      queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
+      const batchAliasByProvince: Record<string, Record<string, string>> = {
+        云南: { 本科批B段: '本科一批' },
+        陕西: { 本科批: '本科一批' },
+        青海: { 本科批: '本科一段' },
+        宁夏: { 本科批B段: '本科一批' },
+        四川: { 本科批B段: '本科一批' },
+        山西: { 本科批: '本科一批A段' },
+        内蒙古: { 本科批: '本科一批' },
+        河南: { 本科批: '本科一批' },
+        吉林: { 本科批: '本科一批' },
+        黑龙江: { 本科批: '本科一批A段' },
+        安徽: { 本科批: '本科一批' },
+        江西: { 本科批: '本科一批' },
+        广西: { 本科批: '本科一批' },
+        贵州: { 本科批: '本科一批' },
+        甘肃: { 本科批C段: '本科一批I段' },
+      };
+
+      const aliasBatch = batchAliasByProvince[user.province]?.[user.enrollType];
+      if (aliasBatch) {
+        queryBuilder.andWhere('ep.batch IN (:...batchList)', {
+          batchList: [user.enrollType, aliasBatch],
+        });
+      } else {
+        queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
+      }
     }
 
     // 首选科目条件
@@ -536,7 +562,32 @@ export class EnrollPlanService {
 
     // 批次条件（从用户的 enrollType 获取）（索引顺序：province → batch）
     if (user.enrollType) {
-      queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
+      const batchAliasByProvince: Record<string, Record<string, string>> = {
+        云南: { 本科批B段: '本科一批' },
+        陕西: { 本科批: '本科一批' },
+        青海: { 本科批: '本科一段' },
+        宁夏: { 本科批B段: '本科一批' },
+        四川: { 本科批B段: '本科一批' },
+        山西: { 本科批: '本科一批A段' },
+        内蒙古: { 本科批: '本科一批' },
+        河南: { 本科批: '本科一批' },
+        吉林: { 本科批: '本科一批' },
+        黑龙江: { 本科批: '本科一批A段' },
+        安徽: { 本科批: '本科一批' },
+        江西: { 本科批: '本科一批' },
+        广西: { 本科批: '本科一批' },
+        贵州: { 本科批: '本科一批' },
+        甘肃: { 本科批C段: '本科一批I段' },
+      };
+
+      const aliasBatch = batchAliasByProvince[user.province]?.[user.enrollType];
+      if (aliasBatch) {
+        queryBuilder.andWhere('ep.batch IN (:...batchList)', {
+          batchList: [user.enrollType, aliasBatch],
+        });
+      } else {
+        queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
+      }
     }
 
     // 招生类型条件（索引顺序：province → batch → enrollmentType）
