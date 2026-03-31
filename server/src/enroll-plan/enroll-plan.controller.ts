@@ -89,7 +89,7 @@ export class EnrollPlanController {
     status: 404,
     description: '用户不存在',
   })
-  // @Cache(3600)
+  @Cache(3600)
   async getUserEnrollmentPlans(
     @CurrentUser() user: any,
     @Query('minScore') minScore?: string,
@@ -141,7 +141,7 @@ export class EnrollPlanController {
    * @returns 招生计划列表（包含学校、学校详情、专业组和分数信息）
    */
   @Get('major/:majorId/scores')
-  @Cache(3600)
+  // @Cache(3600)
   @ApiOperation({ summary: '根据专业ID查询招生计划和分数信息' })
   @ApiQuery({
     name: 'minScore',

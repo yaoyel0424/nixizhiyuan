@@ -194,34 +194,8 @@ export class EnrollPlanService {
       });
 
     // 批次条件（从用户的 enrollType 获取）
-    // 特定省份下，部分批次需要兼容映射到另一种批次名称，一并查询
     if (user.enrollType) {
-      const batchAliasByProvince: Record<string, Record<string, string>> = {
-        云南: { 本科批B段: '本科一批' },
-        陕西: { 本科批: '本科一批' },
-        青海: { 本科批: '本科一段' },
-        宁夏: { 本科批B段: '本科一批' },
-        四川: { 本科批B段: '本科一批' },
-        山西: { 本科批: '本科一批A段' },
-        内蒙古: { 本科批: '本科一批' },
-        河南: { 本科批: '本科一批' },
-        吉林: { 本科批: '本科一批' },
-        黑龙江: { 本科批: '本科一批A段' },
-        安徽: { 本科批: '本科一批' },
-        江西: { 本科批: '本科一批' },
-        广西: { 本科批: '本科一批' },
-        贵州: { 本科批: '本科一批' },
-        甘肃: { 本科批C段: '本科一批I段' },
-      };
-
-      const aliasBatch = batchAliasByProvince[user.province]?.[user.enrollType];
-      if (aliasBatch) {
-        queryBuilder.andWhere('ep.batch IN (:...batchList)', {
-          batchList: [user.enrollType, aliasBatch],
-        });
-      } else {
-        queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
-      }
+      queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
     }
 
     // 首选科目条件
@@ -284,17 +258,56 @@ export class EnrollPlanService {
           SELECT 1
           FROM major_scores ms
           WHERE 
-           "ep"."school_code" = "ms"."school_code"::varchar
-            AND "ep"."province" = "ms"."province"::varchar
-            AND "ep"."batch" = "ms"."batch"::varchar
-            AND "ep"."subject_selection_mode" = "ms"."subject_selection_mode"::varchar
-            AND "ep"."enrollment_major" = "ms"."enrollment_major"
-            AND "ep"."enrollment_type" = "ms"."enrollment_type"
-            AND "ep"."key_words" = "ms"."key_words"
+           "ms"."school_code"::varchar = "ep"."school_code"
+            AND "ms"."province"::varchar = "ep"."province"
+            AND (
+              "ms"."batch"::varchar = "ep"."batch"
+              OR (
+                CAST(:aliasBatch AS varchar) IS NOT NULL
+                AND "ms"."batch"::varchar = CAST(:aliasBatch AS varchar)
+              )
+            )
+            AND (
+              "ms"."subject_selection_mode"::varchar = "ep"."subject_selection_mode"
+              OR (
+                "ep"."province" IN ('云南','陕西','青海','宁夏','四川','山西','内蒙古','河南','吉林','黑龙江','安徽','江西','广西','贵州','甘肃')
+                AND (
+                  ("ep"."subject_selection_mode" = '物理类' AND "ms"."subject_selection_mode"::varchar = '理科')
+                  OR
+                  ("ep"."subject_selection_mode" = '历史类' AND "ms"."subject_selection_mode"::varchar = '文科')
+                )
+              )
+            )
+            AND "ms"."enrollment_major" = "ep"."enrollment_major"
+            AND "ms"."enrollment_type" = "ep"."enrollment_type"
+            AND "ms"."key_words" = "ep"."key_words"
             AND "ms"."min_score" IS NOT NULL
             AND "ms"."min_score" BETWEEN :minScore AND :maxScore
         )`,
-        { minScore, maxScore },
+        {
+          minScore,
+          maxScore,
+          aliasBatch:
+            ({
+              云南: { 本科批B段: '本科一批' },
+              陕西: { 本科批: '本科一批' },
+              青海: { 本科批: '本科一段' },
+              宁夏: { 本科批B段: '本科一批' },
+              四川: { 本科批B段: '本科一批' },
+              山西: { 本科批: '本科一批A段' },
+              内蒙古: { 本科批: '本科一批' },
+              河南: { 本科批: '本科一批' },
+              吉林: { 本科批: '本科一批' },
+              黑龙江: { 本科批: '本科一批A段' },
+              安徽: { 本科批: '本科一批' },
+              江西: { 本科批: '本科一批' },
+              广西: { 本科批: '本科一批' },
+              贵州: { 本科批: '本科一批' },
+              甘肃: { 本科批C段: '本科一批I段' },
+            } as Record<string, Record<string, string>>)[user.province]?.[
+              user.enrollType || ''
+            ] ?? null,
+        },
       );
     }
 
@@ -517,13 +530,29 @@ export class EnrollPlanService {
       .leftJoin(
         'major_scores',
         'ms',
-        `"ep"."school_code" = "ms"."school_code"::varchar
-         AND "ep"."province" = "ms"."province"::varchar
-         AND "ep"."batch" = "ms"."batch"::varchar
-         AND "ep"."subject_selection_mode" = "ms"."subject_selection_mode"::varchar
-         AND "ep"."enrollment_major"="ms"."enrollment_major"
-         AND  "ep"."enrollment_type"="ms"."enrollment_type"
-         AND "ep"."key_words"="ms"."key_words" 
+        `"ms"."school_code"::varchar = "ep"."school_code"
+         AND "ms"."province"::varchar = "ep"."province"
+         AND (
+           "ms"."batch"::varchar = "ep"."batch"
+           OR (
+             CAST(:aliasBatch AS varchar) IS NOT NULL
+             AND "ms"."batch"::varchar = CAST(:aliasBatch AS varchar)
+           )
+         )
+         AND (
+           "ms"."subject_selection_mode"::varchar = "ep"."subject_selection_mode"
+           OR (
+             "ep"."province" IN ('云南','陕西','青海','宁夏','四川','山西','内蒙古','河南','吉林','黑龙江','安徽','江西','广西','贵州','甘肃')
+             AND (
+               ("ep"."subject_selection_mode" = '物理类' AND "ms"."subject_selection_mode"::varchar = '理科')
+               OR
+               ("ep"."subject_selection_mode" = '历史类' AND "ms"."subject_selection_mode"::varchar = '文科')
+             )
+           )
+         )
+         AND "ms"."enrollment_major" = "ep"."enrollment_major"
+         AND "ms"."enrollment_type" = "ep"."enrollment_type"
+         AND "ms"."key_words" = "ep"."key_words" 
          AND (
            ("ep"."level3_major_id" && ARRAY[:majorId]::integer[] 
             AND "ms"."level3_major_id" && ARRAY[:majorId]::integer[])
@@ -539,7 +568,29 @@ export class EnrollPlanService {
                AND array_length("ms"."sub_level2_major_ids", 1) > 0)
             ))
          )`,
-        { majorId },
+        {
+          majorId,
+          aliasBatch:
+            ({
+              云南: { 本科批B段: '本科一批' },
+              陕西: { 本科批: '本科一批' },
+              青海: { 本科批: '本科一段' },
+              宁夏: { 本科批B段: '本科一批' },
+              四川: { 本科批B段: '本科一批' },
+              山西: { 本科批: '本科一批A段' },
+              内蒙古: { 本科批: '本科一批' },
+              河南: { 本科批: '本科一批' },
+              吉林: { 本科批: '本科一批' },
+              黑龙江: { 本科批: '本科一批A段' },
+              安徽: { 本科批: '本科一批' },
+              江西: { 本科批: '本科一批' },
+              广西: { 本科批: '本科一批' },
+              贵州: { 本科批: '本科一批' },
+              甘肃: { 本科批C段: '本科一批I段' },
+            } as Record<string, Record<string, string>>)[user.province]?.[
+              user.enrollType || ''
+            ] ?? null,
+        },
       )
       // 只选择最终 DTO 需要的字段（减少数据传输量）
       .addSelect('"ms"."id"', 'ms_id') // 用于去重
@@ -562,32 +613,7 @@ export class EnrollPlanService {
 
     // 批次条件（从用户的 enrollType 获取）（索引顺序：province → batch）
     if (user.enrollType) {
-      const batchAliasByProvince: Record<string, Record<string, string>> = {
-        云南: { 本科批B段: '本科一批' },
-        陕西: { 本科批: '本科一批' },
-        青海: { 本科批: '本科一段' },
-        宁夏: { 本科批B段: '本科一批' },
-        四川: { 本科批B段: '本科一批' },
-        山西: { 本科批: '本科一批A段' },
-        内蒙古: { 本科批: '本科一批' },
-        河南: { 本科批: '本科一批' },
-        吉林: { 本科批: '本科一批' },
-        黑龙江: { 本科批: '本科一批A段' },
-        安徽: { 本科批: '本科一批' },
-        江西: { 本科批: '本科一批' },
-        广西: { 本科批: '本科一批' },
-        贵州: { 本科批: '本科一批' },
-        甘肃: { 本科批C段: '本科一批I段' },
-      };
-
-      const aliasBatch = batchAliasByProvince[user.province]?.[user.enrollType];
-      if (aliasBatch) {
-        queryBuilder.andWhere('ep.batch IN (:...batchList)', {
-          batchList: [user.enrollType, aliasBatch],
-        });
-      } else {
-        queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
-      }
+      queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
     }
 
     // 招生类型条件（索引顺序：province → batch → enrollmentType）
