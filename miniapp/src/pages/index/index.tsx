@@ -263,6 +263,17 @@ export default function IndexPage() {
     goTo168InsightIntro();
   }, '深度自我洞察功能暂时不可用，请稍后重试');
 
+  /**
+   * 已完成 168 题后：进入答题页查看/继续问卷（与 all-majors 的 continue 逻辑一致）
+   */
+  const handleViewQuestionnaire = withErrorHandler(() => {
+    const url =
+      repeatCount > 0
+        ? '/pages/assessment/all-majors/index?continue=1'
+        : '/pages/assessment/all-majors/index';
+    Taro.navigateTo({ url });
+  }, '打开问卷失败，请稍后重试');
+
   // 处理步骤点击（带锁定检查）
   const handleStepClick = withErrorHandler((stepNumber: number, handler: () => void) => {
     const status = getStepStatus(stepNumber);
@@ -355,31 +366,92 @@ export default function IndexPage() {
               解锁全部专业，定制
               <Text className="index-page__card-desc-highlight">专属志愿规划</Text>
             </Text>
-            <View className="index-page__card-steps index-page__card-steps--large" onClick={(e) => e.stopPropagation()}>
-              <View
-                className={`index-page__card-step ${getStepStatus(1) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(1) === 'current' ? 'index-page__card-step--current' : ''}`}
-                onClick={() => handleStepClick(1, handleSelfInsight)}
-              >
-                <View className={`index-page__card-step-num ${getStepStatus(1) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(1) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>1</Text></View>
-                <Text>填问卷</Text>
-              </View>
-              <Text className="index-page__card-step-sep">—</Text>
-              <View
-                className={`index-page__card-step ${getStepStatus(2) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(2) === 'current' ? 'index-page__card-step--current' : ''}`}
-                onClick={() => handleStepClick(2, handleMajorExploration)}
-              >
-                <View className={`index-page__card-step-num ${getStepStatus(2) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(2) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>2</Text></View>
-                <Text>选专业</Text>
-              </View>
-              <Text className="index-page__card-step-sep">—</Text>
-              <View
-                className={`index-page__card-step ${getStepStatus(3) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(3) === 'current' ? 'index-page__card-step--current' : ''}`}
-                onClick={() => handleStepClick(3, handleSchoolExploration)}
-              >
-                <View className={`index-page__card-step-num ${getStepStatus(3) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(3) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>3</Text></View>
-                <Text>定志愿</Text>
-              </View>
-            </View>
+            {!step1Completed ? (
+              <>
+                <View className="index-page__card-steps index-page__card-steps--large" onClick={(e) => e.stopPropagation()}>
+                  <View
+                    className={`index-page__card-step ${getStepStatus(1) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(1) === 'current' ? 'index-page__card-step--current' : ''}`}
+                    onClick={() => handleStepClick(1, handleSelfInsight)}
+                  >
+                    <View className={`index-page__card-step-num ${getStepStatus(1) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(1) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>1</Text></View>
+                    <Text>填问卷</Text>
+                  </View>
+                  <Text className="index-page__card-step-sep">—</Text>
+                  <View
+                    className={`index-page__card-step ${getStepStatus(2) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(2) === 'current' ? 'index-page__card-step--current' : ''}`}
+                    onClick={() => handleStepClick(2, handleMajorExploration)}
+                  >
+                    <View className={`index-page__card-step-num ${getStepStatus(2) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(2) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>2</Text></View>
+                    <Text>选专业</Text>
+                  </View>
+                  <Text className="index-page__card-step-sep">—</Text>
+                  <View
+                    className={`index-page__card-step ${getStepStatus(3) === 'completed' ? 'index-page__card-step--completed' : ''} ${getStepStatus(3) === 'current' ? 'index-page__card-step--current' : ''}`}
+                    onClick={() => handleStepClick(3, handleSchoolExploration)}
+                  >
+                    <View className={`index-page__card-step-num ${getStepStatus(3) === 'completed' ? 'index-page__card-step-num--completed' : ''} ${getStepStatus(3) === 'current' ? 'index-page__card-step-num--current' : ''}`}><Text>3</Text></View>
+                    <Text>定志愿</Text>
+                  </View>
+                </View>
+                <View
+                  className="index-page__card-step-action-wrap"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button
+                    className="index-page__card-button index-page__card-button--orange"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelfInsight();
+                    }}
+                  >
+                    填写问卷
+                  </Button>
+                </View>
+              </>
+            ) : (
+              <>
+                <View
+                  className="index-page__card-quick-labels"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <View
+                    className="index-page__card-quick-label"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewQuestionnaire();
+                    }}
+                  >
+                    <Text className="index-page__card-quick-label-text">查看问卷</Text>
+                  </View>
+                  <View
+                    className="index-page__card-quick-label"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSchoolExploration();
+                    }}
+                  >
+                    <Text className="index-page__card-quick-label-text">探索志愿</Text>
+                  </View>
+                </View>
+                {/* 保留原主按钮：查看专业 */}
+                <View
+                  className="index-page__card-step-action-wrap"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button
+                    className="index-page__card-button index-page__card-button--orange"
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMajorExploration();
+                    }}
+                  >
+                    查看专业
+                  </Button>
+                </View>
+              </>
+            )}
           </Card>
         </View>
 

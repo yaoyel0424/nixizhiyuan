@@ -713,7 +713,7 @@ export default function AllMajorsPage() {
           <View className="all-majors-page__header-top">
             <View className="all-majors-page__header-spacer" />
             <Text className={`all-majors-page__header-title ${progressAnimation ? 'all-majors-page__header-title--animated' : ''}`}>
-              第 {currentIndex + 1} / {totalQuestions}题
+              已保存 {currentIndex + 1} / {totalQuestions}题
             </Text>
             {/* <Button
               variant="ghost"

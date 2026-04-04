@@ -140,6 +140,19 @@
 .index-page__card-inner--full {
   border-left-color: rgba(26, 64, 153, 0.3);
   background: linear-gradient(to bottom right, rgba(26, 64, 153, 0.08), #fff);
+
+  // 全面评估：收紧步骤条与上下文案/按钮的垂直间距
+  .index-page__card-header {
+    margin-bottom: 6rpx;
+  }
+
+  .index-page__card-tags {
+    margin-bottom: 4rpx;
+  }
+
+  .index-page__card-desc {
+    margin-bottom: 6rpx;
+  }
 }
 
 .index-page__card-header {
@@ -238,8 +251,8 @@
 }
 
 .index-page__card-steps--large {
-  margin-top: 8rpx;
-  margin-bottom: 18rpx;
+  margin-top: 2rpx;
+  margin-bottom: 6rpx;
   font-size: 28rpx;
 }
 
@@ -265,8 +278,8 @@
   gap: 12rpx;
   font-size: 28rpx;
   font-weight: 600;
-  padding: 28rpx;
-  margin: -28rpx;
+  padding: 18rpx;
+  margin: -18rpx;
 }
 
 .index-page__card-steps--large .index-page__card-step--current {
@@ -314,6 +327,45 @@
   margin: 0 14rpx;
   font-size: 28rpx;
 }
+
+// 全面评估步骤条下方主按钮区域
+.index-page__card-step-action-wrap {
+  width: 100%;
+  margin-top: 2rpx;
+  margin-bottom: 0;
+}
+
+// 完成第一步后：双入口文案（查看问卷 / 探索志愿），无描边、字号略小
+.index-page__card-quick-labels {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 16rpx;
+  margin-top: 2rpx;
+  margin-bottom: 4rpx;
+  padding: 8rpx 8rpx 0;
+}
+
+.index-page__card-quick-label {
+  flex: 1;
+  min-width: 0;
+  padding: 12rpx 12rpx;
+  border-radius: 8rpx;
+  background: rgba(26, 64, 153, 0.06);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.index-page__card-quick-label-text {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #1A4099;
+}
+
 
 @keyframes index-step-breathe {
   0%, 100% {
