@@ -2734,6 +2734,19 @@ export default function IntendedMajorsPage() {
               {enrollmentPlans.map((plan) => {
                 const major = plan.majorFavorite.major
                 const majorCode = plan.majorFavorite.majorCode
+                // 点击右侧“几所”区域，进入院校匹配列表页
+                const goToMajorSchools = () => {
+                  // 传递 majorId、majorCode 和 majorName，院校列表页面可以根据 majorId 调用 API
+                  const majorNameParam = encodeURIComponent(major.name || '')
+                  // 如果启用了分数区间筛选，才传递 minScore 和 maxScore
+                  let url = `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}&majorName=${majorNameParam}`
+                  if (enableScoreFilter) {
+                    url += `&minScore=${scoreRange[0]}&maxScore=${scoreRange[1]}`
+                  }
+                  Taro.navigateTo({
+                    url
+                  })
+                }
                 // 点击专业名称或专业项其它区域，进入深入探索页
                 const goToMajorDeepExplore = () => {
                   const sign = (plan.majorFavorite as any)?.sign
@@ -2748,6 +2761,13 @@ export default function IntendedMajorsPage() {
                     className="intended-majors-page__major-item"
                     onClick={goToMajorDeepExplore}
                   >
+                    <View
+                      className="intended-majors-page__major-item-link-overlay"
+                      onClick={(e) => {
+                        e?.stopPropagation?.()
+                        goToMajorSchools()
+                      }}
+                    />
                     <View className="intended-majors-page__major-item-content">
                       <View className="intended-majors-page__major-item-header">
                         <View>
@@ -2770,16 +2790,7 @@ export default function IntendedMajorsPage() {
                         <Button
                           onClick={(e) => {
                             e?.stopPropagation?.()
-                            // 传递 majorId、majorCode 和 majorName，院校列表页面可以根据 majorId 调用 API
-                            const majorNameParam = encodeURIComponent(major.name || '')
-                            // 如果启用了分数区间筛选，才传递 minScore 和 maxScore
-                            let url = `/pages/majors/intended/schools/index?majorCode=${majorCode}&majorId=${major.id}&majorName=${majorNameParam}`
-                            if (enableScoreFilter) {
-                              url += `&minScore=${scoreRange[0]}&maxScore=${scoreRange[1]}`
-                            }
-                            Taro.navigateTo({
-                              url
-                            })
+                            goToMajorSchools()
                           }}
                           className="intended-majors-page__major-item-link"
                           variant="ghost"
