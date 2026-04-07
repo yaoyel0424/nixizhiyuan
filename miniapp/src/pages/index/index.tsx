@@ -317,7 +317,7 @@ export default function IndexPage() {
       {/* 头部横幅 */}
       <View className="index-page__banner">
         <View className="index-page__banner-content">
-          <Text className="index-page__banner-title">找到你的喜欢与天赋</Text>
+          <Text className="index-page__banner-title">找到你我的喜欢与天赋</Text>
           <Text className="index-page__banner-subtitle">不被分数定义，用选择创造未来！</Text>
         </View>
       </View>
@@ -337,11 +337,11 @@ export default function IndexPage() {
               </View>
             </View>
             <Text className="index-page__card-desc">
-              发现与你特质契合的<Text className="index-page__card-desc-highlight">热门专业</Text>
+              发现与我特质契合的<Text className="index-page__card-desc-highlight">热门专业</Text>
               方向
             </Text>
             <Button className="index-page__card-button" size="lg">
-              ⚡ 立即开始
+              ⚡ {step1Completed ? '查看结果' : '立即开始'}
             </Button>
           </Card>
         </View>

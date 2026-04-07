@@ -22,38 +22,38 @@ const DIMENSION_INTRO_COPY: Record<
 > = {
   看: {
     tagline: '世界的取景框',
-    transition: '眼睛带回来的，往往是你内心深处最在意的风景。',
-    explore: '你习惯在人群中寻找趣味，还是在万物中发现规律？',
+    transition: '眼睛带回来的，往往是我内心深处最在意的风景。',
+    explore: '我习惯在人群中寻找趣味，还是在万物中发现规律？',
   },
   听: {
     tagline: '认知的共鸣箱',
-    transition: '听见是本能，听懂是天赋，这是你与世界的“私聊”。',
-    explore: '你更容易被具体的逻辑吸引，还是被抽象的旋律打动？',
+    transition: '听见是本能，听懂是天赋，这是我与世界的“私聊”。',
+    explore: '我更容易被具体的逻辑吸引，还是被抽象的旋律打动？',
   },
   说: {
     tagline: '能量的共振',
-    transition: '语言是思维的边界，更是你向世界递出的能量名片。',
-    explore: '哪一种表达，最能让你感受到“被理解”或“有力量”？',
+    transition: '语言是思维的边界，更是我向世界递出的能量名片。',
+    explore: '哪一种表达，最能让我感受到“被理解”或“有力量”？',
   },
   记: {
     tagline: '灵魂的筛选器',
-    transition: '记忆不是录像，而是你对生命的“二次创作”。',
-    explore: '你的大脑偏爱逻辑的“有用”，还是情感的“有意义”？',
+    transition: '记忆不是录像，而是我对生命的“二次创作”。',
+    explore: '我的大脑偏爱逻辑的“有用”，还是情感的“有意义”？',
   },
   想: {
     tagline: '意识的实验室',
-    transition: '思考是隐形的导航，决定了你是在梦游还是在远航。',
-    explore: '你的思维更习惯解决眼前的路，还是构筑未来的桥？',
+    transition: '思考是隐形的导航，决定了我是在梦游还是在远航。',
+    explore: '我的思维更习惯解决眼前的路，还是构筑未来的桥？',
   },
   做: {
     tagline: '现实的回响',
-    transition: '行动不是任务，而是你与世界最直接的一场对话。',
-    explore: '是一人的专注让你入迷，还是众人的共创让你沸腾？',
+    transition: '行动不是任务，而是我与世界最直接的一场对话。',
+    explore: '是一人的专注让我入迷，还是众人的共创让我沸腾？',
   },
   运动: {
     tagline: '身体的本能智慧',
-    transition: '身体比头脑更诚实，它藏着你对外界最原始的适应力。',
-    explore: '你的生命力，是在极致的稳定中积蓄，还是在快速的变动中绽放？',
+    transition: '身体比头脑更诚实，它藏着我对外界最原始的适应力。',
+    explore: '我的生命力，是在极致的稳定中积蓄，还是在快速的变动中绽放？',
   },
 }
 
@@ -925,7 +925,9 @@ export default function AllMajorsPage() {
               onClick={() => setDimensionIntroOpen(false)}
             >
               <View className="all-majors-page__dimension-intro-screen-cta-content">
-                <Text className="all-majors-page__dimension-intro-screen-cta-prefix">开始探索</Text>
+                <Text className="all-majors-page__dimension-intro-screen-cta-prefix">
+                  {isUnlocked ? '遇见自己' : '开始探索'}
+                </Text>
                 <Text
                   className={`all-majors-page__dimension-intro-screen-cta-dimension all-majors-page__dimension-intro-screen-cta-dimension--${dimensionAccent}`}
                 >

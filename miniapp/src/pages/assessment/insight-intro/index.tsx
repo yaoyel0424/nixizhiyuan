@@ -35,13 +35,13 @@ export default function InsightIntroPage() {
 
           <View className="insight-intro-page__card">
             <Text className="insight-intro-page__num">168</Text>
-            <Text className="insight-intro-page__num-desc">次选择，勾勒更贴近你的画像</Text>
+            <Text className="insight-intro-page__num-desc">次选择，勾勒更贴近我的画像</Text>
             <View className="insight-intro-page__rule" />
             <Text className="insight-intro-page__verse">
-              168 次本能的反应，是带你抵达热爱的 168 个精准坐标。
+              168 次本能的反应，是带我抵达热爱的 168 个精准坐标。
             </Text>
             <Text className="insight-intro-page__verse">
-              这里的每一个选项，都是你身体里原本就有的节奏。
+              这里的每一个选项，都是我身体里原本就有的节奏。
             </Text>
             <Text className="insight-intro-page__verse">
               顺着直觉走，去遇见那个最自然的自己。
@@ -51,7 +51,7 @@ export default function InsightIntroPage() {
 
         <View className="insight-intro-page__footer">
           <Button className="insight-intro-page__cta" size="lg" onClick={handleStart}>
-            从这里开始，看见原本的你
+            从这里开始，看见原本的我
           </Button>
         </View>
       </View>
