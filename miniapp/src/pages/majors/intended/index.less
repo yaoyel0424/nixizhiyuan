@@ -328,6 +328,7 @@
 .intended-majors-page__major-item {
   padding: 24rpx;
   background: #fff;
+  position: relative;
 }
 
 .intended-majors-page__major-item-content {
@@ -406,6 +407,7 @@
   box-shadow: none !important;
   flex-shrink: 0;
   align-self: flex-start;
+  z-index: 2;
   
   &::after {
     border: none !important;
@@ -419,6 +421,15 @@
   &:active {
     background: transparent !important;
   }
+}
+
+.intended-majors-page__major-item-link-overlay {
+  position: absolute;
+  right: 24rpx;
+  top: 64rpx;
+  bottom: 24rpx;
+  width: 160rpx;
+  z-index: 1;
 }
 
 .intended-majors-page__major-item-link-number {
