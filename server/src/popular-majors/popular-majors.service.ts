@@ -586,13 +586,21 @@ export class PopularMajorsService {
       }
     });
 
-    // 按分数倒序排序（无分数或掩码 "*" 的排在最后）
+    // 排序规则：
+    // 1) isCompleted=true 的项排在前，并按 score 降序
+    // 2) isCompleted=false 的项排在后，且保持原有顺序（稳定排序）
     const scoreNum = (v: any) =>
       typeof v === 'number' && !Number.isNaN(v) ? v : -Infinity;
     items.sort((a, b) => {
-      const scoreA = scoreNum((a as any).score?.score);
-      const scoreB = scoreNum((b as any).score?.score);
-      return scoreB - scoreA;
+      const completedA = Boolean((a as any).progress?.isCompleted);
+      const completedB = Boolean((b as any).progress?.isCompleted);
+      if (completedA && completedB) {
+        const scoreA = scoreNum((a as any).score?.score);
+        const scoreB = scoreNum((b as any).score?.score);
+        return scoreB - scoreA;
+      }
+      if (!completedA && !completedB) return 0;
+      return completedA ? -1 : 1;
     });
 
     return { items, total: items.length };

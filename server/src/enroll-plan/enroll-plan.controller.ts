@@ -89,7 +89,7 @@ export class EnrollPlanController {
     status: 404,
     description: '用户不存在',
   })
-  @Cache(3600)
+  @Cache(600)
   async getUserEnrollmentPlans(
     @CurrentUser() user: any,
     @Query('minScore') minScore?: string,
