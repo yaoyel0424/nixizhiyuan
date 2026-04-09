@@ -217,6 +217,26 @@
   justify-content: center;
 }
 
+// 双按钮：等分宽度，与单按钮同高，风格统一
+.onboarding-page__footer--dual {
+  justify-content: stretch;
+  width: 100%;
+  gap: 16rpx;
+}
+
+.onboarding-page__footer--dual .onboarding-page__button {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.onboarding-page__button--secondary {
+  background: #fff;
+  color: #2563eb;
+  border: 2rpx solid rgba(37, 99, 235, 0.45);
+  box-shadow: none;
+}
+
 .onboarding-page__footer--split {
   justify-content: space-between;
 }
