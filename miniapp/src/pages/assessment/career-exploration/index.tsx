@@ -26,7 +26,7 @@ const ELEMENT_ANALYSIS_TYPES = {
   tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },
 } as const
 
-// 状态条颜色：乐学/善学 4-6 绿、-4～-6 黄；厌学/阻学 相反
+// 状态条颜色：所有维度统一为左黄右绿（保持展示顺序一致）
 const SCORE_BAR_GREEN = '#4CAF50'
 const SCORE_BAR_YELLOW = '#FFC107'
 
@@ -304,13 +304,13 @@ function getAnalysisCounts(analyses: any[]) {
 function ElementAnalysesDisplay({
   analyses,
   majorName,
-  onToggleType,
-  expandedType,
+  onToggleGroup,
+  expandedGroup,
 }: {
   analyses: any[] | null | undefined
   majorName: string
-  onToggleType: (type: string, analyses: any[], majorName: string) => void
-  expandedType: string | null
+  onToggleGroup: (group: 'motivation' | 'efficiency', analyses: any[], majorName: string) => void
+  expandedGroup: 'motivation' | 'efficiency' | null
 }) {
   if (!analyses || analyses.length === 0) {
     return null
@@ -331,30 +331,30 @@ function ElementAnalysesDisplay({
     return acc
   }, {} as Record<string, number>)
 
-  const handleClick = (type: string, e?: any) => {
+  const handleClick = (group: 'motivation' | 'efficiency', e?: any) => {
     if (e) {
       e.stopPropagation()
     }
-    onToggleType(type, analyses, majorName)
+    onToggleGroup(group, analyses, majorName)
   }
-
   return (
     <View className="single-major-page__element-analysis-types">
-      {Object.entries(ELEMENT_ANALYSIS_TYPES).map(([type, config]) => {
-        const count = typeCounts[type] || 0
-        return (
-          <View
-            key={type}
-            className={`single-major-page__element-analysis-item ${expandedType === type ? 'single-major-page__element-analysis-item--active' : ''}`}
-            onClick={(e) => handleClick(type, e)}
-          >
-            <View className="single-major-page__element-analysis-info">
-              <Text className="single-major-page__element-analysis-label">{config.label}</Text>
-              <Text className="single-major-page__element-analysis-count">{count}项</Text>
-            </View>
-          </View>
-        )
-      })}
+      <View
+        className={`single-major-page__element-analysis-item ${expandedGroup === 'motivation' ? 'single-major-page__element-analysis-item--active' : ''}`}
+        onClick={(e) => handleClick('motivation', e)}
+      >
+        <View className="single-major-page__element-analysis-info">
+          <Text className="single-major-page__element-analysis-label">学习动力</Text>
+        </View>
+      </View>
+      <View
+        className={`single-major-page__element-analysis-item ${expandedGroup === 'efficiency' ? 'single-major-page__element-analysis-item--active' : ''}`}
+        onClick={(e) => handleClick('efficiency', e)}
+      >
+        <View className="single-major-page__element-analysis-info">
+          <Text className="single-major-page__element-analysis-label">学习效率</Text>
+        </View>
+      </View>
     </View>
   )
 }
@@ -728,7 +728,7 @@ function MajorAnalysisActionCard({
 }) {
   const { positiveCount, negativeCount } = getAnalysisCounts(analyses)
   const totalCount = positiveCount + negativeCount
-  const [expandedElementType, setExpandedElementType] = useState<string | null>(null)
+  const [expandedElementGroup, setExpandedElementGroup] = useState<'motivation' | 'efficiency' | null>(null)
   const [expandedElementMajorName, setExpandedElementMajorName] = useState<string>('')
   const [expandedElementAnalyses, setExpandedElementAnalyses] = useState<any[] | null>(null)
   const hasAutoExpandedRef = useRef(false)
@@ -744,16 +744,19 @@ function MajorAnalysisActionCard({
   const [questionnaireCacheByElementId, setQuestionnaireCacheByElementId] = useState<
     Record<number, { scales: Scale[]; answers: Array<ScaleAnswer | { scaleId: number; score: number; [key: string]: any }> }>
   >({})
+  const [collapsedTypeMap, setCollapsedTypeMap] = useState<Record<string, boolean>>({})
 
   // 兼容两种数据结构，提取当前类型下的元素列表
-  const getElementsByType = (type: string | null, allAnalyses: any[] | null): any[] => {
-    if (!type || !allAnalyses) return []
+  const getElementsByGroup = (group: 'motivation' | 'efficiency' | null, allAnalyses: any[] | null): any[] => {
+    if (!group || !allAnalyses) return []
+    const matchedTypes = group === 'motivation' ? ['lexue', 'yanxue'] : ['shanxue', 'tiaozhan']
     const elements: any[] = []
-    const matchingAnalyses = allAnalyses.filter((a) => a.type === type)
+    const matchingAnalyses = allAnalyses.filter((a) => matchedTypes.includes(a.type))
     matchingAnalyses.forEach((analysis) => {
       if (analysis.elements && Array.isArray(analysis.elements)) {
         elements.push(
           ...analysis.elements.map((el: any) => ({
+            sourceType: analysis.type,
             elementName: el?.elementName || el?.name || el?.element?.name || '未命名',
             elementId: el?.elementId ?? el?.id ?? el?.element?.id ?? null,
             score: el?.score ?? null,
@@ -767,6 +770,7 @@ function MajorAnalysisActionCard({
         )
       } else if (analysis.element) {
         elements.push({
+          sourceType: analysis.type,
           elementName: analysis.element.name || '未命名',
           elementId: analysis.element.id ?? null,
           score: analysis.userElementScore ?? null,
@@ -795,39 +799,244 @@ function MajorAnalysisActionCard({
     return { level: 'unknown', text: String(value) }
   }
 
-  const handleToggleType = (type: string, allAnalyses: any[], mName: string) => {
+  const handleToggleGroup = (group: 'motivation' | 'efficiency', allAnalyses: any[], mName: string) => {
     // 用户已交互：不再触发默认展开逻辑
     hasAutoExpandedRef.current = true
     setExpandedElementAnalyses(allAnalyses)
     setExpandedElementMajorName(mName)
-    setExpandedElementType((prev) => (prev === type ? null : type))
+    setExpandedElementGroup((prev) => (prev === group ? null : group))
   }
 
-  const inlineElements = getElementsByType(expandedElementType, expandedElementAnalyses)
+  const inlineElements = getElementsByGroup(expandedElementGroup, expandedElementAnalyses)
+  const currentGroupTypes: Array<'lexue' | 'yanxue' | 'shanxue' | 'tiaozhan'> =
+    expandedElementGroup === 'motivation'
+      ? ['lexue', 'yanxue']
+      : ['shanxue', 'tiaozhan']
 
-  // 默认展开“乐学”，若无数据则按顺序降级
+  // 默认展开“学习动力”，若无数据则降级到“学习效率”
   useEffect(() => {
     if (!analyses || !Array.isArray(analyses) || analyses.length === 0) return
     if (hasAutoExpandedRef.current) return
 
-    const preferredTypes = ['lexue', 'shanxue', 'yanxue', 'tiaozhan']
-    const firstAvailable = preferredTypes.find((t) => getElementsByType(t, analyses).length > 0) || 'lexue'
+    const motivationElements = getElementsByGroup('motivation', analyses)
+    const firstAvailableGroup: 'motivation' | 'efficiency' =
+      motivationElements.length > 0 ? 'motivation' : 'efficiency'
 
     hasAutoExpandedRef.current = true
     setExpandedElementAnalyses(analyses)
     setExpandedElementMajorName(majorName || '')
-    setExpandedElementType(firstAvailable)
+    setExpandedElementGroup(firstAvailableGroup)
   }, [analyses, majorName])
-  const reasonKind = expandedElementType === 'yanxue'
-    ? 'yanxue'
-    : expandedElementType === 'tiaozhan'
-      ? 'tiaozhan'
-      : 'match'
-  const reasonLabel = reasonKind === 'yanxue'
-    ? '厌学原因'
-    : reasonKind === 'tiaozhan'
-      ? '阻学原因'
-      : '匹配原因'
+
+  const renderElementDialogItem = (element: any, index: number, keyPrefix: string) => {
+    const elementId: number | null = typeof element.elementId === 'number' ? element.elementId : null
+    const elementType = String(element?.sourceType || '')
+    const { label: scoreBarLabel, isPositive: scoreBarPositive } = getScoreBarConfig(elementType)
+    const displayScoreBarLabel = elementType === 'yanxue'
+      ? '厌学能量'
+      : elementType === 'tiaozhan'
+        ? '阻学能量'
+        : scoreBarLabel
+    const reasonKind = elementType === 'yanxue'
+      ? 'yanxue'
+      : elementType === 'tiaozhan'
+        ? 'tiaozhan'
+        : 'match'
+    const reasonLabel = reasonKind === 'yanxue'
+      ? '厌学原因'
+      : reasonKind === 'tiaozhan'
+        ? '阻学原因'
+        : '匹配原因'
+    const numScore = element.score != null ? Math.max(-6, Math.min(6, Number(element.score))) : null
+    // 百分比位置仍按维度正负向计算；颜色顺序统一为左黄右绿（不再反向展示）
+    const rawPercent = numScore != null ? ((numScore + 6) / 12) * 100 : null
+    const markerPercent = rawPercent != null
+      ? (scoreBarPositive ? rawPercent : 100 - rawPercent)
+      : null
+    const barGradient = `linear-gradient(to right, ${SCORE_BAR_YELLOW} 0%, ${SCORE_BAR_YELLOW} 16.67%, ${SCORE_BAR_GREEN} 83.33%, ${SCORE_BAR_GREEN} 100%)`
+    const isQuestionnaireExpanded = elementId !== null && expandedQuestionnaireElementIds.has(elementId)
+    const isQuestionnaireLoading = elementId !== null && questionnaireLoadingElementIds.has(elementId)
+    const questionnaireError = elementId !== null ? questionnaireErrorByElementId[elementId] : undefined
+    const questionnaireData = elementId !== null ? questionnaireCacheByElementId[elementId] : undefined
+
+    const answerByScaleId = new Map<number, number>()
+    if (questionnaireData?.answers && Array.isArray(questionnaireData.answers)) {
+      questionnaireData.answers.forEach((a: any) => {
+        // 兼容 ScaleAnswer 和 PopularMajorAnswer 两种类型
+        const scaleId = a?.scaleId ?? a?.scale_id
+        const score = a?.score
+        // 将 score 转换为数字（处理 decimal 类型可能返回字符串的情况）
+        const scoreNum = typeof score === 'number' ? score : (typeof score === 'string' ? parseFloat(score) : null)
+        if (typeof scaleId === 'number' && scoreNum !== null && !isNaN(scoreNum)) {
+          answerByScaleId.set(scaleId, scoreNum)
+        }
+      })
+    }
+
+    const isYellowType = elementType === 'yanxue' || elementType === 'tiaozhan'
+
+    return (
+      <View
+        key={`${keyPrefix}-${elementId !== null ? elementId : `${element.elementName || index}-${index}`}`}
+        className="single-major-page__element-dialog-item"
+      >
+        <Text className={`single-major-page__element-dialog-item-name ${isYellowType ? 'career-exploration-page__yellow-text' : ''}`}>
+          {element.elementName}
+        </Text>
+        {element.matchReason && (
+          <Text className="single-major-page__element-dialog-item-reason">
+            <Text
+              className={`single-major-page__element-dialog-item-reason-label single-major-page__element-dialog-item-reason-label--${reasonKind} ${isYellowType ? 'career-exploration-page__yellow-text' : ''}`}
+            >
+              {reasonLabel}：
+            </Text>
+            {element.matchReason}
+          </Text>
+        )}
+        <View className="single-major-page__element-dialog-item-score career-exploration-page__score-result-row">
+          <View className="career-exploration-page__score-result-label-wrap">
+            <Text className="single-major-page__element-dialog-item-score-label">自评结果：</Text>
+          </View>
+          <View className="career-exploration-page__score-bar-wrap">
+            <View className="career-exploration-page__score-bar-inner">
+              <View className="career-exploration-page__score-bar-row">
+                <Text className="career-exploration-page__score-bar-end">
+                  {isYellowType ? '低' : '减弱'}
+                </Text>
+                <View className="career-exploration-page__score-bar-track-wrap">
+                  {markerPercent != null && (
+                    <View className="career-exploration-page__score-bar-marker-col" style={{ left: `${markerPercent}%` }}>
+                      <Text className="career-exploration-page__score-bar-label">{displayScoreBarLabel}</Text>
+                      <Text className="career-exploration-page__score-bar-arrow">▼</Text>
+                    </View>
+                  )}
+                  <View className="career-exploration-page__score-bar-track">
+                    <View
+                      className="career-exploration-page__score-bar-fill"
+                      style={{ background: numScore == null ? '#d1d5db' : barGradient }}
+                    />
+                  </View>
+                </View>
+                <Text className="career-exploration-page__score-bar-end">
+                  {isYellowType ? '高' : '增强'}
+                </Text>
+              </View>
+            </View>
+            {numScore == null && (
+              <Text className="career-exploration-page__score-bar-placeholder">待评估</Text>
+            )}
+          </View>
+          {elementId !== null && (
+            <View className="career-exploration-page__score-result-action-wrap">
+              <Text
+                className="single-major-page__element-dialog-item-score-action"
+                onClick={() => toggleElementQuestionnaire(elementId)}
+              >
+                查看问卷
+                <Text className="single-major-page__element-dialog-item-score-action-icon">
+                  {isQuestionnaireExpanded ? '▲' : '▼'}
+                </Text>
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {(() => {
+          // 仅在“厌学/阻学”元素下展示转化潜力（放在“评估结果”下面）
+          const shouldShowConversion = elementType === 'yanxue' || elementType === 'tiaozhan'
+          if (!shouldShowConversion) return null
+          const { level, text } = getPotentialConversionLabel(element?.potentialConversionValue)
+          const reasonText = element?.potentialConversionReason ? String(element.potentialConversionReason) : ''
+          if (!text && !reasonText) return null
+
+          return (
+            <View className="single-major-page__element-dialog-item-conversion">
+              {text && (
+                <View className="single-major-page__element-dialog-item-conversion-row">
+                  <Text className="single-major-page__element-dialog-item-conversion-label">
+                    转化潜力：
+                  </Text>
+                  <Text
+                    className={`single-major-page__element-dialog-item-conversion-tag single-major-page__element-dialog-item-conversion-tag--${level}`}
+                  >
+                    {text}
+                  </Text>
+                </View>
+              )}
+              {reasonText && (
+                <Text className="single-major-page__element-dialog-item-conversion-reason">
+                  {reasonText}
+                </Text>
+              )}
+            </View>
+          )
+        })()}
+
+        {elementId !== null && isQuestionnaireExpanded && (
+          <View className="single-major-page__element-questionnaire">
+            {isQuestionnaireLoading && (
+              <Text className="single-major-page__element-questionnaire-loading">加载中...</Text>
+            )}
+            {!isQuestionnaireLoading && questionnaireError && (
+              <View className="single-major-page__element-questionnaire-error">
+                <Text className="single-major-page__element-questionnaire-error-text">{questionnaireError}</Text>
+                <Text
+                  className="single-major-page__element-questionnaire-retry"
+                  onClick={() => fetchElementQuestionnaire(elementId)}
+                >
+                  点击重试
+                </Text>
+              </View>
+            )}
+            {!isQuestionnaireLoading && !questionnaireError && questionnaireData && (
+              <View className="single-major-page__element-questionnaire-content">
+                {questionnaireData.scales.length === 0 ? (
+                  <Text className="single-major-page__element-questionnaire-empty">暂无问卷内容</Text>
+                ) : (
+                  questionnaireData.scales.map((scale, scaleIndex) => {
+                    const selectedScore = answerByScaleId.get(scale.id)
+                    const options = Array.isArray(scale.options) ? [...scale.options] : []
+                    options.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                    return (
+                      <View key={scale.id} className="single-major-page__element-questionnaire-scale">
+                        <Text className="single-major-page__element-questionnaire-scale-content">
+                          {scaleIndex + 1}. {scale.content}
+                        </Text>
+                        <View className="single-major-page__element-questionnaire-options">
+                          {options.map((opt) => {
+                            const isSelected =
+                              typeof selectedScore === 'number' &&
+                              typeof opt.optionValue === 'number' &&
+                              opt.optionValue === selectedScore
+                            return (
+                              <View
+                                key={opt.id}
+                                className={`single-major-page__element-questionnaire-option ${isSelected ? 'single-major-page__element-questionnaire-option--selected' : ''}`}
+                              >
+                                <View className="single-major-page__element-questionnaire-option-header">
+                                  <Text className="single-major-page__element-questionnaire-option-name">{opt.optionName}</Text>
+                                  {isSelected && (
+                                    <Text className="single-major-page__element-questionnaire-option-badge">你的选择</Text>
+                                  )}
+                                </View>
+                                {opt.additionalInfo && String(opt.additionalInfo).trim() && (
+                                  <Text className="single-major-page__element-questionnaire-option-info">{opt.additionalInfo}</Text>
+                                )}
+                              </View>
+                            )
+                          })}
+                        </View>
+                      </View>
+                    )
+                  })
+                )}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    )
+  }
 
   // 获取 element 的问卷与答案（带缓存）
   const fetchElementQuestionnaire = async (elementId: number) => {
@@ -908,236 +1117,53 @@ function MajorAnalysisActionCard({
         <ElementAnalysesDisplay
           analyses={analyses}
           majorName={majorName || ''}
-          onToggleType={handleToggleType}
-          expandedType={expandedElementType}
+          onToggleGroup={handleToggleGroup}
+          expandedGroup={expandedElementGroup}
         />
 
-        {expandedElementType && (
+        {expandedElementGroup && (
           <View className="single-major-page__element-inline">
-            <View className="single-major-page__element-inline-header">
-              <Text className="single-major-page__element-inline-title">
-                {(() => {
-                  const key = expandedElementType as keyof typeof ELEMENT_ANALYSIS_TYPES
-                  const config = ELEMENT_ANALYSIS_TYPES[key]
-                  if (!config) return expandedElementMajorName
-                  const label = config.label
-                  const desc = 'desc' in config ? config.desc : undefined
-                  if (!desc) return `${label} - ${expandedElementMajorName}`
-                  return (
-                    <>
-                      {label}{' '}
-                      <Text className="single-major-page__element-inline-title-desc">
-                        （{desc}）
-                      </Text>
-                   
-                    </>
-                  )
-                })()}
-              </Text>
-              <Text
-                className="single-major-page__element-inline-toggle"
-                onClick={(e) => {
-                  e?.stopPropagation?.()
-                  // 用户已交互：不再触发默认展开逻辑
-                  hasAutoExpandedRef.current = true
-                  setExpandedElementType(null)
-                }}
-              >
-                ▲
-              </Text>
-            </View>
-
             {inlineElements.length === 0 ? (
               <View className="single-major-page__element-dialog-empty">
                 <Text>暂无数据</Text>
               </View>
             ) : (
-              <View className="single-major-page__element-dialog-list">
-                {inlineElements.map((element: any, index: number) => {
-                  const elementId: number | null = typeof element.elementId === 'number' ? element.elementId : null
-                  const { label: scoreBarLabel, isPositive: scoreBarPositive } = getScoreBarConfig(expandedElementType)
-                  const numScore = element.score != null ? Math.max(-6, Math.min(6, Number(element.score))) : null
-                  // 乐学/善学：正分好，-6→0% 低，6→100% 高；厌学/阻学：负分增强，正分削弱，逻辑相反
-                  const rawPercent = numScore != null ? ((numScore + 6) / 12) * 100 : null
-                  const markerPercent = rawPercent != null
-                    ? (scoreBarPositive ? rawPercent : 100 - rawPercent)
-                    : null
-                  const barGradient = scoreBarPositive
-                    ? `linear-gradient(to right, ${SCORE_BAR_YELLOW} 0%, ${SCORE_BAR_YELLOW} 16.67%, ${SCORE_BAR_GREEN} 83.33%, ${SCORE_BAR_GREEN} 100%)`
-                    : `linear-gradient(to right, ${SCORE_BAR_GREEN} 0%, ${SCORE_BAR_GREEN} 16.67%, ${SCORE_BAR_YELLOW} 83.33%, ${SCORE_BAR_YELLOW} 100%)`
-                  const isQuestionnaireExpanded = elementId !== null && expandedQuestionnaireElementIds.has(elementId)
-                  const isQuestionnaireLoading = elementId !== null && questionnaireLoadingElementIds.has(elementId)
-                  const questionnaireError = elementId !== null ? questionnaireErrorByElementId[elementId] : undefined
-                  const questionnaireData = elementId !== null ? questionnaireCacheByElementId[elementId] : undefined
-
-                  const answerByScaleId = new Map<number, number>()
-                  if (questionnaireData?.answers && Array.isArray(questionnaireData.answers)) {
-                    questionnaireData.answers.forEach((a: any) => {
-                      // 兼容 ScaleAnswer 和 PopularMajorAnswer 两种类型
-                      const scaleId = a?.scaleId ?? a?.scale_id
-                      const score = a?.score
-                      // 将 score 转换为数字（处理 decimal 类型可能返回字符串的情况）
-                      const scoreNum = typeof score === 'number' ? score : (typeof score === 'string' ? parseFloat(score) : null)
-                      if (typeof scaleId === 'number' && scoreNum !== null && !isNaN(scoreNum)) {
-                        answerByScaleId.set(scaleId, scoreNum)
-                      }
-                    })
-                  }
-
+              <View>
+                {currentGroupTypes.map((type) => {
+                  const typeElements = inlineElements.filter((item: any) => item?.sourceType === type)
+                  if (typeElements.length === 0) return null
+                  const typeConfig = ELEMENT_ANALYSIS_TYPES[type]
+                  const canCollapse = true
+                  const isCollapsed = collapsedTypeMap[type] === true
+                  const isYellowType = type === 'yanxue' || type === 'tiaozhan'
                   return (
-                    <View
-                      key={elementId !== null ? `element-${elementId}` : `element-${element.elementName || index}`}
-                      className="single-major-page__element-dialog-item"
-                    >
-                      <Text className="single-major-page__element-dialog-item-name">{element.elementName}</Text>
-                      {element.matchReason && (
-                        <Text className="single-major-page__element-dialog-item-reason">
-                          <Text
-                            className={`single-major-page__element-dialog-item-reason-label single-major-page__element-dialog-item-reason-label--${reasonKind}`}
-                          >
-                            {reasonLabel}：
-                          </Text>
-                          {element.matchReason}
+                    <View key={type}>
+                      <View className="career-exploration-page__sub-type-header">
+                        <Text
+                          className={`single-major-page__element-inline-title career-exploration-page__sub-type-title ${isYellowType ? 'career-exploration-page__yellow-text' : ''}`}
+                        >
+                          {typeConfig.label}（{typeConfig.desc}，{typeElements.length}项）
                         </Text>
-                      )}
-                      <View className="single-major-page__element-dialog-item-score career-exploration-page__score-result-row">
-                        <View className="career-exploration-page__score-result-label-wrap">
-                          <Text className="single-major-page__element-dialog-item-score-label">自评结果：</Text>
-                        </View>
-                        <View className="career-exploration-page__score-bar-wrap">
-                          <View className="career-exploration-page__score-bar-inner">
-                            <View className="career-exploration-page__score-bar-row">
-                              <Text className="career-exploration-page__score-bar-end">
-                                减弱
-                              </Text>
-                              <View className="career-exploration-page__score-bar-track-wrap">
-                                {markerPercent != null && (
-                                  <View className="career-exploration-page__score-bar-marker-col" style={{ left: `${markerPercent}%` }}>
-                                    <Text className="career-exploration-page__score-bar-label">{scoreBarLabel}</Text>
-                                    <Text className="career-exploration-page__score-bar-arrow">▼</Text>
-                                  </View>
-                                )}
-                                <View className="career-exploration-page__score-bar-track">
-                                  <View
-                                    className="career-exploration-page__score-bar-fill"
-                                    style={{ background: numScore == null ? '#d1d5db' : barGradient }}
-                                  />
-                                </View>
-                              </View>
-                              <Text className="career-exploration-page__score-bar-end">
-                               增强 
-                              </Text>
-                            </View>
-                          </View>
-                          {numScore == null && (
-                            <Text className="career-exploration-page__score-bar-placeholder">待评估</Text>
-                          )}
-                        </View>
-                        {elementId !== null && (
-                          <View className="career-exploration-page__score-result-action-wrap">
-                            <Text
-                              className="single-major-page__element-dialog-item-score-action"
-                              onClick={() => toggleElementQuestionnaire(elementId)}
-                            >
-                              查看问卷
-                              <Text className="single-major-page__element-dialog-item-score-action-icon">
-                                {isQuestionnaireExpanded ? '▲' : '▼'}
-                              </Text>
-                            </Text>
-                          </View>
+                        {canCollapse && (
+                          <Text
+                            className="career-exploration-page__sub-type-toggle"
+                            onClick={(e) => {
+                              e?.stopPropagation?.()
+                              e?.preventDefault?.()
+                              setCollapsedTypeMap((prev) => ({
+                                ...prev,
+                                [type]: !isCollapsed,
+                              }))
+                            }}
+                          >
+                            {isCollapsed ? '展开 ▼' : '收起 ▲'}
+                          </Text>
                         )}
                       </View>
-
-                      {(() => {
-                        // 仅在“厌学/阻学”元素下展示转化潜力（放在“评估结果”下面）
-                        const shouldShowConversion = reasonKind === 'yanxue' || reasonKind === 'tiaozhan'
-                        if (!shouldShowConversion) return null
-                        const { level, text } = getPotentialConversionLabel(element?.potentialConversionValue)
-                        const reasonText = element?.potentialConversionReason ? String(element.potentialConversionReason) : ''
-                        if (!text && !reasonText) return null
-
-                        return (
-                          <View className="single-major-page__element-dialog-item-conversion">
-                            {text && (
-                              <View className="single-major-page__element-dialog-item-conversion-row">
-                                <Text className="single-major-page__element-dialog-item-conversion-label">
-                                  转化潜力：
-                                </Text>
-                                <Text
-                                  className={`single-major-page__element-dialog-item-conversion-tag single-major-page__element-dialog-item-conversion-tag--${level}`}
-                                >
-                                  {text}
-                                </Text>
-                              </View>
-                            )}
-                            {reasonText && (
-                              <Text className="single-major-page__element-dialog-item-conversion-reason">
-                                {reasonText}
-                              </Text>
-                            )}
-                          </View>
-                        )
-                      })()}
-
-                      {elementId !== null && isQuestionnaireExpanded && (
-                        <View className="single-major-page__element-questionnaire">
-                          {isQuestionnaireLoading && (
-                            <Text className="single-major-page__element-questionnaire-loading">加载中...</Text>
-                          )}
-                          {!isQuestionnaireLoading && questionnaireError && (
-                            <View className="single-major-page__element-questionnaire-error">
-                              <Text className="single-major-page__element-questionnaire-error-text">{questionnaireError}</Text>
-                              <Text
-                                className="single-major-page__element-questionnaire-retry"
-                                onClick={() => fetchElementQuestionnaire(elementId)}
-                              >
-                                点击重试
-                              </Text>
-                            </View>
-                          )}
-                          {!isQuestionnaireLoading && !questionnaireError && questionnaireData && (
-                            <View className="single-major-page__element-questionnaire-content">
-                              {questionnaireData.scales.length === 0 ? (
-                                <Text className="single-major-page__element-questionnaire-empty">暂无问卷内容</Text>
-                              ) : (
-                                questionnaireData.scales.map((scale, scaleIndex) => {
-                                  const selectedScore = answerByScaleId.get(scale.id)
-                                  const options = Array.isArray(scale.options) ? [...scale.options] : []
-                                  options.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
-                                  return (
-                                    <View key={scale.id} className="single-major-page__element-questionnaire-scale">
-                                      <Text className="single-major-page__element-questionnaire-scale-content">
-                                        {scaleIndex + 1}. {scale.content}
-                                      </Text>
-                                      <View className="single-major-page__element-questionnaire-options">
-                                        {options.map((opt) => {
-                                          const isSelected =
-                                            typeof selectedScore === 'number' &&
-                                            typeof opt.optionValue === 'number' &&
-                                            opt.optionValue === selectedScore
-                                          return (
-                                            <View
-                                              key={opt.id}
-                                              className={`single-major-page__element-questionnaire-option ${isSelected ? 'single-major-page__element-questionnaire-option--selected' : ''}`}
-                                            >
-                                              <View className="single-major-page__element-questionnaire-option-header">
-                                                <Text className="single-major-page__element-questionnaire-option-name">{opt.optionName}</Text>
-                                                {isSelected && (
-                                                  <Text className="single-major-page__element-questionnaire-option-badge">你的选择</Text>
-                                                )}
-                                              </View>
-                                              {opt.additionalInfo && String(opt.additionalInfo).trim() && (
-                                                <Text className="single-major-page__element-questionnaire-option-info">{opt.additionalInfo}</Text>
-                                              )}
-                                            </View>
-                                          )
-                                        })}
-                                      </View>
-                                    </View>
-                                  )
-                                })
-                              )}
-                            </View>
+                      {!isCollapsed && (
+                        <View className="single-major-page__element-dialog-list">
+                          {typeElements.map((element: any, index: number) =>
+                            renderElementDialogItem(element, index, type),
                           )}
                         </View>
                       )}
