@@ -749,6 +749,21 @@ export function ExamInfoDialog({
             </View>
           </View>
 
+          {/* 类别说明：当前系统暂仅支持普通类考生进行志愿填报，其他类别招生暂未开放 */}
+          <View className="exam-info-dialog__row">
+            <Text className="exam-info-dialog__label">类别</Text>
+            <View className="exam-info-dialog__province-select-wrapper">
+              <View className="exam-info-dialog__readonly-value">
+                <Text className="exam-info-dialog__readonly-value-text">普通类</Text>
+              </View>
+            </View>
+          </View>
+          <View className="exam-info-dialog__tip">
+            <Text className="exam-info-dialog__tip-text">
+              当前系统暂仅支持普通类考生进行志愿填报，其他类别招生暂未开放。
+            </Text>
+          </View>
+
           {/* 确认按钮 */}
           <Button
             onClick={handleConfirm}
