@@ -1,5 +1,6 @@
 export default {
   pages: [
+    'pages/onboarding/index',
     'pages/index/index',
     'pages/assessment/index',
     'pages/assessment/insight-intro/index',

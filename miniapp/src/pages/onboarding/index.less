@@ -1,0 +1,296 @@
+.onboarding-page {
+  height: 100vh;
+  background: #f8fbff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.onboarding-page__top {
+  height: 88rpx;
+  padding: 0 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fbff;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.onboarding-page__skip {
+  width: 80rpx;
+  text-align: left;
+  font-size: 30rpx;
+  color: #9ca3af;
+}
+
+.onboarding-page__skip--left {
+  text-align: left;
+}
+
+.onboarding-page__top-placeholder {
+  width: 80rpx;
+}
+
+.onboarding-page__swiper {
+  flex: 1;
+}
+
+.onboarding-page__slide {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 60rpx 30rpx calc(env(safe-area-inset-bottom) + 24rpx);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: #f8fbff;
+}
+
+.onboarding-page__banner-image {
+  width: 95%;
+  margin: 0 auto;
+  border-radius: 0;
+}
+
+.onboarding-page__content {
+  margin-top: 26rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.onboarding-page__title {
+  font-size: 32rpx;
+  line-height: 1.35;
+  color: #1f2a44;
+  font-weight: 800;
+  text-align: center;
+}
+
+.onboarding-page__content--screen2 {
+  gap: 16rpx;
+}
+
+.onboarding-page__title--screen2 {
+  margin-bottom: 2rpx;
+}
+
+.onboarding-page__subtitle {
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #6b7280;
+  text-align: left;
+}
+
+.onboarding-page__subtitle--center {
+  text-align: center;
+}
+
+.onboarding-page__subtitle--bottom {
+  margin-top: auto;
+  padding-bottom: 16rpx;
+  text-align: center;
+}
+
+.onboarding-page__subtitle--screen-bottom {
+  margin-top: auto;
+  width: 100%;
+  text-align: center;
+  padding-top: 36rpx;
+  padding-bottom: 8rpx;
+}
+
+.onboarding-page__point {
+  padding: 20rpx 22rpx;
+  border-radius: 18rpx;
+  background: #f1f8ff;
+}
+
+.onboarding-page__point-title {
+  display: block;
+  width: 100%;
+  font-size: 34rpx;
+  color: #1f66ff;
+  font-weight: 800;
+}
+
+.onboarding-page__point-desc {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.onboarding-page__step-line {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.onboarding-page__step-no {
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  background: #e8f2ff;
+  color: #1f66ff;
+  font-size: 24rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-page__step-text {
+  flex: 1;
+  font-size: 32rpx;
+  line-height: 1.4;
+  color: #475569;
+}
+
+.onboarding-page__tags {
+  margin-top: 8rpx;
+  display: flex;
+  justify-content: center;
+  gap: 22rpx;
+}
+
+.onboarding-page__tag {
+  padding: 8rpx 26rpx;
+  border-radius: 999rpx;
+  background: #f1f5f9;
+  font-size: 28rpx;
+  color: #64748b;
+}
+
+.onboarding-page__metrics {
+  margin-top: 8rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+}
+
+.onboarding-page__metric {
+  background: #f4f9ff;
+  border-radius: 8rpx;
+  min-height: 112rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-page__metric-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.onboarding-page__metric-icon {
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.onboarding-page__metric-text {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #1f66ff;
+}
+
+.onboarding-page__metric-inner--breathe {
+  animation: onboarding-metric-breathe 2.4s ease-in-out infinite;
+}
+
+.onboarding-page__footer {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  min-height: 96rpx;
+  margin-top: auto;
+}
+
+.onboarding-page__footer--single {
+  justify-content: center;
+}
+
+.onboarding-page__footer--split {
+  justify-content: space-between;
+}
+
+.onboarding-page__hint {
+  font-size: 30rpx;
+  color: #6b7280;
+}
+
+.onboarding-page__button {
+  width: 240rpx;
+  height: 88rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  border-radius: 10rpx;
+  box-shadow: 0 8rpx 18rpx rgba(59, 130, 246, 0.25);
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+  color: #fff;
+  border: none;
+}
+
+// 主 CTA 呼吸动效：轻微缩放 + 透明度变化，吸睛但不突兀
+.onboarding-page__button--breathe {
+  animation: onboarding-breathe 2.2s ease-in-out infinite;
+}
+
+.onboarding-page__footer--single .onboarding-page__button {
+  width: 100%;
+}
+
+.onboarding-page__dots-bottom {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 150rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  z-index: 12;
+}
+
+.onboarding-page__dot-bottom {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: #d1d5db;
+  transition: all 0.25s ease;
+}
+
+.onboarding-page__dot-bottom--active {
+  background: #3b82f6;
+}
+
+@keyframes onboarding-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.9;
+  }
+}
+
+@keyframes onboarding-metric-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.9;
+  }
+}

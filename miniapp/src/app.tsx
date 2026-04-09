@@ -44,6 +44,17 @@ function AuthInit({ children }: PropsWithChildren<any>) {
   useEffect(() => {
     if (didRun.current) return
     didRun.current = true
+
+    // 启动页优先展示：当首屏为 onboarding 时，不在应用启动阶段触发静默登录，
+    // 避免开发者工具/弱网环境下 wx.login 或登录接口超时拖慢首屏。
+    let launchPath = ''
+    try {
+      launchPath = Taro.getLaunchOptionsSync?.().path || ''
+    } catch (_) {}
+    if (launchPath === 'pages/onboarding/index') {
+      return
+    }
+
     const timer = setTimeout(() => {
       silentLogin()
         .then((ok) => {
@@ -64,7 +75,6 @@ function AuthInit({ children }: PropsWithChildren<any>) {
 
 function App({ children }: PropsWithChildren<any>) {
   useLaunch((options) => {
-    console.log('App launched.')
     // 若启动参数带 uuid（分享链接）或 scene（扫码进入小程序码），写入 storage，供 AuthInit 登录后绑定
     const query = options?.query || {}
     try {
