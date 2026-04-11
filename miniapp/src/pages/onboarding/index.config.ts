@@ -1,6 +1,6 @@
 export default definePageConfig({
   navigationStyle: 'custom',
   disableScroll: true,
-  backgroundColor: '#f8fbff',
-  backgroundTextStyle: 'dark',
+  backgroundColor: '#0A0E27',
+  backgroundTextStyle: 'light',
 });
