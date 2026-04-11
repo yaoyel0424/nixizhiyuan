@@ -274,7 +274,7 @@ export default function OnboardingPage() {
           size="lg"
           onClick={handleStartAssessment}
         >
-          立即测评
+          开启自评
         </Button>
         <Button
           variant="secondary"
