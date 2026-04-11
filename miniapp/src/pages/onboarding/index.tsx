@@ -252,7 +252,9 @@ export default function OnboardingPage() {
               <Text className="launch-hero__stats-text">168题 · 7大能力</Text>
               <Text className="launch-hero__stats-diamond">◆</Text>
             </View>
-            <Text className="launch-hero__stats-sub">1914专业98%用户满意度</Text>
+            <Text className="launch-hero__stats-sub">
+              1914专业 · 98%用户满意度
+            </Text>
           </View>
 
           <View className="launch-hero__swipe">
