@@ -1,60 +1,68 @@
 // 热门专业评估页面
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { View, Text, ScrollView } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { PageContainer } from '@/components/PageContainer'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
-import { Progress } from '@/components/ui/Progress'
-import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors'
-import { getFreeQuota, requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay'
-import { getScalesByPopularMajorId } from '@/services/scales'
-import { getPopularMajorDetailByCode } from '@/services/majors'
-import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api'
-import './index.less'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { View, Text, ScrollView } from '@tarojs/components';
+import Taro from '@tarojs/taro';
+import { PageContainer } from '@/components/PageContainer';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/Dialog';
+import { Progress } from '@/components/ui/Progress';
+import { getPopularMajors, createOrUpdatePopularMajorAnswer } from '@/services/popular-majors';
+import { getFreeQuota, requestPayForPopularMajor, POPULAR_MAJOR_PRICE } from '@/services/pay';
+import { getScalesByPopularMajorId } from '@/services/scales';
+import { getPopularMajorDetailByCode } from '@/services/majors';
+import { useQuestionnaireCheck } from '@/hooks/useQuestionnaireCheck';
+import { PopularMajorResponse, Scale, MajorElementAnalysis } from '@/types/api';
+import './index.less';
 
 // 适配后的专业接口，兼容原有代码
 interface Major {
-  id: string | number
-  name: string
-  code: string
-  majorId?: number // 专业详情ID，用于跳转到院校列表
-  degree: string | null
-  limit_year: string | null
-  boy_rate?: string
-  girl_rate?: string
-  salaryavg?: string | null
-  fivesalaryavg?: number
-  majorBrief?: string | null
+  id: string | number;
+  name: string;
+  code: string;
+  majorId?: number; // 专业详情ID，用于跳转到院校列表
+  degree: string | null;
+  limit_year: string | null;
+  boy_rate?: string;
+  girl_rate?: string;
+  salaryavg?: string | null;
+  fivesalaryavg?: number;
+  majorBrief?: string | null;
   // 从接口返回的评估进度和分数
   progress?: {
-    completedCount: number
-    totalCount: number
-    isCompleted: boolean
-  }
+    completedCount: number;
+    totalCount: number;
+    isCompleted: boolean;
+  };
   score?: {
-    score: number
-    lexueScore: number
-    shanxueScore: number
-    yanxueDeduction: number
-    tiaozhanDeduction: number
-  } | null
+    score: number;
+    lexueScore: number;
+    shanxueScore: number;
+    yanxueDeduction: number;
+    tiaozhanDeduction: number;
+  } | null;
   // 元素分析数据
-  elementAnalyses?: MajorElementAnalysis[] | null
+  elementAnalyses?: MajorElementAnalysis[] | null;
 }
 
 interface Question {
-  id: number
-  content: string
-  elementId: number
-  type: string
-  dimension: string
+  id: number;
+  content: string;
+  elementId: number;
+  type: string;
+  dimension: string;
   options: Array<{
-    id: number
-    optionName: string
-    optionValue: number
-  }>
+    id: number;
+    optionName: string;
+    optionValue: number;
+  }>;
 }
 
 // 将 Scale 转换为 Question 格式
@@ -70,8 +78,8 @@ const scaleToQuestion = (scale: Scale): Question => {
       optionName: option.optionName,
       optionValue: option.optionValue,
     })),
-  }
-}
+  };
+};
 
 // 元素分析类型配置（含维度描述）
 const ELEMENT_ANALYSIS_TYPES = {
@@ -79,60 +87,60 @@ const ELEMENT_ANALYSIS_TYPES = {
   shanxue: { label: '善学', desc: '学习轻松高效', color: '#2196F3' },
   yanxue: { label: '厌学', desc: '学习动力逐步衰减', color: '#FF9800' },
   tiaozhan: { label: '阻学', desc: '学习效率持续损耗', color: '#F44336' },
-} as const
+} as const;
 
 // 元素分析显示组件（点击乐学/善学/厌学/阻学与专业名称一致，进入详情页）
 function ElementAnalysesDisplay({
   analyses,
   score,
   isCompleted,
-  onGoToDetail
+  onGoToDetail,
 }: {
-  analyses: MajorElementAnalysis[] | null | undefined
-  majorName: string
+  analyses: MajorElementAnalysis[] | null | undefined;
+  majorName: string;
   score?: {
-    score: number
-    lexueScore: number
-    shanxueScore: number
-    yanxueDeduction: number
-    tiaozhanDeduction: number
-  } | null
-  isCompleted?: boolean
-  onGoToDetail: () => void
+    score: number;
+    lexueScore: number;
+    shanxueScore: number;
+    yanxueDeduction: number;
+    tiaozhanDeduction: number;
+  } | null;
+  isCompleted?: boolean;
+  onGoToDetail: () => void;
 }) {
   // 如果未完成评估，不显示元素分析
   if (!isCompleted || !score || !analyses || analyses.length === 0) {
-    return null
+    return null;
   }
 
   // 从 score 对象中获取各类型的分值
   const getScoreByType = (type: string): number | null => {
-    if (!score) return null
+    if (!score) return null;
     switch (type) {
       case 'lexue':
-        return score.lexueScore ?? null
+        return score.lexueScore ?? null;
       case 'shanxue':
-        return score.shanxueScore ?? null
+        return score.shanxueScore ?? null;
       case 'yanxue':
-        return score.yanxueDeduction ?? null
+        return score.yanxueDeduction ?? null;
       case 'tiaozhan':
-        return score.tiaozhanDeduction ?? null
+        return score.tiaozhanDeduction ?? null;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const handleClick = (e: any) => {
-    e.stopPropagation()
-    onGoToDetail()
-  }
+    e.stopPropagation();
+    onGoToDetail();
+  };
 
   // 获取各类型的分值
-  const lexueScore = getScoreByType('lexue') ?? 0
-  const shanxueScore = getScoreByType('shanxue') ?? 0
-  const yanxueScore = getScoreByType('yanxue') ?? 0
-  const tiaozhanScore = getScoreByType('tiaozhan') ?? 0
-  const totalScore = score?.score ?? 0
+  const lexueScore = getScoreByType('lexue') ?? 0;
+  const shanxueScore = getScoreByType('shanxue') ?? 0;
+  const yanxueScore = getScoreByType('yanxue') ?? 0;
+  const tiaozhanScore = getScoreByType('tiaozhan') ?? 0;
+  const totalScore = score?.score ?? 0;
 
   // 定义元素顺序和运算符：乐学+善学-厌学-阻学=score
   const elementOrder = [
@@ -140,22 +148,19 @@ function ElementAnalysesDisplay({
     { type: 'shanxue', operator: '-' },
     { type: 'yanxue', operator: '-' },
     { type: 'tiaozhan', operator: '=' },
-  ]
+  ];
 
   return (
     <View className="popular-majors-page__element-analyses">
       <View className="popular-majors-page__element-analyses-row">
         {elementOrder.map((item, index) => {
-          const config = ELEMENT_ANALYSIS_TYPES[item.type as keyof typeof ELEMENT_ANALYSIS_TYPES]
-          const typeScore = getScoreByType(item.type)
-          const isLast = index === elementOrder.length - 1
-          
+          const config = ELEMENT_ANALYSIS_TYPES[item.type as keyof typeof ELEMENT_ANALYSIS_TYPES];
+          const typeScore = getScoreByType(item.type);
+          const isLast = index === elementOrder.length - 1;
+
           return (
             <React.Fragment key={item.type}>
-              <View
-                className="popular-majors-page__element-analysis-item"
-                onClick={handleClick}
-              >
+              <View className="popular-majors-page__element-analysis-item" onClick={handleClick}>
                 <View className="popular-majors-page__element-analysis-info">
                   <Text className="popular-majors-page__element-analysis-label">
                     {config.label}
@@ -174,9 +179,7 @@ function ElementAnalysesDisplay({
               )}
               {isLast && (
                 <>
-                  <Text className="popular-majors-page__element-analysis-operator">
-                    =
-                  </Text>
+                  <Text className="popular-majors-page__element-analysis-operator">=</Text>
                   <View
                     className="popular-majors-page__element-analysis-total"
                     onClick={handleClick}
@@ -188,44 +191,56 @@ function ElementAnalysesDisplay({
                 </>
               )}
             </React.Fragment>
-          )
+          );
         })}
       </View>
     </View>
-  )
+  );
 }
 
 // 判断专业是理科还是文科
 // 理科：07 理学、08 工学、09 农学、10 医学
 // 文科：01 哲学、02 经济学、03 法学、04 教育学、05 文学、06 历史学、12 管理学、13 艺术学
 const isScienceMajor = (code: string): boolean => {
-  const prefix = code.substring(0, 2)
-  const sciencePrefixes = ['07', '08', '09', '10']
-  return sciencePrefixes.includes(prefix)
-}
+  const prefix = code.substring(0, 2);
+  const sciencePrefixes = ['07', '08', '09', '10'];
+  return sciencePrefixes.includes(prefix);
+};
 
 export default function PopularMajorsPage() {
-  const [majors, setMajors] = useState<Major[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<'ben' | 'gz_ben' | 'zhuan'>('ben')
-  const [loading, setLoading] = useState(true)
-  const [showQuestionnaire, setShowQuestionnaire] = useState(false)
-  const [selectedMajor, setSelectedMajor] = useState<Major | null>(null)
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [answers, setAnswers] = useState<Record<number, number>>({})
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [isCompleted, setIsCompleted] = useState(false)
-  const [loveEnergy, setLoveEnergy] = useState<number | null>(null)
+  const { isCompleted: isQuestionnaireCompleted, isLoading: isCheckingQuestionnaire } =
+    useQuestionnaireCheck();
+  const [majors, setMajors] = useState<Major[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<'ben' | 'gz_ben' | 'zhuan'>('ben');
+  const [loading, setLoading] = useState(true);
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [selectedMajor, setSelectedMajor] = useState<Major | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [loveEnergy, setLoveEnergy] = useState<number | null>(null);
   // 学科过滤：all-全部, science-理科, liberal-文科
-  const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all')
+  const [subjectFilter, setSubjectFilter] = useState<'all' | 'science' | 'liberal'>('all');
   // 元素分析对话框状态
 
   // 评估内容预览弹窗（completedCount 为 0 时点击评估先展示测量内容）
-  const [showPreAssessmentIntro, setShowPreAssessmentIntro] = useState(false)
-  const [preAssessmentMajor, setPreAssessmentMajor] = useState<Major | null>(null)
+  const [showPreAssessmentIntro, setShowPreAssessmentIntro] = useState(false);
+  const [preAssessmentMajor, setPreAssessmentMajor] = useState<Major | null>(null);
   // 免费提示与支付：点击评估/报告/院校先弹「免费查看2个，其他收费」；是否收费仅由业务接口（如 enroll-plan、scales）返回 PAY_REQUIRED 决定
-  const [showFreeQuotaTip, setShowFreeQuotaTip] = useState(false)
-  const [showPayRequiredModal, setShowPayRequiredModal] = useState(false)
-  const [pendingAction, setPendingAction] = useState<{ type: 'assessment' | 'report' | 'schools'; major: Major } | null>(null)
+  const [showFreeQuotaTip, setShowFreeQuotaTip] = useState(false);
+  const [showPayRequiredModal, setShowPayRequiredModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    type: 'assessment' | 'report' | 'schools';
+    major: Major;
+  } | null>(null);
+  const [showAllMajorsGuideModal, setShowAllMajorsGuideModal] = useState(false);
+  // 浮动按钮位置
+  const [floatButtonTop, setFloatButtonTop] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [dragStartTop, setDragStartTop] = useState(0);
+  const windowInfoRef = useRef<{ windowWidth: number; windowHeight: number } | null>(null);
 
   // 将 API 响应数据转换为页面使用的格式
   const transformMajorData = (apiData: PopularMajorResponse): Major => {
@@ -244,291 +259,318 @@ export default function PopularMajorsPage() {
       score: apiData.score,
       // 元素分析数据（在根级别，不在 majorDetail 中）
       elementAnalyses: apiData.elementAnalyses || null,
-    }
-  }
+    };
+  };
 
   // 加载热门专业数据（一次性加载所有数据）
-  const loadMajors = useCallback(async (
-    category?: 'ben' | 'gz_ben' | 'zhuan'
-  ) => {
-    try {
-      setLoading(true)
-      
-      // 使用传入的参数或当前状态
-      const currentCategory = category ?? selectedCategory
-      
-      // 映射分类到 API 的 level1 参数
-      const level1Map: Record<string, string> = {
-        'ben': 'ben',
-        'gz_ben': 'gao_ben',
-        'zhuan': 'zhuan',
-      }
-      
-      // 一次性加载所有数据，设置 limit 为 100（足够覆盖30条左右的数据）
-      const params: any = {
-        limit: 100,
-        level1: level1Map[currentCategory],
-      }
+  const loadMajors = useCallback(
+    async (category?: 'ben' | 'gz_ben' | 'zhuan') => {
+      try {
+        setLoading(true);
 
-      const response = await getPopularMajors(params)
-      
-      if (response && response.items) {
-        const transformedMajors = response.items.map(transformMajorData)
-        setMajors(transformedMajors)
-      } else {
-        setMajors([])
+        // 使用传入的参数或当前状态
+        const currentCategory = category ?? selectedCategory;
+
+        // 映射分类到 API 的 level1 参数
+        const level1Map: Record<string, string> = {
+          ben: 'ben',
+          gz_ben: 'gao_ben',
+          zhuan: 'zhuan',
+        };
+
+        // 一次性加载所有数据，设置 limit 为 100（足够覆盖30条左右的数据）
+        const params: any = {
+          limit: 100,
+          level1: level1Map[currentCategory],
+        };
+
+        const response = await getPopularMajors(params);
+
+        if (response && response.items) {
+          const transformedMajors = response.items.map(transformMajorData);
+          setMajors(transformedMajors);
+        } else {
+          setMajors([]);
+        }
+      } catch (error) {
+        console.error('加载热门专业数据失败:', error);
+        Taro.showToast({
+          title: '加载数据失败',
+          icon: 'none',
+        });
+        setMajors([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('加载热门专业数据失败:', error)
-      Taro.showToast({
-        title: '加载数据失败',
-        icon: 'none'
-      })
-      setMajors([])
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedCategory])
+    },
+    [selectedCategory]
+  );
 
   // 当分类改变时，重新加载数据
   useEffect(() => {
-    loadMajors(selectedCategory)
+    loadMajors(selectedCategory);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory])
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    Promise.resolve(Taro.getWindowInfo()).then(info => {
+      windowInfoRef.current = { windowWidth: info.windowWidth, windowHeight: info.windowHeight };
+    });
+  }, []);
 
   const categories = [
     { key: 'ben' as const, label: '本科' },
     { key: 'gz_ben' as const, label: '本科(职业)' },
     { key: 'zhuan' as const, label: '专科' },
-  ]
+  ];
 
   // 过滤专业列表：根据学科类型过滤（搜索已通过 API 实现）
   const filteredMajors = useMemo(() => {
-    let filtered = majors
+    let filtered = majors;
 
     // 学科类型过滤（前端过滤，因为 API 不支持此筛选）
     if (subjectFilter !== 'all') {
       filtered = filtered.filter(major => {
-        const isScience = isScienceMajor(major.code)
-        return subjectFilter === 'science' ? isScience : !isScience
-      })
+        const isScience = isScienceMajor(major.code);
+        return subjectFilter === 'science' ? isScience : !isScience;
+      });
     }
 
-    return filtered
-  }, [majors, subjectFilter])
-
+    return filtered;
+  }, [majors, subjectFilter]);
 
   // 通过热门专业ID获取量表和答案
-  const loadScalesByPopularMajorId = async (popularMajorId: number, restoreAnswers: boolean = true) => {
+  const loadScalesByPopularMajorId = async (
+    popularMajorId: number,
+    restoreAnswers: boolean = true
+  ) => {
     try {
       // 直接通过热门专业ID获取量表和答案
-      const scalesResponse = await getScalesByPopularMajorId(popularMajorId)
-      
+      const scalesResponse = await getScalesByPopularMajorId(popularMajorId);
+
       if (!scalesResponse || !scalesResponse.scales || scalesResponse.scales.length === 0) {
-        throw new Error('该专业暂无评估题目')
+        throw new Error('该专业暂无评估题目');
       }
 
       // 将 Scale 转换为 Question 格式
-      const questions = scalesResponse.scales.map(scaleToQuestion)
+      const questions = scalesResponse.scales.map(scaleToQuestion);
 
       // 如果有已保存的答案且需要恢复，恢复答案状态
       // 根据提交逻辑反向推理：提交时 score = answers[question.id] = optionValue
       // 所以恢复时：answers[scaleId] = answer.score（score 就是 optionValue）
-      const savedAnswers: Record<number, number> = {}
+      const savedAnswers: Record<number, number> = {};
       if (restoreAnswers && scalesResponse.answers && scalesResponse.answers.length > 0) {
         scalesResponse.answers.forEach(answer => {
           // 直接按照提交逻辑反向恢复：score 就是 optionValue
           // 提交时：score = answers[question.id]，所以恢复时：answers[answer.scaleId] = answer.score
           // 注意：answer.score 可能是字符串，需要转换为数字以匹配 optionValue 的类型
-          const scoreValue = typeof answer.score === 'string' ? parseFloat(answer.score) : Number(answer.score)
+          const scoreValue =
+            typeof answer.score === 'string' ? parseFloat(answer.score) : Number(answer.score);
           if (!isNaN(scoreValue)) {
-            savedAnswers[answer.scaleId] = scoreValue
+            savedAnswers[answer.scaleId] = scoreValue;
           }
-        })
-        console.log('恢复答案完成，答案数量:', scalesResponse.answers.length, '恢复后的答案对象:', savedAnswers)
+        });
+        console.log(
+          '恢复答案完成，答案数量:',
+          scalesResponse.answers.length,
+          '恢复后的答案对象:',
+          savedAnswers
+        );
       }
 
-      setQuestions(questions)
-      setAnswers(savedAnswers)
-      setCurrentQuestionIndex(0)
-      setIsCompleted(false)
-      setLoveEnergy(null)
-      
+      setQuestions(questions);
+      setAnswers(savedAnswers);
+      setCurrentQuestionIndex(0);
+      setIsCompleted(false);
+      setLoveEnergy(null);
+
       // 调试信息：确认答案恢复状态
       if (Object.keys(savedAnswers).length > 0) {
-        console.log('答案恢复完成，已恢复的题目ID和答案值:', savedAnswers)
-        console.log('题目列表ID:', questions.map(q => q.id))
+        console.log('答案恢复完成，已恢复的题目ID和答案值:', savedAnswers);
+        console.log(
+          '题目列表ID:',
+          questions.map(q => q.id)
+        );
         // 验证答案值类型
         Object.entries(savedAnswers).forEach(([questionId, answerValue]) => {
-          const question = questions.find(q => q.id === Number(questionId))
+          const question = questions.find(q => q.id === Number(questionId));
           if (question) {
-            const optionValues = question.options.map(opt => opt.optionValue)
-            console.log(`题目 ${questionId}: 答案值=${answerValue} (类型: ${typeof answerValue}), 选项值=${optionValues.join(',')} (类型: ${typeof optionValues[0]})`)
+            const optionValues = question.options.map(opt => opt.optionValue);
+            console.log(
+              `题目 ${questionId}: 答案值=${answerValue} (类型: ${typeof answerValue}), 选项值=${optionValues.join(
+                ','
+              )} (类型: ${typeof optionValues[0]})`
+            );
           }
-        })
+        });
       }
     } catch (error: any) {
-      console.error('加载量表和答案失败:', error)
+      console.error('加载量表和答案失败:', error);
       // PAY_REQUIRED 需抛给调用方弹支付框（兼容 code 或 message 含关键字）
       const isPayRequired =
         error?.code === 'PAY_REQUIRED' ||
-        (typeof error?.message === 'string' && error.message.includes('免费额度已用完'))
+        (typeof error?.message === 'string' && error.message.includes('免费额度已用完'));
       if (isPayRequired) {
-        throw error
+        throw error;
       }
       Taro.showToast({
         title: error?.message || '加载评估题目失败',
         icon: 'none',
-        duration: 2000
-      })
-      setQuestions([])
+        duration: 2000,
+      });
+      setQuestions([]);
     }
-  }
+  };
 
   // 处理开始评估（内部用，不包含额度校验；若接口返回 PAY_REQUIRED 则弹支付）
   const handleStartAssessment = async (major: Major) => {
-    setSelectedMajor(major)
-    setShowQuestionnaire(true)
-    const popularMajorId = Number(major.id)
+    setSelectedMajor(major);
+    setShowQuestionnaire(true);
+    const popularMajorId = Number(major.id);
     if (isNaN(popularMajorId)) {
-      Taro.showToast({ title: '无法获取热门专业ID', icon: 'none' })
-      setShowQuestionnaire(false)
-      return
+      Taro.showToast({ title: '无法获取热门专业ID', icon: 'none' });
+      setShowQuestionnaire(false);
+      return;
     }
     try {
-      await loadScalesByPopularMajorId(popularMajorId)
+      await loadScalesByPopularMajorId(popularMajorId);
     } catch (err: any) {
       const isPayRequired =
         err?.code === 'PAY_REQUIRED' ||
-        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
+        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'));
       if (isPayRequired) {
-        setShowQuestionnaire(false)
-        setPendingAction({ type: 'assessment', major })
+        setShowQuestionnaire(false);
+        setPendingAction({ type: 'assessment', major });
         // 延迟一帧再弹支付框，避免与问卷弹框关闭同一帧导致不展示
         setTimeout(() => {
-          setShowPayRequiredModal(true)
-        }, 100)
+          setShowPayRequiredModal(true);
+        }, 100);
       } else {
-        setShowQuestionnaire(false)
-        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
+        setShowQuestionnaire(false);
+        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' });
       }
     }
-  }
+  };
 
   // 点击评估按钮：completedCount 为 0 且有 elementAnalyses 时先展示评估内容，否则直接进入评估
   const handleAssessmentButtonClick = (major: Major) => {
-    const completedCount = Number(major.progress?.completedCount ?? 0)
-    const hasElementAnalyses = major.elementAnalyses && major.elementAnalyses.length > 0
+    const completedCount = Number(major.progress?.completedCount ?? 0);
+    const hasElementAnalyses = major.elementAnalyses && major.elementAnalyses.length > 0;
     if (completedCount === 0 && hasElementAnalyses) {
-      setPreAssessmentMajor(major)
-      setShowPreAssessmentIntro(true)
+      setPreAssessmentMajor(major);
+      setShowPreAssessmentIntro(true);
     } else {
-      handleStartAssessment(major)
+      handleStartAssessment(major);
     }
-  }
+  };
 
   // 评估内容预览中点击「开始评估」，关闭预览并进入评估页
   const handleConfirmPreAssessment = () => {
     if (preAssessmentMajor) {
-      const major = preAssessmentMajor
-      setShowPreAssessmentIntro(false)
-      setPreAssessmentMajor(null)
-      handleStartAssessment(major)
+      const major = preAssessmentMajor;
+      setShowPreAssessmentIntro(false);
+      setPreAssessmentMajor(null);
+      handleStartAssessment(major);
     }
-  }
+  };
 
   // 处理专业卡片点击，跳转到深度探索页面（内部用，不校验权限）
   const handleMajorCardClick = (major: Major) => {
     if (!major.code) {
       Taro.showToast({
         title: '专业代码不存在',
-        icon: 'none'
-      })
-      return
+        icon: 'none',
+      });
+      return;
     }
-    const popularMajorId = Number(major.id)
-    const url = `/pages/assessment/career-exploration/index?code=${major.code}&from=popular-majors${!isNaN(popularMajorId) ? `&majorId=${popularMajorId}` : ''}`
+    const popularMajorId = Number(major.id);
+    const url = `/pages/assessment/career-exploration/index?code=${major.code}&from=popular-majors${
+      !isNaN(popularMajorId) ? `&majorId=${popularMajorId}` : ''
+    }`;
     Taro.navigateTo({
-      url
-    })
-  }
+      url,
+    });
+  };
 
   /** 报告/详情：先请求详情接口，若返回 PAY_REQUIRED 则在本页弹支付框，否则再跳转 */
   const tryNavigateToReport = useCallback(async (major: Major) => {
     if (!major.code) {
-      Taro.showToast({ title: '专业代码不存在', icon: 'none' })
-      return
+      Taro.showToast({ title: '专业代码不存在', icon: 'none' });
+      return;
     }
     try {
-      await getPopularMajorDetailByCode(major.code)
-      handleMajorCardClick(major)
+      await getPopularMajorDetailByCode(major.code);
+      handleMajorCardClick(major);
     } catch (err: any) {
       const isPayRequired =
         err?.code === 'PAY_REQUIRED' ||
-        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
+        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'));
       if (isPayRequired) {
-        setPendingAction({ type: 'report', major })
-        setTimeout(() => setShowPayRequiredModal(true), 100)
+        setPendingAction({ type: 'report', major });
+        setTimeout(() => setShowPayRequiredModal(true), 100);
       } else {
-        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
+        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' });
       }
     }
-  }, [])
+  }, []);
 
   /** 院校：直接跳转院校列表页，由该页请求招生计划并处理 PAY_REQUIRED（避免重复请求同一接口） */
   const tryNavigateToSchools = useCallback((major: Major) => {
     if (!major.code) {
-      Taro.showToast({ title: '专业代码不存在', icon: 'none' })
-      return
+      Taro.showToast({ title: '专业代码不存在', icon: 'none' });
+      return;
     }
     if (major.majorId == null) {
-      Taro.showToast({ title: '缺少专业ID', icon: 'none' })
-      return
+      Taro.showToast({ title: '缺少专业ID', icon: 'none' });
+      return;
     }
-    handleViewSchoolsInner(major)
-  }, [])
+    handleViewSchoolsInner(major);
+  }, []);
 
   // 处理查看院校按钮点击，跳转到院校列表页面（内部用，不包含额度校验）
   const handleViewSchoolsInner = (major: Major) => {
     if (!major.code) {
       Taro.showToast({
         title: '专业代码不存在',
-        icon: 'none'
-      })
-      return
+        icon: 'none',
+      });
+      return;
     }
-    const majorNameParam = encodeURIComponent(major.name || '')
-    let url = `/pages/majors/intended/schools/index?majorCode=${major.code}&majorName=${majorNameParam}&from=popular-majors`
+    const majorNameParam = encodeURIComponent(major.name || '');
+    let url = `/pages/majors/intended/schools/index?majorCode=${major.code}&majorName=${majorNameParam}&from=popular-majors`;
     if (major.majorId) {
-      url += `&majorId=${major.majorId}`
+      url += `&majorId=${major.majorId}`;
     }
     if (major.id != null && major.id !== '') {
-      url += `&popularMajorId=${major.id}`
+      url += `&popularMajorId=${major.id}`;
     }
-    Taro.navigateTo({ url })
-  }
+    Taro.navigateTo({ url });
+  };
 
   /** 执行已缓存的操作（评估/报告/院校），在额度通过或支付成功后调用；可传入 action 避免异步后状态丢失 */
-  const runPendingAction = useCallback((action?: { type: 'assessment' | 'report' | 'schools'; major: Major } | null) => {
-    const actionToRun = action ?? pendingAction
-    if (!actionToRun) return
-    const { type, major } = actionToRun
-    setPendingAction(null)
-    if (type === 'assessment') {
-      const completedCount = Number(major.progress?.completedCount ?? 0)
-      const hasElementAnalyses = major.elementAnalyses && major.elementAnalyses.length > 0
-      if (completedCount === 0 && hasElementAnalyses) {
-        setPreAssessmentMajor(major)
-        setShowPreAssessmentIntro(true)
-      } else {
-        handleStartAssessment(major)
+  const runPendingAction = useCallback(
+    (action?: { type: 'assessment' | 'report' | 'schools'; major: Major } | null) => {
+      const actionToRun = action ?? pendingAction;
+      if (!actionToRun) return;
+      const { type, major } = actionToRun;
+      setPendingAction(null);
+      if (type === 'assessment') {
+        const completedCount = Number(major.progress?.completedCount ?? 0);
+        const hasElementAnalyses = major.elementAnalyses && major.elementAnalyses.length > 0;
+        if (completedCount === 0 && hasElementAnalyses) {
+          setPreAssessmentMajor(major);
+          setShowPreAssessmentIntro(true);
+        } else {
+          handleStartAssessment(major);
+        }
+      } else if (type === 'report') {
+        tryNavigateToReport(major);
+      } else if (type === 'schools') {
+        tryNavigateToSchools(major);
       }
-    } else if (type === 'report') {
-      tryNavigateToReport(major)
-    } else if (type === 'schools') {
-      tryNavigateToSchools(major)
-    }
-  }, [pendingAction, tryNavigateToReport, tryNavigateToSchools])
+    },
+    [pendingAction, tryNavigateToReport, tryNavigateToSchools]
+  );
 
   /**
    * 点击评估/报告/院校：先请求 free-quota，再决定是否弹温馨提示或直接执行
@@ -536,163 +578,245 @@ export default function PopularMajorsPage() {
    * - remaining > 0 且当前专业不在 majorCodes：弹温馨提示，继续后执行
    * - remaining === 0 或专业已在 majorCodes：不弹温馨提示，直接执行；接口返回 402 时弹支付框
    */
-  const checkQuotaAndRun = useCallback(async (type: 'assessment' | 'report' | 'schools', major: Major) => {
-    const action = { type, major }
-    setPendingAction(action)
-    try {
-      const quota = await getFreeQuota()
-      if (quota.hasUnlockAll) {
-        runPendingAction(action)
-        return
-      }
-      if (quota.remaining > 0) {
-        const majorCodes = quota.majorCodes ?? []
-        const alreadyInFreeList = major.code ? majorCodes.includes(major.code) : false
-        if (!alreadyInFreeList) {
-          setShowFreeQuotaTip(true)
-          return
+  const checkQuotaAndRun = useCallback(
+    async (type: 'assessment' | 'report' | 'schools', major: Major) => {
+      const action = { type, major };
+      setPendingAction(action);
+      try {
+        const quota = await getFreeQuota();
+        if (quota.hasUnlockAll) {
+          runPendingAction(action);
+          return;
         }
+        if (quota.remaining > 0) {
+          const majorCodes = quota.majorCodes ?? [];
+          const alreadyInFreeList = major.code ? majorCodes.includes(major.code) : false;
+          if (!alreadyInFreeList) {
+            setShowFreeQuotaTip(true);
+            return;
+          }
+        }
+        runPendingAction(action);
+      } catch (_) {
+        runPendingAction(action);
       }
-      runPendingAction(action)
-    } catch (_) {
-      runPendingAction(action)
-    }
-  }, [runPendingAction])
+    },
+    [runPendingAction]
+  );
 
   /** 免费提示弹框点「继续」：直接执行操作；是否收费由业务接口决定，接口返回 PAY_REQUIRED 时再弹支付 */
   const handleFreeQuotaTipContinue = useCallback(() => {
-    const action = pendingAction
-    setShowFreeQuotaTip(false)
-    if (action) runPendingAction(action)
-  }, [pendingAction, runPendingAction])
+    const action = pendingAction;
+    setShowFreeQuotaTip(false);
+    if (action) runPendingAction(action);
+  }, [pendingAction, runPendingAction]);
 
   /** 支付弹框「去支付」：调起支付，成功后执行原操作（transactions_jsapi 需传 majorCode） */
   const handlePayConfirm = useCallback(async () => {
-    const action = pendingAction
-    if (!action) return
-    const majorCode = action.major.code
+    const action = pendingAction;
+    if (!action) return;
+    const majorCode = action.major.code;
     if (!majorCode) {
-      Taro.showToast({ title: '专业代码不存在', icon: 'none' })
-      return
+      Taro.showToast({ title: '专业代码不存在', icon: 'none' });
+      return;
     }
-    const success = await requestPayForPopularMajor(majorCode)
+    const success = await requestPayForPopularMajor(majorCode);
     if (success) {
-      setShowPayRequiredModal(false)
-      runPendingAction(action)
+      setShowPayRequiredModal(false);
+      runPendingAction(action);
     }
-  }, [pendingAction, runPendingAction])
+  }, [pendingAction, runPendingAction]);
 
   // 处理答题（每答完一题立即同步到数据库）
   const handleAnswer = async (questionId: number, optionValue: number) => {
     // 确保 optionValue 是数字类型
-    const answerValue = typeof optionValue === 'string' ? parseFloat(optionValue) : Number(optionValue)
+    const answerValue =
+      typeof optionValue === 'string' ? parseFloat(optionValue) : Number(optionValue);
     if (!isNaN(answerValue)) {
       // 更新本地答案状态
-      setAnswers((prev) => ({ ...prev, [questionId]: answerValue }))
-      
+      setAnswers(prev => ({ ...prev, [questionId]: answerValue }));
+
       // 立即提交到数据库
       if (selectedMajor) {
-        const popularMajorId = Number(selectedMajor.id)
+        const popularMajorId = Number(selectedMajor.id);
         if (!isNaN(popularMajorId)) {
           try {
             await createOrUpdatePopularMajorAnswer({
               popularMajorId,
               scaleId: questionId,
               score: answerValue,
-            })
+            });
             // 静默提交，不显示提示，避免影响用户体验
           } catch (error) {
-            console.error(`提交题目 ${questionId} 的答案失败:`, error)
+            console.error(`提交题目 ${questionId} 的答案失败:`, error);
             // 提交失败时，可以选择显示提示或静默处理
             // 这里选择静默处理，避免打断用户答题流程
           }
         }
       }
     }
-  }
+  };
 
   // 处理下一题
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1)
+      setCurrentQuestionIndex(prev => prev + 1);
     } else {
       // 完成评估，计算热爱能量
-      handleComplete()
+      handleComplete();
     }
-  }
+  };
 
   // 处理上一题
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex((prev) => prev - 1)
+      setCurrentQuestionIndex(prev => prev - 1);
     }
-  }
+  };
 
   // 完成评估
   const handleComplete = async () => {
     // 计算总分（所有选项值的总和）
     // 选项值范围通常是 -2 到 2，需要映射到 0-1 范围
-    const totalScore = Object.values(answers).reduce((sum, val) => sum + val, 0)
+    const totalScore = Object.values(answers).reduce((sum, val) => sum + val, 0);
     // 计算平均分（范围可能是 -2 到 2）
-    const avgScore = totalScore / questions.length
+    const avgScore = totalScore / questions.length;
     // 将 -2 到 2 的范围映射到 0 到 1 的范围
     // 公式: (value - min) / (max - min) = (avgScore - (-2)) / (2 - (-2)) = (avgScore + 2) / 4
-    const energy = Math.min(1, Math.max(0, (avgScore + 2) / 4))
-    setLoveEnergy(energy)
-    setIsCompleted(true)
+    const energy = Math.min(1, Math.max(0, (avgScore + 2) / 4));
+    setLoveEnergy(energy);
+    setIsCompleted(true);
 
     // 答案已经在每答一题时同步到数据库，这里只需要刷新列表数据
     // 刷新数据以获取最新的 progress 和 score
     if (selectedMajor) {
       try {
-        loadMajors(selectedCategory)
+        loadMajors(selectedCategory);
       } catch (error) {
-        console.error('刷新列表数据失败:', error)
+        console.error('刷新列表数据失败:', error);
       }
     }
 
     // 延迟关闭对话框，让用户看到完成状态
     setTimeout(() => {
-      setShowQuestionnaire(false)
-      setIsCompleted(false)
-      setLoveEnergy(null)
-    }, 2000)
-  }
+      setShowQuestionnaire(false);
+      setIsCompleted(false);
+      setLoveEnergy(null);
+    }, 2000);
+  };
 
   // 重新评估
   const handleRetake = async () => {
     if (!selectedMajor) {
       Taro.showToast({
         title: '未选择专业',
-        icon: 'none'
-      })
-      return
+        icon: 'none',
+      });
+      return;
     }
-    const popularMajorId = Number(selectedMajor.id)
+    const popularMajorId = Number(selectedMajor.id);
     if (isNaN(popularMajorId)) {
       Taro.showToast({
         title: '无法获取热门专业ID',
-        icon: 'none'
-      })
-      return
+        icon: 'none',
+      });
+      return;
     }
     try {
-      await loadScalesByPopularMajorId(popularMajorId, false)
+      await loadScalesByPopularMajorId(popularMajorId, false);
     } catch (err: any) {
       const isPayRequired =
         err?.code === 'PAY_REQUIRED' ||
-        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'))
+        (typeof err?.message === 'string' && err.message.includes('免费额度已用完'));
       if (isPayRequired) {
-        setPendingAction({ type: 'assessment', major: selectedMajor })
-        setTimeout(() => setShowPayRequiredModal(true), 100)
+        setPendingAction({ type: 'assessment', major: selectedMajor });
+        setTimeout(() => setShowPayRequiredModal(true), 100);
       } else {
-        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' })
+        Taro.showToast({ title: err?.message || '加载失败', icon: 'none' });
       }
     }
-  }
+  };
 
-  const currentQuestion = questions[currentQuestionIndex]
-  const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0
+  // 跳转到所有专业列表（与心动专业页保持一致的拖拽点击防误触逻辑）
+  const navigateToAllMajors = useCallback(() => {
+    if (isDragging) {
+      return;
+    }
+    setTimeout(() => {
+      if (isDragging) {
+        return;
+      }
+      if (!isCheckingQuestionnaire && !isQuestionnaireCompleted) {
+        setShowAllMajorsGuideModal(true);
+        return;
+      }
+      Taro.navigateTo({
+        url: '/pages/majors/index',
+      });
+    }, 150);
+  }, [isDragging, isCheckingQuestionnaire, isQuestionnaireCompleted]);
+
+  // 处理拖动开始
+  const handleTouchStart = useCallback(
+    (e: any) => {
+      e.stopPropagation();
+      const touch = e.touches[0];
+      setIsDragging(false);
+      setDragStartY(touch.clientY || touch.y);
+      const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 };
+      const defaultBottom = 160 * (win.windowWidth / 750);
+      const currentTop =
+        floatButtonTop > 0
+          ? floatButtonTop
+          : win.windowHeight - defaultBottom - 112 * (win.windowWidth / 750);
+      setDragStartTop(currentTop);
+    },
+    [floatButtonTop]
+  );
+
+  // 处理拖动中
+  const handleTouchMove = useCallback(
+    (e: any) => {
+      e.stopPropagation();
+      const touch = e.touches[0];
+      const currentY = touch.clientY || touch.y;
+      const deltaY = Math.abs(currentY - dragStartY);
+
+      if (deltaY > 5) {
+        setIsDragging(true);
+        const newTop = dragStartTop + (currentY - dragStartY);
+        const win = windowInfoRef.current || { windowWidth: 375, windowHeight: 667 };
+        const rpxToPx = win.windowWidth / 750;
+        const buttonHeight = 112 * rpxToPx;
+        const bottomNavHeight = 100 * rpxToPx;
+        const headerHeight = 200 * rpxToPx;
+        const minTop = headerHeight;
+        const maxTop = win.windowHeight - buttonHeight - bottomNavHeight;
+        const clampedTop = Math.max(minTop, Math.min(maxTop, newTop));
+        setFloatButtonTop(clampedTop);
+      }
+    },
+    [dragStartY, dragStartTop]
+  );
+
+  // 处理拖动结束
+  const handleTouchEnd = useCallback((e: any) => {
+    e.stopPropagation();
+    setTimeout(() => {
+      setIsDragging(false);
+    }, 100);
+  }, []);
+
+  // 引导前往168自评
+  const handleGoToInsightIntro = useCallback(() => {
+    setShowAllMajorsGuideModal(false);
+    Taro.navigateTo({
+      url: '/pages/assessment/insight-intro/index',
+    });
+  }, []);
+
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
   return (
     <PageContainer>
@@ -709,17 +833,19 @@ export default function PopularMajorsPage() {
         <View className="popular-majors-page__categories">
           <Card className="popular-majors-page__categories-card">
             <View className="popular-majors-page__categories-grid">
-              {categories.map((category) => {
-                const isActive = selectedCategory === category.key
+              {categories.map(category => {
+                const isActive = selectedCategory === category.key;
                 return (
                   <View
                     key={category.key}
-                    className={`popular-majors-page__category-item ${isActive ? 'popular-majors-page__category-item--active' : ''}`}
+                    className={`popular-majors-page__category-item ${
+                      isActive ? 'popular-majors-page__category-item--active' : ''
+                    }`}
                     onClick={() => setSelectedCategory(category.key)}
                   >
                     <Text className="popular-majors-page__category-text">{category.label}</Text>
                   </View>
-                )
+                );
               })}
             </View>
           </Card>
@@ -734,30 +860,30 @@ export default function PopularMajorsPage() {
           <View className="popular-majors-page__majors">
             {filteredMajors.map((major, index) => {
               // 使用接口返回的数据判断是否完成评估
-              const isCompleted = major.progress?.isCompleted === true
+              const isCompleted = major.progress?.isCompleted === true;
               // 使用接口返回的分数数据
-              const score = major.score?.score
-              
+              const score = major.score?.score;
+
               // 判断是否应该显示元素分析：只有评估完成或者有得分（>0）时才显示
-              const shouldShowElementAnalyses = isCompleted || (score !== undefined && score !== null && Number(score) > 0)
+              const shouldShowElementAnalyses =
+                isCompleted || (score !== undefined && score !== null && Number(score) > 0);
               // 获取评估进度（确保转换为数字类型）
-              const completedCount = major.progress?.completedCount 
-                ? (typeof major.progress.completedCount === 'string' 
-                    ? parseInt(major.progress.completedCount, 10) 
-                    : Number(major.progress.completedCount))
-                : 0
+              const completedCount = major.progress?.completedCount
+                ? typeof major.progress.completedCount === 'string'
+                  ? parseInt(major.progress.completedCount, 10)
+                  : Number(major.progress.completedCount)
+                : 0;
               const totalCount = major.progress?.totalCount
-                ? (typeof major.progress.totalCount === 'string'
-                    ? parseInt(major.progress.totalCount, 10)
-                    : Number(major.progress.totalCount))
-                : 0
-              const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
-              const hasProgress = completedCount > 0 && totalCount > 0
-              
+                ? typeof major.progress.totalCount === 'string'
+                  ? parseInt(major.progress.totalCount, 10)
+                  : Number(major.progress.totalCount)
+                : 0;
+              const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+              const hasProgress = completedCount > 0 && totalCount > 0;
 
               return (
-                <Card 
-                  key={major.id} 
+                <Card
+                  key={major.id}
                   className="popular-majors-page__major-card"
                   onClick={() => checkQuotaAndRun('report', major)}
                 >
@@ -771,9 +897,9 @@ export default function PopularMajorsPage() {
                         {isCompleted && (
                           <View
                             className="popular-majors-page__major-retake-icon"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              checkQuotaAndRun('assessment', major)
+                            onClick={e => {
+                              e.stopPropagation();
+                              checkQuotaAndRun('assessment', major);
                             }}
                           >
                             <Text className="popular-majors-page__major-retake-icon-text">🔄</Text>
@@ -793,9 +919,9 @@ export default function PopularMajorsPage() {
                             <Button
                               size="sm"
                               className="popular-majors-page__major-button popular-majors-page__major-button--view-report popular-majors-page__major-action-item"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                checkQuotaAndRun('report', major)
+                              onClick={e => {
+                                e.stopPropagation();
+                                checkQuotaAndRun('report', major);
                               }}
                             >
                               报告
@@ -803,9 +929,9 @@ export default function PopularMajorsPage() {
                             <Button
                               size="sm"
                               className="popular-majors-page__major-button popular-majors-page__major-button--view-schools popular-majors-page__major-action-item"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                checkQuotaAndRun('schools', major)
+                              onClick={e => {
+                                e.stopPropagation();
+                                checkQuotaAndRun('schools', major);
                               }}
                             >
                               院校
@@ -816,9 +942,9 @@ export default function PopularMajorsPage() {
                         <Button
                           size="sm"
                           className="popular-majors-page__major-button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            checkQuotaAndRun('assessment', major)
+                          onClick={e => {
+                            e.stopPropagation();
+                            checkQuotaAndRun('assessment', major);
                           }}
                         >
                           评估
@@ -832,8 +958,8 @@ export default function PopularMajorsPage() {
                               {completedCount}/{totalCount}
                             </Text>
                           </View>
-                          <Progress 
-                            value={progressPercent} 
+                          <Progress
+                            value={progressPercent}
                             max={100}
                             className="popular-majors-page__major-progress-bar"
                           />
@@ -843,15 +969,15 @@ export default function PopularMajorsPage() {
                   </View>
                   {/* 元素分析显示：只有评估完成的专业才显示 */}
                   {isCompleted && major.elementAnalyses && major.elementAnalyses.length > 0 && (
-                    <View 
+                    <View
                       className="popular-majors-page__major-element-analyses-wrapper"
-                      onClick={(e) => {
+                      onClick={e => {
                         // 阻止事件冒泡到 Card
-                        e.stopPropagation()
+                        e.stopPropagation();
                       }}
                     >
-                      <ElementAnalysesDisplay 
-                        analyses={major.elementAnalyses} 
+                      <ElementAnalysesDisplay
+                        analyses={major.elementAnalyses}
                         majorName={major.name}
                         score={major.score}
                         isCompleted={isCompleted}
@@ -862,11 +988,12 @@ export default function PopularMajorsPage() {
                   {/* 专业简介单独一行，占据全宽 */}
                   <View className="popular-majors-page__major-desc-wrapper">
                     <Text className="popular-majors-page__major-desc">
-                      {major.majorBrief || '该专业致力于培养具备扎实理论基础和实践能力的专业人才，为学生提供全面的学科知识和职业发展指导。'}
+                      {major.majorBrief ||
+                        '该专业致力于培养具备扎实理论基础和实践能力的专业人才，为学生提供全面的学科知识和职业发展指导。'}
                     </Text>
                   </View>
                 </Card>
-              )
+              );
             })}
           </View>
         )}
@@ -878,10 +1005,34 @@ export default function PopularMajorsPage() {
             </Text>
           </View>
         )}
+
+        {/* 浮动按钮：跳转到所有专业列表 */}
+        <View
+          className={`popular-majors-page__float-button ${
+            isDragging ? 'popular-majors-page__float-button--dragging' : ''
+          }`}
+          style={{
+            bottom: floatButtonTop > 0 ? 'auto' : '160rpx',
+            top: floatButtonTop > 0 ? `${floatButtonTop}px` : 'auto',
+            transform: isDragging ? 'scale(1.05)' : 'scale(1)',
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClick={navigateToAllMajors}
+        >
+          <View className="popular-majors-page__float-button-content">
+            <Text className="popular-majors-page__float-button-text">所有专业</Text>
+          </View>
+        </View>
       </View>
 
       {/* 评估对话框 */}
-      <Dialog open={showQuestionnaire} onOpenChange={setShowQuestionnaire} className="popular-majors-page__dialog-wrapper">
+      <Dialog
+        open={showQuestionnaire}
+        onOpenChange={setShowQuestionnaire}
+        className="popular-majors-page__dialog-wrapper"
+      >
         <DialogContent className="popular-majors-page__dialog" showCloseButton={true}>
           <DialogHeader>
             <DialogTitle className="popular-majors-page__dialog-title">
@@ -892,9 +1043,7 @@ export default function PopularMajorsPage() {
           {isCompleted ? (
             // 完成状态：显示重新评估按钮
             <View className="popular-majors-page__dialog-completed">
-              <Text className="popular-majors-page__dialog-energy-desc">
-                评估已完成
-              </Text>
+              <Text className="popular-majors-page__dialog-energy-desc">评估已完成</Text>
               <View className="popular-majors-page__dialog-actions">
                 <Button
                   onClick={handleRetake}
@@ -939,18 +1088,30 @@ export default function PopularMajorsPage() {
 
                   {/* 选项 */}
                   <View className="popular-majors-page__question-options">
-                    {currentQuestion.options.map((option) => {
+                    {currentQuestion.options.map(option => {
                       // 根据提交逻辑反向推理：提交时 score = answers[question.id] = optionValue
                       // 所以恢复时：answers[scaleId] = answer.score，判断时直接比较
                       // 确保类型一致：都转换为数字进行比较
-                      const currentAnswer = answers[currentQuestion.id]
-                      const currentAnswerNum = typeof currentAnswer === 'string' ? parseFloat(currentAnswer) : Number(currentAnswer)
-                      const optionValueNum = typeof option.optionValue === 'string' ? parseFloat(option.optionValue) : Number(option.optionValue)
-                      const isAnswered = currentAnswer !== undefined && !isNaN(currentAnswerNum) && !isNaN(optionValueNum) && currentAnswerNum === optionValueNum
+                      const currentAnswer = answers[currentQuestion.id];
+                      const currentAnswerNum =
+                        typeof currentAnswer === 'string'
+                          ? parseFloat(currentAnswer)
+                          : Number(currentAnswer);
+                      const optionValueNum =
+                        typeof option.optionValue === 'string'
+                          ? parseFloat(option.optionValue)
+                          : Number(option.optionValue);
+                      const isAnswered =
+                        currentAnswer !== undefined &&
+                        !isNaN(currentAnswerNum) &&
+                        !isNaN(optionValueNum) &&
+                        currentAnswerNum === optionValueNum;
                       return (
                         <View
                           key={option.id}
-                          className={`popular-majors-page__option ${isAnswered ? 'popular-majors-page__option--selected' : ''}`}
+                          className={`popular-majors-page__option ${
+                            isAnswered ? 'popular-majors-page__option--selected' : ''
+                          }`}
                           onClick={() => handleAnswer(currentQuestion.id, option.optionValue)}
                         >
                           <View className="popular-majors-page__option-radio">
@@ -962,7 +1123,7 @@ export default function PopularMajorsPage() {
                             {option.optionName}
                           </Text>
                         </View>
-                      )
+                      );
                     })}
                   </View>
                 </View>
@@ -994,43 +1155,52 @@ export default function PopularMajorsPage() {
       {/* 评估内容预览对话框（completedCount 为 0 时先展示将测量的内容） */}
       <Dialog
         open={showPreAssessmentIntro}
-        onOpenChange={(open) => {
-          setShowPreAssessmentIntro(open)
-          if (!open) setPreAssessmentMajor(null)
+        onOpenChange={open => {
+          setShowPreAssessmentIntro(open);
+          if (!open) setPreAssessmentMajor(null);
         }}
       >
-        <DialogContent className="popular-majors-page__dialog popular-majors-page__pre-assessment-dialog" showCloseButton={true}>
+        <DialogContent
+          className="popular-majors-page__dialog popular-majors-page__pre-assessment-dialog"
+          showCloseButton={true}
+        >
           <DialogHeader>
             <DialogTitle className="popular-majors-page__dialog-title">
-              {preAssessmentMajor?.name} 
+              {preAssessmentMajor?.name}
             </DialogTitle>
             <DialogDescription className="popular-majors-page__pre-assessment-desc">
               将测量以下维度，请根据您的真实感受作答。
             </DialogDescription>
           </DialogHeader>
           <ScrollView className="popular-majors-page__pre-assessment-content" scrollY>
-            {preAssessmentMajor?.elementAnalyses && (['lexue', 'shanxue', 'yanxue', 'tiaozhan'] as const).map((typeKey) => {
-              const analysis = preAssessmentMajor.elementAnalyses!.find((a) => a.type === typeKey)
-              if (!analysis || !analysis.elements?.length) return null
-              const config = ELEMENT_ANALYSIS_TYPES[typeKey]
-              return (
-                <View key={typeKey} className="popular-majors-page__pre-assessment-block">
-                  <Text className="popular-majors-page__pre-assessment-type-line">
-                    <Text style={{ color: config?.color, fontWeight: 600 }}>{config?.label ?? typeKey}</Text>
-                    {config?.desc && (
-                      <Text className="popular-majors-page__pre-assessment-type-desc"> {config.desc}</Text>
-                    )}
-                  </Text>
-                  <View className="popular-majors-page__pre-assessment-elements">
-                    {analysis.elements.map((el, idx) => (
-                      <Text key={idx} className="popular-majors-page__pre-assessment-element">
-                        · {el.elementName}
+            {preAssessmentMajor?.elementAnalyses &&
+              (['lexue', 'shanxue', 'yanxue', 'tiaozhan'] as const).map(typeKey => {
+                const analysis = preAssessmentMajor.elementAnalyses!.find(a => a.type === typeKey);
+                if (!analysis || !analysis.elements?.length) return null;
+                const config = ELEMENT_ANALYSIS_TYPES[typeKey];
+                return (
+                  <View key={typeKey} className="popular-majors-page__pre-assessment-block">
+                    <Text className="popular-majors-page__pre-assessment-type-line">
+                      <Text style={{ color: config?.color, fontWeight: 600 }}>
+                        {config?.label ?? typeKey}
                       </Text>
-                    ))}
+                      {config?.desc && (
+                        <Text className="popular-majors-page__pre-assessment-type-desc">
+                          {' '}
+                          {config.desc}
+                        </Text>
+                      )}
+                    </Text>
+                    <View className="popular-majors-page__pre-assessment-elements">
+                      {analysis.elements.map((el, idx) => (
+                        <Text key={idx} className="popular-majors-page__pre-assessment-element">
+                          · {el.elementName}
+                        </Text>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              )
-            })}
+                );
+              })}
           </ScrollView>
           <DialogFooter className="popular-majors-page__pre-assessment-footer">
             <Button
@@ -1094,6 +1264,35 @@ export default function PopularMajorsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* 未完成168自评时点击「所有专业」的引导弹窗 */}
+      <Dialog open={showAllMajorsGuideModal} onOpenChange={setShowAllMajorsGuideModal}>
+        <DialogContent className="popular-majors-page__dialog" showCloseButton={true}>
+          <DialogHeader>
+            <DialogTitle className="popular-majors-page__dialog-title">请先完成168题自评</DialogTitle>
+            <DialogDescription className="popular-majors-page__pay-tip-desc">
+              <Text className="popular-majors-page__pay-tip-line">只需30分钟，完成168道自评。</Text>
+              <Text className="popular-majors-page__pay-tip-line">即可匹配全量1914个本科、高职本科与大专专业。</Text>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="popular-majors-page__dialog-footer">
+            <Button
+              onClick={handleGoToInsightIntro}
+              className="popular-majors-page__dialog-button popular-majors-page__dialog-button--primary"
+              size="lg"
+            >
+              去完成自评
+            </Button>
+            <Button
+              onClick={() => setShowAllMajorsGuideModal(false)}
+              className="popular-majors-page__dialog-button"
+              size="lg"
+              variant="outline"
+            >
+              取消
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
-  )
+  );
 }

@@ -789,6 +789,53 @@
   color: #999;
 }
 
+// 浮动按钮：跳转到所有专业列表（与心动专业页保持一致）
+.popular-majors-page__float-button {
+  position: fixed;
+  right: 32rpx;
+  bottom: 160rpx;
+  z-index: 999;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1A4099 0%, #2B5FC7 100%);
+  box-shadow: 0 8rpx 24rpx rgba(26, 64, 153, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.3s;
+  touch-action: none;
+
+  &--dragging {
+    transition: none;
+    box-shadow: 0 12rpx 32rpx rgba(26, 64, 153, 0.6);
+  }
+
+  &:active:not(&--dragging) {
+    transform: scale(0.95);
+    box-shadow: 0 4rpx 12rpx rgba(26, 64, 153, 0.3);
+  }
+}
+
+.popular-majors-page__float-button-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx;
+}
+
+.popular-majors-page__float-button-text {
+  font-size: 24rpx;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.2;
+  text-align: center;
+  filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.2));
+}
+
 // 加载更多按钮
 .popular-majors-page__load-more {
   padding: 32rpx;
@@ -956,6 +1003,10 @@
 .popular-majors-page__dialog-button--primary {
   background: linear-gradient(135deg, #1A4099 0%, #2563eb 100%);
   color: #fff;
+}
+
+.popular-majors-page__pay-tip-line {
+  display: block;
 }
 
 // 答题状态
