@@ -193,9 +193,11 @@ export class EnrollPlanService {
         enrollmentType: '普通类',
       });
 
-    // 批次条件（从用户的 enrollType 获取）
+    // 批次条件（从用户的 enrollType 获取；浙江省统一按普通类平行录取批次筛选）
     if (user.enrollType) {
-      queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
+      const batch =
+        user.province === '浙江' ? '普通类平行录取' : user.enrollType;
+      queryBuilder.andWhere('ep.batch = :batch', { batch });
     }
 
     // 首选科目条件
@@ -266,6 +268,23 @@ export class EnrollPlanService {
                 CAST(:aliasBatch AS varchar) IS NOT NULL
                 AND "ms"."batch"::varchar = CAST(:aliasBatch AS varchar)
               )
+              OR (
+                :isZhejiang = true
+                AND (
+                  (
+                    :zhejiangEmptyEnroll = true
+                    AND "ms"."batch"::varchar IN (:...zhejiangDefaultBatches)
+                  )
+                  OR (
+                    :zhejiangEnrollSegment1 = true
+                    AND "ms"."batch"::varchar IN (:...zhejiangSegment1Batches)
+                  )
+                  OR (
+                    :zhejiangEnrollSegment2 = true
+                    AND "ms"."batch"::varchar IN (:...zhejiangSegment2Batches)
+                  )
+                )
+              )
             )
             AND (
               "ms"."subject_selection_mode"::varchar = "ep"."subject_selection_mode"
@@ -287,6 +306,17 @@ export class EnrollPlanService {
         {
           minScore,
           maxScore,
+          // 浙江省：major_scores.batch 与用户 enroll_type / 未填批次的匹配
+          isZhejiang: user.province === '浙江',
+          zhejiangEmptyEnroll:
+            user.province === '浙江' && !(user.enrollType && user.enrollType.trim()),
+          zhejiangEnrollSegment1:
+            user.province === '浙江' && user.enrollType === '普通类一段',
+          zhejiangEnrollSegment2:
+            user.province === '浙江' && user.enrollType === '普通类二段',
+          zhejiangDefaultBatches: ['普通类一段', '普通类二段'],
+          zhejiangSegment1Batches: ['普通类一段', '平行录取一段'],
+          zhejiangSegment2Batches: ['普通类二段', '平行录取二段'],
           aliasBatch:
             ({
               云南: { 本科批B段: '本科一批' },
@@ -538,6 +568,23 @@ export class EnrollPlanService {
              CAST(:aliasBatch AS varchar) IS NOT NULL
              AND "ms"."batch"::varchar = CAST(:aliasBatch AS varchar)
            )
+           OR (
+             :isZhejiang = true
+             AND (
+               (
+                 :zhejiangEmptyEnroll = true
+                 AND "ms"."batch"::varchar IN (:...zhejiangDefaultBatches)
+               )
+               OR (
+                 :zhejiangEnrollSegment1 = true
+                 AND "ms"."batch"::varchar IN (:...zhejiangSegment1Batches)
+               )
+               OR (
+                 :zhejiangEnrollSegment2 = true
+                 AND "ms"."batch"::varchar IN (:...zhejiangSegment2Batches)
+               )
+             )
+           )
          )
          AND (
            "ms"."subject_selection_mode"::varchar = "ep"."subject_selection_mode"
@@ -570,6 +617,17 @@ export class EnrollPlanService {
          )`,
         {
           majorId,
+          // 浙江省：major_scores.batch 与用户 enroll_type / 未填批次的匹配
+          isZhejiang: user.province === '浙江',
+          zhejiangEmptyEnroll:
+            user.province === '浙江' && !(user.enrollType && user.enrollType.trim()),
+          zhejiangEnrollSegment1:
+            user.province === '浙江' && user.enrollType === '普通类一段',
+          zhejiangEnrollSegment2:
+            user.province === '浙江' && user.enrollType === '普通类二段',
+          zhejiangDefaultBatches: ['普通类一段', '普通类二段'],
+          zhejiangSegment1Batches: ['普通类一段', '平行录取一段'],
+          zhejiangSegment2Batches: ['普通类二段', '平行录取二段'],
           aliasBatch:
             ({
               云南: { 本科批B段: '本科一批' },
@@ -613,7 +671,9 @@ export class EnrollPlanService {
 
     // 批次条件（从用户的 enrollType 获取）（索引顺序：province → batch）
     if (user.enrollType) {
-      queryBuilder.andWhere('ep.batch = :batch', { batch: user.enrollType });
+      const batch =
+        user.province === '浙江' ? '普通类平行录取' : user.enrollType;
+      queryBuilder.andWhere('ep.batch = :batch', { batch });
     }
 
     // 招生类型条件（索引顺序：province → batch → enrollmentType）
