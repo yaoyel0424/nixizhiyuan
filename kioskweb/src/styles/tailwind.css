@@ -1,0 +1,4 @@
+/**
+ * Tailwind CSS 入口（保留原 JSX 中的 utility class，视觉效果与 MasterGo 导出一致）。
+ */
+@import 'tailwindcss';
