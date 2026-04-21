@@ -459,4 +459,318 @@
   .kiosk-province-dialog__cancel {
     @apply cursor-pointer rounded-lg border border-gray-200 bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-200;
   }
+
+  /** 专业匹配度自评弹窗：43 寸触摸屏答题页 */
+  .kiosk-selftest-overlay {
+    @apply fixed inset-0 z-[120] flex items-center justify-center;
+    background: rgba(8, 22, 24, 0.42);
+  }
+
+  .kiosk-selftest-dialog {
+    position: relative;
+    width: min(1400px, 94vw);
+    height: min(900px, 92vh);
+    border-radius: 36px;
+    padding: 48px 44px 36px;
+    background: linear-gradient(145deg, #f7fffd 0%, #eefcf7 42%, #f7fffc 100%);
+    box-shadow: 0 28px 70px rgba(18, 42, 44, 0.2);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .kiosk-selftest-close {
+    @apply absolute right-8 top-7 cursor-pointer border-none bg-transparent text-gray-500;
+    font-size: 48px;
+    line-height: 1;
+  }
+
+  .kiosk-selftest-layout {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 28px;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .kiosk-selftest-left {
+    @apply flex min-h-0 flex-col;
+  }
+
+  .kiosk-selftest-progress-text {
+    @apply mb-5 font-semibold text-teal-700;
+    font-size: 36px;
+  }
+
+  .kiosk-selftest-question-title {
+    @apply mb-7 font-bold text-gray-900;
+    font-size: clamp(2rem, 3.4vh, 2.65rem);
+    line-height: 1.35;
+  }
+
+  .kiosk-selftest-options {
+    @apply min-h-0 flex-1 space-y-4 overflow-y-auto pr-2;
+  }
+
+  .kiosk-selftest-option {
+    @apply flex w-full items-center rounded-[24px] border border-emerald-100 bg-white px-7 py-6 text-left transition-all;
+    box-shadow: 0 8px 24px rgba(57, 118, 111, 0.08);
+  }
+
+  .kiosk-selftest-option--active {
+    border-color: #34d399;
+    background: #ecfdf5;
+    box-shadow: 0 10px 28px rgba(16, 185, 129, 0.2);
+  }
+
+  .kiosk-selftest-option__dot {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 3px solid #d1d5db;
+    margin-right: 22px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+  }
+
+  .kiosk-selftest-option--active .kiosk-selftest-option__dot {
+    border-color: #14b8a6;
+    background: radial-gradient(circle, #14b8a6 44%, transparent 46%);
+  }
+
+  .kiosk-selftest-option__label {
+    @apply font-medium text-gray-800;
+    font-size: clamp(1.45rem, 2.65vh, 2rem);
+    line-height: 1.3;
+  }
+
+  .kiosk-selftest-right {
+    @apply flex h-full min-h-0 flex-col rounded-[28px] border border-emerald-100 bg-white/80 p-7;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .kiosk-selftest-right__title {
+    @apply mb-5 font-bold text-gray-800;
+    font-size: 34px;
+  }
+
+  .kiosk-selftest-right__bar {
+    @apply mb-6 h-4 w-full overflow-hidden rounded-full bg-emerald-100;
+  }
+
+  .kiosk-selftest-right__bar-fill {
+    @apply h-full rounded-full;
+    background: linear-gradient(90deg, #38bdf8 0%, #2dd4bf 100%);
+    transition: width 220ms ease;
+  }
+
+  .kiosk-selftest-right__grid {
+    @apply grid flex-1 grid-cols-6 gap-3 overflow-y-auto py-2;
+  }
+
+  .kiosk-selftest-right__dot {
+    @apply h-7 w-7 cursor-pointer rounded-full border-none bg-gray-200;
+    justify-self: center;
+  }
+
+  .kiosk-selftest-right__dot--done {
+    background: #6ee7b7;
+  }
+
+  .kiosk-selftest-right__dot--current {
+    outline: 4px solid #22d3ee;
+    outline-offset: 2px;
+    background: #0ea5e9;
+  }
+
+  .kiosk-selftest-right__actions {
+    @apply mt-6 grid grid-cols-2 gap-4;
+  }
+
+  .kiosk-selftest-btn {
+    @apply cursor-pointer rounded-[18px] border-none py-4 font-bold text-white;
+    font-size: 30px;
+  }
+
+  .kiosk-selftest-btn--prev {
+    background: #d1d5db;
+    color: #4b5563;
+  }
+
+  .kiosk-selftest-btn--prev:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .kiosk-selftest-btn--next {
+    background: linear-gradient(135deg, #2dd4bf 0%, #5eead4 100%);
+    box-shadow: 0 10px 24px rgba(45, 212, 191, 0.35);
+  }
+
+  .kiosk-selftest-result {
+    @apply flex h-full flex-col items-center justify-center text-center;
+  }
+
+  .kiosk-selftest-result__title {
+    @apply mb-5 font-bold text-gray-900;
+    font-size: clamp(2.2rem, 4.2vh, 3rem);
+  }
+
+  .kiosk-selftest-result__desc {
+    @apply mb-10 max-w-4xl text-gray-600;
+    font-size: clamp(1.4rem, 2.8vh, 1.9rem);
+    line-height: 1.5;
+  }
+
+  .kiosk-selftest-result__actions {
+    @apply grid w-full max-w-2xl grid-cols-2 gap-5;
+  }
+
+  .kiosk-selftest-result-page {
+    @apply relative flex h-full min-h-0 flex-col;
+    padding-bottom: 44px;
+  }
+
+  .kiosk-selftest-result-page__header {
+    @apply mb-5 flex items-center justify-between rounded-[28px] bg-white/90 px-8 py-6 shadow-md;
+  }
+
+  .kiosk-selftest-result-page__title {
+    @apply text-[2.2rem] font-bold text-gray-900;
+  }
+
+  .kiosk-selftest-result-page__subtitle {
+    @apply mt-2 text-[1.35rem] text-gray-500;
+  }
+
+  .kiosk-selftest-result-page__major-line {
+    @apply mt-2 text-[1.7rem] font-bold text-emerald-700;
+  }
+
+  .kiosk-selftest-result-page__match-line {
+    @apply mt-1 text-[1.35rem] font-semibold text-cyan-700;
+  }
+
+  .kiosk-selftest-result-page__brief {
+    @apply mt-4 max-w-[900px] rounded-2xl bg-emerald-50 px-5 py-3 text-[1.05rem] leading-relaxed text-gray-700;
+  }
+
+  .kiosk-selftest-score-circle {
+    @apply flex h-[170px] w-[170px] flex-col items-center justify-center rounded-full;
+    background: conic-gradient(from 0deg, #34d399, #22d3ee, #34d399);
+    box-shadow: 0 14px 30px rgba(45, 212, 191, 0.35);
+  }
+
+  .kiosk-selftest-score-circle__value {
+    @apply text-[3rem] font-extrabold text-white leading-none;
+  }
+
+  .kiosk-selftest-score-circle__unit {
+    @apply mt-1 text-[1.1rem] font-semibold text-white/90;
+  }
+
+  .kiosk-selftest-result-page__body {
+    @apply grid min-h-0 flex-1 grid-cols-[2fr_1fr] gap-5;
+  }
+
+  .kiosk-selftest-result-page__left {
+    @apply flex min-h-0 flex-col gap-4;
+  }
+
+  .kiosk-selftest-dimension-grid {
+    @apply grid grid-cols-2 gap-4;
+  }
+
+  .kiosk-selftest-dimension-card {
+    @apply rounded-2xl bg-white p-5 shadow-md;
+  }
+
+  .kiosk-selftest-dimension-card h3 {
+    @apply text-xl font-bold text-gray-800;
+  }
+
+  .kiosk-selftest-dimension-card__value {
+    @apply mt-2 text-[2rem] font-extrabold;
+  }
+
+  .kiosk-selftest-dimension-card__desc {
+    @apply mt-1 text-sm text-gray-500;
+  }
+
+  .kiosk-selftest-dimension-card__bar {
+    @apply mt-4 h-3 overflow-hidden rounded-full bg-gray-100;
+  }
+
+  .kiosk-selftest-dimension-card__fill {
+    @apply h-full rounded-full;
+    background: currentColor;
+  }
+
+  .kiosk-selftest-dimension-card--lexue {
+    color: #22c55e;
+    background: #f0fdf4;
+  }
+
+  .kiosk-selftest-dimension-card--shanxue {
+    color: #0ea5e9;
+    background: #eff6ff;
+  }
+
+  .kiosk-selftest-dimension-card--yanxue {
+    color: #f59e0b;
+    background: #fffbeb;
+  }
+
+  .kiosk-selftest-dimension-card--tiaozhan {
+    color: #fb923c;
+    background: #fff7ed;
+  }
+
+  .kiosk-selftest-major-panel {
+    @apply rounded-2xl bg-white px-6 py-5 shadow-md;
+  }
+
+  .kiosk-selftest-major-panel__name {
+    @apply text-[2rem] font-bold text-gray-900;
+  }
+
+  .kiosk-selftest-major-panel__score {
+    @apply mt-4 text-[1.5rem] font-bold text-emerald-600;
+  }
+
+  .kiosk-selftest-result-page__qr {
+    @apply flex flex-col items-center rounded-2xl bg-white p-5 text-center shadow-md;
+  }
+
+  .kiosk-selftest-result-page__qr h3 {
+    @apply text-[1.45rem] font-bold text-gray-800;
+  }
+
+  .kiosk-selftest-qr-box {
+    @apply relative mt-4 flex h-[220px] w-[220px] items-center justify-center rounded-2xl border-2 border-emerald-100 bg-white p-2;
+  }
+
+  .kiosk-selftest-qr-box__qr {
+    @apply h-[200px] w-[200px] rounded-xl object-cover;
+  }
+
+  .kiosk-selftest-qr-box__logo {
+    @apply absolute h-[54px] w-[54px] rounded-xl border-4 border-white bg-white object-contain;
+  }
+
+  .kiosk-selftest-result-page__qr-tip {
+    @apply mt-4 text-base leading-relaxed text-gray-600;
+  }
+
+  .kiosk-selftest-result-page__qr-foot {
+    @apply mt-3 text-sm leading-relaxed text-gray-500;
+  }
+
+  .kiosk-selftest-result-page__footer {
+    @apply mt-5 grid grid-cols-2 gap-5;
+  }
+
+  .kiosk-selftest-result-page__privacy {
+    @apply absolute bottom-2 left-1/2 -translate-x-1/2 text-center text-sm text-gray-500;
+    width: calc(100% - 80px);
+  }
 }

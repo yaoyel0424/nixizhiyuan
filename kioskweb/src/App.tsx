@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import imgDecorCloud from './assets/1776429819509a3K9mP2xQ7vN4rT8wY.jpg';
 import imgDecorLeaf from './assets/1776429819509b4L8nQ3yR6sU9vW1xZ.jpg';
+import imgQrcode from './assets/qrcode.jpg';
+import imgWeappLogo from './assets/weapplogo.png';
 import { CHINA_PROVINCES, DEFAULT_PROVINCE } from './data/china-provinces';
 
 /** 与本地 mock 一致的专业大类结构（筛选函数入参） */
@@ -16,6 +18,7 @@ type MajorCategoryBlock = {
     majors: Array<{
       id: number | null;
       name: string;
+      code: string;
     }>;
   }>;
 };
@@ -45,7 +48,37 @@ type ApiMajorTreeResponse = {
 
 const MAJOR_TREE_API_URL = 'https://ziquzixin.com/api/v1/kiosk/majors/tree';
 const MAJOR_IDS_API_URL = 'https://ziquzixin.com/api/v1/kiosk/level3-major-ids';
+const ANONYMOUS_USERS_API_URL = 'https://ziquzixin.com/api/v1/kiosk/anonymous-users';
+const ANONYMOUS_SCALE_ANSWERS_API_URL = 'https://ziquzixin.com/api/v1/kiosk/anonymous-scale-answers';
 const MAJOR_TREE_CACHE_KEY = 'kiosk-major-tree-v1';
+
+type KioskScaleQuestionOption = {
+  key: 'A' | 'B' | 'C' | 'D' | 'E';
+  text: string;
+  score: number;
+};
+
+type KioskScaleQuestion = {
+  scaleId: number;
+  title: string;
+  options: KioskScaleQuestionOption[];
+};
+
+type KioskMajorScoreResult = {
+  majorId?: number;
+  majorCode?: string;
+  majorName?: string;
+  majorBrief?: string;
+  eduLevel?: string;
+  score?: number;
+  lexueScore?: number;
+  shanxueScore?: number;
+  yanxueDeduction?: number;
+  tiaozhanDeduction?: number;
+  sign?: string;
+  matchScore?: number;
+  [key: string]: unknown;
+};
 
 /**
  * 接口学历层级映射到页面 Tab。
@@ -86,7 +119,8 @@ function transformApiTreeToBlocks(tree: ApiMajorNode[]): MajorCategoryBlock[] {
     const subCategories = (level1.children ?? []).map((level2) => {
       const majors = (level2.children ?? []).map((level3) => ({
         id: level3.id,
-        name: level3.name
+        name: level3.name,
+        code: level3.code
       }));
       return {
         name: level2.name,
@@ -226,7 +260,157 @@ function getExpandedMajorNamesByQuery(
  * 将名称数组快速转换为专业项（mock 兜底数据使用，id 置空）。
  */
 function toMockMajors(names: string[]) {
-  return names.map((name) => ({ id: null, name }));
+  return names.map((name, index) => ({ id: null, name, code: `mock-${index + 1}` }));
+}
+
+function buildFallbackOptions(): KioskScaleQuestionOption[] {
+  return [
+    { key: 'A', text: '非常符合', score: 5 },
+    { key: 'B', text: '比较符合', score: 4 },
+    { key: 'C', text: '一般', score: 3 },
+    { key: 'D', text: '较不符合', score: 2 },
+    { key: 'E', text: '非常不符合', score: 1 }
+  ];
+}
+
+function normalizeScaleOptions(scale: Record<string, unknown>): KioskScaleQuestionOption[] {
+  const fromArray = scale.options;
+  if (Array.isArray(fromArray) && fromArray.length > 0) {
+    const mapped = fromArray
+      .map((item, index) => {
+        if (typeof item === 'string') {
+          return {
+            key: (['A', 'B', 'C', 'D', 'E'][index] ?? 'E') as KioskScaleQuestionOption['key'],
+            text: item,
+            score: index + 1
+          };
+        }
+        if (item && typeof item === 'object') {
+          const obj = item as Record<string, unknown>;
+          const optionName = String(
+            obj.optionName ?? obj.text ?? obj.label ?? obj.content ?? `选项${index + 1}`
+          );
+          const matchedKey = optionName.match(/^\s*([A-E])\./i)?.[1]?.toUpperCase();
+          return {
+            key: (
+              String(
+                obj.key ?? matchedKey ?? ['A', 'B', 'C', 'D', 'E'][index] ?? 'E'
+              ) as KioskScaleQuestionOption['key']
+            ),
+            text: optionName,
+            score: Number(obj.optionValue ?? obj.score ?? obj.value ?? index + 1)
+          };
+        }
+        return null;
+      })
+      .filter((item): item is KioskScaleQuestionOption => Boolean(item));
+    if (mapped.length > 0) {
+      return mapped;
+    }
+  }
+
+  const keyed = ['A', 'B', 'C', 'D', 'E']
+    .map((key, index) => {
+      const text = scale[`option${key}`] ?? scale[`answer${key}`] ?? scale[`choice${key}`];
+      if (!text) {
+        return null;
+      }
+      return {
+        key: key as KioskScaleQuestionOption['key'],
+        text: String(text),
+        score: Number(scale[`score${key}`] ?? index + 1)
+      };
+    })
+    .filter((item): item is KioskScaleQuestionOption => Boolean(item));
+  if (keyed.length > 0) {
+    return keyed;
+  }
+
+  return buildFallbackOptions();
+}
+
+function extractScaleQuestions(payload: unknown): KioskScaleQuestion[] {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+  const root = payload as Record<string, unknown>;
+  const data = (root.data ?? root) as Record<string, unknown>;
+
+  /** 官方结构：data.analyses[].scales[] */
+  if (Array.isArray(data.analyses)) {
+    const questions = data.analyses
+      .flatMap((analysis) => {
+        if (!analysis || typeof analysis !== 'object') {
+          return [];
+        }
+        const scales = (analysis as Record<string, unknown>).scales;
+        return Array.isArray(scales) ? scales : [];
+      })
+      .map((item, index) => {
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        const scale = item as Record<string, unknown>;
+        const scaleId = Number(scale.id ?? scale.scaleId);
+        if (!Number.isFinite(scaleId) || scaleId <= 0) {
+          return null;
+        }
+        const title = String(scale.content ?? scale.title ?? scale.question ?? `第${index + 1}题`);
+        return {
+          scaleId,
+          title,
+          options: normalizeScaleOptions(scale)
+        };
+      })
+      .filter((item): item is KioskScaleQuestion => Boolean(item));
+    if (questions.length > 0) {
+      return questions;
+    }
+  }
+
+  /** 兜底：兼容旧结构 data.scales / data.list */
+  const list = [data.scales, data.list, data.items, data.records].find((item) => Array.isArray(item));
+  if (!Array.isArray(list)) {
+    return [];
+  }
+
+  return list
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const scale = item as Record<string, unknown>;
+      const scaleId = Number(scale.scaleId ?? scale.id);
+      if (!Number.isFinite(scaleId) || scaleId <= 0) {
+        return null;
+      }
+      const title = String(scale.title ?? scale.question ?? scale.name ?? `第${index + 1}题`);
+      return {
+        scaleId,
+        title,
+        options: normalizeScaleOptions(scale)
+      };
+    })
+    .filter((item): item is KioskScaleQuestion => Boolean(item));
+}
+
+function extractAnonymousUserId(payload: unknown): number | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  const root = payload as Record<string, unknown>;
+  const data = (root.data ?? root) as Record<string, unknown>;
+  const id = Number(data.id ?? data.anonymousUserId ?? data.userId);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function extractMajorScoreResult(payload: unknown): KioskMajorScoreResult | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  const root = payload as Record<string, unknown>;
+  const data = (root.data ?? root) as Record<string, unknown>;
+  return data as KioskMajorScoreResult;
 }
 
 /** 本地演示用专业列表（含本科 / 职业本科 / 专科） */
@@ -359,6 +543,18 @@ const App: React.FC = () => {
   const [searchExpandedNames, setSearchExpandedNames] = useState<string[]>([]);
   /** 避免首屏默认匹配重复触发 */
   const hasAutoTriggeredMatchRef = useRef(false);
+  /** 自测弹窗：打开状态、答题页/结果页、当前题号、答案记录 */
+  const [selfTestOpen, setSelfTestOpen] = useState(false);
+  const [selfTestStep, setSelfTestStep] = useState<'quiz' | 'result' | 'loading'>('loading');
+  const [selfTestMajorName, setSelfTestMajorName] = useState('临床医学');
+  const [selfTestMajorCode, setSelfTestMajorCode] = useState('');
+  const [selfTestAnonymousUserId, setSelfTestAnonymousUserId] = useState<number | null>(null);
+  const [selfTestQuestions, setSelfTestQuestions] = useState<KioskScaleQuestion[]>([]);
+  const [selfTestCurrentIndex, setSelfTestCurrentIndex] = useState(0);
+  const [selfTestAnswers, setSelfTestAnswers] = useState<Array<number | null>>([]);
+  const [selfTestBusy, setSelfTestBusy] = useState(false);
+  const [selfTestError, setSelfTestError] = useState<string | null>(null);
+  const [selfTestResult, setSelfTestResult] = useState<KioskMajorScoreResult | null>(null);
 
   /** 按 Escape 关闭省份弹窗 */
   useEffect(() => {
@@ -618,6 +814,174 @@ const App: React.FC = () => {
     return expandedMajor === majorName;
   };
 
+  const currentSelfTestQuestion = selfTestQuestions[selfTestCurrentIndex];
+  const selfTestTotal = selfTestQuestions.length;
+  const currentSelfTestAnswer = selfTestAnswers[selfTestCurrentIndex] ?? null;
+
+  const resetSelfTestState = () => {
+    setSelfTestStep('loading');
+    setSelfTestCurrentIndex(0);
+    setSelfTestAnswers([]);
+    setSelfTestQuestions([]);
+    setSelfTestError(null);
+    setSelfTestResult(null);
+    setSelfTestAnonymousUserId(null);
+  };
+
+  /**
+   * 打开自测弹窗：创建匿名用户并加载对应专业问卷。
+   */
+  const openSelfTestModal = (majorName: string, majorCode: string) => {
+    setSelfTestOpen(true);
+    setSelfTestMajorName(majorName);
+    setSelfTestMajorCode(majorCode);
+    resetSelfTestState();
+    setSelfTestBusy(true);
+
+    const run = async () => {
+      try {
+        const createResponse = await fetch(ANONYMOUS_USERS_API_URL, { method: 'POST' });
+        if (!createResponse.ok) {
+          throw new Error(`创建匿名用户失败：${createResponse.status}`);
+        }
+        const createPayload = (await createResponse.json()) as unknown;
+        const anonymousUserId = extractAnonymousUserId(createPayload);
+        if (!anonymousUserId) {
+          throw new Error('创建匿名用户失败：未返回有效用户ID');
+        }
+
+        const scalesResponse = await fetch(
+          `https://ziquzixin.com/api/v1/kiosk/majors/${majorCode}/scales`
+        );
+        if (!scalesResponse.ok) {
+          throw new Error(`获取问卷失败：${scalesResponse.status}`);
+        }
+        const scalesPayload = (await scalesResponse.json()) as unknown;
+        const questions = extractScaleQuestions(scalesPayload);
+        if (questions.length === 0) {
+          throw new Error('当前专业暂未配置问卷题目');
+        }
+
+        setSelfTestAnonymousUserId(anonymousUserId);
+        setSelfTestQuestions(questions);
+        setSelfTestAnswers(Array.from({ length: questions.length }, () => null));
+        setSelfTestStep('quiz');
+      } catch (error) {
+        setSelfTestError(error instanceof Error ? error.message : '问卷加载失败');
+      } finally {
+        setSelfTestBusy(false);
+      }
+    };
+    void run();
+  };
+
+  /**
+   * 关闭自测弹窗（不保留答题数据）。
+   */
+  const closeSelfTestModal = () => {
+    setSelfTestOpen(false);
+    resetSelfTestState();
+  };
+
+  /**
+   * 记录当前题答案（score）。
+   */
+  const handleSelfTestAnswerSelect = (score: number) => {
+    setSelfTestAnswers((prev) => {
+      const next = [...prev];
+      next[selfTestCurrentIndex] = score;
+      return next;
+    });
+  };
+
+  /**
+   * 提交单题答案（点击“下一题/提交”时触发）。
+   */
+  const submitSelfTestAnswerAtIndex = async (index: number) => {
+    if (!selfTestAnonymousUserId) {
+      throw new Error('匿名用户无效，请关闭后重试');
+    }
+    if (!selfTestMajorCode) {
+      throw new Error('专业编码缺失，请关闭后重试');
+    }
+    const question = selfTestQuestions[index];
+    if (!question) {
+      throw new Error('题目索引无效');
+    }
+    const score = selfTestAnswers[index];
+    if (score === null) {
+      throw new Error('请先选择本题答案后再继续');
+    }
+
+    const response = await fetch(ANONYMOUS_SCALE_ANSWERS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        anonymousUserId: selfTestAnonymousUserId,
+        scaleId: question.scaleId,
+        score
+      })
+    });
+    if (!response.ok) {
+      throw new Error(`提交问卷失败：${response.status}`);
+    }
+  };
+
+  /**
+   * 下一题 / 提交。
+   */
+  const handleSelfTestNext = async () => {
+    if (selfTestStep !== 'quiz') {
+      return;
+    }
+    if (currentSelfTestAnswer === null) {
+      setSelfTestError('请先选择本题答案后再继续');
+      return;
+    }
+    setSelfTestBusy(true);
+    setSelfTestError(null);
+    try {
+      await submitSelfTestAnswerAtIndex(selfTestCurrentIndex);
+      if (selfTestCurrentIndex >= selfTestTotal - 1) {
+        if (selfTestAnswers.some((score) => score === null)) {
+          throw new Error('还有未作答题目，请完成全部题目后再提交');
+        }
+        const resultResponse = await fetch(
+          `https://ziquzixin.com/api/v1/kiosk/anonymous-users/${selfTestAnonymousUserId}/major-scores/${selfTestMajorCode}`
+        );
+        if (!resultResponse.ok) {
+          throw new Error(`获取评估结果失败：${resultResponse.status}`);
+        }
+        const resultPayload = (await resultResponse.json()) as unknown;
+        setSelfTestResult(extractMajorScoreResult(resultPayload));
+        setSelfTestStep('result');
+        return;
+      }
+      setSelfTestCurrentIndex((prev) => Math.min(prev + 1, selfTestTotal - 1));
+    } catch (error) {
+      setSelfTestError(error instanceof Error ? error.message : '提交问卷失败');
+    } finally {
+      setSelfTestBusy(false);
+    }
+  };
+
+  /**
+   * 选项文案展示：若后端已带 "A." 前缀则直接展示，避免重复。
+   */
+  const renderSelfTestOptionText = (option: KioskScaleQuestionOption) => {
+    if (/^\s*[A-E]\./i.test(option.text)) {
+      return option.text;
+    }
+    return `${option.key}. ${option.text}`;
+  };
+
+  const selfTestResultScore = Number(selfTestResult?.score ?? selfTestResult?.matchScore ?? 0);
+  const selfTestLexueScore = Number(selfTestResult?.lexueScore ?? 0);
+  const selfTestShanxueScore = Number(selfTestResult?.shanxueScore ?? 0);
+  const selfTestYanxueDeduction = Number(selfTestResult?.yanxueDeduction ?? 0);
+  const selfTestTiaozhanDeduction = Number(selfTestResult?.tiaozhanDeduction ?? 0);
+  const selfTestMajorBrief = String(selfTestResult?.majorBrief ?? '暂无专业简介');
+
   return (
     <div className="kiosk-app-root" data-province-options={CHINA_PROVINCES.length}>
       {/* Background decorative elements */}
@@ -867,7 +1231,10 @@ const App: React.FC = () => {
                                     <button className="kiosk-app-action-view">
                                       <i className="fas fa-eye mr-1"></i> 查看
                                     </button>
-                                    <button className="kiosk-app-action-self">
+                                    <button
+                                      className="kiosk-app-action-self"
+                                      onClick={() => openSelfTestModal(majorItem.name, majorItem.code)}
+                                    >
                                       <i className="fas fa-file-alt mr-1"></i> 自测
                                     </button>
                                     <button className="kiosk-app-action-school">
@@ -972,6 +1339,221 @@ const App: React.FC = () => {
                 我知道了
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 专业匹配度自评弹窗（43 寸触摸屏） */}
+      {selfTestOpen && (
+        <div className="kiosk-selftest-overlay" role="presentation" onClick={closeSelfTestModal}>
+          <div
+            className="kiosk-selftest-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kiosk-selftest-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="kiosk-selftest-close"
+              aria-label="关闭自测弹窗"
+              onClick={closeSelfTestModal}
+            >
+              ✕
+            </button>
+
+            {selfTestStep === 'loading' ? (
+              <div className="kiosk-selftest-result">
+                <h2 id="kiosk-selftest-title" className="kiosk-selftest-result__title">
+                  {selfTestMajorName} - 专业匹配度自评
+                </h2>
+                <p className="kiosk-selftest-result__desc">
+                  正在创建匿名用户并加载问卷，请稍候...
+                </p>
+              </div>
+            ) : selfTestStep === 'quiz' ? (
+              <div className="kiosk-selftest-layout">
+                <div className="kiosk-selftest-left">
+                  <div className="kiosk-selftest-progress-text">
+                    {selfTestCurrentIndex + 1} / {selfTestTotal}
+                  </div>
+                  <h2 id="kiosk-selftest-title" className="kiosk-selftest-question-title">
+                    {currentSelfTestQuestion?.title}
+                  </h2>
+                  <div className="kiosk-selftest-options">
+                    {currentSelfTestQuestion?.options.map((option) => (
+                      <button
+                        key={option.key}
+                        type="button"
+                        className={`kiosk-selftest-option ${
+                          currentSelfTestAnswer === option.score ? 'kiosk-selftest-option--active' : ''
+                        }`}
+                        onClick={() => handleSelfTestAnswerSelect(option.score)}
+                      >
+                        <span className="kiosk-selftest-option__dot" aria-hidden />
+                        <span className="kiosk-selftest-option__label">
+                          {renderSelfTestOptionText(option)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="kiosk-selftest-right">
+                  <h3 className="kiosk-selftest-right__title">答题进度</h3>
+                  <div className="kiosk-selftest-right__bar">
+                    <div
+                      className="kiosk-selftest-right__bar-fill"
+                      style={{
+                        width: `${selfTestTotal === 0 ? 0 : ((selfTestCurrentIndex + 1) / selfTestTotal) * 100}%`
+                      }}
+                    />
+                  </div>
+                  <div className="kiosk-selftest-right__grid">
+                    {selfTestQuestions.map((question, index) => (
+                      <button
+                        key={question.scaleId}
+                        type="button"
+                        className={`kiosk-selftest-right__dot ${
+                          selfTestAnswers[index] ? 'kiosk-selftest-right__dot--done' : ''
+                        } ${index === selfTestCurrentIndex ? 'kiosk-selftest-right__dot--current' : ''}`}
+                        onClick={() => setSelfTestCurrentIndex(index)}
+                        aria-label={`第${index + 1}题`}
+                      />
+                    ))}
+                  </div>
+                  <div className="kiosk-selftest-right__actions">
+                    <button
+                      type="button"
+                      className="kiosk-selftest-btn kiosk-selftest-btn--prev"
+                      onClick={() => setSelfTestCurrentIndex((prev) => Math.max(prev - 1, 0))}
+                      disabled={selfTestCurrentIndex === 0 || selfTestBusy}
+                    >
+                      上一题
+                    </button>
+                    <button
+                      type="button"
+                      className="kiosk-selftest-btn kiosk-selftest-btn--next"
+                      onClick={handleSelfTestNext}
+                      disabled={selfTestBusy}
+                    >
+                      {selfTestBusy
+                        ? '提交中...'
+                        : selfTestCurrentIndex === selfTestTotal - 1
+                          ? '提交'
+                          : '下一题'}
+                    </button>
+                  </div>
+                  {selfTestError && (
+                    <p className="kiosk-selftest-result__desc mt-4 !text-left !text-[1.25rem] !text-rose-600">
+                      {selfTestError}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="kiosk-selftest-result">
+                <div className="kiosk-selftest-result-page">
+                  <div className="kiosk-selftest-result-page__header">
+                    <div>
+                      <h2 id="kiosk-selftest-title" className="kiosk-selftest-result-page__title">
+                        你与{selfTestResult?.majorName ?? selfTestMajorName}专业匹配度测评结果
+                      </h2>
+                      <p className="kiosk-selftest-result-page__subtitle">
+                        基于24题问卷的综合分析
+                      </p>
+                      <p className="kiosk-selftest-result-page__major-line">
+                        {selfTestResult?.majorName ?? selfTestMajorName}
+                      </p>
+                      <p className="kiosk-selftest-result-page__match-line">
+                        匹配度：{selfTestResultScore}%
+                      </p>
+                      <p className="kiosk-selftest-result-page__brief">{selfTestMajorBrief}</p>
+                    </div>
+                    <div className="kiosk-selftest-score-circle">
+                      <span className="kiosk-selftest-score-circle__value">{selfTestResultScore}</span>
+                      <span className="kiosk-selftest-score-circle__unit">分</span>
+                    </div>
+                  </div>
+
+                  <div className="kiosk-selftest-result-page__body">
+                    <div className="kiosk-selftest-result-page__left">
+                      <div className="kiosk-selftest-dimension-grid">
+                        <div className="kiosk-selftest-dimension-card kiosk-selftest-dimension-card--lexue">
+                          <h3>乐学得分</h3>
+                          <p className="kiosk-selftest-dimension-card__value">{selfTestLexueScore}分</p>
+                          <p className="kiosk-selftest-dimension-card__desc">学习兴趣与投入度</p>
+                          <div className="kiosk-selftest-dimension-card__bar">
+                            <div
+                              className="kiosk-selftest-dimension-card__fill"
+                              style={{ width: `${Math.min(Math.abs(selfTestLexueScore), 50) * 2}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="kiosk-selftest-dimension-card kiosk-selftest-dimension-card--shanxue">
+                          <h3>善学得分</h3>
+                          <p className="kiosk-selftest-dimension-card__value">{selfTestShanxueScore}分</p>
+                          <p className="kiosk-selftest-dimension-card__desc">学习方法与能力表现</p>
+                          <div className="kiosk-selftest-dimension-card__bar">
+                            <div
+                              className="kiosk-selftest-dimension-card__fill"
+                              style={{ width: `${Math.min(Math.abs(selfTestShanxueScore), 50) * 2}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="kiosk-selftest-dimension-card kiosk-selftest-dimension-card--yanxue">
+                          <h3>厌学扣分</h3>
+                          <p className="kiosk-selftest-dimension-card__value">{selfTestYanxueDeduction}分</p>
+                          <p className="kiosk-selftest-dimension-card__desc">学习阻力与抵触倾向</p>
+                          <div className="kiosk-selftest-dimension-card__bar">
+                            <div
+                              className="kiosk-selftest-dimension-card__fill"
+                              style={{ width: `${Math.min(Math.abs(selfTestYanxueDeduction), 50) * 2}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="kiosk-selftest-dimension-card kiosk-selftest-dimension-card--tiaozhan">
+                          <h3>阻学扣分</h3>
+                          <p className="kiosk-selftest-dimension-card__value">{selfTestTiaozhanDeduction}分</p>
+                          <p className="kiosk-selftest-dimension-card__desc">挑战压力与外在阻碍</p>
+                          <div className="kiosk-selftest-dimension-card__bar">
+                            <div
+                              className="kiosk-selftest-dimension-card__fill"
+                              style={{ width: `${Math.min(Math.abs(selfTestTiaozhanDeduction), 50) * 2}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* <div className="kiosk-selftest-major-panel">
+                        <h3 className="kiosk-selftest-major-panel__name">
+                          {selfTestResult?.majorName ?? selfTestMajorName}
+                        </h3>
+                        <p className="kiosk-selftest-major-panel__score">已完成综合测评</p>
+                      </div> */}
+                    </div>
+
+                    <div className="kiosk-selftest-result-page__qr">
+                      <h3>查看完整168题报告</h3>
+                      <div className="kiosk-selftest-qr-box">
+                        <img src={imgQrcode} alt="查看完整报告二维码" className="kiosk-selftest-qr-box__qr" />
+                        <img src={imgWeappLogo} alt="" className="kiosk-selftest-qr-box__logo" />
+                      </div>
+                      <p className="kiosk-selftest-result-page__qr-tip">
+                        微信扫码查看详细报表、专业推荐与发展建议
+                      </p>
+                      <p className="kiosk-selftest-result-page__qr-foot">
+                        扫码后报告将发送到你微信，设备端不留存任何数据
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="kiosk-selftest-result-page__privacy">
+                    公共设备，关闭后结果不会保留
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
