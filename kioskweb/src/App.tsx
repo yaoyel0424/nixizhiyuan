@@ -1,10 +1,9 @@
 // 代码已包含 CSS：Tailwind + `styles/kiosk-app.css`（由 MasterGo / App copy 工具类等价抽出）
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import imgDecorCloud from './assets/1776429819509a3K9mP2xQ7vN4rT8wY.jpg';
 import imgDecorLeaf from './assets/1776429819509b4L8nQ3yR6sU9vW1xZ.jpg';
-import imgEmptyHint from './assets/empty-state-hint.jpg';
 import { CHINA_PROVINCES, DEFAULT_PROVINCE } from './data/china-provinces';
 
 /** 与本地 mock 一致的专业大类结构（筛选函数入参） */
@@ -14,9 +13,116 @@ type MajorCategoryBlock = {
   subCategories: Array<{
     name: string;
     count: number;
-    majors: string[];
+    majors: Array<{
+      id: number | null;
+      name: string;
+    }>;
   }>;
 };
+
+type KioskTab = '本科' | '职业本科' | '专科';
+
+type ApiMajorNode = {
+  id: number | null;
+  name: string;
+  code: string;
+  eduLevel: 'ben' | 'gao_ben' | 'zhuan' | string;
+  siteAllocationCode: string | null;
+  level: 1 | 2 | 3;
+  children: ApiMajorNode[];
+};
+
+type ApiMajorGroup = {
+  eduLevel: 'ben' | 'gao_ben' | 'zhuan' | string;
+  tree: ApiMajorNode[];
+};
+
+type ApiMajorTreeResponse = {
+  data?: {
+    groups?: ApiMajorGroup[];
+  };
+};
+
+const MAJOR_TREE_API_URL = 'https://ziquzixin.com/api/v1/kiosk/majors/tree';
+const MAJOR_IDS_API_URL = 'https://ziquzixin.com/api/v1/kiosk/level3-major-ids';
+const MAJOR_TREE_CACHE_KEY = 'kiosk-major-tree-v1';
+
+/**
+ * 接口学历层级映射到页面 Tab。
+ */
+function mapEduLevelToTab(eduLevel: string): KioskTab | null {
+  if (eduLevel === 'ben') {
+    return '本科';
+  }
+  if (eduLevel === 'gao_ben') {
+    return '职业本科';
+  }
+  if (eduLevel === 'zhuan') {
+    return '专科';
+  }
+  return null;
+}
+
+/**
+ * 省份参数标准化：接口通常使用“湖南/北京/广西”等简称。
+ * 例如：湖南省 -> 湖南，广西壮族自治区 -> 广西，香港特别行政区 -> 香港。
+ */
+function normalizeProvinceForApi(province: string): string {
+  return province
+    .replace(/特别行政区$/u, '')
+    .replace(/壮族自治区$/u, '')
+    .replace(/回族自治区$/u, '')
+    .replace(/维吾尔自治区$/u, '')
+    .replace(/自治区$/u, '')
+    .replace(/省$/u, '')
+    .replace(/市$/u, '');
+}
+
+/**
+ * 把接口树结构转换为页面渲染结构（大类 -> 小类 -> 专业）。
+ */
+function transformApiTreeToBlocks(tree: ApiMajorNode[]): MajorCategoryBlock[] {
+  return tree.map((level1) => {
+    const subCategories = (level1.children ?? []).map((level2) => {
+      const majors = (level2.children ?? []).map((level3) => ({
+        id: level3.id,
+        name: level3.name
+      }));
+      return {
+        name: level2.name,
+        count: majors.length,
+        majors
+      };
+    });
+    const count = subCategories.reduce((acc, sub) => acc + sub.majors.length, 0);
+    return {
+      name: level1.name,
+      count,
+      subCategories
+    };
+  });
+}
+
+/**
+ * 把接口分组转换为页面三个 Tab 的数据容器。
+ */
+function normalizeMajorGroups(groups: ApiMajorGroup[]): Record<KioskTab, MajorCategoryBlock[]> {
+  const next: Record<KioskTab, MajorCategoryBlock[]> = {
+    本科: [],
+    职业本科: [],
+    专科: []
+  };
+
+  groups.forEach((group) => {
+    const tab = mapEduLevelToTab(group.eduLevel);
+    if (!tab) {
+      return;
+    }
+    next[tab] = transformApiTreeToBlocks(group.tree ?? []);
+  });
+
+  return next;
+}
 
 /**
  * 按关键词过滤专业树：大类名、小类名或具体专业名命中（子串）即保留。
@@ -45,7 +151,7 @@ function filterMajorCategories(blocks: MajorCategoryBlock[], query: string): Maj
         continue;
       }
 
-      const majorsHit = sub.majors.filter((name) => name.includes(q));
+      const majorsHit = sub.majors.filter((major) => major.name.includes(q));
       if (majorsHit.length > 0) {
         subs.push({
           ...sub,
@@ -67,6 +173,62 @@ function filterMajorCategories(blocks: MajorCategoryBlock[], query: string): Maj
   return next;
 }
 
+/**
+ * 根据 level3 专业 id 过滤专业树（用于匹配查询结果）。
+ */
+function filterMajorCategoriesByIds(
+  blocks: MajorCategoryBlock[],
+  idSet: Set<number> | null
+): MajorCategoryBlock[] {
+  if (!idSet) {
+    return blocks;
+  }
+
+  const next: MajorCategoryBlock[] = [];
+  for (const major of blocks) {
+    const subCategories = major.subCategories
+      .map((sub) => {
+        const majors = sub.majors.filter((item) => item.id !== null && idSet.has(item.id));
+        return {
+          ...sub,
+          majors,
+          count: majors.length
+        };
+      })
+      .filter((sub) => sub.majors.length > 0);
+
+    if (subCategories.length > 0) {
+      next.push({
+        ...major,
+        subCategories,
+        count: subCategories.reduce((acc, sub) => acc + sub.majors.length, 0)
+      });
+    }
+  }
+
+  return next;
+}
+
+/**
+ * 基于关键词计算当前应默认展开的大类名称集合（用于搜索态）。
+ */
+function getExpandedMajorNamesByQuery(
+  blocks: MajorCategoryBlock[],
+  query: string
+): string[] {
+  if (!query.trim()) {
+    return [];
+  }
+  return filterMajorCategories(blocks, query).map((item) => item.name);
+}
+
+/**
+ * 将名称数组快速转换为专业项（mock 兜底数据使用，id 置空）。
+ */
+function toMockMajors(names: string[]) {
+  return names.map((name) => ({ id: null, name }));
+}
+
 /** 本地演示用专业列表（含本科 / 职业本科 / 专科） */
 const mockResults = {
     本科: [
@@ -77,12 +239,12 @@ const mockResults = {
           {
             name: '计算机类',
             count: 3,
-            majors: ['计算机科学与技术', '软件工程', '网络工程']
+            majors: toMockMajors(['计算机科学与技术', '软件工程', '网络工程'])
           },
           {
             name: '机械类',
             count: 2,
-            majors: ['机械工程', '工业设计']
+            majors: toMockMajors(['机械工程', '工业设计'])
           }
         ]
       },
@@ -93,12 +255,12 @@ const mockResults = {
           {
             name: '数学类',
             count: 2,
-            majors: ['数学与应用数学', '信息与计算科学']
+            majors: toMockMajors(['数学与应用数学', '信息与计算科学'])
           },
           {
             name: '物理学类',
             count: 1,
-            majors: ['物理学']
+            majors: toMockMajors(['物理学'])
           }
         ]
       },
@@ -109,7 +271,7 @@ const mockResults = {
           {
             name: '外国语言文学类',
             count: 3,
-            majors: ['英语', '日语', '法语']
+            majors: toMockMajors(['英语', '日语', '法语'])
           }
         ]
       }
@@ -122,7 +284,7 @@ const mockResults = {
           {
             name: '智能制造类',
             count: 2,
-            majors: ['智能制造工程技术', '自动化技术与应用']
+            majors: toMockMajors(['智能制造工程技术', '自动化技术与应用'])
           }
         ]
       }
@@ -135,7 +297,7 @@ const mockResults = {
           {
             name: '计算机类',
             count: 2,
-            majors: ['计算机应用技术', '软件技术']
+            majors: toMockMajors(['计算机应用技术', '软件技术'])
           }
         ]
       },
@@ -146,7 +308,7 @@ const mockResults = {
           {
             name: '财务会计类',
             count: 3,
-            majors: ['大数据与会计', '财务管理', '会计信息管理']
+            majors: toMockMajors(['大数据与会计', '财务管理', '会计信息管理'])
           }
         ]
       }
@@ -159,22 +321,44 @@ const mockResults = {
 const App: React.FC = () => {
   const [selectedProvince, setSelectedProvince] = useState<string>(DEFAULT_PROVINCE);
   const [provinceModalOpen, setProvinceModalOpen] = useState(false);
-  /** 首选：物理 / 历史 二选一（互斥），再点同一项可取消 */
-  const [firstSubject, setFirstSubject] = useState<'物理' | '历史' | null>(null);
-  /** 次选：化学 / 生物 / 政治 / 地理 四选二（至多 2 项） */
-  const [secondSubjects, setSecondSubjects] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'本科' | '职业本科' | '专科'>('本科');
+  /** 首选默认物理；仍支持用户切换为历史 */
+  const [firstSubject, setFirstSubject] = useState<'物理' | '历史' | null>('物理');
+  /** 次选默认化学 + 生物；保持四选二规则 */
+  const [secondSubjects, setSecondSubjects] = useState<string[]>(['化学', '生物']);
+  const [activeTab, setActiveTab] = useState<KioskTab>('本科');
   const [expandedMajor, setExpandedMajor] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-  /** 用户完成至少一次「开始匹配查询」后才展示右侧统计、Tab 与专业列表 */
-  const [resultsUnlocked, setResultsUnlocked] = useState(false);
+  /** 默认直接展示右侧统计、Tab 与专业列表 */
+  const [resultsUnlocked, setResultsUnlocked] = useState(true);
   /** 专业列表关键词（右侧顶部搜索，适配大屏触控） */
   const [majorQuery, setMajorQuery] = useState('');
+  /** 接口专业树（按学历层级分组） */
+  const [majorDataByTab, setMajorDataByTab] = useState<Record<KioskTab, MajorCategoryBlock[]>>({
+    本科: [],
+    职业本科: [],
+    专科: []
+  });
+  /** 首次加载状态：用于展示「正在加载专业数据」 */
+  const [isMajorTreeLoading, setIsMajorTreeLoading] = useState(true);
+  /** 接口异常信息 */
+  const [majorTreeError, setMajorTreeError] = useState<string | null>(null);
+  /** 选科校验提示弹框文案（为空则关闭弹框） */
+  const [selectionAlertMessage, setSelectionAlertMessage] = useState<string | null>(null);
+  /** 匹配接口返回的 level3 id 过滤结果；null 代表不过滤（显示全部） */
+  const [matchedIdSetByTab, setMatchedIdSetByTab] = useState<
+    Record<KioskTab, Set<number> | null>
+  >({
+    本科: null,
+    职业本科: null,
+    专科: null
+  });
   /**
    * 有关键词时：每个大类独立可展开/收起（与无搜索时的手风琴 `expandedMajor` 分离）。
    * 关键词或筛选结果变化时由 effect 同步为「当前列表项默认全部展开」。
    */
   const [searchExpandedNames, setSearchExpandedNames] = useState<string[]>([]);
+  /** 避免首屏默认匹配重复触发 */
+  const hasAutoTriggeredMatchRef = useRef(false);
 
   /** 按 Escape 关闭省份弹窗 */
   useEffect(() => {
@@ -214,20 +398,193 @@ const App: React.FC = () => {
   };
 
   /**
-   * 开始匹配：加载结束后解锁结果区；默认展开第一项由 `resultsUnlocked` 的 effect 统一处理。
+   * 搜索输入：同步更新关键词，并默认展开当前筛选结果中的所有大类。
    */
-  const handleSearch = () => {
-    setIsSearching(true);
-    setTimeout(() => {
-      setIsSearching(false);
-      setResultsUnlocked(true);
-    }, 2000);
+  const handleMajorQueryChange = (nextQuery: string) => {
+    setMajorQuery(nextQuery);
+    const byIds = filterMajorCategoriesByIds(
+      majorDataByTab[activeTab] ?? [],
+      matchedIdSetByTab[activeTab]
+    );
+    setSearchExpandedNames(getExpandedMajorNamesByQuery(byIds, nextQuery));
   };
+
+  /**
+   * 次选科目参数：逗号分隔（与 users.secondarySubjects 语义一致）。
+   */
+  const buildSecondarySubjectsParam = (subjects: string[]) => {
+    return subjects.map((item) => item.trim()).filter(Boolean).join(',');
+  };
+
+  /**
+   * 解析匹配接口返回中的 id 列表（兼容常见字段结构）。
+   */
+  const parseMatchedIds = (payload: unknown): number[] => {
+    if (!payload || typeof payload !== 'object') {
+      return [];
+    }
+    const root = payload as Record<string, unknown>;
+    const data = (root.data ?? root) as Record<string, unknown>;
+    const candidates = [data.ids, data.majorIds, data.level3MajorIds, data.list];
+    for (const item of candidates) {
+      if (Array.isArray(item)) {
+        return item
+          .map((value) => {
+            if (typeof value === 'number' || typeof value === 'string') {
+              return Number(value);
+            }
+            if (value && typeof value === 'object' && 'id' in value) {
+              return Number((value as { id: unknown }).id);
+            }
+            return NaN;
+          })
+          .filter((value) => Number.isFinite(value) && value > 0);
+      }
+    }
+    return [];
+  };
+
+  /**
+   * 加载专业树：优先读取会话缓存，再后台刷新接口，减轻 1900+ 专业首次等待。
+   */
+  const loadMajorTree = useCallback(async (showBusy = false) => {
+    if (showBusy) {
+      setIsSearching(true);
+    }
+    setMajorTreeError(null);
+
+    try {
+      const cachedRaw = sessionStorage.getItem(MAJOR_TREE_CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as Record<KioskTab, MajorCategoryBlock[]>;
+        setMajorDataByTab(cached);
+        setIsMajorTreeLoading(false);
+      }
+    } catch {
+      sessionStorage.removeItem(MAJOR_TREE_CACHE_KEY);
+    }
+
+    try {
+      const response = await fetch(MAJOR_TREE_API_URL);
+      if (!response.ok) {
+        throw new Error(`接口返回异常：${response.status}`);
+      }
+      const payload = (await response.json()) as ApiMajorTreeResponse;
+      const groups = payload.data?.groups ?? [];
+      const normalized = normalizeMajorGroups(groups);
+      setMajorDataByTab(normalized);
+      setExpandedMajor((prev) => prev ?? normalized['本科'][0]?.name ?? null);
+      setIsMajorTreeLoading(false);
+      sessionStorage.setItem(MAJOR_TREE_CACHE_KEY, JSON.stringify(normalized));
+    } catch (error) {
+      setIsMajorTreeLoading(false);
+      setMajorTreeError(error instanceof Error ? error.message : '专业数据加载失败');
+      /** 无数据时保留本地 mock 兜底，避免右侧完全空白 */
+      setMajorDataByTab(mockResults as Record<KioskTab, MajorCategoryBlock[]>);
+    } finally {
+      if (showBusy) {
+        setIsSearching(false);
+      }
+    }
+  }, []);
+
+  /**
+   * 开始匹配：保留按钮交互，触发一次手动刷新。
+   */
+  const handleSearch = useCallback(() => {
+    if (!selectedProvince) {
+      setSelectionAlertMessage('请先选择省份后再开始匹配。');
+      return;
+    }
+
+    if (!firstSubject) {
+      setSelectionAlertMessage('请先完成首选科目（二选一）后再开始匹配。');
+      return;
+    }
+
+    if (secondSubjects.length !== 2) {
+      setSelectionAlertMessage('次选科目需恰好选择 2 门（四选二），请调整后重试。');
+      return;
+    }
+
+    setResultsUnlocked(true);
+    setIsSearching(true);
+    setMajorTreeError(null);
+
+    const run = async () => {
+      try {
+        const nextMatched: Record<KioskTab, Set<number> | null> = {
+          本科: null,
+          职业本科: null,
+          专科: null
+        };
+
+        const normalizedProvince = normalizeProvinceForApi(selectedProvince);
+        const params = new URLSearchParams({
+          province: normalizedProvince,
+          preferredSubjects: firstSubject,
+          secondarySubjects: buildSecondarySubjectsParam(secondSubjects)
+        });
+        const response = await fetch(`${MAJOR_IDS_API_URL}?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`匹配接口异常：${response.status}`);
+        }
+        const payload = (await response.json()) as unknown;
+        const ids = parseMatchedIds(payload);
+        const matchedSet = new Set(ids);
+        nextMatched.本科 = matchedSet;
+        nextMatched.职业本科 = matchedSet;
+        nextMatched.专科 = matchedSet;
+        setMatchedIdSetByTab(nextMatched);
+        if (majorQuery.trim()) {
+          const byIds = filterMajorCategoriesByIds(
+            majorDataByTab[activeTab] ?? [],
+            nextMatched[activeTab]
+          );
+          setSearchExpandedNames(getExpandedMajorNamesByQuery(byIds, majorQuery));
+        }
+      } catch (error) {
+        setMajorTreeError(error instanceof Error ? error.message : '匹配专业失败');
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    void run();
+  }, [activeTab, firstSubject, majorDataByTab, majorQuery, secondSubjects, selectedProvince]);
+
+  /**
+   * 首屏默认加载全部专业。
+   */
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadMajorTree();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadMajorTree]);
+
+  /**
+   * 首屏数据加载完成后，自动按默认条件（湖南/物理/化学生物）执行一次匹配。
+   */
+  useEffect(() => {
+    if (hasAutoTriggeredMatchRef.current || isMajorTreeLoading) {
+      return;
+    }
+    hasAutoTriggeredMatchRef.current = true;
+    const timer = window.setTimeout(() => {
+      handleSearch();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isMajorTreeLoading, handleSearch]);
 
   /** 按搜索框关键词过滤后的列表（含大类 / 小类 / 专业名匹配） */
   const filteredResults = useMemo(() => {
-    return filterMajorCategories(mockResults[activeTab] as MajorCategoryBlock[], majorQuery);
-  }, [activeTab, majorQuery]);
+    const byIds = filterMajorCategoriesByIds(
+      majorDataByTab[activeTab] ?? [],
+      matchedIdSetByTab[activeTab]
+    );
+    return filterMajorCategories(byIds, majorQuery);
+  }, [activeTab, majorDataByTab, matchedIdSetByTab, majorQuery]);
 
   /** 与下方统计卡片一致的汇总数字（随筛选变化） */
   const { totalMajors, totalSubCategories, totalSpecialties } = useMemo(() => {
@@ -248,29 +605,7 @@ const App: React.FC = () => {
     };
   }, [filteredResults]);
 
-  /** 切换学历 Tab 后，若已解锁则重新默认展开该 Tab 第一个大类 */
-  useEffect(() => {
-    if (!resultsUnlocked) {
-      return;
-    }
-    const list = mockResults[activeTab];
-    setExpandedMajor(list[0]?.name ?? null);
-  }, [activeTab, resultsUnlocked]);
-
   const searchTrimmed = majorQuery.trim();
-
-  /**
-   * 关键词或筛选结果变化时：当前列表中的大类默认全部展开。
-   * 同一关键词下用户可单独收起某行；仅当词/结果集变化时重置展开集。
-   */
-  useEffect(() => {
-    const q = majorQuery.trim();
-    if (!q) {
-      setSearchExpandedNames([]);
-      return;
-    }
-    setSearchExpandedNames(filteredResults.map((m) => m.name));
-  }, [majorQuery, filteredResults]);
 
   /**
    * 某个大类下的专业树是否展开。
@@ -406,7 +741,7 @@ const App: React.FC = () => {
                   <input
                     type="search"
                     value={majorQuery}
-                    onChange={(event) => setMajorQuery(event.target.value)}
+                    onChange={(event) => handleMajorQueryChange(event.target.value)}
                     placeholder="搜索专业名称..."
                     className="kiosk-app-major-search__input"
                     aria-label="搜索专业名称"
@@ -439,7 +774,17 @@ const App: React.FC = () => {
                     key={tab}
                     type="button"
                     className={`kiosk-app-tab-btn ${activeTab === tab ? 'kiosk-app-tab-btn--active' : ''}`}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      setExpandedMajor(majorDataByTab[tab]?.[0]?.name ?? null);
+                      const byIds = filterMajorCategoriesByIds(
+                        majorDataByTab[tab] ?? [],
+                        matchedIdSetByTab[tab]
+                      );
+                      setSearchExpandedNames(
+                        getExpandedMajorNamesByQuery(byIds, majorQuery)
+                      );
+                    }}
                   >
                     {tab}
                     {activeTab === tab && <div className="kiosk-app-tab-underline"></div>}
@@ -449,26 +794,25 @@ const App: React.FC = () => {
             </>
           )}
 
-          {/* 默认空状态；查询中加载；解锁后展示列表 */}
+          {/* 默认加载全部专业；加载中/报错/列表三态 */}
           <div className="kiosk-app-results-scroll">
-            {isSearching ? (
+            {isSearching || isMajorTreeLoading ? (
               <div className="kiosk-app-loading-wrap">
                 <div className="kiosk-app-loading-emoji">☁️</div>
-                <p className="kiosk-app-loading-text">正在为您匹配专业...</p>
+                <p className="kiosk-app-loading-text">正在加载专业数据...</p>
               </div>
-            ) : !resultsUnlocked ? (
-              <div className="kiosk-app-empty-state">
-                <div className="kiosk-app-empty-state__card">
-                  <img
-                    src={imgEmptyHint}
-                    alt=""
-                    className="kiosk-app-empty-state__pic"
-                  />
-                  <p className="kiosk-app-empty-state__title">请在左侧选择科目</p>
-                  <p className="kiosk-app-empty-state__subtitle">
-                    开启您的专业探索之旅
-                  </p>
+            ) : majorTreeError ? (
+              <div className="kiosk-app-results-filter-empty">
+                <div className="kiosk-app-results-filter-empty__text">
+                  专业数据加载失败：{majorTreeError}
                 </div>
+                <button
+                  type="button"
+                  className="kiosk-app-action-view mt-4"
+                  onClick={() => void loadMajorTree(true)}
+                >
+                  点击重试
+                </button>
               </div>
             ) : (
               <div className="kiosk-app-results-list">
@@ -516,9 +860,9 @@ const App: React.FC = () => {
                           <div key={subCategory.name} className="kiosk-app-subcategory-block">
                             <h4 className="kiosk-app-subcategory-title">{subCategory.name}</h4>
                             <div className="kiosk-app-major-rows">
-                              {subCategory.majors.map((majorName) => (
-                                <div key={majorName} className="kiosk-app-major-row">
-                                  <div className="kiosk-app-major-name">{majorName}</div>
+                              {subCategory.majors.map((majorItem) => (
+                                <div key={`${majorItem.id ?? majorItem.name}`} className="kiosk-app-major-row">
+                                  <div className="kiosk-app-major-name">{majorItem.name}</div>
                                   <div className="kiosk-app-major-actions">
                                     <button className="kiosk-app-action-view">
                                       <i className="fas fa-eye mr-1"></i> 查看
@@ -591,6 +935,41 @@ const App: React.FC = () => {
                 onClick={() => setProvinceModalOpen(false)}
               >
                 取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 选科校验友好提示弹框 */}
+      {selectionAlertMessage && (
+        <div
+          className="kiosk-province-overlay"
+          role="presentation"
+          onClick={() => setSelectionAlertMessage(null)}
+        >
+          <div
+            className="kiosk-province-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kiosk-selection-alert-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="kiosk-province-dialog__head">
+              <h2 id="kiosk-selection-alert-title" className="kiosk-province-dialog__title">
+                温馨提示
+              </h2>
+            </div>
+            <div className="kiosk-province-dialog__body">
+              <p className="kiosk-app-results-filter-empty__text">{selectionAlertMessage}</p>
+            </div>
+            <div className="kiosk-province-dialog__foot">
+              <button
+                type="button"
+                className="kiosk-province-dialog__cancel"
+                onClick={() => setSelectionAlertMessage(null)}
+              >
+                我知道了
               </button>
             </div>
           </div>
