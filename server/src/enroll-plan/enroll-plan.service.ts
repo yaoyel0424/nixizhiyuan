@@ -500,7 +500,7 @@ export class EnrollPlanService {
       where: { id: userId },
     });
 
-    const rank = user?.rank ?? 0; 
+    const rank = user?.rank ?? 0;
 
     if (!user) {
       this.logger.warn(`用户不存在: ${userId}`);
@@ -537,7 +537,7 @@ export class EnrollPlanService {
       // 将 user.province 添加到第一个位置
       provinceNames.unshift(user.province);
     }
- 
+
     // 4. 处理次选科目数组
     const secondarySubjectsArray = user.secondarySubjects
       ? user.secondarySubjects.split(',').map((s) => s.trim()).filter((s) => s)
@@ -1319,6 +1319,64 @@ export class EnrollPlanService {
     return this.getDistinctLevel3MajorIds({
       year: resolvedYear,
       province,
+      batch,
+      primarySubject,
+      enrollmentType: '普通类',
+      secondarySubjects,
+    });
+  }
+
+  /**
+   * 根据传入省份、选科与教育层次查询去重后的 level3_major_id（不查询 users 表）
+   * 招生年份仅从省份表 provinces 按省名解析，再回落到配置 CURRENT_YEAR 或默认 2025；
+   * 批次查询 eduLevel 时与上述年份一致。
+   *
+   * @param params.province 省份名称
+   * @param params.preferredSubjects 首选科目（对应招生计划 primary_subject）
+   * @param params.secondarySubjects 再选科目列表
+   * @param params.eduLevel 可选，专科 zhuan / 本科 ben，用于匹配 province_batch
+   */
+  async getDistinctLevel3MajorIdsBySubjectSelection(params: {
+    eduLevel?: string;
+    province: string;
+    preferredSubjects: string;
+    secondarySubjects: string[];
+  }): Promise<number[]> {
+    const { eduLevel, province, preferredSubjects, secondarySubjects } = params;
+
+    /** 年份：按省份名称查 provinces.year，与 enroll-plan 控制器按省取年一致 */
+    let resolvedYear: string | undefined;
+    if (province?.trim()) {
+      const provinceRow = await this.provinceRepository.findOne({
+        where: { name: province.trim() },
+        select: ['year'],
+      });
+      resolvedYear = provinceRow?.year ?? undefined;
+    }
+    resolvedYear =
+      resolvedYear || this.configService.get<string>('CURRENT_YEAR') || '2025';
+
+    let batch = ['本科批'];
+
+    if (eduLevel) {
+      batch = await this.provinceBatchRepository
+        .find({
+          where: {
+            province: province.trim(),
+            type: eduLevel === 'zhuan' ? 'zhuan' : 'ben',
+            year: resolvedYear,
+          },
+          select: ['batch'],
+        })
+        .then((items) => items.map((item) => item.batch));
+    }
+
+    const primarySubject = preferredSubjects?.trim() || '';
+    const provinceTrimmed = province?.trim() || '';
+
+    return this.getDistinctLevel3MajorIds({
+      year: resolvedYear,
+      province: provinceTrimmed,
       batch,
       primarySubject,
       enrollmentType: '普通类',

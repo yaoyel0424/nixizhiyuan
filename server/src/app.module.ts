@@ -20,6 +20,7 @@ import { HtmlModule } from './html/html.module';
 import { PayModule } from './pay/pay.module';
 import { AgentModule } from './agent/agent.module';
 import { LearningStepModule } from './learning-step/learning-step.module';
+import { KioskModule } from './kiosk/kiosk.module';
 import { SecurityModule } from './security/security.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { SecurityMiddleware } from './common/middleware/security.middleware';
@@ -61,6 +62,7 @@ const compression = require('compression');
     PayModule,
     AgentModule,
     LearningStepModule,
+    KioskModule,
   ],
   providers: [
     // 全局异常过滤器
