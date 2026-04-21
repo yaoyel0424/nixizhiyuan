@@ -1,0 +1,462 @@
+/**
+ *  kiosk 首页样式：由 App copy / MasterGo 导出的 Tailwind 工具类等价迁移，
+ *  仅做归类与 @apply，不改变颜色、间距与层级语义。
+ */
+@layer components {
+  .kiosk-app-root {
+    @apply relative flex min-h-0 h-screen w-screen flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-teal-50 to-cyan-100;
+    box-sizing: border-box;
+  }
+
+  /** 装饰层置于底层且不拦截点击，避免压住左侧表单 */
+  .kiosk-app-decor-cloud {
+    @apply pointer-events-none absolute left-20 top-10 z-0 opacity-20;
+  }
+
+  .kiosk-app-decor-img {
+    @apply h-full w-full object-contain;
+  }
+
+  .kiosk-app-decor-leaf {
+    @apply pointer-events-none absolute bottom-20 right-32 z-0 opacity-20;
+  }
+
+  .kiosk-app-decor-glow {
+    @apply pointer-events-none absolute right-1/4 top-1/2 z-0 h-72 w-72 animate-pulse rounded-full bg-yellow-100 opacity-10 blur-3xl;
+  }
+
+  /**
+   * 主内容区：Grid 左 1/3 + 右 2/3。
+   * 左侧拆成 intro / 三张卡片 / 弹性留白 / 按钮；右侧在未解锁时仅占第 2 行，与三张卡片等高。
+   */
+  .kiosk-app-main-row {
+    @apply relative z-10 mx-auto min-h-0 w-full max-w-[1920px] flex-1 box-border;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    align-items: start;
+    box-sizing: border-box;
+  }
+
+  /** 网格第 1 行左：标题区（与首张卡片间距沿用原 left-form gap） */
+  .kiosk-app-grid-intro {
+    grid-column: 1;
+    grid-row: 1;
+    padding-top: clamp(0.625rem, 2vh, 2.25rem);
+    padding-left: clamp(0.875rem, 2vw, 2.25rem);
+    padding-right: clamp(0.375rem, 1.2vw, 1rem);
+    margin-bottom: clamp(1rem, 3.5vh, 3.25rem);
+    box-sizing: border-box;
+  }
+
+  /** 网格第 2 行左：三张白色卡片纵向堆叠 */
+  .kiosk-app-grid-cards-column {
+    grid-column: 1;
+    grid-row: 2;
+    @apply flex min-h-0 flex-col self-start;
+    gap: clamp(1rem, 3.5vh, 3.25rem);
+    padding-left: clamp(0.875rem, 2vw, 2.25rem);
+    padding-right: clamp(0.375rem, 1.2vw, 1rem);
+    box-sizing: border-box;
+  }
+
+  /** 网格第 3 行左：吸收纵向剩余空间，等价于原 justify-between 的中段留白 */
+  .kiosk-app-grid-spacer-left {
+    grid-column: 1;
+    grid-row: 3;
+    min-height: 0;
+  }
+
+  /** 网格第 4 行左：查询按钮 */
+  .kiosk-app-grid-search-wrap {
+    grid-column: 1;
+    grid-row: 4;
+    padding-left: clamp(0.875rem, 2vw, 2.25rem);
+    padding-right: clamp(0.375rem, 1.2vw, 1rem);
+    padding-bottom: clamp(0.625rem, 2vh, 2.25rem);
+    box-sizing: border-box;
+  }
+
+  .kiosk-app-intro {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .kiosk-app-title {
+    margin-bottom: clamp(0.1875rem, 0.9vh, 0.75rem);
+    font-size: clamp(1.125rem, 3.4vh, 2.25rem);
+    @apply font-bold leading-tight text-gray-800;
+  }
+
+  .kiosk-app-subtitle {
+    font-size: clamp(0.75rem, 1.85vh, 1.125rem);
+    @apply leading-snug text-gray-600;
+  }
+
+  .kiosk-app-card {
+    flex-shrink: 0;
+    border-radius: clamp(0.625rem, 1.4vw, 1rem);
+    padding: clamp(0.625rem, 2vh, 2rem);
+    @apply bg-white shadow-md;
+  }
+
+  .kiosk-app-label {
+    margin-bottom: clamp(0.3125rem, 1.2vh, 1rem);
+    font-size: clamp(0.8125rem, 2vh, 1.25rem);
+    @apply block font-medium text-gray-700;
+  }
+
+  .kiosk-app-label-spaced {
+    margin-bottom: clamp(0.375rem, 1.25vh, 1.25rem);
+    font-size: clamp(0.8125rem, 2vh, 1.25rem);
+    @apply block font-medium text-gray-700;
+  }
+
+  .kiosk-app-province-row {
+    border-radius: clamp(0.5rem, 1vw, 0.75rem);
+    padding: clamp(0.5rem, 1.6vh, 1.25rem) clamp(0.625rem, 1.8vw, 1.25rem);
+    @apply relative flex cursor-pointer items-center justify-between border-2 border-transparent bg-gray-50 transition-colors hover:border-cyan-300;
+  }
+
+  .kiosk-app-province-text {
+    font-size: clamp(0.8125rem, 2vh, 1.125rem);
+  }
+
+  /** 与 JSX 中 Font Awesome 图标类名组合使用 */
+  .kiosk-app-icon-marker {
+    font-size: clamp(0.875rem, 2.1vh, 1.25rem);
+    @apply text-cyan-500;
+  }
+
+  .kiosk-app-grid-2 {
+    gap: clamp(0.5rem, 1.6vh, 1.35rem);
+    @apply grid grid-cols-2;
+  }
+
+  .kiosk-app-btn-first-subject {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(2rem, 7.5vh, 5rem);
+    border-radius: clamp(0.5rem, 1.2vw, 1rem);
+    padding: clamp(0.4375rem, 1.6vh, 1.5rem) clamp(0.5rem, 1.6vw, 1.25rem);
+    font-size: clamp(0.8125rem, 2.4vh, 1.35rem);
+    @apply font-semibold transition-all whitespace-nowrap;
+  }
+
+  /** 与历史选中态统一为蓝系 */
+  .kiosk-app-btn-first-subject--physics-on {
+    @apply border-2 border-blue-300 bg-blue-100 text-blue-700;
+  }
+
+  /** 未选中：白底深字，避免像禁用灰块 */
+  .kiosk-app-btn-first-subject--physics-off {
+    @apply border-2 border-gray-300 bg-white text-gray-800;
+  }
+
+  .kiosk-app-btn-first-subject--history-on {
+    @apply border-2 border-blue-300 bg-blue-100 text-blue-700;
+  }
+
+  .kiosk-app-btn-first-subject--history-off {
+    @apply border-2 border-gray-300 bg-white text-gray-800;
+  }
+
+  .kiosk-app-btn-second-subject {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: clamp(2rem, 7.5vh, 5rem);
+    border-radius: clamp(0.5rem, 1.2vw, 1rem);
+    padding: clamp(0.4375rem, 1.6vh, 1.5rem) clamp(0.5rem, 1.6vw, 1.25rem);
+    font-size: clamp(0.8125rem, 2.4vh, 1.35rem);
+    @apply font-semibold transition-all whitespace-nowrap;
+  }
+
+  .kiosk-app-btn-second-subject--on {
+    @apply border-2 border-green-300 bg-green-100 text-green-700;
+  }
+
+  .kiosk-app-btn-second-subject--off {
+    @apply border-2 border-gray-300 bg-white text-gray-800;
+  }
+
+  .kiosk-app-btn-search {
+    flex-shrink: 0;
+    border-radius: clamp(0.5rem, 1.2vw, 1rem);
+    padding: clamp(0.5625rem, 2vh, 1.5rem) clamp(0.875rem, 2.25vw, 1.75rem);
+    font-size: clamp(0.9375rem, 2.8vh, 1.75rem);
+    @apply w-full bg-gradient-to-r from-green-400 to-cyan-500 font-bold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl whitespace-nowrap;
+  }
+
+  /** 右侧结果区：宽度由 Grid 列承担，竖直范围由 --compact / --expanded 限定 */
+  .kiosk-app-right {
+    @apply flex min-h-0 flex-col overflow-hidden;
+    padding-right: clamp(0.875rem, 2vw, 2.25rem);
+    padding-left: clamp(0.375rem, 1.2vw, 1rem);
+    box-sizing: border-box;
+  }
+
+  /** 未解锁或加载中：仅占第 2 行，与左侧三张卡片同一行等高 */
+  .kiosk-app-right--compact {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: stretch;
+    padding-bottom: 0;
+  }
+
+  /** 已解锁：自第 2 行延伸至底部，容纳统计、Tab、长列表 */
+  .kiosk-app-right--expanded {
+    grid-column: 2;
+    grid-row: 2 / 5;
+    align-self: stretch;
+    padding-bottom: clamp(0.625rem, 2vh, 2.25rem);
+  }
+
+  /**
+   * 专业搜索框：面向 43 寸横屏触控、基准 1920×1080（16:9）。
+   * 触控高度约 52–68px（clamp），字号不低于约 22px，避免误触过小。
+   */
+  .kiosk-app-major-search {
+    @apply mb-6 w-full shrink-0;
+    box-sizing: border-box;
+  }
+
+  .kiosk-app-major-search__inner {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.625rem, 1.5vw, 1rem);
+    min-height: clamp(3.25rem, 6.5vh, 4.25rem);
+    border-radius: clamp(0.75rem, 1.4vw, 1rem);
+    padding-left: clamp(1rem, 2.2vw, 1.5rem);
+    padding-right: clamp(1rem, 2.2vw, 1.5rem);
+    @apply bg-white shadow-md;
+    box-sizing: border-box;
+    border: 1px solid rgb(229 231 235);
+  }
+
+  .kiosk-app-major-search__icon {
+    flex-shrink: 0;
+    font-size: clamp(1.125rem, 2.8vh, 1.5rem);
+    @apply text-cyan-600;
+  }
+
+  .kiosk-app-major-search__input {
+    min-width: 0;
+    flex: 1 1 0%;
+    border-width: 0;
+    background: transparent;
+    font-size: clamp(1.125rem, 2.6vh, 1.375rem);
+    line-height: 1.35;
+    outline: none;
+    @apply font-medium text-gray-800 placeholder:text-gray-400;
+  }
+
+  /** 筛选无结果时的提示 */
+  .kiosk-app-results-filter-empty {
+    @apply flex min-h-[min(16rem,35vh)] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white/60 px-6 py-12;
+  }
+
+  .kiosk-app-results-filter-empty__text {
+    font-size: clamp(1rem, 2.4vh, 1.35rem);
+    @apply text-center text-gray-500;
+  }
+
+  .kiosk-app-stats-row {
+    @apply mb-6 flex gap-6;
+  }
+
+  .kiosk-app-stat-card {
+    @apply flex-1 rounded-2xl bg-white/70 p-4 text-center shadow-md backdrop-blur-sm;
+  }
+
+  .kiosk-app-stat-value-cyan {
+    @apply text-4xl font-bold text-cyan-600;
+  }
+
+  .kiosk-app-stat-value-green {
+    @apply text-4xl font-bold text-green-600;
+  }
+
+  .kiosk-app-stat-value-purple {
+    @apply text-4xl font-bold text-purple-600;
+  }
+
+  .kiosk-app-stat-caption {
+    @apply text-lg text-gray-600;
+  }
+
+  .kiosk-app-tabs-bar {
+    @apply mb-6 flex rounded-xl bg-white p-2 shadow-md;
+  }
+
+  .kiosk-app-tab-btn {
+    @apply flex-1 rounded-lg py-3 px-4 text-lg font-medium transition-all whitespace-nowrap text-gray-600;
+  }
+
+  .kiosk-app-tab-btn--active {
+    @apply bg-white text-cyan-600 shadow-sm;
+  }
+
+  .kiosk-app-tab-underline {
+    @apply mt-2 h-1 rounded-full bg-cyan-500;
+  }
+
+  .kiosk-app-results-scroll {
+    @apply flex min-h-0 flex-1 flex-col overflow-y-auto pr-3;
+  }
+
+  .kiosk-app-loading-wrap {
+    @apply flex min-h-0 flex-1 flex-col items-center justify-center;
+  }
+
+  .kiosk-app-loading-emoji {
+    @apply mb-4 animate-bounce text-6xl;
+  }
+
+  .kiosk-app-loading-text {
+    @apply text-2xl text-gray-600;
+  }
+
+  /** 右侧默认空状态：白卡片纵向拉满当前网格行（与左侧三张卡片整体等高） */
+  .kiosk-app-empty-state {
+    @apply flex h-full min-h-0 flex-1 flex-col;
+  }
+
+  .kiosk-app-empty-state__card {
+    @apply flex min-h-0 w-full flex-1 flex-col items-center justify-center rounded-2xl bg-white p-[clamp(1rem,3vh,2rem)] shadow-xl;
+    box-sizing: border-box;
+  }
+
+  .kiosk-app-empty-state__pic {
+    @apply mb-[clamp(0.75rem,2vh,1.25rem)] max-h-[min(38vh,20rem)] w-full max-w-md shrink-0 rounded-xl object-cover shadow-sm;
+  }
+
+  .kiosk-app-empty-state__title {
+    @apply mb-[clamp(0.25rem,1vh,0.5rem)] text-center font-bold text-[clamp(1.25rem,3vh,2rem)] text-gray-800;
+  }
+
+  .kiosk-app-empty-state__subtitle {
+    @apply text-center text-[clamp(0.875rem,2vh,1.25rem)] text-gray-500;
+  }
+
+  .kiosk-app-results-list {
+    @apply space-y-4;
+  }
+
+  .kiosk-app-major-card {
+    @apply overflow-hidden rounded-2xl bg-white shadow-md;
+  }
+
+  .kiosk-app-major-header {
+    @apply flex cursor-pointer items-center justify-between p-5 transition-colors hover:bg-gray-50;
+  }
+
+  .kiosk-app-major-title {
+    @apply text-2xl font-bold text-gray-800;
+  }
+
+  .kiosk-app-major-header-aside {
+    @apply flex items-center;
+  }
+
+  .kiosk-app-major-meta {
+    @apply mr-4 text-gray-600;
+  }
+
+  /** 与 JSX 中 `fas fa-chevron-down` 组合使用 */
+  .kiosk-app-chevron {
+    @apply transition-transform;
+  }
+
+  .kiosk-app-major-divider {
+    @apply border-t border-gray-100;
+  }
+
+  .kiosk-app-subcategory-block {
+    @apply border-b border-gray-100 bg-gray-50 py-4 pl-8 pr-5 last:border-b-0;
+  }
+
+  .kiosk-app-subcategory-title {
+    @apply mb-3 text-xl font-semibold text-gray-700;
+  }
+
+  .kiosk-app-major-rows {
+    @apply space-y-3;
+  }
+
+  .kiosk-app-major-row {
+    @apply flex items-center justify-between rounded-xl bg-white p-4 shadow-sm;
+  }
+
+  .kiosk-app-major-name {
+    @apply text-lg font-medium text-gray-800;
+  }
+
+  .kiosk-app-major-actions {
+    @apply flex space-x-3;
+  }
+
+  .kiosk-app-action-view {
+    @apply flex items-center rounded-lg bg-blue-100 py-2 px-4 text-sm font-medium text-blue-700 whitespace-nowrap;
+  }
+
+  .kiosk-app-action-self {
+    @apply flex items-center rounded-lg bg-green-100 py-2 px-4 text-sm font-medium text-green-700 whitespace-nowrap;
+  }
+
+  .kiosk-app-action-school {
+    @apply flex items-center rounded-lg bg-purple-100 py-2 px-4 text-sm font-medium text-purple-700 whitespace-nowrap;
+  }
+
+  /** 选择省份弹层 */
+  .kiosk-province-overlay {
+    @apply fixed inset-0 z-[100] flex items-center justify-center p-4;
+    background-color: rgba(0, 0, 0, 0.45);
+  }
+
+  .kiosk-province-dialog {
+    @apply flex max-h-[min(85vh,52rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl;
+    box-sizing: border-box;
+  }
+
+  .kiosk-province-dialog__head {
+    @apply shrink-0 border-b border-gray-200 px-6 py-4;
+  }
+
+  .kiosk-province-dialog__title {
+    @apply text-lg font-bold text-gray-900;
+  }
+
+  .kiosk-province-dialog__body {
+    @apply min-h-0 flex-1 overflow-y-auto px-4 py-4;
+  }
+
+  .kiosk-province-dialog__grid {
+    @apply grid grid-cols-4 gap-3;
+  }
+
+  .kiosk-province-dialog__item {
+    @apply cursor-pointer rounded-md border border-gray-200 bg-white py-3 text-center text-sm font-medium text-gray-800 transition-colors;
+  }
+
+  .kiosk-province-dialog__item:hover {
+    @apply border-sky-300 bg-sky-50;
+  }
+
+  .kiosk-province-dialog__item--active {
+    @apply border-sky-500 bg-sky-500 text-white;
+  }
+
+  .kiosk-province-dialog__item--active:hover {
+    @apply border-sky-500 bg-sky-500 text-white;
+  }
+
+  .kiosk-province-dialog__foot {
+    @apply flex shrink-0 justify-end border-t border-gray-100 px-4 py-3;
+  }
+
+  .kiosk-province-dialog__cancel {
+    @apply cursor-pointer rounded-lg border border-gray-200 bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-200;
+  }
+}
