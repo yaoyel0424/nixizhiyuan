@@ -738,6 +738,7 @@ const App: React.FC = () => {
   const [majorDetailLoading, setMajorDetailLoading] = useState(false);
   const [majorDetailError, setMajorDetailError] = useState<string | null>(null);
   const [majorDetailData, setMajorDetailData] = useState<MajorDetailData | null>(null);
+  const [majorDetailSourceMajorId, setMajorDetailSourceMajorId] = useState<number | null>(null);
   const [majorDetailTab, setMajorDetailTab] = useState<
     '学习内容' | '学术发展' | '职业发展' | '行业前景' | '成长潜力'
   >('学习内容');
@@ -812,32 +813,235 @@ const App: React.FC = () => {
   };
 
   /**
-   * 解析匹配接口返回中的 id 列表（兼容常见字段结构）。
+   * 从任意数组中提取有效的 level3 专业 id。
    */
-  const parseMatchedIds = (payload: unknown): number[] => {
-    if (!payload || typeof payload !== 'object') {
+  const extractIdsFromArray = useCallback((input: unknown): number[] => {
+    if (!Array.isArray(input)) {
       return [];
     }
+    return input
+      .map((value) => {
+        if (typeof value === 'number' || typeof value === 'string') {
+          return Number(value);
+        }
+        if (value && typeof value === 'object' && 'id' in value) {
+          return Number((value as { id: unknown }).id);
+        }
+        return NaN;
+      })
+      .filter((value) => Number.isFinite(value) && value > 0);
+  }, []);
+
+  /**
+   * 解析匹配接口返回，按学历层级拆分 id（兼容多种结构）。
+   */
+  const parseMatchedIdsByTab = useCallback((payload: unknown): Record<KioskTab, number[]> => {
+    const byTab: Record<KioskTab, number[]> = {
+      本科: [],
+      职业本科: [],
+      专科: []
+    };
+    if (!payload || typeof payload !== 'object') {
+      return byTab;
+    }
+
     const root = payload as Record<string, unknown>;
     const data = (root.data ?? root) as Record<string, unknown>;
-    const candidates = [data.ids, data.majorIds, data.level3MajorIds, data.list];
-    for (const item of candidates) {
-      if (Array.isArray(item)) {
-        return item
-          .map((value) => {
-            if (typeof value === 'number' || typeof value === 'string') {
-              return Number(value);
-            }
-            if (value && typeof value === 'object' && 'id' in value) {
-              return Number((value as { id: unknown }).id);
-            }
-            return NaN;
-          })
-          .filter((value) => Number.isFinite(value) && value > 0);
+    const extractLevel3IdsFromTree = (tree: unknown): number[] => {
+      if (!Array.isArray(tree)) {
+        return [];
+      }
+      const collected: number[] = [];
+      const walk = (nodes: unknown[]) => {
+        nodes.forEach((node) => {
+          if (!node || typeof node !== 'object') {
+            return;
+          }
+          const current = node as Record<string, unknown>;
+          const id = Number(current.id);
+          const level = Number(current.level);
+          const children = Array.isArray(current.children) ? current.children : [];
+          if (Number.isFinite(id) && id > 0 && (level === 3 || children.length === 0)) {
+            collected.push(id);
+          }
+          if (children.length > 0) {
+            walk(children);
+          }
+        });
+      };
+      walk(tree);
+      return collected;
+    };
+
+    const levelKeys: Array<{ key: string; tab: KioskTab }> = [
+      { key: 'ben', tab: '本科' },
+      { key: 'gao_ben', tab: '职业本科' },
+      { key: 'zhuan', tab: '专科' }
+    ];
+    levelKeys.forEach(({ key, tab }) => {
+      const direct = data[key];
+      const ids = extractIdsFromArray(
+        Array.isArray(direct) ? direct : (direct as Record<string, unknown> | undefined)?.ids
+      );
+      if (ids.length > 0) {
+        byTab[tab] = ids;
+      }
+    });
+
+    const groups = data.groups;
+    if (Array.isArray(groups)) {
+      groups.forEach((group) => {
+        if (!group || typeof group !== 'object') {
+          return;
+        }
+        const entry = group as Record<string, unknown>;
+        const tab = mapEduLevelToTab(String(entry.eduLevel ?? ''));
+        if (!tab) {
+          return;
+        }
+        const idsFromIds = extractIdsFromArray(entry.ids ?? entry.majorIds ?? entry.level3MajorIds);
+        const idsFromList = extractIdsFromArray(entry.list);
+        const idsFromTree = extractLevel3IdsFromTree(entry.tree);
+        const merged = [...idsFromIds, ...idsFromList, ...idsFromTree];
+        if (merged.length > 0) {
+          byTab[tab] = Array.from(new Set(merged));
+        }
+      });
+      if (byTab.本科.length || byTab.职业本科.length || byTab.专科.length) {
+        return byTab;
       }
     }
-    return [];
-  };
+
+    const candidates = [data.ids, data.majorIds, data.level3MajorIds, data.list];
+    for (const item of candidates) {
+      if (!Array.isArray(item)) {
+        continue;
+      }
+
+      if (item.some((entry) => entry && typeof entry === 'object' && 'eduLevel' in (entry as Record<string, unknown>))) {
+        const grouped: Record<KioskTab, number[]> = { 本科: [], 职业本科: [], 专科: [] };
+        item.forEach((entry) => {
+          if (!entry || typeof entry !== 'object') {
+            return;
+          }
+          const obj = entry as Record<string, unknown>;
+          const tab = mapEduLevelToTab(String(obj.eduLevel ?? ''));
+          const id = Number(obj.id);
+          if (!tab || !Number.isFinite(id) || id <= 0) {
+            return;
+          }
+          grouped[tab].push(id);
+        });
+        if (grouped.本科.length || grouped.职业本科.length || grouped.专科.length) {
+          return grouped;
+        }
+      }
+
+      const ids = extractIdsFromArray(item);
+      if (ids.length > 0) {
+        return {
+          本科: ids,
+          职业本科: ids,
+          专科: ids
+        };
+      }
+    }
+
+    return byTab;
+  }, [extractIdsFromArray]);
+
+  /**
+   * 当匹配接口返回的 id 口径与页面 level3 id 不一致时，基于 groups.tree 的 code/name 回填实际 level3 id。
+   */
+  const fallbackMatchedIdsByTabFromGroupsTree = useCallback((payload: unknown): Record<KioskTab, number[]> => {
+    const byTab: Record<KioskTab, number[]> = {
+      本科: [],
+      职业本科: [],
+      专科: []
+    };
+    if (!payload || typeof payload !== 'object') {
+      return byTab;
+    }
+
+    const root = payload as Record<string, unknown>;
+    const data = (root.data ?? root) as Record<string, unknown>;
+    const groups = data.groups;
+    if (!Array.isArray(groups)) {
+      return byTab;
+    }
+
+    const tabIndexes: Record<
+      KioskTab,
+      { byCode: Map<string, number>; byName: Map<string, number[]>; byId: Set<number> }
+    > = {
+      本科: { byCode: new Map(), byName: new Map(), byId: new Set() },
+      职业本科: { byCode: new Map(), byName: new Map(), byId: new Set() },
+      专科: { byCode: new Map(), byName: new Map(), byId: new Set() }
+    };
+
+    (Object.keys(tabIndexes) as KioskTab[]).forEach((tab) => {
+      (majorDataByTab[tab] ?? []).forEach((major) => {
+        major.subCategories.forEach((sub) => {
+          sub.majors.forEach((item) => {
+            if (item.id && item.id > 0) {
+              tabIndexes[tab].byId.add(item.id);
+              tabIndexes[tab].byCode.set(item.code, item.id);
+              const ids = tabIndexes[tab].byName.get(item.name) ?? [];
+              ids.push(item.id);
+              tabIndexes[tab].byName.set(item.name, ids);
+            }
+          });
+        });
+      });
+    });
+
+    const walk = (nodes: unknown[], visit: (node: Record<string, unknown>) => void) => {
+      nodes.forEach((node) => {
+        if (!node || typeof node !== 'object') {
+          return;
+        }
+        const current = node as Record<string, unknown>;
+        visit(current);
+        if (Array.isArray(current.children) && current.children.length > 0) {
+          walk(current.children, visit);
+        }
+      });
+    };
+
+    groups.forEach((group) => {
+      if (!group || typeof group !== 'object') {
+        return;
+      }
+      const entry = group as Record<string, unknown>;
+      const tab = mapEduLevelToTab(String(entry.eduLevel ?? ''));
+      if (!tab) {
+        return;
+      }
+      const tree = entry.tree;
+      if (!Array.isArray(tree)) {
+        return;
+      }
+      const matchedIds = new Set<number>();
+      const index = tabIndexes[tab];
+      walk(tree, (node) => {
+        const nodeId = Number(node.id);
+        const nodeCode = String(node.code ?? '');
+        const nodeName = String(node.name ?? '');
+        if (Number.isFinite(nodeId) && nodeId > 0 && index.byId.has(nodeId)) {
+          matchedIds.add(nodeId);
+        }
+        if (nodeCode && index.byCode.has(nodeCode)) {
+          matchedIds.add(index.byCode.get(nodeCode)!);
+        }
+        if (nodeName && index.byName.has(nodeName)) {
+          (index.byName.get(nodeName) ?? []).forEach((id) => matchedIds.add(id));
+        }
+      });
+      byTab[tab] = Array.from(matchedIds);
+    });
+
+    return byTab;
+  }, [majorDataByTab]);
 
   /**
    * 加载专业树：优先读取会话缓存，再后台刷新接口，减轻 1900+ 专业首次等待。
@@ -925,11 +1129,19 @@ const App: React.FC = () => {
           throw new Error(`匹配接口异常：${response.status}`);
         }
         const payload = (await response.json()) as unknown;
-        const ids = parseMatchedIds(payload);
-        const matchedSet = new Set(ids);
-        nextMatched.本科 = matchedSet;
-        nextMatched.职业本科 = matchedSet;
-        nextMatched.专科 = matchedSet;
+        const idsByTab = parseMatchedIdsByTab(payload);
+        const fallbackIdsByTab = fallbackMatchedIdsByTabFromGroupsTree(payload);
+        (Object.keys(idsByTab) as KioskTab[]).forEach((tab) => {
+          if (idsByTab[tab].length === 0 && fallbackIdsByTab[tab].length > 0) {
+            idsByTab[tab] = fallbackIdsByTab[tab];
+          }
+        });
+        const hasAnyMatchedIds =
+          idsByTab.本科.length > 0 || idsByTab.职业本科.length > 0 || idsByTab.专科.length > 0;
+        nextMatched.本科 = hasAnyMatchedIds ? new Set(idsByTab.本科) : null;
+        nextMatched.职业本科 = hasAnyMatchedIds ? new Set(idsByTab.职业本科) : null;
+        /** 专科按 eduLevel=zhuan 直接展示，不做匹配 id 过滤 */
+        nextMatched.专科 = null;
         setMatchedIdSetByTab(nextMatched);
         const byIds = filterMajorCategoriesByIds(
           majorDataByTab[activeTab] ?? [],
@@ -944,7 +1156,16 @@ const App: React.FC = () => {
     };
 
     void run();
-  }, [activeTab, firstSubject, majorDataByTab, majorQuery, secondSubjects, selectedProvince]);
+  }, [
+    activeTab,
+    fallbackMatchedIdsByTabFromGroupsTree,
+    firstSubject,
+    majorDataByTab,
+    majorQuery,
+    parseMatchedIdsByTab,
+    secondSubjects,
+    selectedProvince
+  ]);
 
   /**
    * 首屏默认加载全部专业。
@@ -974,7 +1195,7 @@ const App: React.FC = () => {
   const filteredResults = useMemo(() => {
     const byIds = filterMajorCategoriesByIds(
       majorDataByTab[activeTab] ?? [],
-      matchedIdSetByTab[activeTab]
+      activeTab === '专科' ? null : matchedIdSetByTab[activeTab]
     );
     return filterMajorCategories(byIds, majorQuery);
   }, [activeTab, majorDataByTab, matchedIdSetByTab, majorQuery]);
@@ -1003,6 +1224,9 @@ const App: React.FC = () => {
    * @param majorName 大类名称
    */
   const isMajorRowExpanded = (majorName: string) => {
+    if (activeTab === '专科') {
+      return true;
+    }
     return searchExpandedNames.includes(majorName);
   };
 
@@ -1283,11 +1507,12 @@ const App: React.FC = () => {
     .map((item) => item.trim())
     .filter(Boolean);
 
-  const openMajorDetailModal = async (majorCode: string) => {
+  const openMajorDetailModal = async (majorCode: string, sourceMajorId: number | null) => {
     setMajorDetailOpen(true);
     setMajorDetailLoading(true);
     setMajorDetailError(null);
     setMajorDetailData(null);
+    setMajorDetailSourceMajorId(sourceMajorId);
     setMajorDetailTab('学习内容');
     try {
       const response = await fetch(`https://ziquzixin.com/api/v1/kiosk/majors/detail/${majorCode}`);
@@ -1310,6 +1535,7 @@ const App: React.FC = () => {
     setMajorDetailOpen(false);
     setMajorDetailError(null);
     setMajorDetailData(null);
+    setMajorDetailSourceMajorId(null);
   };
 
   const closeSchoolModal = () => {
@@ -1536,9 +1762,11 @@ const App: React.FC = () => {
                         majorDataByTab[tab] ?? [],
                         matchedIdSetByTab[tab]
                       );
-                      setSearchExpandedNames(
-                        getExpandedMajorNamesByQuery(byIds, majorQuery)
-                      );
+                      if (tab === '专科') {
+                        setSearchExpandedNames(byIds.map((item) => item.name));
+                        return;
+                      }
+                      setSearchExpandedNames(getExpandedMajorNamesByQuery(byIds, majorQuery));
                     }}
                   >
                     {tab}
@@ -1583,6 +1811,9 @@ const App: React.FC = () => {
                     <div
                       className="kiosk-app-major-header"
                       onClick={() => {
+                        if (activeTab === '专科') {
+                          return;
+                        }
                         setSearchExpandedNames((prev) =>
                           prev.includes(major.name)
                             ? prev.filter((n) => n !== major.name)
@@ -1617,7 +1848,7 @@ const App: React.FC = () => {
                                   <div className="kiosk-app-major-actions">
                                     <button
                                       className="kiosk-app-action-view"
-                                      onClick={() => void openMajorDetailModal(majorItem.code)}
+                                      onClick={() => void openMajorDetailModal(majorItem.code, majorItem.id)}
                                     >
                                       <i className="fas fa-eye mr-1"></i> 查看
                                     </button>
@@ -1982,7 +2213,7 @@ const App: React.FC = () => {
                         className="kiosk-major-detail-btn kiosk-major-detail-action-btn--outline"
                         onClick={() => {
                           closeMajorDetailModal();
-                          void openSchoolModal(majorDetailData.id, majorDetailData.name);
+                          void openSchoolModal(majorDetailSourceMajorId, majorDetailData.name);
                         }}
                       >
                         浏览匹配院校
@@ -2068,7 +2299,7 @@ const App: React.FC = () => {
                         key={question.scaleId}
                         type="button"
                         className={`kiosk-selftest-right__dot ${
-                          selfTestAnswers[index] ? 'kiosk-selftest-right__dot--done' : ''
+                          selfTestAnswers[index] !== null ? 'kiosk-selftest-right__dot--done' : ''
                         } ${index === selfTestCurrentIndex ? 'kiosk-selftest-right__dot--current' : ''}`}
                         onClick={() => setSelfTestCurrentIndex(index)}
                         aria-label={`第${index + 1}题`}
@@ -2118,8 +2349,9 @@ const App: React.FC = () => {
                       <p className="kiosk-selftest-result-page__major-line">
                         {selfTestResult?.majorName ?? selfTestMajorName}
                       </p>
-                      <p className="kiosk-selftest-result-page__match-line">
-                        匹配度：{selfTestResultScore}%
+                      <p className="kiosk-selftest-result-page__tip-line">
+                        当前为单专业测试，仅展示该专业的匹配情况；全专业排序会对比全部专业并给出排名，
+                        帮你找到更优匹配方向，结果更全面。可扫码下方二维码进行全专业评估。
                       </p>
                       <p className="kiosk-selftest-result-page__brief">{selfTestMajorBrief}</p>
                     </div>

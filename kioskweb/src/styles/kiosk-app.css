@@ -646,8 +646,8 @@
     @apply mt-2 text-[1.7rem] font-bold text-emerald-700;
   }
 
-  .kiosk-selftest-result-page__match-line {
-    @apply mt-1 text-[1.35rem] font-semibold text-cyan-700;
+  .kiosk-selftest-result-page__tip-line {
+    @apply mt-2 max-w-[920px] rounded-xl bg-cyan-50 px-4 py-2 text-[1.05rem] font-medium leading-relaxed text-cyan-800;
   }
 
   .kiosk-selftest-result-page__brief {
