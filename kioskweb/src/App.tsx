@@ -80,6 +80,96 @@ type KioskMajorScoreResult = {
   [key: string]: unknown;
 };
 
+type MajorDetailAnalysis = {
+  id: number;
+  type: 'lexue' | 'shanxue' | 'tiaozhan' | 'yanxue' | string;
+  summary?: string;
+  matchReason?: string;
+  theoryBasis?: string;
+  potentialConversionReason?: string;
+  potentialConversionValue?: string;
+  element?: {
+    id?: number;
+    name?: string;
+    type?: string;
+    dimension?: string;
+  };
+};
+
+type MajorDetailData = {
+  id: number;
+  code: string;
+  name: string;
+  educationLevel?: string;
+  studyPeriod?: string;
+  awardedDegree?: string;
+  majorBrief?: string;
+  majorKey?: string;
+  academicDevelopmentTag?: string;
+  careerDevelopmentTag?: string;
+  growthPotentialTag?: string;
+  industryProspectsTag?: string;
+  studyContent?: string;
+  academicDevelopment?: string;
+  careerDevelopment?: string;
+  industryProspects?: string;
+  growthPotential?: string;
+  analyses?: MajorDetailAnalysis[];
+};
+
+type MajorDetailResponse = {
+  data?: MajorDetailData;
+};
+
+type SchoolSortType = 'score' | 'year';
+
+type KioskSchoolScoreRow = {
+  year?: string;
+  minScore?: string;
+  minRank?: number | null;
+};
+
+type KioskSchoolPlan = {
+  id: number;
+  year?: string;
+  majorGroupInfo?: string;
+  batch?: string;
+  subjectSelectionMode?: string;
+  studyPeriod?: string;
+  tuitionFee?: string;
+  enrollmentQuota?: string;
+  enrollmentType?: string;
+  enrollmentMajor?: string;
+  majorScores?: KioskSchoolScoreRow[];
+};
+
+type KioskSchoolInfo = {
+  code: string;
+  name: string;
+  nature?: string;
+  level?: string;
+  belong?: string;
+  categories?: string;
+  provinceName?: string;
+  cityName?: string;
+};
+
+type KioskSchoolItem = {
+  school: KioskSchoolInfo;
+  plans: KioskSchoolPlan[];
+};
+
+type KioskSchoolScoreResponse = {
+  data?: {
+    inRange?: KioskSchoolItem[];
+    notInRange?: KioskSchoolItem[];
+  };
+};
+
+const MAJOR_SCORES_API_URL = 'https://ziquzixin.com/api/v1/kiosk/major';
+const SCHOOL_SCORE_MIN = 500;
+const SCHOOL_SCORE_MAX = 600;
+
 /**
  * 接口学历层级映射到页面 Tab。
  */
@@ -244,14 +334,15 @@ function filterMajorCategoriesByIds(
 }
 
 /**
- * 基于关键词计算当前应默认展开的大类名称集合（用于搜索态）。
+ * 基于关键词计算当前应默认展开的大类名称集合。
+ * 无关键词时默认全部展开；有关键词时展开过滤后的大类。
  */
 function getExpandedMajorNamesByQuery(
   blocks: MajorCategoryBlock[],
   query: string
 ): string[] {
   if (!query.trim()) {
-    return [];
+    return blocks.map((item) => item.name);
   }
   return filterMajorCategories(blocks, query).map((item) => item.name);
 }
@@ -413,6 +504,94 @@ function extractMajorScoreResult(payload: unknown): KioskMajorScoreResult | null
   return data as KioskMajorScoreResult;
 }
 
+/**
+ * 解析后端返回的 JSON 字符串字段，失败时回退为空对象。
+ */
+function parseJsonString<T>(raw: unknown, fallback: T): T {
+  if (raw && typeof raw === 'object') {
+    return raw as T;
+  }
+  if (typeof raw !== 'string') {
+    return fallback;
+  }
+  const normalized = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/iu, '')
+    .replace(/\s*```$/u, '')
+    .trim();
+  if (!normalized) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(normalized) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * 学历层次编码转中文。
+ */
+function formatEducationLevel(level?: string): string {
+  if (level === 'ben') {
+    return '本科';
+  }
+  if (level === 'gao_ben') {
+    return '职业本科';
+  }
+  if (level === 'zhuan') {
+    return '专科';
+  }
+  return level ?? '-';
+}
+
+/**
+ * 院校办学性质编码转中文。
+ */
+function formatSchoolNature(nature?: string): string {
+  if (nature === 'public') {
+    return '公办';
+  }
+  if (nature === 'private') {
+    return '民办';
+  }
+  return nature ?? '-';
+}
+
+/**
+ * 院校层次编码转中文。
+ */
+function formatSchoolLevel(level?: string): string {
+  if (level === 'ben') {
+    return '本科';
+  }
+  if (level === 'zhuan') {
+    return '专科';
+  }
+  if (level === 'gao_ben') {
+    return '职业本科';
+  }
+  return level ?? '-';
+}
+
+/**
+ * 计算某个计划最近年份分数，用于排序与报考建议。
+ */
+function getLatestPlanScore(plan?: KioskSchoolPlan): number | null {
+  if (!plan) {
+    return null;
+  }
+  const rows = [...(plan.majorScores ?? [])].sort(
+    (a, b) => Number(b.year ?? 0) - Number(a.year ?? 0)
+  );
+  const latest = rows[0];
+  if (!latest) {
+    return null;
+  }
+  const value = Number(latest.minScore);
+  return Number.isFinite(value) ? value : null;
+}
+
 /** 本地演示用专业列表（含本科 / 职业本科 / 专科） */
 const mockResults = {
     本科: [
@@ -510,7 +689,6 @@ const App: React.FC = () => {
   /** 次选默认化学 + 生物；保持四选二规则 */
   const [secondSubjects, setSecondSubjects] = useState<string[]>(['化学', '生物']);
   const [activeTab, setActiveTab] = useState<KioskTab>('本科');
-  const [expandedMajor, setExpandedMajor] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   /** 默认直接展示右侧统计、Tab 与专业列表 */
   const [resultsUnlocked, setResultsUnlocked] = useState(true);
@@ -537,8 +715,8 @@ const App: React.FC = () => {
     专科: null
   });
   /**
-   * 有关键词时：每个大类独立可展开/收起（与无搜索时的手风琴 `expandedMajor` 分离）。
-   * 关键词或筛选结果变化时由 effect 同步为「当前列表项默认全部展开」。
+   * 大类可独立展开/收起；默认全部展开。
+   * 关键词或筛选结果变化时会同步为当前列表默认展开集合。
    */
   const [searchExpandedNames, setSearchExpandedNames] = useState<string[]>([]);
   /** 避免首屏默认匹配重复触发 */
@@ -555,6 +733,21 @@ const App: React.FC = () => {
   const [selfTestBusy, setSelfTestBusy] = useState(false);
   const [selfTestError, setSelfTestError] = useState<string | null>(null);
   const [selfTestResult, setSelfTestResult] = useState<KioskMajorScoreResult | null>(null);
+  /** 专业详情弹窗状态 */
+  const [majorDetailOpen, setMajorDetailOpen] = useState(false);
+  const [majorDetailLoading, setMajorDetailLoading] = useState(false);
+  const [majorDetailError, setMajorDetailError] = useState<string | null>(null);
+  const [majorDetailData, setMajorDetailData] = useState<MajorDetailData | null>(null);
+  const [majorDetailTab, setMajorDetailTab] = useState<
+    '学习内容' | '学术发展' | '职业发展' | '行业前景' | '成长潜力'
+  >('学习内容');
+  /** 可选院校弹窗状态 */
+  const [schoolModalOpen, setSchoolModalOpen] = useState(false);
+  const [schoolModalLoading, setSchoolModalLoading] = useState(false);
+  const [schoolModalError, setSchoolModalError] = useState<string | null>(null);
+  const [schoolModalItems, setSchoolModalItems] = useState<KioskSchoolItem[]>([]);
+  const [schoolSortType, setSchoolSortType] = useState<SchoolSortType>('score');
+  const [schoolModalMajorName, setSchoolModalMajorName] = useState('');
 
   /** 按 Escape 关闭省份弹窗 */
   useEffect(() => {
@@ -575,7 +768,13 @@ const App: React.FC = () => {
 
   /** 首选二选一：点另一项会切换选中；再点当前选中项则清空 */
   const handleFirstSubjectClick = (subject: '物理' | '历史') => {
-    setFirstSubject((prev) => (prev === subject ? null : subject));
+    setFirstSubject((prev) => {
+      const next = prev === subject ? null : subject;
+      if (prev && next && prev !== next) {
+        setSecondSubjects([]);
+      }
+      return next;
+    });
   };
 
   /** 次选四选二：未选中且已满 2 个时不增加；再点已选项可取消 */
@@ -669,7 +868,7 @@ const App: React.FC = () => {
       const groups = payload.data?.groups ?? [];
       const normalized = normalizeMajorGroups(groups);
       setMajorDataByTab(normalized);
-      setExpandedMajor((prev) => prev ?? normalized['本科'][0]?.name ?? null);
+      setSearchExpandedNames((normalized['本科'] ?? []).map((item) => item.name));
       setIsMajorTreeLoading(false);
       sessionStorage.setItem(MAJOR_TREE_CACHE_KEY, JSON.stringify(normalized));
     } catch (error) {
@@ -732,13 +931,11 @@ const App: React.FC = () => {
         nextMatched.职业本科 = matchedSet;
         nextMatched.专科 = matchedSet;
         setMatchedIdSetByTab(nextMatched);
-        if (majorQuery.trim()) {
-          const byIds = filterMajorCategoriesByIds(
-            majorDataByTab[activeTab] ?? [],
-            nextMatched[activeTab]
-          );
-          setSearchExpandedNames(getExpandedMajorNamesByQuery(byIds, majorQuery));
-        }
+        const byIds = filterMajorCategoriesByIds(
+          majorDataByTab[activeTab] ?? [],
+          nextMatched[activeTab]
+        );
+        setSearchExpandedNames(getExpandedMajorNamesByQuery(byIds, majorQuery));
       } catch (error) {
         setMajorTreeError(error instanceof Error ? error.message : '匹配专业失败');
       } finally {
@@ -801,17 +998,12 @@ const App: React.FC = () => {
     };
   }, [filteredResults]);
 
-  const searchTrimmed = majorQuery.trim();
-
   /**
    * 某个大类下的专业树是否展开。
    * @param majorName 大类名称
    */
   const isMajorRowExpanded = (majorName: string) => {
-    if (searchTrimmed.length > 0) {
-      return searchExpandedNames.includes(majorName);
-    }
-    return expandedMajor === majorName;
+    return searchExpandedNames.includes(majorName);
   };
 
   const currentSelfTestQuestion = selfTestQuestions[selfTestCurrentIndex];
@@ -982,6 +1174,206 @@ const App: React.FC = () => {
   const selfTestTiaozhanDeduction = Number(selfTestResult?.tiaozhanDeduction ?? 0);
   const selfTestMajorBrief = String(selfTestResult?.majorBrief ?? '暂无专业简介');
 
+  const majorDetailStudyContent = parseJsonString<Record<string, unknown>>(
+    majorDetailData?.studyContent,
+    {}
+  );
+  const majorDetailAcademicDevelopment = parseJsonString<Record<string, unknown>>(
+    majorDetailData?.academicDevelopment,
+    {}
+  );
+  const majorDetailCareerDevelopment = parseJsonString<Record<string, unknown>>(
+    majorDetailData?.careerDevelopment,
+    {}
+  );
+  const majorDetailIndustryProspects = parseJsonString<Record<string, unknown>>(
+    majorDetailData?.industryProspects,
+    {}
+  );
+  const majorDetailGrowthPotential = parseJsonString<Record<string, unknown>>(
+    majorDetailData?.growthPotential,
+    {}
+  );
+  /**
+   * 详情分栏内容渲染：兼容对象/数组/基础类型，避免直接展示原始 JSON 字符串。
+   */
+  const hasRenderableContent = (value: unknown): boolean => {
+    if (value === null || value === undefined) {
+      return false;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+    if (Array.isArray(value)) {
+      return value.some((item) => hasRenderableContent(item));
+    }
+    if (typeof value === 'object') {
+      return Object.values(value as Record<string, unknown>).some((item) => hasRenderableContent(item));
+    }
+    return true;
+  };
+
+  const renderMajorDetailSection = (
+    value: unknown,
+    keyPrefix = 'detail',
+    sectionTitle = ''
+  ): React.ReactNode => {
+    if (Array.isArray(value)) {
+      const validItems = value.filter((item) => hasRenderableContent(item));
+      if (validItems.length === 0) {
+        return <p>暂无内容</p>;
+      }
+      return (
+        <ul>
+          {validItems.map((item, index) => (
+            <li key={`${keyPrefix}-${index}`}>
+              {typeof item === 'object' && item !== null
+                ? renderMajorDetailSection(item, `${keyPrefix}-${index}`, sectionTitle)
+                : String(item ?? '-')}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    if (value && typeof value === 'object') {
+      const entries = Object.entries(value as Record<string, unknown>).filter(([, item]) =>
+        hasRenderableContent(item)
+      );
+
+      if (entries.length === 0) {
+        return <p>暂无内容</p>;
+      }
+
+      return (
+        <>
+          {entries.map(([key, item], index) => (
+            <div key={`${keyPrefix}-${key}-${index}`}>
+              <h4>{key}</h4>
+              {renderMajorDetailSection(item, `${keyPrefix}-${key}-${index}`, key)}
+            </div>
+          ))}
+        </>
+      );
+    }
+
+    if (value === null || value === undefined || String(value).trim() === '') {
+      return <p>暂无内容</p>;
+    }
+
+    const textValue = String(value).trim();
+
+    if (sectionTitle === '指数得分') {
+      const match = textValue.match(/^(.+?)[,，]\s*标签[：:]\s*(.+)$/u);
+      if (match) {
+        return (
+          <>
+            <p>{match[1].trim()}</p>
+            <h4>标签</h4>
+            <p>{match[2].trim()}</p>
+          </>
+        );
+      }
+    }
+
+    return <p>{textValue}</p>;
+  };
+  const majorDetailKeywords = (majorDetailData?.majorKey ?? '')
+    .split(/[/\s]+/u)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const openMajorDetailModal = async (majorCode: string) => {
+    setMajorDetailOpen(true);
+    setMajorDetailLoading(true);
+    setMajorDetailError(null);
+    setMajorDetailData(null);
+    setMajorDetailTab('学习内容');
+    try {
+      const response = await fetch(`https://ziquzixin.com/api/v1/kiosk/majors/detail/${majorCode}`);
+      if (!response.ok) {
+        throw new Error(`获取专业详情失败：${response.status}`);
+      }
+      const payload = (await response.json()) as MajorDetailResponse;
+      if (!payload.data) {
+        throw new Error('专业详情为空');
+      }
+      setMajorDetailData(payload.data);
+    } catch (error) {
+      setMajorDetailError(error instanceof Error ? error.message : '加载专业详情失败');
+    } finally {
+      setMajorDetailLoading(false);
+    }
+  };
+
+  const closeMajorDetailModal = () => {
+    setMajorDetailOpen(false);
+    setMajorDetailError(null);
+    setMajorDetailData(null);
+  };
+
+  const closeSchoolModal = () => {
+    setSchoolModalOpen(false);
+    setSchoolModalError(null);
+    setSchoolModalItems([]);
+    setSchoolSortType('score');
+  };
+
+  const openSchoolModal = async (majorId: number | null, majorName: string) => {
+    if (!majorId) {
+      setSelectionAlertMessage('当前专业缺少可查询的 ID，暂时无法查看可选院校。');
+      return;
+    }
+    if (!firstSubject || secondSubjects.length !== 2) {
+      setSelectionAlertMessage('请先完成首选与次选科目后，再查看可选院校。');
+      return;
+    }
+
+    setSchoolModalOpen(true);
+    setSchoolModalLoading(true);
+    setSchoolModalError(null);
+    setSchoolModalItems([]);
+    setSchoolModalMajorName(majorName);
+
+    try {
+      const params = new URLSearchParams({
+        province: normalizeProvinceForApi(selectedProvince),
+        preferredSubjects: firstSubject ?? '',
+        secondarySubjects: buildSecondarySubjectsParam(secondSubjects),
+        minScore: String(SCHOOL_SCORE_MIN),
+        maxScore: String(SCHOOL_SCORE_MAX)
+      });
+      const response = await fetch(`${MAJOR_SCORES_API_URL}/${majorId}/scores?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`获取可选院校失败：${response.status}`);
+      }
+      const payload = (await response.json()) as KioskSchoolScoreResponse;
+      const items = payload.data?.inRange ?? [];
+      setSchoolModalItems(items);
+    } catch (error) {
+      setSchoolModalError(error instanceof Error ? error.message : '可选院校数据加载失败');
+    } finally {
+      setSchoolModalLoading(false);
+    }
+  };
+
+  const schoolModalDisplayItems = useMemo(() => {
+    const sorted = [...schoolModalItems].sort((a, b) => {
+      const aFirstPlan = a.plans[0];
+      const bFirstPlan = b.plans[0];
+      const aLatestScore = getLatestPlanScore(aFirstPlan);
+      const bLatestScore = getLatestPlanScore(bFirstPlan);
+      const aLatestYear = Number(aFirstPlan?.majorScores?.[0]?.year ?? aFirstPlan?.year ?? 0);
+      const bLatestYear = Number(bFirstPlan?.majorScores?.[0]?.year ?? bFirstPlan?.year ?? 0);
+
+      if (schoolSortType === 'score') {
+        return (bLatestScore ?? 0) - (aLatestScore ?? 0);
+      }
+      return bLatestYear - aLatestYear;
+    });
+    return sorted;
+  }, [schoolModalItems, schoolSortType]);
+
   return (
     <div className="kiosk-app-root" data-province-options={CHINA_PROVINCES.length}>
       {/* Background decorative elements */}
@@ -1140,7 +1532,6 @@ const App: React.FC = () => {
                     className={`kiosk-app-tab-btn ${activeTab === tab ? 'kiosk-app-tab-btn--active' : ''}`}
                     onClick={() => {
                       setActiveTab(tab);
-                      setExpandedMajor(majorDataByTab[tab]?.[0]?.name ?? null);
                       const byIds = filterMajorCategoriesByIds(
                         majorDataByTab[tab] ?? [],
                         matchedIdSetByTab[tab]
@@ -1192,16 +1583,10 @@ const App: React.FC = () => {
                     <div
                       className="kiosk-app-major-header"
                       onClick={() => {
-                        if (searchTrimmed.length > 0) {
-                          setSearchExpandedNames((prev) =>
-                            prev.includes(major.name)
-                              ? prev.filter((n) => n !== major.name)
-                              : [...prev, major.name]
-                          );
-                          return;
-                        }
-                        setExpandedMajor((prev) =>
-                          prev === major.name ? null : major.name
+                        setSearchExpandedNames((prev) =>
+                          prev.includes(major.name)
+                            ? prev.filter((n) => n !== major.name)
+                            : [...prev, major.name]
                         );
                       }}
                     >
@@ -1222,13 +1607,18 @@ const App: React.FC = () => {
                       <div className="kiosk-app-major-divider">
                         {major.subCategories.map((subCategory) => (
                           <div key={subCategory.name} className="kiosk-app-subcategory-block">
-                            <h4 className="kiosk-app-subcategory-title">{subCategory.name}</h4>
+                            <h4 className="kiosk-app-subcategory-title">
+                              {subCategory.name}（{subCategory.majors.length}个专业）
+                            </h4>
                             <div className="kiosk-app-major-rows">
                               {subCategory.majors.map((majorItem) => (
                                 <div key={`${majorItem.id ?? majorItem.name}`} className="kiosk-app-major-row">
                                   <div className="kiosk-app-major-name">{majorItem.name}</div>
                                   <div className="kiosk-app-major-actions">
-                                    <button className="kiosk-app-action-view">
+                                    <button
+                                      className="kiosk-app-action-view"
+                                      onClick={() => void openMajorDetailModal(majorItem.code)}
+                                    >
                                       <i className="fas fa-eye mr-1"></i> 查看
                                     </button>
                                     <button
@@ -1237,7 +1627,10 @@ const App: React.FC = () => {
                                     >
                                       <i className="fas fa-file-alt mr-1"></i> 自测
                                     </button>
-                                    <button className="kiosk-app-action-school">
+                                    <button
+                                      className="kiosk-app-action-school"
+                                      onClick={() => void openSchoolModal(majorItem.id, majorItem.name)}
+                                    >
                                       <i className="fas fa-university mr-1"></i> 院校
                                     </button>
                                   </div>
@@ -1339,6 +1732,266 @@ const App: React.FC = () => {
                 我知道了
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {schoolModalOpen && (
+        <div className="kiosk-school-overlay" role="presentation" onClick={closeSchoolModal}>
+          <div
+            className="kiosk-school-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kiosk-school-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="kiosk-school-close"
+              aria-label="关闭可选院校弹窗"
+              onClick={closeSchoolModal}
+            >
+              ✕
+            </button>
+
+            <div className="kiosk-school-scroll">
+              <section className="kiosk-school-header">
+                <h2 id="kiosk-school-title">📚 可选院校</h2>
+                <p>
+                  基于你的选科组合，以下院校专业你可能符合报考条件
+                  {schoolModalMajorName ? `（当前专业：${schoolModalMajorName}）` : ''}
+                </p>
+              </section>
+
+              <section className="kiosk-school-filters">
+                <div className="kiosk-school-sort-group">
+                  {([
+                    { value: 'score', label: '按分数倒序' },
+                    { value: 'year', label: '按年份倒序' }
+                  ] as Array<{ value: SchoolSortType; label: string }>).map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      className={`kiosk-school-chip ${schoolSortType === item.value ? 'kiosk-school-chip--active' : ''}`}
+                      onClick={() => setSchoolSortType(item.value)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {schoolModalLoading ? (
+                <div className="kiosk-school-empty">正在加载可选院校...</div>
+              ) : schoolModalError ? (
+                <div className="kiosk-school-empty">{schoolModalError}</div>
+              ) : schoolModalDisplayItems.length === 0 ? (
+                <div className="kiosk-school-empty">当前条件下暂未找到可选院校，请调整后再试。</div>
+              ) : (
+                <section className="kiosk-school-list">
+                  {schoolModalDisplayItems.map((item) => {
+                    return (
+                      <article key={item.school.code} className="kiosk-school-card">
+                        <header className="kiosk-school-card__header">
+                          <div>
+                            <h3 className="kiosk-school-card__name">{item.school.name}</h3>
+                            <div className="kiosk-school-meta-tags">
+                              <span>{formatSchoolNature(item.school.nature)}</span>
+                              <span>{formatSchoolLevel(item.school.level)}</span>
+                              <span>{item.school.belong ?? '-'}</span>
+                              <span>{item.school.categories ?? '-'}</span>
+                              <span>{item.school.provinceName ?? '-'}·{item.school.cityName ?? '-'}</span>
+                            </div>
+                          </div>
+                        </header>
+                        <div className="kiosk-school-card__plans">
+                          {item.plans.map((plan) => {
+                            const sortedScores = [...(plan.majorScores ?? [])].sort(
+                              (a, b) => Number(b.year ?? 0) - Number(a.year ?? 0)
+                            );
+                            return (
+                              <section key={plan.id} className="kiosk-school-plan">
+                                <div className="kiosk-school-plan__head">
+                                  <h4>{plan.enrollmentMajor ?? '-'}</h4>
+                                  <div className="kiosk-school-plan__tags">
+                                    <span>{plan.subjectSelectionMode ?? '-'} · {plan.majorGroupInfo ?? '-'}</span>
+                                    <span>{plan.batch ?? '-'}</span>
+                                  </div>
+                                </div>
+                                <div className="kiosk-school-plan__meta">
+                                  <div>修业年限：{plan.studyPeriod ?? '-'}</div>
+                                  <div>学费：{plan.tuitionFee ? `${plan.tuitionFee}元/年` : '-'}</div>
+                                  <div>招生计划：{plan.enrollmentQuota ? `${plan.enrollmentQuota}人` : '-'}</div>
+                                  <div>招生类型：{plan.enrollmentType ?? '-'}</div>
+                                </div>
+                                <div className="kiosk-school-score-list">
+                                  <div className="kiosk-school-score-list__head">
+                                    <span>年份</span>
+                                    <span>最低分</span>
+                                    <span>最低位次</span>
+                                  </div>
+                                  {sortedScores.length === 0 ? (
+                                    <div className="kiosk-school-score-list__empty">暂无历年分数数据</div>
+                                  ) : (
+                                    sortedScores.map((score) => (
+                                      <div
+                                        key={`${plan.id}-${score.year}-${score.minScore}`}
+                                        className="kiosk-school-score-list__row"
+                                      >
+                                        <span>{score.year ?? '-'}</span>
+                                        <span>
+                                          {score.minScore
+                                            ? `${Math.round(Number(score.minScore))}分`
+                                            : '-'}
+                                        </span>
+                                        <span>{score.minRank ?? '-'}</span>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </section>
+                            );
+                          })}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </section>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {majorDetailOpen && (
+        <div className="kiosk-major-detail-overlay" role="presentation" onClick={closeMajorDetailModal}>
+          <div
+            className="kiosk-major-detail-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kiosk-major-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="kiosk-major-detail-close"
+              aria-label="关闭专业详情"
+              onClick={closeMajorDetailModal}
+            >
+              ✕
+            </button>
+
+            {majorDetailLoading ? (
+              <div className="kiosk-major-detail-loading">正在加载专业详情...</div>
+            ) : majorDetailError ? (
+              <div className="kiosk-major-detail-loading">{majorDetailError}</div>
+            ) : majorDetailData ? (
+              <div className="kiosk-major-detail-scroll">
+                <section className="kiosk-major-detail-header">
+                  <h2 id="kiosk-major-detail-title">{majorDetailData.name}</h2>
+                  <div className="kiosk-major-detail-header__meta">
+                    <span>专业代码：{majorDetailData.code}</span>
+                    <span>学历层次：{formatEducationLevel(majorDetailData.educationLevel)}</span>
+                    <span>修业年限：{majorDetailData.studyPeriod ?? '-'}</span>
+                    <span>授予学位：{majorDetailData.awardedDegree ?? '-'}</span>
+                  </div>
+                </section>
+
+                <section className="kiosk-major-detail-brief">
+                  <p>{majorDetailData.majorBrief}</p>
+                  <div className="kiosk-major-detail-tags">
+                    {majorDetailKeywords.map((tag) => (
+                      <span key={tag} className="kiosk-major-detail-tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="kiosk-major-detail-dev-grid">
+                  <div className="kiosk-major-detail-dev kiosk-major-detail-dev--a">
+                    <h3>学术发展</h3>
+                    <p>{majorDetailData.academicDevelopmentTag}</p>
+                  </div>
+                  <div className="kiosk-major-detail-dev kiosk-major-detail-dev--b">
+                    <h3>职业发展</h3>
+                    <p>{majorDetailData.careerDevelopmentTag}</p>
+                  </div>
+                  <div className="kiosk-major-detail-dev kiosk-major-detail-dev--c">
+                    <h3>成长潜力</h3>
+                    <p>{majorDetailData.growthPotentialTag}</p>
+                  </div>
+                  <div className="kiosk-major-detail-dev kiosk-major-detail-dev--d">
+                    <h3>行业前景</h3>
+                    <p>{majorDetailData.industryProspectsTag}</p>
+                  </div>
+                </section>
+
+                <section className="kiosk-major-detail-tabs">
+                  {(['学习内容', '学术发展', '职业发展', '行业前景', '成长潜力'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={`kiosk-major-detail-tab ${majorDetailTab === tab ? 'kiosk-major-detail-tab--active' : ''}`}
+                      onClick={() => setMajorDetailTab(tab)}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </section>
+
+                <section className="kiosk-major-detail-panel">
+                  {majorDetailTab === '学习内容' && (
+                    <>
+                      <h4>专业基础课</h4>
+                      <ul>{(majorDetailStudyContent['专业基础课'] as string[] | undefined)?.map((item) => <li key={item}>{item}</li>)}</ul>
+                      <h4>专业核心课</h4>
+                      <ul>{(majorDetailStudyContent['专业核心课'] as string[] | undefined)?.map((item) => <li key={item}>{item}</li>)}</ul>
+                      <h4>核心实训</h4>
+                      <ul>{(majorDetailStudyContent['核心实训'] as string[] | undefined)?.map((item) => <li key={item}>{item}</li>)}</ul>
+                      <h4>一句话总结</h4>
+                      <p>{String(majorDetailStudyContent['一句话总结'] ?? '-')}</p>
+                    </>
+                  )}
+                  {majorDetailTab === '学术发展' && renderMajorDetailSection(majorDetailAcademicDevelopment, 'academic')}
+                  {majorDetailTab === '职业发展' && renderMajorDetailSection(majorDetailCareerDevelopment, 'career')}
+                  {majorDetailTab === '行业前景' && renderMajorDetailSection(majorDetailIndustryProspects, 'industry')}
+                  {majorDetailTab === '成长潜力' && renderMajorDetailSection(majorDetailGrowthPotential, 'growth')}
+                </section>
+
+                <section className="kiosk-major-detail-analysis">
+                  <h3>🧠 你的匹配度分析</h3>
+                  <p>基于你的学习特质与专业要求的匹配程度</p>
+                  <div className="kiosk-major-detail-analysis-guide">
+                    <p>为了给你更准确、更个性化的匹配建议，请先完成专业匹配度自测问卷。</p>
+                    <p>完成后将生成专属分析结果，包含你的优势项、潜在挑战与提升建议。</p>
+                    <div className="kiosk-major-detail-analysis-actions">
+                      <button
+                        type="button"
+                        className="kiosk-major-detail-btn kiosk-major-detail-action-btn--mint"
+                        onClick={() => {
+                          closeMajorDetailModal();
+                          openSelfTestModal(majorDetailData.name, majorDetailData.code);
+                        }}
+                      >
+                        开始专业匹配自测
+                      </button>
+                      <button
+                        type="button"
+                        className="kiosk-major-detail-btn kiosk-major-detail-action-btn--outline"
+                        onClick={() => {
+                          closeMajorDetailModal();
+                          void openSchoolModal(majorDetailData.id, majorDetailData.name);
+                        }}
+                      >
+                        浏览匹配院校
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
