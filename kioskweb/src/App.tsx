@@ -167,8 +167,8 @@ type KioskSchoolScoreResponse = {
 };
 
 const MAJOR_SCORES_API_URL = 'https://ziquzixin.com/api/v1/kiosk/major';
-const SCHOOL_SCORE_MIN = 500;
-const SCHOOL_SCORE_MAX = 600;
+// const SCHOOL_SCORE_MIN = 500;
+// const SCHOOL_SCORE_MAX = 600;
 
 /**
  * 接口学历层级映射到页面 Tab。
@@ -1089,8 +1089,9 @@ const App: React.FC = () => {
 
   /**
    * 开始匹配：保留按钮交互，触发一次手动刷新。
+   * @param matchContextTab 可选；从 Tab 切换传入时与尚未提交的 activeTab 对齐（如点「专科」时须为「专科」才会带 eduLevel=zhuan）。
    */
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback((matchContextTab?: KioskTab) => {
     if (!selectedProvince) {
       setSelectionAlertMessage('请先选择省份后再开始匹配。');
       return;
@@ -1110,20 +1111,68 @@ const App: React.FC = () => {
     setIsSearching(true);
     setMajorTreeError(null);
 
+    /** 匹配计算所依据的 Tab（切换专科 Tab 调用时传入，避免闭包仍为旧 Tab） */
+    const tabCtx: KioskTab = matchContextTab ?? activeTab;
+
     const run = async () => {
       try {
-        const nextMatched: Record<KioskTab, Set<number> | null> = {
-          本科: null,
-          职业本科: null,
-          专科: null
-        };
-
         const normalizedProvince = normalizeProvinceForApi(selectedProvince);
         const params = new URLSearchParams({
           province: normalizedProvince,
           preferredSubjects: firstSubject,
           secondarySubjects: buildSecondarySubjectsParam(secondSubjects)
         });
+
+        /**
+         * 当前展示为专科 Tab 时（点 Tab 或点「开始匹配」）：只调 eduLevel=zhuan 一次，
+         * 不再先打无 eduLevel 的主接口；本科/职业本科匹配结果保持不变。
+         */
+        if (tabCtx === '专科') {
+          let zhuanMatched: Set<number> | null = null;
+          try {
+            const zhuanParams = new URLSearchParams(params);
+            zhuanParams.set('eduLevel', 'zhuan');
+            const zhuanRes = await fetch(
+              `${MAJOR_IDS_API_URL}?${zhuanParams.toString()}`
+            );
+            if (zhuanRes.ok) {
+              const zhuanPayload = (await zhuanRes.json()) as unknown;
+              const zhuanRoot = zhuanPayload as Record<string, unknown>;
+              const zhuanData = (zhuanRoot.data ?? zhuanRoot) as Record<string, unknown>;
+              let zhuanIds = extractIdsFromArray(
+                zhuanData.level3MajorIds ??
+                  zhuanData.majorIds ??
+                  zhuanData.ids ??
+                  zhuanData.list
+              );
+              if (zhuanIds.length === 0) {
+                const fbZhuan = fallbackMatchedIdsByTabFromGroupsTree(zhuanPayload);
+                zhuanIds = fbZhuan.专科;
+              }
+              zhuanMatched = new Set(zhuanIds);
+            }
+          } catch {
+            /** 专科匹配请求失败时不做 id 筛选 */
+          }
+          setMatchedIdSetByTab((prev) => ({
+            本科: prev.本科,
+            职业本科: prev.职业本科,
+            专科: zhuanMatched !== null ? zhuanMatched : null
+          }));
+          const byIds = filterMajorCategoriesByIds(
+            majorDataByTab['专科'] ?? [],
+            zhuanMatched !== null ? zhuanMatched : null
+          );
+          setSearchExpandedNames(byIds.map((item) => item.name));
+          return;
+        }
+
+        const nextMatched: Record<KioskTab, Set<number> | null> = {
+          本科: null,
+          职业本科: null,
+          专科: null
+        };
+
         const response = await fetch(`${MAJOR_IDS_API_URL}?${params.toString()}`);
         if (!response.ok) {
           throw new Error(`匹配接口异常：${response.status}`);
@@ -1136,16 +1185,19 @@ const App: React.FC = () => {
             idsByTab[tab] = fallbackIdsByTab[tab];
           }
         });
+        /** 专科 id 仅在专科 Tab 专用路径中按 eduLevel=zhuan 获取，此处清空避免扁平结构误写入 */
+        idsByTab.专科 = [];
+
         const hasAnyMatchedIds =
-          idsByTab.本科.length > 0 || idsByTab.职业本科.length > 0 || idsByTab.专科.length > 0;
+          idsByTab.本科.length > 0 || idsByTab.职业本科.length > 0;
         nextMatched.本科 = hasAnyMatchedIds ? new Set(idsByTab.本科) : null;
         nextMatched.职业本科 = hasAnyMatchedIds ? new Set(idsByTab.职业本科) : null;
-        /** 专科按 eduLevel=zhuan 直接展示，不做匹配 id 过滤 */
+        /** 此路径仅根据主接口刷新本科/职业本科；专科筛选仅在专科 Tab 下调 zhuan 接口写入 */
         nextMatched.专科 = null;
         setMatchedIdSetByTab(nextMatched);
         const byIds = filterMajorCategoriesByIds(
-          majorDataByTab[activeTab] ?? [],
-          nextMatched[activeTab]
+          majorDataByTab[tabCtx] ?? [],
+          nextMatched[tabCtx]
         );
         setSearchExpandedNames(getExpandedMajorNamesByQuery(byIds, majorQuery));
       } catch (error) {
@@ -1162,6 +1214,7 @@ const App: React.FC = () => {
     firstSubject,
     majorDataByTab,
     majorQuery,
+    extractIdsFromArray,
     parseMatchedIdsByTab,
     secondSubjects,
     selectedProvince
@@ -1195,7 +1248,7 @@ const App: React.FC = () => {
   const filteredResults = useMemo(() => {
     const byIds = filterMajorCategoriesByIds(
       majorDataByTab[activeTab] ?? [],
-      activeTab === '专科' ? null : matchedIdSetByTab[activeTab]
+      matchedIdSetByTab[activeTab]
     );
     return filterMajorCategories(byIds, majorQuery);
   }, [activeTab, majorDataByTab, matchedIdSetByTab, majorQuery]);
@@ -1565,10 +1618,12 @@ const App: React.FC = () => {
       const params = new URLSearchParams({
         province: normalizeProvinceForApi(selectedProvince),
         preferredSubjects: firstSubject ?? '',
-        secondarySubjects: buildSecondarySubjectsParam(secondSubjects),
-        minScore: String(SCHOOL_SCORE_MIN),
-        maxScore: String(SCHOOL_SCORE_MAX)
+        secondarySubjects: buildSecondarySubjectsParam(secondSubjects)
       });
+      /** 专科 Tab：与 level3-major-ids 一致传 zhuan，服务端按批次筛选招生计划 */
+      if (activeTab === '专科') {
+        params.set('edulevel', 'zhuan');
+      }
       const response = await fetch(`${MAJOR_SCORES_API_URL}/${majorId}/scores?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`获取可选院校失败：${response.status}`);
@@ -1702,7 +1757,13 @@ const App: React.FC = () => {
 
         {/* 左侧第 4 行：查询按钮 */}
         <div className="kiosk-app-grid-search-wrap">
-          <button type="button" className="kiosk-app-btn-search" onClick={handleSearch}>
+          <button
+            type="button"
+            className="kiosk-app-btn-search"
+            onClick={() => {
+              void handleSearch();
+            }}
+          >
             开始匹配查询
           </button>
         </div>
@@ -1758,14 +1819,15 @@ const App: React.FC = () => {
                     className={`kiosk-app-tab-btn ${activeTab === tab ? 'kiosk-app-tab-btn--active' : ''}`}
                     onClick={() => {
                       setActiveTab(tab);
+                      /** 切换到专科时立即走一次匹配（含 eduLevel=zhuan），避免需再点「开始匹配」 */
+                      if (tab === '专科') {
+                        void handleSearch('专科');
+                        return;
+                      }
                       const byIds = filterMajorCategoriesByIds(
                         majorDataByTab[tab] ?? [],
                         matchedIdSetByTab[tab]
                       );
-                      if (tab === '专科') {
-                        setSearchExpandedNames(byIds.map((item) => item.name));
-                        return;
-                      }
                       setSearchExpandedNames(getExpandedMajorNamesByQuery(byIds, majorQuery));
                     }}
                   >

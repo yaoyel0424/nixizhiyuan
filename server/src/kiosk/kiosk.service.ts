@@ -222,7 +222,7 @@ export class KioskService {
     const idToNode = new Map<number, KioskMajorTreeNode>();
     for (const m of majors) {
       idToNode.set(m.id, {
-        id: m.majorDetail?.id ?? null,
+        id: m.id ?? null,
         name: m.name,
         code: m.code,
         eduLevel: m.eduLevel,
