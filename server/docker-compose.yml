@@ -1,6 +1,27 @@
-version: '3.8' 
+version: '3.9'
+
+# 自助终端 kioskweb：由 kioskweb-build 使用 ../kioskweb/Dockerfile 构建并写入卷 kioskweb_static，
+# nixizhiyuan-nginx 挂载该卷（nginx.conf listen 8080）。无需单独 cd kioskweb 执行 npm run build。
+# 更新前端后：docker compose build kioskweb-build && docker compose up -d
 
 services:
+  # 自助终端前端：构建镜像并把 /app/dist 拷入命名卷后退出（一次性任务）
+  kioskweb-build:
+    build:
+      context: ../kioskweb
+      dockerfile: Dockerfile
+    image: kioskweb:latest
+    container_name: kioskweb-build
+    restart: 'no'
+    volumes:
+      - kioskweb_static:/mnt
+    command:
+      [
+        'sh',
+        '-c',
+        'rm -rf /mnt/* && cp -r /app/dist/. /mnt/',
+      ]
+
   # NestJS 应用服务
   nixizhiyuan-server:
     build:
@@ -58,6 +79,8 @@ services:
       # 宿主机 8000 常被 nixi-app 等占用，改用 8443 映射到容器内 listen 8000 ssl
       # 访问：https://域名:8443/...（容器内仍为 8000，无需改 nginx.conf）
       - '8443:8000'
+      # 自助终端前端（nginx.conf 内 listen 8080，避免与 80 冲突）
+      - '8080:8080'
     volumes:
       # Nginx 配置文件
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -65,12 +88,20 @@ services:
       - ./https-key:/etc/nginx/ssl:ro
       # Nginx 日志
       - ./logs/nginx:/var/log/nginx
+      # 自助终端静态资源（由 kioskweb-build 填充）
+      - kioskweb_static:/usr/share/nginx/kioskweb:ro
     depends_on:
-      - nixizhiyuan-server
+      nixizhiyuan-server:
+        condition: service_started
+      kioskweb-build:
+        condition: service_completed_successfully
     networks:
       - rbridge_app-network
 
 networks:
   # 使用已存在的外部网络（主应用的 app-network）
   rbridge_app-network:
-    external: true 
+    external: true
+
+volumes:
+  kioskweb_static:
