@@ -738,9 +738,9 @@ export default function ProfilePage() {
                       <Text className="profile-page__card-icon-text">📢</Text>
                     </View>
                     <View className="profile-page__card-item-content">
-                      <Text className="profile-page__card-item-title">推广二维码</Text>
+                      <Text className="profile-page__card-item-title">分享大使专属码</Text>
                       <Text className="profile-page__card-item-desc">
-                        {promoteLoading ? '生成中…' : '点击弹出推广二维码'}
+                        {promoteLoading ? '生成中…' : '点击弹出分享大使专属码'}
                       </Text>
                     </View>
                     <Text className="profile-page__card-arrow">›</Text>
