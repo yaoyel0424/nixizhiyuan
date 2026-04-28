@@ -461,26 +461,41 @@ function WordCloudCSS({
                     </View>
                     );
                   })()}
-                {/* 三大挑战 — 放在核心矛盾（主副标题+特质）下面，标题后跟查看详情链接 */}
+                {/* 三大挑战 — 在当前页直接展示详细内容 */}
                 {item.portrait.quadrant1Challenges && item.portrait.quadrant1Challenges.length > 0 && (
                   <View className="word-cloud-css__card-section">
-                    <View className="word-cloud-css__card-section-title-row">
-                      <Text className="word-cloud-css__card-section-title">三大挑战</Text>
-                      <Text
-                        className="word-cloud-css__card-detail-link"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleItemClick(item.portrait);
-                        }}
-                      >
-                        查看详情
-                      </Text>
-                    </View>
+                    <Text className="word-cloud-css__card-section-title">三大挑战</Text>
                     <View className="word-cloud-css__card-tags">
                       {item.portrait.quadrant1Challenges.map((c) => (
                         <Text key={c.id} className="word-cloud-css__card-tag" style={{ borderColor: item.color }}>
                           {c.name}
                         </Text>
+                      ))}
+                    </View>
+                    <View className="word-cloud-css__card-challenges">
+                      {item.portrait.quadrant1Challenges.map((challenge) => (
+                        <View key={challenge.id} className="word-cloud-css__card-challenge-item">
+                          <View className="word-cloud-css__card-challenge-header">
+                            <Text className="word-cloud-css__card-challenge-type">{challenge.type}</Text>
+                            <Text className="word-cloud-css__card-challenge-name">{challenge.name}</Text>
+                          </View>
+                          {challenge.description ? (
+                            <Text className="word-cloud-css__card-challenge-text">{challenge.description}</Text>
+                          ) : null}
+                          {challenge.cultivationStrategy ? (
+                            <Text className="word-cloud-css__card-challenge-label">
+                              培养策略：{challenge.cultivationStrategy}
+                            </Text>
+                          ) : null}
+                          {challenge.strategy ? (
+                            <Text className="word-cloud-css__card-challenge-text">{challenge.strategy}</Text>
+                          ) : null}
+                          {challenge.capabilityBuilding ? (
+                            <Text className="word-cloud-css__card-challenge-text">
+                              能力建设：{challenge.capabilityBuilding}
+                            </Text>
+                          ) : null}
+                        </View>
                       ))}
                     </View>
                 </View>

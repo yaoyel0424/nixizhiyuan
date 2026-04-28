@@ -645,6 +645,13 @@ export default function AllMajorsPage() {
     })
   }
 
+  const handleViewPersonalProfile = () => {
+    setShowUnlockCelebration(false)
+    Taro.navigateTo({
+      url: '/pages/assessment/personal-profile/index',
+    })
+  }
+
   if (isLoading || !isInitialized) {
     return (
       <View className="all-majors-page__fullscreen">
@@ -1049,18 +1056,23 @@ export default function AllMajorsPage() {
               <Text>🎊</Text>
               <Text>✨</Text>
             </View>
-            <DialogTitle>恭喜完成 168 测评！</DialogTitle>
-            <DialogDescription>
-              你的天赋画像已经生成，下一步建议立即进入「探索专业」，查看更匹配的专业方向。
+            <DialogTitle>恭喜完成168自评！</DialogTitle>
+            <DialogDescription className="all-majors-page__unlock-desc">
+              <Text className="all-majors-page__unlock-desc-line">
+                您可进入「探索专业」，发现最具热爱能量的“心动专业”！
+              </Text>
+              <Text className="all-majors-page__unlock-desc-line">
+                也可进入「特质画像」，查看“洪荒之能”和“三大挑战”！
+              </Text>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowUnlockCelebration(false)}
-              className="all-majors-page__dialog-button"
+              onClick={handleViewPersonalProfile}
+              className="all-majors-page__dialog-button all-majors-page__unlock-secondary-button"
             >
-              稍后再看
+              特质画像
             </Button>
             <Button
               onClick={handleExploreMajors}
