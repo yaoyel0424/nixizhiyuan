@@ -350,6 +350,13 @@
   color: #fff;
 }
 
+.all-majors-page__footer-button--explore {
+  position: relative;
+  font-weight: 700;
+  box-shadow: 0 10rpx 28rpx rgba(255, 127, 80, 0.35);
+  animation: explore-button-pulse 1.6s ease-in-out infinite;
+}
+
 // 完成页面
 .all-majors-page__completed {
   flex: 1;
@@ -484,6 +491,24 @@
   color: #fff;
 }
 
+.all-majors-page__unlock-dialog {
+  text-align: center;
+}
+
+.all-majors-page__unlock-fireworks {
+  display: flex;
+  justify-content: center;
+  gap: 20rpx;
+  margin-bottom: 12rpx;
+  font-size: 56rpx;
+  line-height: 1;
+  animation: fireworks-pop 0.9s ease-out;
+}
+
+.all-majors-page__unlock-button {
+  box-shadow: 0 8rpx 24rpx rgba(255, 127, 80, 0.32);
+}
+
 .all-majors-page__unanswered-dialog {
   max-height: 80vh;
 }
@@ -590,6 +615,28 @@
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+@keyframes explore-button-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10rpx 28rpx rgba(255, 127, 80, 0.35);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 16rpx 36rpx rgba(255, 127, 80, 0.5);
+  }
+}
+
+@keyframes fireworks-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(12rpx) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

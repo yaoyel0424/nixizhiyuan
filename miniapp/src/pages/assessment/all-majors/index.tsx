@@ -153,6 +153,10 @@ export default function AllMajorsPage() {
   const [showUnansweredDialog, setShowUnansweredDialog] = useState(false)
   const [submittingQuestionId, setSubmittingQuestionId] = useState<number | null>(null) // 正在提交的题目ID
   const [showUnansweredBlink, setShowUnansweredBlink] = useState(false)
+  /** 完成 168 题后展示庆祝引导弹窗 */
+  const [showUnlockCelebration, setShowUnlockCelebration] = useState(false)
+  /** 是否已展示过“探索专业”引导弹窗，避免重复弹出 */
+  const [hasShownUnlockCelebration, setHasShownUnlockCelebration] = useState(false)
   /** 维度探索引导弹层：进入该维度第一题时展示一次（本会话内） */
   const [dimensionIntroOpen, setDimensionIntroOpen] = useState(false)
   const [dimensionIntroKey, setDimensionIntroKey] = useState<string>('')
@@ -303,6 +307,13 @@ export default function AllMajorsPage() {
   // 完成168题后解锁功能
   const UNLOCK_THRESHOLD = 168
   const isUnlocked = answeredCount >= UNLOCK_THRESHOLD
+
+  useEffect(() => {
+    if (isUnlocked && !hasShownUnlockCelebration) {
+      setShowUnlockCelebration(true)
+      setHasShownUnlockCelebration(true)
+    }
+  }, [isUnlocked, hasShownUnlockCelebration])
 
   // 处理重新探索：保存当前答案为上一次答案，清空当前答案，计数归零
   const handleRestartExploration = () => {
@@ -628,6 +639,12 @@ export default function AllMajorsPage() {
     })
   }
 
+  const handleExploreMajors = () => {
+    Taro.reLaunch({
+      url: '/pages/majors/index',
+    })
+  }
+
   if (isLoading || !isInitialized) {
     return (
       <View className="all-majors-page__fullscreen">
@@ -883,12 +900,8 @@ export default function AllMajorsPage() {
 
           {isUnlocked && (
             <Button
-              onClick={() => {
-                Taro.reLaunch({
-                  url: '/pages/majors/index',
-                })
-              }}
-              className="all-majors-page__footer-button all-majors-page__footer-button--primary"
+              onClick={handleExploreMajors}
+              className="all-majors-page__footer-button all-majors-page__footer-button--primary all-majors-page__footer-button--explore"
             >
               探索专业 →
             </Button>
@@ -1022,6 +1035,38 @@ export default function AllMajorsPage() {
               className="all-majors-page__dialog-button"
             >
               关闭
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 168 题完成后，强化“探索专业”引导 */}
+      <Dialog open={showUnlockCelebration} onOpenChange={setShowUnlockCelebration}>
+        <DialogContent className="all-majors-page__unlock-dialog">
+          <DialogHeader>
+            <View className="all-majors-page__unlock-fireworks" aria-hidden>
+              <Text>🎉</Text>
+              <Text>🎊</Text>
+              <Text>✨</Text>
+            </View>
+            <DialogTitle>恭喜完成 168 测评！</DialogTitle>
+            <DialogDescription>
+              你的天赋画像已经生成，下一步建议立即进入「探索专业」，查看更匹配的专业方向。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowUnlockCelebration(false)}
+              className="all-majors-page__dialog-button"
+            >
+              稍后再看
+            </Button>
+            <Button
+              onClick={handleExploreMajors}
+              className="all-majors-page__dialog-button all-majors-page__dialog-button--primary all-majors-page__unlock-button"
+            >
+              立即探索专业
             </Button>
           </DialogFooter>
         </DialogContent>
